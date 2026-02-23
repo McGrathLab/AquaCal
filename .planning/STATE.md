@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 Phase: N/A (between milestones)
 Plan: N/A
 Status: MILESTONE COMPLETE
-Last activity: 2026-02-19 — v1.4 QA & Polish milestone archived
+Last activity: 2026-02-23 - Completed quick task 1: Add calibration-file-based synthetic rig to 02_synthetic_validation
 
 Progress: All v1.2 + v1.4 milestones shipped (12 phases, 30 plans)
 
@@ -32,6 +32,12 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Add calibration-file-based synthetic rig to 02_synthetic_validation | 2026-02-23 | a24c8d6 | [1-add-calibration-file-based-synthetic-rig](./quick/1-add-calibration-file-based-synthetic-rig/) |
 
 ## Session Continuity
 
