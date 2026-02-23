@@ -8,6 +8,7 @@ complete scenarios with detections and optionally rendered images.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -26,6 +27,7 @@ from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project
+from aquacal.io.serialization import load_calibration
 
 
 @dataclass
@@ -313,6 +315,59 @@ def generate_real_rig_array(
         distances[cam_name] = height_above_water + rng.normal(0, height_variation)
 
     return intrinsics, extrinsics, distances
+
+
+def rig_from_calibration(
+    calibration_path: str | Path,
+) -> tuple[
+    dict[str, CameraIntrinsics],
+    dict[str, CameraExtrinsics],
+    dict[str, float],
+    BoardConfig,
+]:
+    """Load camera rig geometry from an existing calibration.json file.
+
+    Extracts intrinsics, extrinsics, and water surface Z-coordinates from a
+    previously saved calibration result, returning them in the same dict
+    format used by ``generate_camera_array()`` and ``generate_real_rig_array()``.
+    Also returns the board configuration from the calibration file.
+
+    This is useful for running synthetic validation experiments (e.g., the
+    02_synthetic_validation notebook) using the geometry of a real calibrated
+    rig rather than synthetic presets.
+
+    Args:
+        calibration_path: Path to a calibration.json file produced by
+            ``aquacal.io.serialization.save_calibration()``.
+
+    Returns:
+        Tuple of ``(intrinsics, extrinsics, water_zs, board_config)`` where:
+            - intrinsics: Dict mapping camera name to ``CameraIntrinsics``.
+            - extrinsics: Dict mapping camera name to ``CameraExtrinsics``.
+            - water_zs: Dict mapping camera name to water surface Z (meters).
+            - board_config: ``BoardConfig`` from the calibration file.
+
+    Raises:
+        FileNotFoundError: If ``calibration_path`` does not exist.
+        ValueError: If the file format is invalid or version mismatch.
+
+    Example:
+        >>> from aquacal.datasets import rig_from_calibration
+        >>> intr, extr, wz, board = rig_from_calibration("calibration.json")
+        >>> print(f"{len(intr)} cameras, water_z ~ {sum(wz.values())/len(wz):.3f} m")
+    """
+    result = load_calibration(calibration_path)
+
+    intrinsics: dict[str, CameraIntrinsics] = {}
+    extrinsics: dict[str, CameraExtrinsics] = {}
+    water_zs: dict[str, float] = {}
+
+    for cam_name, cam in result.cameras.items():
+        intrinsics[cam_name] = cam.intrinsics
+        extrinsics[cam_name] = cam.extrinsics
+        water_zs[cam_name] = cam.water_z
+
+    return intrinsics, extrinsics, water_zs, result.board
 
 
 def generate_board_trajectory(

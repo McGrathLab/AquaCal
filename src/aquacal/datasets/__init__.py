@@ -58,11 +58,13 @@ from aquacal.datasets.synthetic import (
     SyntheticScenario,
     generate_synthetic_detections,
     generate_synthetic_rig,
+    rig_from_calibration,
 )
 
 __all__ = [
     "generate_synthetic_rig",
     "generate_synthetic_detections",
+    "rig_from_calibration",
     "SyntheticScenario",
     "load_example",
     "ExampleDataset",

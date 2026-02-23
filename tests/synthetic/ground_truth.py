@@ -17,6 +17,7 @@ from aquacal.datasets.synthetic import (
     generate_real_rig_array,
     generate_real_rig_trajectory,
     generate_synthetic_detections,  # noqa: F401
+    rig_from_calibration,  # noqa: F401
 )
 
 
