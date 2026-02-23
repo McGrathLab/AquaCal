@@ -21,6 +21,7 @@ Progress: All v1.2 + v1.4 milestones shipped (12 phases, 30 plans)
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+- [Phase quick]: rig_from_calibration returns 4-tuple including BoardConfig for real board geometry reuse
 
 ### Pending Todos
 
