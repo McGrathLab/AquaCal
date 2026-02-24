@@ -28,6 +28,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Design better hero image for README (deferred from Phase 11 — user wants to rethink concept)
 - Reduce memory and CPU load during calibration
 - Check version field in JSON output reads local version properly
+- Upload new Zenodo dataset with image-based inputs (updated config.yaml)
 
 ### Blockers/Concerns
 
