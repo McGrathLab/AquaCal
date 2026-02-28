@@ -251,75 +251,59 @@ class TestGenerateCameraArray:
 class TestGenerateRealRigArray:
     """Tests for generate_real_rig_array function."""
 
-    def test_creates_13_cameras(self):
-        """Should create exactly 13 cameras."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+    def test_creates_12_cameras(self):
+        """Should create exactly 12 cameras."""
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
-        assert len(intrinsics) == 13
-        assert len(extrinsics) == 13
-        assert len(distances) == 13
+        assert len(intrinsics) == 12
+        assert len(extrinsics) == 12
+        assert len(distances) == 12
 
     def test_cam0_at_origin(self):
         """cam0 should be at origin with identity rotation."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
         np.testing.assert_allclose(extrinsics["cam0"].C, [0, 0, 0], atol=1e-10)
         np.testing.assert_allclose(extrinsics["cam0"].R, np.eye(3))
 
-    def test_inner_ring_radius(self):
-        """Inner ring cameras (cam1-cam6) should be at 300mm radius."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+    def test_all_cameras_at_z_zero(self):
+        """All cameras should be at Z = 0."""
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
-        for i in range(1, 7):
-            C = extrinsics[f"cam{i}"].C
-            radius = np.sqrt(C[0] ** 2 + C[1] ** 2)
-            np.testing.assert_allclose(radius, 0.300, atol=1e-6)
+        for cam_name in extrinsics:
+            C = extrinsics[cam_name].C
+            np.testing.assert_allclose(C[2], 0.0, atol=1e-10)
 
-    def test_outer_ring_radius(self):
-        """Outer ring cameras (cam7-cam12) should be at 600mm radius."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+    def test_all_optical_axes_aligned_to_z(self):
+        """All cameras should have identity rotation (optical axis = +Z)."""
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
-        for i in range(7, 13):
-            C = extrinsics[f"cam{i}"].C
-            radius = np.sqrt(C[0] ** 2 + C[1] ** 2)
-            np.testing.assert_allclose(radius, 0.600, atol=1e-6)
+        for cam_name in extrinsics:
+            np.testing.assert_allclose(extrinsics[cam_name].R, np.eye(3))
 
     def test_camera_specs(self):
         """Camera specs should match real hardware."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
         for cam_name in intrinsics:
             intr = intrinsics[cam_name]
             assert intr.image_size == (1600, 1200)
 
-    def test_roll_angles(self):
-        """Roll angles should make camera X-axis tangent to circle."""
-        intrinsics, extrinsics, distances = generate_real_rig_array(seed=42)
+    def test_common_intrinsics(self):
+        """All cameras should share the same averaged intrinsics."""
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
-        ANGULAR_SPACING = np.pi / 3  # 60 degrees
+        K0 = intrinsics["cam0"].K
+        for cam_name in intrinsics:
+            np.testing.assert_array_equal(intrinsics[cam_name].K, K0)
 
-        # Inner ring
-        for i in range(1, 7):
-            theta = (i - 1) * ANGULAR_SPACING
-            expected_roll = theta + np.pi / 2
+    def test_common_water_z(self):
+        """All cameras should share the same water_z."""
+        intrinsics, extrinsics, distances = generate_real_rig_array()
 
-            R = extrinsics[f"cam{i}"].R
-            # Roll is rotation around Z axis, check the Z component of the rotation
-            # For a Z-rotation by angle phi: R = [[cos,-sin,0],[sin,cos,0],[0,0,1]]
-            actual_cos = R[0, 0]
-            actual_sin = R[1, 0]
-            actual_roll = np.arctan2(actual_sin, actual_cos)
-
-            # Normalize to same range
-            expected_normalized = expected_roll % (2 * np.pi)
-            actual_normalized = actual_roll % (2 * np.pi)
-
-            diff = min(
-                abs(expected_normalized - actual_normalized),
-                abs(expected_normalized - actual_normalized + 2 * np.pi),
-                abs(expected_normalized - actual_normalized - 2 * np.pi),
-            )
-            assert diff < 0.01, f"Roll mismatch for cam{i}"
+        wz0 = distances["cam0"]
+        for cam_name in distances:
+            assert distances[cam_name] == wz0
 
 
 class TestCreateScenario:
@@ -342,13 +326,13 @@ class TestCreateScenario:
         assert len(scenario.intrinsics) == 2
 
     def test_realistic_scenario(self):
-        """Realistic scenario should have 13 cameras matching real hardware."""
+        """Realistic scenario should have 12 cameras matching real hardware."""
         scenario = create_scenario("realistic")
 
         assert scenario.name == "realistic"
-        assert len(scenario.intrinsics) == 13
-        assert len(scenario.extrinsics) == 13
-        assert len(scenario.water_zs) == 13
+        assert len(scenario.intrinsics) == 12
+        assert len(scenario.extrinsics) == 12
+        assert len(scenario.water_zs) == 12
         assert len(scenario.board_poses) == 30
         assert scenario.noise_std == 0.5
 

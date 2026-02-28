@@ -426,10 +426,8 @@ def run_experiment_2(output_dir: str | Path, seed: int = 42) -> dict:
 
     print("Experiment 2: Depth Generalization")
 
-    # Generate 13-camera rig
-    intrinsics, extrinsics, water_zs = generate_real_rig_array(
-        height_above_water=0.75, height_variation=0.002, seed=seed
-    )
+    # Generate 12-camera rig
+    intrinsics, extrinsics, water_zs = generate_real_rig_array()
 
     # Board config (matches realistic scenario)
     board_config = BoardConfig(
@@ -441,9 +439,10 @@ def run_experiment_2(output_dir: str | Path, seed: int = 42) -> dict:
     )
     board = BoardGeometry(board_config)
 
-    # Calibration trajectory: narrow depth band (0.95-1.05m, 50 frames)
+    # Calibration trajectory: narrow depth band (1.15-1.25m, 50 frames)
+    # Water surface at ~1.03m; boards just below surface
     calib_poses = generate_real_rig_trajectory(
-        n_frames=50, depth_range=(0.95, 1.05), seed=seed
+        n_frames=50, depth_range=(1.15, 1.25), seed=seed
     )
 
     # Build calibration scenario
@@ -469,8 +468,8 @@ def run_experiment_2(output_dir: str | Path, seed: int = 42) -> dict:
         calib_scenario, n_water=1.0, refine_intrinsics=True
     )
 
-    # Test depths
-    test_depths = [0.80, 0.90, 1.00, 1.10, 1.20, 1.40, 1.70, 2.00]
+    # Test depths (water surface at ~1.03m)
+    test_depths = [1.10, 1.20, 1.30, 1.40, 1.50, 1.70, 2.00, 2.50]
 
     # Results accumulators
     results_refr = []
@@ -486,6 +485,7 @@ def run_experiment_2(output_dir: str | Path, seed: int = 42) -> dict:
             depth=depth,
             n_grid=7,
             xy_extent=0.5,
+            xy_center=(-0.34, 0.55),
             tilt_deg=3.0,
             frame_offset=1000,
             seed=seed,
@@ -922,10 +922,8 @@ def run_experiment_3(output_dir: str | Path, seed: int = 42) -> dict:
 
     print("Experiment 3: Depth Scaling")
 
-    # Generate 13-camera rig
-    intrinsics, extrinsics, water_zs = generate_real_rig_array(
-        height_above_water=0.75, height_variation=0.002, seed=seed
-    )
+    # Generate 12-camera rig
+    intrinsics, extrinsics, water_zs = generate_real_rig_array()
 
     # Board config (matches realistic scenario)
     board_config = BoardConfig(
@@ -937,8 +935,8 @@ def run_experiment_3(output_dir: str | Path, seed: int = 42) -> dict:
     )
     board = BoardGeometry(board_config)
 
-    # Sweep depths
-    sweep_depths = [0.85, 1.0, 1.2, 1.5, 2.0, 2.5]
+    # Sweep depths (water surface at ~1.03m)
+    sweep_depths = [1.10, 1.3, 1.5, 1.8, 2.3, 2.8]
 
     # Results accumulators
     results_refr = []
@@ -989,6 +987,7 @@ def run_experiment_3(output_dir: str | Path, seed: int = 42) -> dict:
             depth=depth,
             n_grid=7,
             xy_extent=0.5,
+            xy_center=(-0.34, 0.55),
             tilt_deg=3.0,
             frame_offset=1000,
             seed=depth_seed + 1,
