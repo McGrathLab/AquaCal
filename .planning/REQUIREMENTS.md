@@ -1,0 +1,73 @@
+# Requirements: AquaCal
+
+**Defined:** 2026-02-28
+**Core Value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can `pip install aquacal`, point it at their videos, and get a calibration result they trust.
+
+## v1.6 Requirements
+
+Requirements for the Refinement API milestone. Each maps to roadmap phases.
+
+### API Contracts
+
+- [ ] **API-01**: `PointCorrespondence` dataclass accepts a 3D point, a dict of camera-name-to-pixel observations, and an optional float weight
+- [ ] **API-02**: `RefinementResult` dataclass wraps the refined `CalibrationResult`, `ValidationReport`, and an accept/reject recommendation
+- [ ] **API-03**: `refine_calibration()` is importable from `aquacal` as a public entry point
+
+### Optimization
+
+- [ ] **OPT-01**: `refine_calibration()` performs bundle adjustment over extrinsics and water_z using point correspondences
+- [ ] **OPT-02**: Optional intrinsics refinement (fx, fy, cx, cy per camera) can be enabled by the caller, off by default
+- [ ] **OPT-03**: Robust loss functions (Huber/Cauchy) are supported for outlier tolerance
+
+### Validation
+
+- [ ] **VAL-01**: Holdout reprojection error is computed on a configurable fraction of held-out correspondences
+- [ ] **VAL-02**: Triangulation consistency is measured by re-triangulating holdout points and comparing ray intersection tightness before/after refinement
+- [ ] **VAL-03**: Parameter stability check flags refinements where extrinsics shift beyond configurable thresholds
+- [ ] **VAL-04**: `ValidationReport` dataclass contains all validation metrics with a structured accept/reject recommendation
+
+## Future Requirements
+
+### Incremental Refinement
+
+- **INCR-01**: Incremental refinement that updates calibration without re-solving from scratch
+- **INCR-02**: Streaming interface for online refinement as new observations arrive
+
+### Extended Observation Types
+
+- **EXT-01**: Support pose constraints (known relative camera positions) as observation type
+- **EXT-02**: Support distance constraints (known 3D distances between points) as observation type
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Generating downstream observations | AquaCal consumes observations, never generates them — the caller (e.g., AquaPose) is responsible |
+| Subsampling / frame selection | Caller's responsibility — API accepts whatever is provided |
+| Defining observation quality metrics | Weights are abstract floats — what "goodness" means is the caller's domain |
+| CLI command for refinement | Library API only for v1.6 — CLI can be added later if demand exists |
+| Refining board poses | Board poses are irrelevant for point-correspondence refinement (no boards involved) |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| API-01 | — | Pending |
+| API-02 | — | Pending |
+| API-03 | — | Pending |
+| OPT-01 | — | Pending |
+| OPT-02 | — | Pending |
+| OPT-03 | — | Pending |
+| VAL-01 | — | Pending |
+| VAL-02 | — | Pending |
+| VAL-03 | — | Pending |
+| VAL-04 | — | Pending |
+
+**Coverage:**
+- v1.6 requirements: 10 total
+- Mapped to phases: 0
+- Unmapped: 10
+
+---
+*Requirements defined: 2026-02-28*
+*Last updated: 2026-02-28 after initial definition*
