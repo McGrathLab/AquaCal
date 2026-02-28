@@ -19,6 +19,8 @@ from aquacal.config.schema import (
     InsufficientDataError,
     InterfaceParams,
     PointCorrespondence,
+    RefinementResult,
+    ValidationReport,
 )
 from aquacal.core.camera import create_camera
 from aquacal.core.interface_model import Interface
@@ -298,8 +300,11 @@ class TestInputValidation:
             )
         # Use 15 valid ones from synthetic (all have weight=1)
         active = synthetic_correspondences[:15]
-        result = refine_calibration(calibration_result, zero_weight + active)
-        assert isinstance(result, CalibrationResult)
+        result = refine_calibration(
+            calibration_result, zero_weight + active, validate=False
+        )
+        assert isinstance(result, RefinementResult)
+        assert isinstance(result.result, CalibrationResult)
 
     def test_all_zero_weight_raises(self, calibration_result):
         """All zero-weight correspondences raises InsufficientDataError."""
@@ -406,8 +411,10 @@ class TestRefinementOptimization:
         rms_before = _compute_reprojection_rms(
             perturbed_result, synthetic_correspondences
         )
-        refined = refine_calibration(perturbed_result, synthetic_correspondences)
-        rms_after = _compute_reprojection_rms(refined, synthetic_correspondences)
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        )
+        rms_after = _compute_reprojection_rms(refined.result, synthetic_correspondences)
 
         assert rms_after < rms_before, (
             f"Expected RMS to decrease: before={rms_before:.4f}, after={rms_after:.4f}"
@@ -416,7 +423,9 @@ class TestRefinementOptimization:
     @pytest.mark.slow
     def test_intrinsics_unchanged(self, perturbed_result, synthetic_correspondences):
         """Intrinsics (K and dist_coeffs) are identical before and after refinement."""
-        refined = refine_calibration(perturbed_result, synthetic_correspondences)
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        ).result
 
         for cam_name, cam_cal in perturbed_result.cameras.items():
             original_K = cam_cal.intrinsics.K
@@ -438,7 +447,9 @@ class TestRefinementOptimization:
     @pytest.mark.slow
     def test_extrinsics_change(self, perturbed_result, synthetic_correspondences):
         """At least one non-reference camera's extrinsics differ after refinement."""
-        refined = refine_calibration(perturbed_result, synthetic_correspondences)
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        ).result
 
         camera_order = sorted(perturbed_result.cameras.keys())
         non_ref_cameras = camera_order[1:]  # cam1, cam2
@@ -462,7 +473,9 @@ class TestRefinementOptimization:
         ref_R_before = perturbed_result.cameras[reference].extrinsics.R.copy()
         ref_t_before = perturbed_result.cameras[reference].extrinsics.t.copy()
 
-        refined = refine_calibration(perturbed_result, synthetic_correspondences)
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        ).result
 
         np.testing.assert_allclose(
             refined.cameras[reference].extrinsics.R,
@@ -480,7 +493,9 @@ class TestRefinementOptimization:
     @pytest.mark.slow
     def test_water_z_positive(self, perturbed_result, synthetic_correspondences):
         """After refinement, water_z is positive for all cameras."""
-        refined = refine_calibration(perturbed_result, synthetic_correspondences)
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        ).result
 
         for cam_name, cam_cal in refined.cameras.items():
             assert cam_cal.water_z > 0, (
@@ -488,27 +503,32 @@ class TestRefinementOptimization:
             )
 
     @pytest.mark.slow
-    def test_returns_calibration_result(
+    def test_returns_refinement_result(
         self, perturbed_result, synthetic_correspondences
     ):
-        """Return type is CalibrationResult with all expected fields."""
-        result = refine_calibration(perturbed_result, synthetic_correspondences)
+        """Return type is RefinementResult wrapping CalibrationResult."""
+        result = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        )
 
-        assert isinstance(result, CalibrationResult)
-        assert hasattr(result, "cameras")
-        assert hasattr(result, "interface")
-        assert hasattr(result, "board")
-        assert hasattr(result, "diagnostics")
-        assert hasattr(result, "metadata")
-        assert set(result.cameras.keys()) == set(perturbed_result.cameras.keys())
+        assert isinstance(result, RefinementResult)
+        assert isinstance(result.result, CalibrationResult)
+        assert result.validation_report is None
+        assert result.accepted is None
+        assert hasattr(result.result, "cameras")
+        assert hasattr(result.result, "interface")
+        assert hasattr(result.result, "board")
+        assert hasattr(result.result, "diagnostics")
+        assert hasattr(result.result, "metadata")
+        assert set(result.result.cameras.keys()) == set(perturbed_result.cameras.keys())
 
     def test_verbose_flag_accepted(self, perturbed_result, synthetic_correspondences):
         """refine_calibration with verbose=True runs without error."""
         # verbose=True just enables optimizer progress output, should not crash
         result = refine_calibration(
-            perturbed_result, synthetic_correspondences, verbose=True
+            perturbed_result, synthetic_correspondences, verbose=True, validate=False
         )
-        assert isinstance(result, CalibrationResult)
+        assert isinstance(result, RefinementResult)
 
 
 # ---------------------------------------------------------------------------
@@ -564,8 +584,8 @@ class TestEdgeCases:
 
         assert len(corrs) >= 10, "Need at least 10 correspondences for this test"
 
-        refined = refine_calibration(calibration_result, corrs)
-        rms = _compute_reprojection_rms(refined, corrs)
+        refined = refine_calibration(calibration_result, corrs, validate=False)
+        rms = _compute_reprojection_rms(refined.result, corrs)
 
         assert rms < 1.0, (
             f"Expected RMS < 1 px for noiseless ground truth; got {rms:.4f}"
@@ -588,8 +608,8 @@ class TestEdgeCases:
                 )
             )
 
-        result = refine_calibration(perturbed_result, weighted)
-        assert isinstance(result, CalibrationResult)
+        result = refine_calibration(perturbed_result, weighted, validate=False)
+        assert isinstance(result, RefinementResult)
 
 
 # ---------------------------------------------------------------------------
@@ -692,8 +712,9 @@ class TestIntrinsicsRefinement:
                 synthetic_correspondences,
                 loss=loss_name,
                 max_nfev=1,  # short-circuit: just prove parameter is accepted
+                validate=False,
             )
-            assert isinstance(result, CalibrationResult)
+            assert isinstance(result, RefinementResult)
 
     @pytest.mark.slow
     def test_intrinsics_change_when_enabled(self, calibration_result):
@@ -712,8 +733,12 @@ class TestIntrinsicsRefinement:
 
         # Refine with intrinsics enabled
         refined = refine_calibration(
-            perturbed, corrs, refine_intrinsics=True, intrinsics_bound_pct=0.1
-        )
+            perturbed,
+            corrs,
+            refine_intrinsics=True,
+            intrinsics_bound_pct=0.1,
+            validate=False,
+        ).result
 
         # cam1: fx should have moved toward 500 (original) from 520 (perturbed)
         cam1_fx_perturbed = perturbed.cameras["cam1"].intrinsics.K[0, 0]
@@ -743,8 +768,11 @@ class TestIntrinsicsRefinement:
     ):
         """With refine_intrinsics=False (default), intrinsics are exactly unchanged."""
         refined = refine_calibration(
-            perturbed_result, synthetic_correspondences, refine_intrinsics=False
-        )
+            perturbed_result,
+            synthetic_correspondences,
+            refine_intrinsics=False,
+            validate=False,
+        ).result
 
         for cam_name, cam_cal in perturbed_result.cameras.items():
             np.testing.assert_array_equal(
@@ -763,7 +791,8 @@ class TestIntrinsicsRefinement:
             synthetic_correspondences,
             refine_intrinsics=True,
             intrinsics_bound_pct=0.02,
-        )
+            validate=False,
+        ).result
 
         bound_pct = 0.02
         for cam_name in sorted(calibration_result.cameras.keys()):
@@ -811,7 +840,9 @@ class TestIntrinsicsRefinement:
         rms_before = _compute_reprojection_rms(perturbed, corrs)
 
         # Refine with tilt enabled
-        refined = refine_calibration(perturbed, corrs, normal_fixed=False)
+        refined = refine_calibration(
+            perturbed, corrs, normal_fixed=False, validate=False
+        ).result
 
         # Reference camera R should have changed from identity
         ref_R = refined.cameras["cam0"].extrinsics.R
@@ -820,7 +851,7 @@ class TestIntrinsicsRefinement:
         )
 
         # RMS should decrease
-        rms_after = _compute_reprojection_rms(refined, corrs)
+        rms_after = _compute_reprojection_rms(refined, corrs)  # already .result
         assert rms_after < rms_before, (
             f"RMS should decrease with tilt refinement: "
             f"before={rms_before:.4f}, after={rms_after:.4f}"
@@ -864,14 +895,18 @@ class TestRobustLoss:
     ):
         """Huber loss gives lower clean-subset RMS than linear on contaminated data."""
         refined_linear = refine_calibration(
-            perturbed_result, contaminated_correspondences, loss="linear"
-        )
+            perturbed_result,
+            contaminated_correspondences,
+            loss="linear",
+            validate=False,
+        ).result
         refined_huber = refine_calibration(
             perturbed_result,
             contaminated_correspondences,
             loss="huber",
             f_scale=2.0,
-        )
+            validate=False,
+        ).result
 
         # Evaluate on CLEAN correspondences only
         rms_linear = _compute_reprojection_rms(
@@ -890,14 +925,18 @@ class TestRobustLoss:
     ):
         """Cauchy loss gives lower clean-subset RMS than linear on contaminated data."""
         refined_linear = refine_calibration(
-            perturbed_result, contaminated_correspondences, loss="linear"
-        )
+            perturbed_result,
+            contaminated_correspondences,
+            loss="linear",
+            validate=False,
+        ).result
         refined_cauchy = refine_calibration(
             perturbed_result,
             contaminated_correspondences,
             loss="cauchy",
             f_scale=2.0,
-        )
+            validate=False,
+        ).result
 
         rms_linear = _compute_reprojection_rms(
             refined_linear, synthetic_correspondences
@@ -917,11 +956,11 @@ class TestRobustLoss:
     ):
         """loss='linear' produces identical results to default (no loss arg)."""
         refined_default = refine_calibration(
-            perturbed_result, synthetic_correspondences
-        )
+            perturbed_result, synthetic_correspondences, validate=False
+        ).result
         refined_linear = refine_calibration(
-            perturbed_result, synthetic_correspondences, loss="linear"
-        )
+            perturbed_result, synthetic_correspondences, loss="linear", validate=False
+        ).result
 
         rms_default = _compute_reprojection_rms(
             refined_default, synthetic_correspondences
@@ -971,7 +1010,8 @@ class TestRobustLoss:
             refine_intrinsics=True,
             loss="huber",
             f_scale=2.0,
-        )
+            validate=False,
+        ).result
 
         assert isinstance(refined, CalibrationResult)
 
@@ -988,3 +1028,47 @@ class TestRobustLoss:
             f"RMS should decrease with combined extensions: "
             f"before={rms_before:.4f}, after={rms_after:.4f}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Tests: Validation Integration (Phase 15)
+# ---------------------------------------------------------------------------
+
+
+class TestValidationIntegration:
+    """Tests for validation integration in refine_calibration()."""
+
+    @pytest.mark.slow
+    def test_refine_with_validation(self, perturbed_result, synthetic_correspondences):
+        """validate=True (default) returns ValidationReport with metrics."""
+        result = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=True
+        )
+
+        assert isinstance(result, RefinementResult)
+        assert isinstance(result.result, CalibrationResult)
+        assert result.validation_report is not None
+        assert isinstance(result.validation_report, ValidationReport)
+        assert isinstance(result.accepted, bool)
+        assert result.validation_report.holdout_reproj_error >= 0.0
+        assert result.validation_report.triangulation_consistency_before >= 0.0
+        assert result.validation_report.triangulation_consistency_after >= 0.0
+        assert isinstance(result.validation_report.camera_drifts, dict)
+        # All cameras should have drift entries
+        for cam_name in perturbed_result.cameras:
+            assert cam_name in result.validation_report.camera_drifts
+        assert isinstance(result.validation_report.summary, str)
+        assert len(result.validation_report.summary) > 0
+
+    def test_refine_without_validation(
+        self, perturbed_result, synthetic_correspondences
+    ):
+        """validate=False returns None validation_report and accepted."""
+        result = refine_calibration(
+            perturbed_result, synthetic_correspondences, validate=False
+        )
+
+        assert isinstance(result, RefinementResult)
+        assert isinstance(result.result, CalibrationResult)
+        assert result.validation_report is None
+        assert result.accepted is None
