@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 13 of 15 (Core Refinement)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-28 — Roadmap created for v1.6 milestone
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-28 — Completed plan 13-01 (Core Refinement API)
 
-Progress: [░░░░░░░░░░] 0% (v1.6)
+Progress: [█░░░░░░░░░] 10% (v1.6)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed (v1.6): 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed (v1.6): 1
+- Average duration: 6 min
+- Total execution time: 6 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 13-core-refinement | 1 | 6 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: —
+- Last 5 plans: 13-01 (6 min)
 - Trend: —
 
 *Updated after each plan completion*
@@ -45,6 +45,10 @@ Recent decisions affecting current work:
 - [v1.6 start]: Refinement API accepts abstract float weights — what "goodness" means is the caller's domain
 - [v1.6 start]: No CLI command for refinement in v1.6 — library API only
 - [v1.6 start]: Board poses are irrelevant for point-correspondence refinement; only extrinsics + water_z optimized by default
+- [13-01]: reference_camera = first in sorted camera_order — consistent with existing pipeline convention
+- [13-01]: minimum 10 active correspondences threshold for stable bundle adjustment
+- [13-01]: non-convergence logs warning and returns best-effort result — Phase 15 RefinementResult will expose status explicitly
+- [13-01]: local _pack/_unpack functions in point_refinement.py (not modifying _optim_common which is board-pose-specific)
 
 ### Pending Todos
 
@@ -60,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Roadmap created — ready to plan Phase 13
+Stopped at: Completed 13-01-PLAN.md (Core Refinement API)
 Resume file: None
