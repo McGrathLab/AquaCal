@@ -335,6 +335,62 @@ class PointCorrespondence:
 
 
 @dataclass
+class CameraDrift:
+    """Per-camera extrinsics drift metrics from refinement.
+
+    Attributes:
+        translation_mm: Translation shift magnitude in millimeters.
+        rotation_deg: Rotation shift magnitude in degrees.
+        exceeded: True if either translation or rotation exceeds its threshold.
+    """
+
+    translation_mm: float
+    rotation_deg: float
+    exceeded: bool
+
+
+@dataclass
+class ValidationReport:
+    """Structured validation report for a calibration refinement.
+
+    Attributes:
+        holdout_reproj_error: RMS reprojection error on held-out correspondences
+            (pixels).
+        triangulation_consistency_before: Mean ray intersection residual before
+            refinement (meters).
+        triangulation_consistency_after: Mean ray intersection residual after
+            refinement (meters).
+        camera_drifts: Per-camera extrinsics drift, mapping camera name to
+            CameraDrift.
+        accepted: True if all thresholds pass, False if any exceeded.
+        summary: Human-readable explanation of the accept/reject decision.
+    """
+
+    holdout_reproj_error: float
+    triangulation_consistency_before: float
+    triangulation_consistency_after: float
+    camera_drifts: dict[str, CameraDrift]
+    accepted: bool
+    summary: str
+
+
+@dataclass
+class RefinementResult:
+    """Result of refine_calibration() with optional validation.
+
+    Attributes:
+        result: The refined CalibrationResult.
+        validation_report: Structured validation metrics, or None if
+            validate=False was passed.
+        accepted: True/False recommendation, or None if validate=False.
+    """
+
+    result: CalibrationResult
+    validation_report: ValidationReport | None
+    accepted: bool | None
+
+
+@dataclass
 class FrameDetections:
     """Detections across all cameras for a single frame.
 
