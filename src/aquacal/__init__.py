@@ -18,6 +18,7 @@ from aquacal.config.schema import (
     CameraCalibration,
     CameraExtrinsics,
     CameraIntrinsics,
+    PointCorrespondence,
 )
 from aquacal.io.serialization import load_calibration, save_calibration
 
@@ -31,6 +32,7 @@ __all__ = [
     "CameraCalibration",
     "CameraIntrinsics",
     "CameraExtrinsics",
+    "PointCorrespondence",
     # Run calibration
     "calibrate_from_detections",
     "run_calibration",

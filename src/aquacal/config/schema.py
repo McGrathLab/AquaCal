@@ -315,6 +315,26 @@ class Detection:
 
 
 @dataclass
+class PointCorrespondence:
+    """A 3D point with its observed 2D projections across cameras.
+
+    Used by refine_calibration() to refine an existing calibration
+    using 3D-to-2D point correspondences from downstream analysis.
+
+    Attributes:
+        point_3d: 3D point in world coordinates, shape (3,)
+        observations: Dict mapping camera name to observed pixel coordinate (u, v).
+            Must contain at least 2 cameras.
+        weight: Optional non-negative weight for this correspondence.
+            Default 1.0. Set to 0.0 to soft-disable without removing.
+    """
+
+    point_3d: Vec3  # shape (3,)
+    observations: dict[str, Vec2]  # camera_name -> pixel (u, v)
+    weight: float = 1.0
+
+
+@dataclass
 class FrameDetections:
     """Detections across all cameras for a single frame.
 
