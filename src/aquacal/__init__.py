@@ -19,9 +19,12 @@ from aquacal.calibration.point_refinement import refine_calibration
 from aquacal.config.schema import (
     CalibrationResult,
     CameraCalibration,
+    CameraDrift,
     CameraExtrinsics,
     CameraIntrinsics,
     PointCorrespondence,
+    RefinementResult,
+    ValidationReport,
 )
 from aquacal.io.serialization import load_calibration, save_calibration
 
@@ -32,10 +35,13 @@ __all__ = [
     "save_calibration",
     # Core types
     "CalibrationResult",
+    "CameraDrift",
     "CameraCalibration",
     "CameraIntrinsics",
     "CameraExtrinsics",
     "PointCorrespondence",
+    "RefinementResult",
+    "ValidationReport",
     # Run calibration
     "calibrate_from_detections",
     "run_calibration",
