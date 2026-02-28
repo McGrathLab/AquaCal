@@ -2,7 +2,8 @@
 
 Provides refine_calibration(), which performs bundle adjustment over extrinsics
 and water_z using 3D-to-2D point correspondences supplied by downstream consumers.
-Intrinsics remain fixed throughout refinement.
+Optionally refines camera intrinsics (fx, fy, cx, cy), reference camera tilt,
+and supports robust loss functions (Huber/Cauchy) for outlier tolerance.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from aquacal.config.schema import (
     CalibrationResult,
     CameraCalibration,
     CameraExtrinsics,
+    CameraIntrinsics,
     DiagnosticsData,
     InsufficientDataError,
     PointCorrespondence,
@@ -37,29 +39,48 @@ logger = logging.getLogger(__name__)
 # Minimum number of active (non-zero weight) correspondences required
 _MIN_CORRESPONDENCES = 10
 
+# Valid loss function names for scipy.optimize.least_squares
+_VALID_LOSSES = {"linear", "huber", "cauchy"}
+
+# Threshold for logging intrinsic drift warnings (5% of initial value)
+_INTRINSIC_DRIFT_WARN_PCT = 0.05
+
 
 def _pack_refine_params(
     extrinsics: dict[str, CameraExtrinsics],
     water_z: float,
     reference_camera: str,
     camera_order: list[str],
+    intrinsics: dict[str, CameraIntrinsics] | None = None,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
 ) -> NDArray[np.float64]:
     """Pack optimization parameters into a 1D array.
 
     Parameter layout:
+    - If not normal_fixed: reference camera tilt rx, ry (2)
     - For each non-reference camera (sorted order, skip reference): rvec (3), tvec (3)
     - water_z (1): single shared parameter
+    - If refine_intrinsics, for each camera in camera_order: fx (1), fy (1), cx (1), cy (1)
 
     Args:
-        extrinsics: Camera extrinsics dict
-        water_z: Global water surface Z coordinate
-        reference_camera: Name of reference camera (skipped in extrinsics packing)
-        camera_order: Ordered list of camera names
+        extrinsics: Camera extrinsics dict.
+        water_z: Global water surface Z coordinate.
+        reference_camera: Name of reference camera (skipped in extrinsics packing).
+        camera_order: Ordered list of camera names.
+        intrinsics: Per-camera intrinsics (required if refine_intrinsics=True).
+        refine_intrinsics: Whether to include intrinsics in parameter vector.
+        normal_fixed: If False, prepend 2 tilt params (rx, ry) for reference camera.
 
     Returns:
-        1D parameter vector
+        1D parameter vector.
     """
     params: list[float] = []
+
+    # Pack reference camera tilt (if estimating)
+    if not normal_fixed:
+        rvec = matrix_to_rvec(extrinsics[reference_camera].R)
+        params.extend(rvec[:2].tolist())
 
     for cam_name in camera_order:
         if cam_name == reference_camera:
@@ -71,6 +92,12 @@ def _pack_refine_params(
 
     params.append(water_z)
 
+    # Pack intrinsics if refining
+    if refine_intrinsics:
+        for cam_name in camera_order:
+            K = intrinsics[cam_name].K
+            params.extend([K[0, 0], K[1, 1], K[0, 2], K[1, 2]])
+
     return np.array(params, dtype=np.float64)
 
 
@@ -79,24 +106,43 @@ def _unpack_refine_params(
     reference_camera: str,
     reference_extrinsics: CameraExtrinsics,
     camera_order: list[str],
-) -> tuple[dict[str, CameraExtrinsics], float]:
-    """Unpack 1D parameter array into extrinsics dict and water_z.
+    base_intrinsics: dict[str, CameraIntrinsics] | None = None,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+) -> tuple[dict[str, CameraExtrinsics], float, dict[str, CameraIntrinsics]]:
+    """Unpack 1D parameter array into extrinsics dict, water_z, and intrinsics.
 
     Args:
-        params: 1D parameter vector
-        reference_camera: Name of reference camera
-        reference_extrinsics: Fixed extrinsics for reference camera
-        camera_order: Ordered list of camera names
+        params: 1D parameter vector.
+        reference_camera: Name of reference camera.
+        reference_extrinsics: Fixed extrinsics for reference camera (used when
+            normal_fixed=True; ignored when False since tilt comes from params).
+        camera_order: Ordered list of camera names.
+        base_intrinsics: Base intrinsics (for dist_coeffs and image_size).
+            Required if refine_intrinsics=True.
+        refine_intrinsics: Whether intrinsics are included in params.
+        normal_fixed: If False, first 2 params are tilt (rx, ry) for reference camera.
 
     Returns:
-        Tuple of (extrinsics_dict, water_z)
+        Tuple of (extrinsics_dict, water_z, intrinsics_dict).
+        When refine_intrinsics=False, intrinsics_dict is empty.
     """
     idx = 0
+
+    # Unpack reference camera tilt (if estimating)
+    if not normal_fixed:
+        rx, ry = params[0], params[1]
+        idx = 2
+        R_ref = rvec_to_matrix(np.array([rx, ry, 0.0]))
+        ref_ext = CameraExtrinsics(R=R_ref, t=np.zeros(3, dtype=np.float64))
+    else:
+        ref_ext = reference_extrinsics
+
     extrinsics_out: dict[str, CameraExtrinsics] = {}
 
     for cam_name in camera_order:
         if cam_name == reference_camera:
-            extrinsics_out[cam_name] = reference_extrinsics
+            extrinsics_out[cam_name] = ref_ext
         else:
             rvec = params[idx : idx + 3]
             tvec = params[idx + 3 : idx + 6]
@@ -105,34 +151,62 @@ def _unpack_refine_params(
             extrinsics_out[cam_name] = CameraExtrinsics(R=R, t=tvec.copy())
 
     water_z = float(params[idx])
+    idx += 1
 
-    return extrinsics_out, water_z
+    # Unpack intrinsics
+    intrinsics_out: dict[str, CameraIntrinsics] = {}
+    if refine_intrinsics:
+        for cam_name in camera_order:
+            fx, fy, cx, cy = params[idx : idx + 4]
+            idx += 4
+            base = base_intrinsics[cam_name]
+            K_new = np.array(
+                [[fx, 0, cx], [0, fy, cy], [0, 0, 1]],
+                dtype=np.float64,
+            )
+            intrinsics_out[cam_name] = CameraIntrinsics(
+                K=K_new,
+                dist_coeffs=base.dist_coeffs.copy(),
+                image_size=base.image_size,
+            )
+
+    return extrinsics_out, water_z, intrinsics_out
 
 
 def _build_point_jac_sparsity(
     active_correspondences: list[PointCorrespondence],
     reference_camera: str,
     camera_order: list[str],
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
 ) -> NDArray[np.int8]:
     """Build Jacobian sparsity pattern for point correspondence residuals.
 
     Each residual pair (x, y) for a (correspondence, camera) observation depends on:
+    - Tilt params: 2 (only if normal_fixed=False AND camera is reference)
     - That camera's extrinsic params (6, or 0 if reference camera)
-    - water_z (1) — dense column, ALL residuals depend on it
+    - water_z (1) -- dense column, ALL residuals depend on it
+    - That camera's intrinsic params (4, if refine_intrinsics)
 
     Args:
-        active_correspondences: Filtered list of correspondences (weight > 0)
-        reference_camera: Name of reference camera (no extrinsic params)
-        camera_order: Ordered list of camera names
+        active_correspondences: Filtered list of correspondences (weight > 0).
+        reference_camera: Name of reference camera (no extrinsic params).
+        camera_order: Ordered list of camera names.
+        refine_intrinsics: Whether intrinsics columns are present.
+        normal_fixed: If False, 2 tilt params are prepended.
 
     Returns:
         Sparsity matrix of shape (n_residuals, n_params) with 1s where Jacobian
         may be non-zero.
     """
     n_cams = len(camera_order)
+    n_tilt_params = 0 if normal_fixed else 2
     n_extrinsic_params = 6 * (n_cams - 1)
     n_water_z_params = 1
-    n_params = n_extrinsic_params + n_water_z_params
+    n_intrinsic_params = 4 * n_cams if refine_intrinsics else 0
+    n_params = (
+        n_tilt_params + n_extrinsic_params + n_water_z_params + n_intrinsic_params
+    )
 
     # Camera index to extrinsic block start offset
     cam_to_ext_offset: dict[str, int] = {}
@@ -142,26 +216,102 @@ def _build_point_jac_sparsity(
             cam_to_ext_offset[cam_name] = ext_idx
             ext_idx += 1
 
-    water_z_col = n_extrinsic_params  # last column
+    cam_to_cam_idx = {cam: i for i, cam in enumerate(camera_order)}
+    water_z_col = n_tilt_params + n_extrinsic_params
 
     residual_rows = []
     for corr in active_correspondences:
         for cam_name in corr.observations:
             row = np.zeros(n_params, dtype=np.int8)
 
-            # Camera extrinsics (if not reference)
+            # 0. Tilt params (reference camera residuals depend on tilt)
+            if not normal_fixed and cam_name == reference_camera:
+                row[0:2] = 1
+
+            # 1. Camera extrinsics (if not reference)
             if cam_name in cam_to_ext_offset:
-                ext_start = cam_to_ext_offset[cam_name] * 6
+                ext_start = n_tilt_params + cam_to_ext_offset[cam_name] * 6
                 row[ext_start : ext_start + 6] = 1
 
-            # water_z affects ALL cameras (dense column)
+            # 2. water_z affects ALL cameras (dense column)
             row[water_z_col] = 1
+
+            # 3. Camera intrinsics (if refining)
+            if refine_intrinsics:
+                cam_idx = cam_to_cam_idx[cam_name]
+                intr_start = (
+                    n_tilt_params + n_extrinsic_params + n_water_z_params + cam_idx * 4
+                )
+                row[intr_start : intr_start + 4] = 1
 
             # Two residuals (x and y) with same sparsity pattern
             residual_rows.append(row)
             residual_rows.append(row.copy())
 
     return np.array(residual_rows, dtype=np.int8)
+
+
+def _build_point_bounds(
+    camera_order: list[str],
+    reference_camera: str,
+    base_intrinsics: dict[str, CameraIntrinsics] | None = None,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+    intrinsics_bound_pct: float = 0.1,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Build lower and upper bounds for point refinement optimization.
+
+    Args:
+        camera_order: Ordered list of camera names.
+        reference_camera: Name of reference camera.
+        base_intrinsics: Base intrinsics (required if refine_intrinsics=True).
+        refine_intrinsics: Whether intrinsics are being refined.
+        normal_fixed: If False, 2 tilt bounds are prepended.
+        intrinsics_bound_pct: Maximum allowed fractional drift for each intrinsic
+            parameter from its initial value (e.g. 0.1 = 10%).
+
+    Returns:
+        Tuple of (lower_bounds, upper_bounds) arrays.
+    """
+    n_cams = len(camera_order)
+    n_tilt_params = 0 if normal_fixed else 2
+    n_extrinsic_params = 6 * (n_cams - 1)
+    n_water_z_params = 1
+    n_intrinsic_params = 4 * n_cams if refine_intrinsics else 0
+    total = n_tilt_params + n_extrinsic_params + n_water_z_params + n_intrinsic_params
+
+    lower = np.full(total, -np.inf)
+    upper = np.full(total, np.inf)
+
+    # Tilt bounds: [-0.2, 0.2] radians (~11 degrees)
+    if not normal_fixed:
+        lower[0:2] = -0.2
+        upper[0:2] = 0.2
+
+    # Water surface Z bound: [0.01, 2.0] meters
+    water_z_idx = n_tilt_params + n_extrinsic_params
+    lower[water_z_idx] = 0.01
+    upper[water_z_idx] = 2.0
+
+    # Intrinsic bounds: each param within +/- intrinsics_bound_pct of initial value
+    if refine_intrinsics:
+        intr_start = n_tilt_params + n_extrinsic_params + n_water_z_params
+        for i, cam_name in enumerate(camera_order):
+            base = base_intrinsics[cam_name]
+            fx, fy = base.K[0, 0], base.K[1, 1]
+            cx, cy = base.K[0, 2], base.K[1, 2]
+            offset = intr_start + i * 4
+
+            lower[offset] = fx * (1.0 - intrinsics_bound_pct)
+            upper[offset] = fx * (1.0 + intrinsics_bound_pct)
+            lower[offset + 1] = fy * (1.0 - intrinsics_bound_pct)
+            upper[offset + 1] = fy * (1.0 + intrinsics_bound_pct)
+            lower[offset + 2] = cx * (1.0 - intrinsics_bound_pct)
+            upper[offset + 2] = cx * (1.0 + intrinsics_bound_pct)
+            lower[offset + 3] = cy * (1.0 - intrinsics_bound_pct)
+            upper[offset + 3] = cy * (1.0 + intrinsics_bound_pct)
+
+    return lower, upper
 
 
 def _compute_point_residuals(
@@ -174,26 +324,43 @@ def _compute_point_residuals(
     interface_normal: NDArray[np.float64],
     n_air: float,
     n_water: float,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+    base_intrinsics: dict[str, CameraIntrinsics] | None = None,
 ) -> NDArray[np.float64]:
     """Compute weighted reprojection residuals for all point correspondences.
 
     Args:
-        params: Current parameter vector (extrinsics + water_z)
-        active_correspondences: Filtered correspondences (weight > 0)
-        reference_camera: Name of reference camera
-        reference_extrinsics: Fixed extrinsics for reference camera
-        camera_order: Ordered list of camera names
-        intrinsics_map: Dict mapping camera name to CameraIntrinsics (fixed)
-        interface_normal: Interface normal vector
-        n_air: Refractive index of air
-        n_water: Refractive index of water
+        params: Current parameter vector.
+        active_correspondences: Filtered correspondences (weight > 0).
+        reference_camera: Name of reference camera.
+        reference_extrinsics: Fixed extrinsics for reference camera.
+        camera_order: Ordered list of camera names.
+        intrinsics_map: Dict mapping camera name to CameraIntrinsics (used when
+            refine_intrinsics=False).
+        interface_normal: Interface normal vector.
+        n_air: Refractive index of air.
+        n_water: Refractive index of water.
+        refine_intrinsics: Whether intrinsics are in the param vector.
+        normal_fixed: Whether reference camera tilt is fixed.
+        base_intrinsics: Base intrinsics for unpacking (required when
+            refine_intrinsics=True).
 
     Returns:
         1D residual array [r0_x, r0_y, r1_x, r1_y, ...] in pixels (weighted).
     """
-    extrinsics, water_z = _unpack_refine_params(
-        params, reference_camera, reference_extrinsics, camera_order
+    extrinsics, water_z, refined_intrinsics = _unpack_refine_params(
+        params,
+        reference_camera,
+        reference_extrinsics,
+        camera_order,
+        base_intrinsics=base_intrinsics,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
     )
+
+    # Use refined intrinsics if available, otherwise use fixed intrinsics_map
+    active_intrinsics = refined_intrinsics if refine_intrinsics else intrinsics_map
 
     residuals = []
 
@@ -203,7 +370,7 @@ def _compute_point_residuals(
 
         for cam_name, observed_pixel in corr.observations.items():
             camera = create_camera(
-                cam_name, intrinsics_map[cam_name], extrinsics[cam_name]
+                cam_name, active_intrinsics[cam_name], extrinsics[cam_name]
             )
 
             interface = Interface(
@@ -231,6 +398,11 @@ def refine_calibration(
     result: CalibrationResult,
     correspondences: list[PointCorrespondence],
     *,
+    refine_intrinsics: bool = False,
+    intrinsics_bound_pct: float = 0.1,
+    normal_fixed: bool = True,
+    loss: str = "linear",
+    f_scale: float = 1.0,
     verbose: bool = False,
     ftol: float = 1e-8,
     xtol: float = 1e-8,
@@ -239,28 +411,42 @@ def refine_calibration(
     """Refine an existing calibration using 3D-to-2D point correspondences.
 
     Performs bundle adjustment over camera extrinsics and water_z to minimize
-    reprojection error on the provided point correspondences. Camera intrinsics
-    remain unchanged.
+    reprojection error on the provided point correspondences. Optionally refines
+    camera intrinsics (fx, fy, cx, cy) and reference camera tilt, and supports
+    robust loss functions for outlier tolerance.
 
     Args:
         result: Existing calibration to refine.
         correspondences: List of PointCorrespondence objects, each providing a
             3D world point and its observed 2D pixel locations across cameras.
+        refine_intrinsics: If True, include fx, fy, cx, cy for each camera in
+            the optimization. Default False (intrinsics stay fixed).
+        intrinsics_bound_pct: Maximum allowed fractional drift for each intrinsic
+            parameter from its initial value. Only used when refine_intrinsics=True.
+            Default 0.1 (10%).
+        normal_fixed: If True (default), reference camera orientation is fixed.
+            If False, include 2-DOF tilt (rx, ry) for the reference camera.
+        loss: Loss function for the optimizer. One of "linear" (default, squared
+            loss), "huber", or "cauchy". Robust losses reduce outlier influence.
+        f_scale: Soft margin for robust loss inlier/outlier threshold, in pixels.
+            Only meaningful when loss != "linear". Default 1.0.
         verbose: If True, print optimizer progress. Default False.
         ftol: Relative tolerance for cost function change. Default 1e-8.
         xtol: Relative tolerance for parameter change. Default 1e-8.
-        max_nfev: Maximum number of function evaluations. Default None (scipy
-            chooses automatically based on problem size).
+        max_nfev: Maximum number of function evaluations. Default None (auto-scaled
+            based on problem size; when refine_intrinsics=True and max_nfev is not
+            set, uses 200 * n_params).
 
     Returns:
-        A new CalibrationResult with updated extrinsics and water_z. Intrinsics
-        are copied unchanged from the input result. The diagnostics field is
-        updated with the final reprojection RMS from this refinement.
+        A new CalibrationResult with updated extrinsics and water_z (and optionally
+        intrinsics). The diagnostics field is updated with the final reprojection
+        RMS from this refinement.
 
     Raises:
         ValueError: If correspondences is empty, contains negative weights,
-            fewer than 2 observations per correspondence, invalid shapes, or
-            references camera names not in result.cameras.
+            fewer than 2 observations per correspondence, invalid shapes,
+            references camera names not in result.cameras, or loss is not one of
+            "linear", "huber", "cauchy".
         InsufficientDataError: If fewer than 10 active (non-zero-weight)
             correspondences remain after filtering zero-weight entries.
 
@@ -279,7 +465,18 @@ def refine_calibration(
         ...                   "cam1": np.array([400.0, 260.0])},
         ... )
         >>> refined = refine_calibration(result, [corr, ...])
+        >>> # With intrinsics refinement and Huber loss:
+        >>> refined = refine_calibration(
+        ...     result, [corr, ...],
+        ...     refine_intrinsics=True, loss='huber', f_scale=2.0,
+        ... )
     """
+    # --- Validate loss parameter ---
+    if loss not in _VALID_LOSSES:
+        raise ValueError(
+            f"Invalid loss function '{loss}'. Must be one of: {sorted(_VALID_LOSSES)}"
+        )
+
     # --- Input validation ---
     if not correspondences:
         raise ValueError("correspondences must not be empty")
@@ -362,21 +559,31 @@ def refine_calibration(
 
     # --- Pack parameters ---
     x0 = _pack_refine_params(
-        extrinsics_init, water_z_initial, reference_camera, camera_order
+        extrinsics_init,
+        water_z_initial,
+        reference_camera,
+        camera_order,
+        intrinsics=intrinsics_map if refine_intrinsics else None,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
     )
 
+    n_params = len(x0)
+
+    # Auto-scale max_nfev when intrinsics are enabled and caller didn't set it
+    effective_max_nfev = max_nfev
+    if refine_intrinsics and max_nfev is None:
+        effective_max_nfev = 200 * n_params
+
     # --- Bounds ---
-    n_cams = len(camera_order)
-    n_extrinsic_params = 6 * (n_cams - 1)
-    n_params = n_extrinsic_params + 1  # extrinsics + water_z
-
-    lower = np.full(n_params, -np.inf)
-    upper = np.full(n_params, np.inf)
-    # water_z bounded to [0.01, 2.0] meters
-    lower[n_extrinsic_params] = 0.01
-    upper[n_extrinsic_params] = 2.0
-
-    bounds = (lower, upper)
+    bounds = _build_point_bounds(
+        camera_order,
+        reference_camera,
+        base_intrinsics=intrinsics_map if refine_intrinsics else None,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
+        intrinsics_bound_pct=intrinsics_bound_pct,
+    )
 
     # --- Cost function args ---
     cost_args = (
@@ -388,11 +595,18 @@ def refine_calibration(
         interface_normal,
         n_air,
         n_water,
+        refine_intrinsics,
+        normal_fixed,
+        intrinsics_map if refine_intrinsics else None,
     )
 
     # --- Sparse Jacobian ---
     jac_sparsity = _build_point_jac_sparsity(
-        active_normalised, reference_camera, camera_order
+        active_normalised,
+        reference_camera,
+        camera_order,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
     )
     jac = make_sparse_jacobian_func(
         _compute_point_residuals,
@@ -410,9 +624,11 @@ def refine_calibration(
         method="trf",
         bounds=bounds,
         jac=jac,
+        loss=loss,
+        f_scale=f_scale,
         ftol=ftol,
         xtol=xtol,
-        max_nfev=max_nfev,
+        max_nfev=effective_max_nfev,
         verbose=verbosity,
     )
 
@@ -425,21 +641,61 @@ def refine_calibration(
         )
 
     # --- Unpack and build output CalibrationResult ---
-    extrinsics_out, water_z_out = _unpack_refine_params(
-        opt_result.x, reference_camera, reference_extrinsics, camera_order
+    extrinsics_out, water_z_out, intrinsics_out = _unpack_refine_params(
+        opt_result.x,
+        reference_camera,
+        reference_extrinsics,
+        camera_order,
+        base_intrinsics=intrinsics_map if refine_intrinsics else None,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
     )
+
+    # Log intrinsic drift warnings
+    if refine_intrinsics:
+        for cam_name in camera_order:
+            base_K = intrinsics_map[cam_name].K
+            refined_K = intrinsics_out[cam_name].K
+            labels = ["fx", "fy", "cx", "cy"]
+            base_vals = [base_K[0, 0], base_K[1, 1], base_K[0, 2], base_K[1, 2]]
+            refined_vals = [
+                refined_K[0, 0],
+                refined_K[1, 1],
+                refined_K[0, 2],
+                refined_K[1, 2],
+            ]
+
+            for label, base_val, refined_val in zip(labels, base_vals, refined_vals):
+                if base_val == 0.0:
+                    continue
+                drift_pct = abs(refined_val - base_val) / abs(base_val)
+                if drift_pct > _INTRINSIC_DRIFT_WARN_PCT:
+                    logger.warning(
+                        "refine_calibration: intrinsic drift warning for %s.%s: "
+                        "%.1f -> %.1f (%.1f%% change, threshold %.1f%%)",
+                        cam_name,
+                        label,
+                        base_val,
+                        refined_val,
+                        drift_pct * 100,
+                        _INTRINSIC_DRIFT_WARN_PCT * 100,
+                    )
 
     cameras_out: dict[str, CameraCalibration] = {}
     for cam_name, cam_cal in result.cameras.items():
+        # Use refined intrinsics when available, otherwise copy from input
+        out_intrinsics = (
+            intrinsics_out[cam_name] if refine_intrinsics else cam_cal.intrinsics
+        )
         cameras_out[cam_name] = CameraCalibration(
             name=cam_name,
-            intrinsics=cam_cal.intrinsics,  # unchanged
+            intrinsics=out_intrinsics,
             extrinsics=extrinsics_out[cam_name],
             water_z=water_z_out,
             is_auxiliary=cam_cal.is_auxiliary,
         )
 
-    # Compute final RMS
+    # Compute final RMS from opt_result.fun (raw residuals regardless of loss)
     final_residuals = opt_result.fun
     rms_error = (
         float(np.sqrt(np.mean(final_residuals**2))) if len(final_residuals) > 0 else 0.0
