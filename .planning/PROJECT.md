@@ -43,7 +43,17 @@ Accurate refractive camera calibration from standard ChArUco board observations 
 
 ### Active
 
-(No active milestone — planning next)
+**Current Milestone: v1.6 Refinement API**
+
+**Goal:** Enable downstream consumers to refine an existing AquaCal calibration using 3D-to-2D point correspondences from their own analysis (e.g., tracked animal keypoints).
+
+**Target features:**
+- Public `refine_calibration()` API accepting weighted 3D-to-2D point correspondences
+- Bundle adjustment over extrinsics + water_z (intrinsics fixed by default)
+- Abstract observation weights (caller defines "goodness")
+- Structured validation report: holdout reprojection error, triangulation consistency, parameter stability
+- Accept/reject recommendation based on validation metrics
+- Clean input contracts via dataclasses (PointCorrespondence, RefinementResult, ValidationReport)
 
 ### Out of Scope
 
@@ -67,6 +77,11 @@ Known issues / tech debt:
 - Hero image redesign deferred (user wants to rethink concept; generation script kept)
 - Memory/CPU optimization for large calibrations not yet addressed
 - Version field in JSON output may not read local version properly
+
+Primary downstream consumer: AquaPose — a 13-camera 3D fish tracking pipeline that produces
+hundreds of thousands of triangulated 3D points with known camera correspondences from animal
+tracking. The refinement API allows AquaPose to feed tracked keypoint observations back into
+AquaCal to improve calibration accuracy over time.
 
 ## Constraints
 
@@ -95,4 +110,4 @@ Known issues / tech debt:
 | 2-tutorial structure | Pipeline + synthetic validation covers key use cases | ✓ Good |
 
 ---
-*Last updated: 2026-02-19 after v1.4 milestone*
+*Last updated: 2026-02-28 after v1.6 milestone start*
