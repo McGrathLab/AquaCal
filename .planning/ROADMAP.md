@@ -41,7 +41,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
 **Milestone Goal:** Enable downstream consumers (e.g., AquaPose) to refine an existing AquaCal calibration using 3D-to-2D point correspondences from their own analysis.
 
 - [x] **Phase 13: Core Refinement** - Foundational input contract and bundle adjustment over point correspondences (completed 2026-02-28)
-- [ ] **Phase 14: Optimization Extensions** - Optional intrinsics refinement and robust loss functions
+- [x] **Phase 14: Optimization Extensions** - Optional intrinsics refinement and robust loss functions (completed 2026-02-28)
 - [ ] **Phase 15: Validation and Result Contract** - Full validation layer with structured accept/reject output
 
 ## Phase Details
@@ -70,7 +70,7 @@ Plans:
   2. Intrinsics remain fixed (unchanged from input) when `refine_intrinsics=False` (the default)
   3. Caller can select a Huber or Cauchy loss function via a parameter; the optimization uses it
   4. Robust loss visibly reduces the influence of high-residual correspondences compared to squared loss on the same data
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 14-01-PLAN.md — Extend refine_calibration() with intrinsics refinement, robust loss, and reference camera tilt
 - [ ] 14-02-PLAN.md — Tests for intrinsics refinement, robust loss, and combined extensions
@@ -104,5 +104,5 @@ Plans:
 | 11. Documentation Visuals | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 12. Tutorial Verification | v1.4 | 3/3 | Complete | 2026-02-19 |
 | 13. Core Refinement | 2/2 | Complete    | 2026-02-28 | - |
-| 14. Optimization Extensions | v1.6 | 0/2 | Not started | - |
+| 14. Optimization Extensions | 2/2 | Complete    | 2026-02-28 | - |
 | 15. Validation and Result Contract | v1.6 | 0/TBD | Not started | - |

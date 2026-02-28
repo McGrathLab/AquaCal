@@ -16,8 +16,8 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 ### Optimization
 
 - [x] **OPT-01**: `refine_calibration()` performs bundle adjustment over extrinsics and water_z using point correspondences
-- [ ] **OPT-02**: Optional intrinsics refinement (fx, fy, cx, cy per camera) can be enabled by the caller, off by default
-- [ ] **OPT-03**: Robust loss functions (Huber/Cauchy) are supported for outlier tolerance
+- [x] **OPT-02**: Optional intrinsics refinement (fx, fy, cx, cy per camera) can be enabled by the caller, off by default
+- [x] **OPT-03**: Robust loss functions (Huber/Cauchy) are supported for outlier tolerance
 
 ### Validation
 
@@ -56,8 +56,8 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 | API-02 | Phase 15 | Pending |
 | API-03 | Phase 13 | Complete |
 | OPT-01 | Phase 13 | Complete |
-| OPT-02 | Phase 14 | Pending |
-| OPT-03 | Phase 14 | Pending |
+| OPT-02 | Phase 14 | Complete |
+| OPT-03 | Phase 14 | Complete |
 | VAL-01 | Phase 15 | Pending |
 | VAL-02 | Phase 15 | Pending |
 | VAL-03 | Phase 15 | Pending |
