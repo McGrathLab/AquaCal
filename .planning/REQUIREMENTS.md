@@ -10,7 +10,7 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 ### API Contracts
 
 - [x] **API-01**: `PointCorrespondence` dataclass accepts a 3D point, a dict of camera-name-to-pixel observations, and an optional float weight
-- [ ] **API-02**: `RefinementResult` dataclass wraps the refined `CalibrationResult`, `ValidationReport`, and an accept/reject recommendation
+- [x] **API-02**: `RefinementResult` dataclass wraps the refined `CalibrationResult`, `ValidationReport`, and an accept/reject recommendation
 - [x] **API-03**: `refine_calibration()` is importable from `aquacal` as a public entry point
 
 ### Optimization
@@ -21,10 +21,10 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VAL-01**: Holdout reprojection error is computed on a configurable fraction of held-out correspondences
-- [ ] **VAL-02**: Triangulation consistency is measured by re-triangulating holdout points and comparing ray intersection tightness before/after refinement
-- [ ] **VAL-03**: Parameter stability check flags refinements where extrinsics shift beyond configurable thresholds
-- [ ] **VAL-04**: `ValidationReport` dataclass contains all validation metrics with a structured accept/reject recommendation
+- [x] **VAL-01**: Holdout reprojection error is computed on a configurable fraction of held-out correspondences
+- [x] **VAL-02**: Triangulation consistency is measured by re-triangulating holdout points and comparing ray intersection tightness before/after refinement
+- [x] **VAL-03**: Parameter stability check flags refinements where extrinsics shift beyond configurable thresholds
+- [x] **VAL-04**: `ValidationReport` dataclass contains all validation metrics with a structured accept/reject recommendation
 
 ## Future Requirements
 
@@ -53,15 +53,15 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | API-01 | Phase 13 | Complete |
-| API-02 | Phase 15 | Pending |
+| API-02 | Phase 15 | Complete |
 | API-03 | Phase 13 | Complete |
 | OPT-01 | Phase 13 | Complete |
 | OPT-02 | Phase 14 | Complete |
 | OPT-03 | Phase 14 | Complete |
-| VAL-01 | Phase 15 | Pending |
-| VAL-02 | Phase 15 | Pending |
-| VAL-03 | Phase 15 | Pending |
-| VAL-04 | Phase 15 | Pending |
+| VAL-01 | Phase 15 | Complete |
+| VAL-02 | Phase 15 | Complete |
+| VAL-03 | Phase 15 | Complete |
+| VAL-04 | Phase 15 | Complete |
 
 **Coverage:**
 - v1.6 requirements: 10 total
@@ -70,4 +70,4 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after roadmap creation*
+*Last updated: 2026-02-28 after Phase 15 completion*

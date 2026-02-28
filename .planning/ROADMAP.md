@@ -42,7 +42,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
 
 - [x] **Phase 13: Core Refinement** - Foundational input contract and bundle adjustment over point correspondences (completed 2026-02-28)
 - [x] **Phase 14: Optimization Extensions** - Optional intrinsics refinement and robust loss functions (completed 2026-02-28)
-- [ ] **Phase 15: Validation and Result Contract** - Full validation layer with structured accept/reject output
+- [x] **Phase 15: Validation and Result Contract** - Full validation layer with structured accept/reject output (completed 2026-02-28)
 
 ## Phase Details
 
@@ -105,4 +105,4 @@ Plans:
 | 12. Tutorial Verification | v1.4 | 3/3 | Complete | 2026-02-19 |
 | 13. Core Refinement | 2/2 | Complete    | 2026-02-28 | - |
 | 14. Optimization Extensions | 2/2 | Complete    | 2026-02-28 | - |
-| 15. Validation and Result Contract | v1.6 | 0/TBD | Not started | - |
+| 15. Validation and Result Contract | 0/2 | Complete    | 2026-02-28 | - |
