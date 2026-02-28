@@ -12,6 +12,9 @@ from aquacal.calibration.pipeline import (
     run_calibration,
 )
 
+# Refinement API
+from aquacal.calibration.point_refinement import refine_calibration
+
 # Core types
 from aquacal.config.schema import (
     CalibrationResult,
@@ -37,4 +40,6 @@ __all__ = [
     "calibrate_from_detections",
     "run_calibration",
     "load_config",
+    # Refinement API
+    "refine_calibration",
 ]
