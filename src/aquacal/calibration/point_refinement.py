@@ -17,6 +17,13 @@ from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from aquacal.calibration._optim_common import make_sparse_jacobian_func
+from aquacal.calibration.validation import (
+    build_validation_report,
+    compute_extrinsics_drift,
+    compute_holdout_reproj_error,
+    compute_triangulation_consistency,
+    split_holdout,
+)
 from aquacal.config.schema import (
     CalibrationResult,
     CameraCalibration,
@@ -25,6 +32,7 @@ from aquacal.config.schema import (
     DiagnosticsData,
     InsufficientDataError,
     PointCorrespondence,
+    RefinementResult,
 )
 from aquacal.core.camera import create_camera
 from aquacal.core.interface_model import Interface
@@ -407,13 +415,25 @@ def refine_calibration(
     ftol: float = 1e-8,
     xtol: float = 1e-8,
     max_nfev: int | None = None,
-) -> CalibrationResult:
+    validate: bool = True,
+    holdout_fraction: float = 0.2,
+    holdout_seed: int = 42,
+    reproj_threshold: float = 1.0,
+    translation_threshold_mm: float = 50.0,
+    rotation_threshold_deg: float = 2.0,
+) -> RefinementResult:
     """Refine an existing calibration using 3D-to-2D point correspondences.
 
     Performs bundle adjustment over camera extrinsics and water_z to minimize
     reprojection error on the provided point correspondences. Optionally refines
     camera intrinsics (fx, fy, cx, cy) and reference camera tilt, and supports
     robust loss functions for outlier tolerance.
+
+    When ``validate=True`` (default), a fraction of correspondences is held out
+    and used to compute a ``ValidationReport`` with holdout reprojection error,
+    triangulation consistency, and per-camera extrinsics drift metrics. The
+    report includes an accept/reject recommendation based on configurable
+    thresholds.
 
     Args:
         result: Existing calibration to refine.
@@ -436,11 +456,27 @@ def refine_calibration(
         max_nfev: Maximum number of function evaluations. Default None (auto-scaled
             based on problem size; when refine_intrinsics=True and max_nfev is not
             set, uses 200 * n_params).
+        validate: If True (default), hold out a fraction of correspondences and
+            produce a ValidationReport with accept/reject recommendation. If False,
+            all correspondences are used for optimization and validation_report
+            is None.
+        holdout_fraction: Fraction of active correspondences to hold out for
+            validation (0.0 to 1.0). Default 0.2.
+        holdout_seed: Random seed for holdout split reproducibility. Default 42.
+        reproj_threshold: Maximum allowed holdout reprojection error in pixels.
+            Default 1.0.
+        translation_threshold_mm: Maximum allowed camera translation drift in mm.
+            Default 50.0.
+        rotation_threshold_deg: Maximum allowed camera rotation drift in degrees.
+            Default 2.0.
 
     Returns:
-        A new CalibrationResult with updated extrinsics and water_z (and optionally
-        intrinsics). The diagnostics field is updated with the final reprojection
-        RMS from this refinement.
+        A RefinementResult containing:
+        - ``result``: The refined CalibrationResult with updated extrinsics,
+          water_z, and optionally intrinsics.
+        - ``validation_report``: ValidationReport with holdout metrics and
+          accept/reject recommendation, or None if validate=False.
+        - ``accepted``: True/False recommendation, or None if validate=False.
 
     Raises:
         ValueError: If correspondences is empty, contains negative weights,
@@ -453,8 +489,8 @@ def refine_calibration(
     Notes:
         Non-convergence is logged as a warning but does not raise an exception.
         The best-effort result is returned regardless of convergence status.
-        Compare the diagnostics.reprojection_error_rms before and after to
-        assess refinement quality.
+        When validate=True, the optimization uses only the train split (not
+        holdout), so the holdout reprojection error is an unbiased estimate.
 
     Example:
         >>> from aquacal import refine_calibration, PointCorrespondence
@@ -464,12 +500,10 @@ def refine_calibration(
         ...     observations={"cam0": np.array([320.0, 240.0]),
         ...                   "cam1": np.array([400.0, 260.0])},
         ... )
-        >>> refined = refine_calibration(result, [corr, ...])
-        >>> # With intrinsics refinement and Huber loss:
-        >>> refined = refine_calibration(
-        ...     result, [corr, ...],
-        ...     refine_intrinsics=True, loss='huber', f_scale=2.0,
-        ... )
+        >>> result = refine_calibration(calibration, [corr, ...])
+        >>> print(result.accepted)  # True/False/None
+        >>> print(result.validation_report.summary)  # Human-readable
+        >>> refined_cal = result.result  # The CalibrationResult
     """
     # --- Validate loss parameter ---
     if loss not in _VALID_LOSSES:
@@ -557,6 +591,26 @@ def refine_calibration(
             )
         )
 
+    # --- Holdout split (if validating) ---
+    holdout_set: list[PointCorrespondence] = []
+    if validate:
+        train_set, holdout_set = split_holdout(
+            active_normalised, holdout_fraction, seed=holdout_seed
+        )
+        if len(train_set) < 6:
+            logger.warning(
+                "refine_calibration: only %d correspondences in train set after "
+                "holdout split (holdout=%d). Results may be unreliable.",
+                len(train_set),
+                len(holdout_set),
+            )
+        # Compute triangulation consistency BEFORE refinement on holdout set
+        tri_before = compute_triangulation_consistency(result, holdout_set)
+        # Use train set for optimization
+        optim_correspondences = train_set
+    else:
+        optim_correspondences = active_normalised
+
     # --- Pack parameters ---
     x0 = _pack_refine_params(
         extrinsics_init,
@@ -585,9 +639,9 @@ def refine_calibration(
         intrinsics_bound_pct=intrinsics_bound_pct,
     )
 
-    # --- Cost function args ---
+    # --- Cost function args (uses optim_correspondences, not full active set) ---
     cost_args = (
-        active_normalised,
+        optim_correspondences,
         reference_camera,
         reference_extrinsics,
         camera_order,
@@ -602,7 +656,7 @@ def refine_calibration(
 
     # --- Sparse Jacobian ---
     jac_sparsity = _build_point_jac_sparsity(
-        active_normalised,
+        optim_correspondences,
         reference_camera,
         camera_order,
         refine_intrinsics=refine_intrinsics,
@@ -705,7 +759,7 @@ def refine_calibration(
     # Residuals are interleaved [x, y] pairs per observation
     per_camera_residuals: dict[str, list[float]] = {n: [] for n in camera_order}
     res_idx = 0
-    for corr in active_normalised:
+    for corr in optim_correspondences:
         for cam_name in corr.observations:
             rx = final_residuals[res_idx]
             ry = final_residuals[res_idx + 1]
@@ -732,10 +786,50 @@ def refine_calibration(
         per_frame_errors=None,
     )
 
-    return CalibrationResult(
+    cal_result = CalibrationResult(
         cameras=cameras_out,
         interface=copy.copy(result.interface),
         board=copy.copy(result.board),
         diagnostics=diagnostics_out,
         metadata=copy.copy(result.metadata),
+    )
+
+    # --- Build validation report ---
+    if validate and holdout_set:
+        holdout_reproj = compute_holdout_reproj_error(cal_result, holdout_set)
+        tri_after = compute_triangulation_consistency(cal_result, holdout_set)
+
+        extrinsics_before = {
+            name: cam.extrinsics for name, cam in result.cameras.items()
+        }
+        extrinsics_after = {
+            name: cam.extrinsics for name, cam in cal_result.cameras.items()
+        }
+        camera_drifts = compute_extrinsics_drift(
+            extrinsics_before,
+            extrinsics_after,
+            translation_threshold_mm=translation_threshold_mm,
+            rotation_threshold_deg=rotation_threshold_deg,
+        )
+
+        validation_report = build_validation_report(
+            holdout_reproj=holdout_reproj,
+            tri_before=tri_before,
+            tri_after=tri_after,
+            camera_drifts=camera_drifts,
+            reproj_threshold=reproj_threshold,
+            translation_threshold_mm=translation_threshold_mm,
+            rotation_threshold_deg=rotation_threshold_deg,
+        )
+
+        return RefinementResult(
+            result=cal_result,
+            validation_report=validation_report,
+            accepted=validation_report.accepted,
+        )
+
+    return RefinementResult(
+        result=cal_result,
+        validation_report=None,
+        accepted=None,
     )
