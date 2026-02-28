@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v1.2
+milestone_name: Refinement API
+status: unknown
+last_updated: "2026-02-28T18:23:28.781Z"
+progress:
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 32
+  completed_plans: 31
+---
+
 # Project State
 
 ## Project Reference
@@ -10,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 13 of 15 (Core Refinement)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-02-28 — Completed plan 13-01 (Core Refinement API)
+Last activity: 2026-02-28 — Completed plan 13-02 (Point Refinement Tests)
 
-Progress: [█░░░░░░░░░] 10% (v1.6)
+Progress: [██░░░░░░░░] 20% (v1.6)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed (v1.6): 1
+- Total plans completed (v1.6): 2
 - Average duration: 6 min
-- Total execution time: 6 min
+- Total execution time: 12 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 13-core-refinement | 1 | 6 min | 6 min |
+| 13-core-refinement | 2 | 12 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 13-01 (6 min)
+- Last 5 plans: 13-01 (6 min), 13-02 (6 min)
 - Trend: —
 
 *Updated after each plan completion*
@@ -49,6 +62,7 @@ Recent decisions affecting current work:
 - [13-01]: minimum 10 active correspondences threshold for stable bundle adjustment
 - [13-01]: non-convergence logs warning and returns best-effort result — Phase 15 RefinementResult will expose status explicitly
 - [13-01]: local _pack/_unpack functions in point_refinement.py (not modifying _optim_common which is board-pose-specific)
+- [Phase 13-02]: All test content in one commit since fixtures and tests are tightly coupled in test_point_refinement.py
 
 ### Pending Todos
 
@@ -64,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 13-01-PLAN.md (Core Refinement API)
+Stopped at: Completed 13-02-PLAN.md (Point Refinement Tests)
 Resume file: None

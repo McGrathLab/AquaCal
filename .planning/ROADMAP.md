@@ -40,7 +40,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
 
 **Milestone Goal:** Enable downstream consumers (e.g., AquaPose) to refine an existing AquaCal calibration using 3D-to-2D point correspondences from their own analysis.
 
-- [ ] **Phase 13: Core Refinement** - Foundational input contract and bundle adjustment over point correspondences
+- [x] **Phase 13: Core Refinement** - Foundational input contract and bundle adjustment over point correspondences (completed 2026-02-28)
 - [ ] **Phase 14: Optimization Extensions** - Optional intrinsics refinement and robust loss functions
 - [ ] **Phase 15: Validation and Result Contract** - Full validation layer with structured accept/reject output
 
@@ -56,7 +56,7 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
   3. `refine_calibration()` accepts a `CalibrationResult` and a list of `PointCorrespondence` objects and returns without error
   4. After refinement, extrinsic parameters and water_z have changed to better fit the input correspondences (reprojection error decreases on training data)
   5. Intrinsics remain unchanged by default (fixed during optimization)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 13-01-PLAN.md — PointCorrespondence dataclass + refine_calibration() implementation + public API wiring
 - [ ] 13-02-PLAN.md — Comprehensive tests for input validation and optimization correctness
@@ -100,6 +100,6 @@ Plans:
 | 10. Documentation Audit | v1.4 | 3/3 | Complete | 2026-02-16 |
 | 11. Documentation Visuals | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 12. Tutorial Verification | v1.4 | 3/3 | Complete | 2026-02-19 |
-| 13. Core Refinement | 1/2 | In Progress|  | - |
+| 13. Core Refinement | 2/2 | Complete   | 2026-02-28 | - |
 | 14. Optimization Extensions | v1.6 | 0/TBD | Not started | - |
 | 15. Validation and Result Contract | v1.6 | 0/TBD | Not started | - |
