@@ -590,3 +590,401 @@ class TestEdgeCases:
 
         result = refine_calibration(perturbed_result, weighted)
         assert isinstance(result, CalibrationResult)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for Phase 14 extension tests
+# ---------------------------------------------------------------------------
+
+
+def _generate_correspondences_from_result(
+    result: CalibrationResult,
+    n_points: int = 30,
+    noise_sigma: float = 0.5,
+    seed: int = 42,
+) -> list[PointCorrespondence]:
+    """Generate synthetic correspondences from a calibration result.
+
+    Projects random underwater 3D points through each camera using the result's
+    intrinsics, extrinsics, and water_z, then adds Gaussian pixel noise.
+
+    Args:
+        result: CalibrationResult to generate observations from.
+        n_points: Number of 3D points to generate.
+        noise_sigma: Standard deviation of pixel noise in pixels.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        List of PointCorrespondence objects.
+    """
+    rng = np.random.RandomState(seed)
+    water_z = result.cameras[sorted(result.cameras.keys())[0]].water_z
+    interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+    cam_names = sorted(result.cameras.keys())
+
+    xs = rng.uniform(-0.15, 0.15, n_points)
+    ys = rng.uniform(-0.15, 0.15, n_points)
+    zs = rng.uniform(0.3, 0.6, n_points)
+
+    correspondences = []
+    for i in range(n_points):
+        pt = np.array([[xs[i], ys[i], zs[i]]])
+        observations = {}
+        valid = True
+
+        for cam_name in cam_names:
+            cam_cal = result.cameras[cam_name]
+            camera = create_camera(cam_name, cam_cal.intrinsics, cam_cal.extrinsics)
+            interface = Interface(
+                normal=interface_normal,
+                camera_distances={cam_name: water_z},
+                n_air=result.interface.n_air,
+                n_water=result.interface.n_water,
+            )
+            projected = refractive_project_batch(camera, interface, pt)
+            pixel = projected[0]
+
+            if np.isnan(pixel).any():
+                valid = False
+                break
+
+            noise = rng.normal(0.0, noise_sigma, size=2)
+            observations[cam_name] = pixel + noise
+
+        if valid and len(observations) >= 2:
+            correspondences.append(
+                PointCorrespondence(
+                    point_3d=pt[0].copy(),
+                    observations=observations,
+                    weight=1.0,
+                )
+            )
+
+    return correspondences
+
+
+# ---------------------------------------------------------------------------
+# Tests: Intrinsics Refinement (Phase 14)
+# ---------------------------------------------------------------------------
+
+
+class TestIntrinsicsRefinement:
+    """Tests for optional intrinsics refinement and input validation."""
+
+    def test_invalid_loss_value(self, calibration_result, synthetic_correspondences):
+        """Invalid loss string raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid loss"):
+            refine_calibration(
+                calibration_result, synthetic_correspondences, loss="softl1"
+            )
+        with pytest.raises(ValueError, match="Invalid loss"):
+            refine_calibration(
+                calibration_result, synthetic_correspondences, loss="mse"
+            )
+
+    def test_valid_loss_values_accepted(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """loss='linear', 'huber', and 'cauchy' are all accepted without error."""
+        for loss_name in ["linear", "huber", "cauchy"]:
+            result = refine_calibration(
+                calibration_result,
+                synthetic_correspondences,
+                loss=loss_name,
+                max_nfev=1,  # short-circuit: just prove parameter is accepted
+            )
+            assert isinstance(result, CalibrationResult)
+
+    @pytest.mark.slow
+    def test_intrinsics_change_when_enabled(self, calibration_result):
+        """With refine_intrinsics=True and perturbed intrinsics, refinement moves toward truth."""
+        # Create a result with perturbed intrinsics on cam1 and cam2
+        perturbed = copy.deepcopy(calibration_result)
+        # Shift cam1 fx by +20 pixels
+        perturbed.cameras["cam1"].intrinsics.K[0, 0] += 20.0
+        # Shift cam2 fy by -15 pixels
+        perturbed.cameras["cam2"].intrinsics.K[1, 1] -= 15.0
+
+        # Generate correspondences from ORIGINAL (correct) intrinsics
+        corrs = _generate_correspondences_from_result(
+            calibration_result, n_points=30, noise_sigma=0.3, seed=100
+        )
+
+        # Refine with intrinsics enabled
+        refined = refine_calibration(
+            perturbed, corrs, refine_intrinsics=True, intrinsics_bound_pct=0.1
+        )
+
+        # cam1: fx should have moved toward 500 (original) from 520 (perturbed)
+        cam1_fx_perturbed = perturbed.cameras["cam1"].intrinsics.K[0, 0]
+        cam1_fx_refined = refined.cameras["cam1"].intrinsics.K[0, 0]
+        cam1_fx_original = calibration_result.cameras["cam1"].intrinsics.K[0, 0]
+        error_before = abs(cam1_fx_perturbed - cam1_fx_original)
+        error_after = abs(cam1_fx_refined - cam1_fx_original)
+        assert error_after < error_before, (
+            f"cam1 fx should move toward truth: "
+            f"error_before={error_before:.2f}, error_after={error_after:.2f}"
+        )
+
+        # cam2: fy should have moved toward 500 (original) from 485 (perturbed)
+        cam2_fy_perturbed = perturbed.cameras["cam2"].intrinsics.K[1, 1]
+        cam2_fy_refined = refined.cameras["cam2"].intrinsics.K[1, 1]
+        cam2_fy_original = calibration_result.cameras["cam2"].intrinsics.K[1, 1]
+        error_before = abs(cam2_fy_perturbed - cam2_fy_original)
+        error_after = abs(cam2_fy_refined - cam2_fy_original)
+        assert error_after < error_before, (
+            f"cam2 fy should move toward truth: "
+            f"error_before={error_before:.2f}, error_after={error_after:.2f}"
+        )
+
+    @pytest.mark.slow
+    def test_intrinsics_fixed_when_disabled(
+        self, perturbed_result, synthetic_correspondences
+    ):
+        """With refine_intrinsics=False (default), intrinsics are exactly unchanged."""
+        refined = refine_calibration(
+            perturbed_result, synthetic_correspondences, refine_intrinsics=False
+        )
+
+        for cam_name, cam_cal in perturbed_result.cameras.items():
+            np.testing.assert_array_equal(
+                cam_cal.intrinsics.K,
+                refined.cameras[cam_name].intrinsics.K,
+                err_msg=f"K changed for {cam_name} with refine_intrinsics=False",
+            )
+
+    @pytest.mark.slow
+    def test_intrinsics_bound_pct_limits_drift(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """Tight intrinsics_bound_pct=0.02 constrains all intrinsics within 2%."""
+        refined = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            refine_intrinsics=True,
+            intrinsics_bound_pct=0.02,
+        )
+
+        bound_pct = 0.02
+        for cam_name in sorted(calibration_result.cameras.keys()):
+            base_K = calibration_result.cameras[cam_name].intrinsics.K
+            refined_K = refined.cameras[cam_name].intrinsics.K
+
+            for label, base_val, refined_val in [
+                ("fx", base_K[0, 0], refined_K[0, 0]),
+                ("fy", base_K[1, 1], refined_K[1, 1]),
+                ("cx", base_K[0, 2], refined_K[0, 2]),
+                ("cy", base_K[1, 2], refined_K[1, 2]),
+            ]:
+                lo = base_val * (1.0 - bound_pct)
+                hi = base_val * (1.0 + bound_pct)
+                assert lo - 1e-6 <= refined_val <= hi + 1e-6, (
+                    f"{cam_name}.{label}: {refined_val:.4f} not within "
+                    f"[{lo:.4f}, {hi:.4f}] (base={base_val:.4f})"
+                )
+
+    @pytest.mark.slow
+    def test_normal_fixed_false_allows_tilt(self, calibration_result):
+        """normal_fixed=False allows reference camera tilt to be optimized."""
+        from aquacal.utils.transforms import rvec_to_matrix
+
+        # Create a "true" calibration with small reference camera tilt
+        true_result = copy.deepcopy(calibration_result)
+        tilt_rvec = np.array([0.02, 0.01, 0.0])
+        true_result.cameras["cam0"].extrinsics = CameraExtrinsics(
+            R=rvec_to_matrix(tilt_rvec),
+            t=np.zeros(3, dtype=np.float64),
+        )
+
+        # Generate correspondences from the tilted setup
+        corrs = _generate_correspondences_from_result(
+            true_result, n_points=30, noise_sigma=0.3, seed=200
+        )
+
+        # Create a perturbed version with reference camera at identity (no tilt)
+        perturbed = copy.deepcopy(true_result)
+        perturbed.cameras["cam0"].extrinsics = CameraExtrinsics(
+            R=np.eye(3, dtype=np.float64),
+            t=np.zeros(3, dtype=np.float64),
+        )
+
+        rms_before = _compute_reprojection_rms(perturbed, corrs)
+
+        # Refine with tilt enabled
+        refined = refine_calibration(perturbed, corrs, normal_fixed=False)
+
+        # Reference camera R should have changed from identity
+        ref_R = refined.cameras["cam0"].extrinsics.R
+        assert not np.allclose(ref_R, np.eye(3), atol=1e-4), (
+            "Reference camera R should have changed from identity with normal_fixed=False"
+        )
+
+        # RMS should decrease
+        rms_after = _compute_reprojection_rms(refined, corrs)
+        assert rms_after < rms_before, (
+            f"RMS should decrease with tilt refinement: "
+            f"before={rms_before:.4f}, after={rms_after:.4f}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: Robust Loss Functions (Phase 14)
+# ---------------------------------------------------------------------------
+
+
+class TestRobustLoss:
+    """Tests for robust loss functions (Huber/Cauchy) vs linear loss."""
+
+    @pytest.fixture
+    def contaminated_correspondences(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """Add outlier correspondences with 50-100px shifted observations."""
+        rng = np.random.RandomState(999)
+        outliers = []
+        for i in range(5):
+            # Pick a clean correspondence and add large pixel shifts
+            base = synthetic_correspondences[i]
+            shifted_obs = {}
+            for cam_name, pixel in base.observations.items():
+                shift = rng.uniform(50, 100, size=2) * rng.choice([-1, 1], size=2)
+                shifted_obs[cam_name] = pixel + shift
+            outliers.append(
+                PointCorrespondence(
+                    point_3d=base.point_3d.copy(),
+                    observations=shifted_obs,
+                    weight=1.0,
+                )
+            )
+        return synthetic_correspondences + outliers
+
+    @pytest.mark.slow
+    def test_huber_reduces_outlier_influence(
+        self, perturbed_result, synthetic_correspondences, contaminated_correspondences
+    ):
+        """Huber loss gives lower clean-subset RMS than linear on contaminated data."""
+        refined_linear = refine_calibration(
+            perturbed_result, contaminated_correspondences, loss="linear"
+        )
+        refined_huber = refine_calibration(
+            perturbed_result,
+            contaminated_correspondences,
+            loss="huber",
+            f_scale=2.0,
+        )
+
+        # Evaluate on CLEAN correspondences only
+        rms_linear = _compute_reprojection_rms(
+            refined_linear, synthetic_correspondences
+        )
+        rms_huber = _compute_reprojection_rms(refined_huber, synthetic_correspondences)
+
+        assert rms_huber < rms_linear, (
+            f"Huber should have lower clean-subset RMS: "
+            f"huber={rms_huber:.4f}, linear={rms_linear:.4f}"
+        )
+
+    @pytest.mark.slow
+    def test_cauchy_reduces_outlier_influence(
+        self, perturbed_result, synthetic_correspondences, contaminated_correspondences
+    ):
+        """Cauchy loss gives lower clean-subset RMS than linear on contaminated data."""
+        refined_linear = refine_calibration(
+            perturbed_result, contaminated_correspondences, loss="linear"
+        )
+        refined_cauchy = refine_calibration(
+            perturbed_result,
+            contaminated_correspondences,
+            loss="cauchy",
+            f_scale=2.0,
+        )
+
+        rms_linear = _compute_reprojection_rms(
+            refined_linear, synthetic_correspondences
+        )
+        rms_cauchy = _compute_reprojection_rms(
+            refined_cauchy, synthetic_correspondences
+        )
+
+        assert rms_cauchy < rms_linear, (
+            f"Cauchy should have lower clean-subset RMS: "
+            f"cauchy={rms_cauchy:.4f}, linear={rms_linear:.4f}"
+        )
+
+    @pytest.mark.slow
+    def test_linear_loss_matches_default(
+        self, perturbed_result, synthetic_correspondences
+    ):
+        """loss='linear' produces identical results to default (no loss arg)."""
+        refined_default = refine_calibration(
+            perturbed_result, synthetic_correspondences
+        )
+        refined_linear = refine_calibration(
+            perturbed_result, synthetic_correspondences, loss="linear"
+        )
+
+        rms_default = _compute_reprojection_rms(
+            refined_default, synthetic_correspondences
+        )
+        rms_linear = _compute_reprojection_rms(
+            refined_linear, synthetic_correspondences
+        )
+
+        # Should be identical (or extremely close due to floating point)
+        assert abs(rms_default - rms_linear) < 1e-6, (
+            f"loss='linear' should match default: "
+            f"default={rms_default:.6f}, linear={rms_linear:.6f}"
+        )
+
+        # Check extrinsics are also identical
+        for cam_name in sorted(perturbed_result.cameras.keys()):
+            np.testing.assert_allclose(
+                refined_default.cameras[cam_name].extrinsics.t,
+                refined_linear.cameras[cam_name].extrinsics.t,
+                atol=1e-8,
+                err_msg=f"{cam_name} extrinsics differ between default and loss='linear'",
+            )
+
+    @pytest.mark.slow
+    def test_combined_intrinsics_and_robust_loss(self, calibration_result):
+        """Combined refine_intrinsics=True and loss='huber' works without error."""
+        # Perturb intrinsics slightly
+        perturbed = copy.deepcopy(calibration_result)
+        perturbed.cameras["cam1"].intrinsics.K[0, 0] += 10.0  # fx +10
+        perturbed.cameras["cam1"].extrinsics.t = perturbed.cameras[
+            "cam1"
+        ].extrinsics.t + np.array([0.003, 0.0, 0.0], dtype=np.float64)
+        # Perturb water_z
+        for cam_name in perturbed.cameras:
+            perturbed.cameras[cam_name].water_z += 0.005
+
+        # Generate correspondences from original
+        corrs = _generate_correspondences_from_result(
+            calibration_result, n_points=30, noise_sigma=0.3, seed=300
+        )
+
+        rms_before = _compute_reprojection_rms(perturbed, corrs)
+
+        refined = refine_calibration(
+            perturbed,
+            corrs,
+            refine_intrinsics=True,
+            loss="huber",
+            f_scale=2.0,
+        )
+
+        assert isinstance(refined, CalibrationResult)
+
+        # Intrinsics should have changed
+        cam1_fx_before = perturbed.cameras["cam1"].intrinsics.K[0, 0]
+        cam1_fx_after = refined.cameras["cam1"].intrinsics.K[0, 0]
+        assert cam1_fx_before != cam1_fx_after, (
+            "cam1 fx should change with refine_intrinsics=True"
+        )
+
+        # RMS should decrease
+        rms_after = _compute_reprojection_rms(refined, corrs)
+        assert rms_after < rms_before, (
+            f"RMS should decrease with combined extensions: "
+            f"before={rms_before:.4f}, after={rms_after:.4f}"
+        )
