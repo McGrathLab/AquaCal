@@ -5,47 +5,32 @@ known ground truth, and loading example datasets for testing and validation.
 
 Synthetic Data Generation
 -------------------------
-Use `generate_synthetic_rig()` to create synthetic scenarios with fixed presets::
+Use ``create_scenario()`` to create predefined test scenarios::
 
-    from aquacal.datasets import generate_synthetic_rig
+    from aquacal.datasets import create_scenario
 
-    scenario = generate_synthetic_rig('small')
+    scenario = create_scenario('ideal')
     print(f"{len(scenario.intrinsics)} cameras")
     print(f"{len(scenario.board_poses)} frames")
 
 Example Dataset Loading
 ------------------------
-Use `load_example()` to load pre-packaged or downloadable example datasets::
+Use ``load_example()`` to load downloadable example datasets::
 
     from aquacal.datasets import load_example
 
-    # Load small preset (included, no download)
-    ds = load_example('small')
-    print(f"{len(ds.ground_truth.intrinsics)} cameras")
-
-    # Access detections
-    frame0 = ds.detections.frames[0]
-    print(frame0.detections.keys())
-
-Available Datasets
-------------------
-- 'small': 2 cameras, 10 frames (included with package)
-- 'medium': 6 cameras, 80 frames (Zenodo download)
-- 'large': 13 cameras, 300 frames (Zenodo download)
-- 'real-rig': Real hardware calibration (Zenodo download)
+    ds = load_example('real-rig')
+    print(f"Cache path: {ds.cache_path}")
 
 Cache Management
 ----------------
-Downloaded datasets are cached in `./aquacal_data/`::
+Downloaded datasets are cached in ``./aquacal_data/``::
 
     from aquacal.datasets import get_cache_info, clear_cache
 
     # Check cache status
     info = get_cache_info()
     print(f"Cached datasets: {info['cached_datasets']}")
-
-    # Clear specific dataset
-    clear_cache('medium')
 
     # Clear entire cache
     clear_cache()
@@ -56,15 +41,13 @@ from aquacal.datasets.download import clear_cache, get_cache_info
 from aquacal.datasets.loader import ExampleDataset, load_example
 from aquacal.datasets.synthetic import (
     SyntheticScenario,
+    create_scenario,
     generate_synthetic_detections,
-    generate_synthetic_rig,
-    rig_from_calibration,
 )
 
 __all__ = [
-    "generate_synthetic_rig",
+    "create_scenario",
     "generate_synthetic_detections",
-    "rig_from_calibration",
     "SyntheticScenario",
     "load_example",
     "ExampleDataset",

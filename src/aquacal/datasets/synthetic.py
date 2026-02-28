@@ -1,14 +1,13 @@
 """Synthetic data generation for testing and validation.
 
 This module provides functions to generate synthetic calibration data with known
-ground truth. The main entry point is generate_synthetic_rig() which returns
-complete scenarios with detections and optionally rendered images.
+ground truth. The main entry point is ``create_scenario()`` which returns
+predefined test scenarios with complete ground truth.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -27,7 +26,6 @@ from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project
-from aquacal.io.serialization import load_calibration
 
 
 @dataclass
@@ -214,160 +212,80 @@ def generate_camera_array(
     return intrinsics, extrinsics, distances
 
 
-def generate_real_rig_array(
-    height_above_water: float = 0.75,
-    height_variation: float = 0.002,
-    seed: int = 42,
-) -> tuple[dict[str, CameraIntrinsics], dict[str, CameraExtrinsics], dict[str, float]]:
-    """
-    Generate camera array matching the real-world 13-camera rig.
-
-    Rig geometry (13 cameras total):
-
-    - cam0: center camera at origin (reference)
-    - cam1-cam6: inner circle, radius 300mm, evenly spaced at 60 deg intervals
-    - cam7-cam12: outer circle, radius 600mm, evenly spaced at 60 deg intervals
-    - All cameras point straight down toward water surface
-    - Roll: image width is tangent to the circle. Center camera has roll=0;
-      circle cameras have roll = theta + 90 deg.
-
-    Camera specs: 1600x1200 pixels, 56 deg horizontal FOV, ~750mm above water.
-
-    Args:
-        height_above_water: Mean interface distance (meters), default 0.75
-        height_variation: Std dev of per-camera height variation (meters)
-        seed: Random seed for height variations
-
-    Returns:
-        Tuple of (intrinsics, extrinsics, water_zs) dicts keyed by camera name.
-    """
-    rng = np.random.default_rng(seed)
-
-    # Real rig camera specs
-    IMAGE_SIZE = (1600, 1200)
-    FOV_HORIZONTAL_DEG = 56.0
-    INNER_RADIUS = 0.300  # 300mm
-    OUTER_RADIUS = 0.600  # 600mm
-    N_CAMERAS_PER_RING = 6
-    ANGULAR_SPACING = 2 * np.pi / N_CAMERAS_PER_RING  # 60 degrees
-
-    intrinsics: dict[str, CameraIntrinsics] = {}
-    extrinsics: dict[str, CameraExtrinsics] = {}
-    distances: dict[str, float] = {}
-
-    # Camera 0: center, reference
-    intrinsics["cam0"] = generate_camera_intrinsics(
-        image_size=IMAGE_SIZE,
-        fov_horizontal_deg=FOV_HORIZONTAL_DEG,
-    )
-    extrinsics["cam0"] = CameraExtrinsics(
-        R=np.eye(3, dtype=np.float64),
-        t=np.zeros(3, dtype=np.float64),
-    )
-    distances["cam0"] = height_above_water
-
-    # Inner ring: cam1-cam6 at radius 300mm
-    for i in range(N_CAMERAS_PER_RING):
-        cam_name = f"cam{i + 1}"
-        theta = i * ANGULAR_SPACING  # Angular position: 0, 60, 120, 180, 240, 300 deg
-
-        # Position in world XY plane
-        x = INNER_RADIUS * np.cos(theta)
-        y = INNER_RADIUS * np.sin(theta)
-        C = np.array([x, y, 0.0], dtype=np.float64)
-
-        # Roll angle: image width tangent to circle
-        # Tangent direction at theta is perpendicular to radial direction
-        # Roll = theta + 90 deg makes camera X-axis point along tangent
-        roll = theta + np.pi / 2
-
-        R = _rotation_z(roll)
-        t = -R @ C
-
-        intrinsics[cam_name] = generate_camera_intrinsics(
-            image_size=IMAGE_SIZE,
-            fov_horizontal_deg=FOV_HORIZONTAL_DEG,
-        )
-        extrinsics[cam_name] = CameraExtrinsics(R=R, t=t)
-        distances[cam_name] = height_above_water + rng.normal(0, height_variation)
-
-    # Outer ring: cam7-cam12 at radius 600mm
-    for i in range(N_CAMERAS_PER_RING):
-        cam_name = f"cam{i + 7}"
-        theta = i * ANGULAR_SPACING  # Same angular positions as inner ring
-
-        # Position in world XY plane
-        x = OUTER_RADIUS * np.cos(theta)
-        y = OUTER_RADIUS * np.sin(theta)
-        C = np.array([x, y, 0.0], dtype=np.float64)
-
-        # Roll angle: same as inner ring at same angular position
-        roll = theta + np.pi / 2
-
-        R = _rotation_z(roll)
-        t = -R @ C
-
-        intrinsics[cam_name] = generate_camera_intrinsics(
-            image_size=IMAGE_SIZE,
-            fov_horizontal_deg=FOV_HORIZONTAL_DEG,
-        )
-        extrinsics[cam_name] = CameraExtrinsics(R=R, t=t)
-        distances[cam_name] = height_above_water + rng.normal(0, height_variation)
-
-    return intrinsics, extrinsics, distances
-
-
-def rig_from_calibration(
-    calibration_path: str | Path,
-) -> tuple[
-    dict[str, CameraIntrinsics],
-    dict[str, CameraExtrinsics],
-    dict[str, float],
-    BoardConfig,
+def generate_real_rig_array() -> tuple[
+    dict[str, CameraIntrinsics], dict[str, CameraExtrinsics], dict[str, float]
 ]:
-    """Load camera rig geometry from an existing calibration.json file.
+    """Generate camera array matching the real-world 12-camera rig.
 
-    Extracts intrinsics, extrinsics, and water surface Z-coordinates from a
-    previously saved calibration result, returning them in the same dict
-    format used by ``generate_camera_array()`` and ``generate_real_rig_array()``.
-    Also returns the board configuration from the calibration file.
+    Geometry is derived from an actual calibration of the AquaCal hardware rig
+    (12 cameras, e3v8250 excluded) with the following idealizations applied:
 
-    This is useful for running synthetic validation experiments (e.g., the
-    02_synthetic_validation notebook) using the geometry of a real calibrated
-    rig rather than synthetic presets.
-
-    Args:
-        calibration_path: Path to a calibration.json file produced by
-            ``aquacal.io.serialization.save_calibration()``.
+    - Common intrinsics: focal length, principal point, and distortion are
+      averaged across all 12 cameras.
+    - All cameras placed at Z = 0 (average real Z ≈ 0).
+    - All optical axes aligned to world +Z (looking straight down); real
+      cameras deviate < 5 deg.
+    - XY positions preserved from the real calibration.
+    - Common ``water_z = 1.031 m`` (the calibrated value).
 
     Returns:
-        Tuple of ``(intrinsics, extrinsics, water_zs, board_config)`` where:
-            - intrinsics: Dict mapping camera name to ``CameraIntrinsics``.
-            - extrinsics: Dict mapping camera name to ``CameraExtrinsics``.
-            - water_zs: Dict mapping camera name to water surface Z (meters).
-            - board_config: ``BoardConfig`` from the calibration file.
-
-    Raises:
-        FileNotFoundError: If ``calibration_path`` does not exist.
-        ValueError: If the file format is invalid or version mismatch.
-
-    Example:
-        >>> from aquacal.datasets import rig_from_calibration
-        >>> intr, extr, wz, board = rig_from_calibration("calibration.json")
-        >>> print(f"{len(intr)} cameras, water_z ~ {sum(wz.values())/len(wz):.3f} m")
+        Tuple of ``(intrinsics, extrinsics, water_zs)`` dicts keyed by
+        camera name (cam0 … cam11).
     """
-    result = load_calibration(calibration_path)
+    IMAGE_SIZE = (1600, 1200)
+    WATER_Z = 1.031
+
+    # Averaged intrinsics across 12 real cameras
+    K = np.array(
+        [
+            [1587.79, 0.0, 780.22],
+            [0.0, 1588.34, 601.74],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    dist_coeffs = np.array(
+        [-0.5022, 0.2968, 0.0006, 0.0025, -0.0552],
+        dtype=np.float64,
+    )
+    common_intrinsics = CameraIntrinsics(
+        K=K, dist_coeffs=dist_coeffs, image_size=IMAGE_SIZE
+    )
+
+    # XY positions from real calibration (world frame, Z forced to 0).
+    # Derived from C = -R^T @ t for each camera in calibration.json,
+    # excluding e3v8250.  Ordered CCW from the reference camera (cam0)
+    # when viewed from above, so cam indices trace a spatial loop around
+    # the rig.
+    _POSITIONS_XY: list[tuple[float, float]] = [
+        (0.0000, 0.0000),  # cam0  (reference, e3v829d)
+        (0.2080, 0.2419),  # cam1  (e3v832e)
+        (0.3353, 0.5730),  # cam2  (e3v82f9)
+        (0.2227, 0.8684),  # cam3  (e3v83ef)
+        (0.0039, 1.1490),  # cam4  (e3v83ee)
+        (-0.3363, 1.1930),  # cam5  (e3v83e9)
+        (-0.6801, 1.1523),  # cam6  (e3v83f1)
+        (-0.8868, 0.8828),  # cam7  (e3v83eb)
+        (-1.0023, 0.5654),  # cam8  (e3v83f0)
+        (-0.8949, 0.2677),  # cam9  (e3v831e)
+        (-0.6639, 0.0038),  # cam10 (e3v8334)
+        (-0.3364, -0.0573),  # cam11 (e3v82e0)
+    ]
 
     intrinsics: dict[str, CameraIntrinsics] = {}
     extrinsics: dict[str, CameraExtrinsics] = {}
     water_zs: dict[str, float] = {}
 
-    for cam_name, cam in result.cameras.items():
-        intrinsics[cam_name] = cam.intrinsics
-        extrinsics[cam_name] = cam.extrinsics
-        water_zs[cam_name] = cam.water_z
+    R_identity = np.eye(3, dtype=np.float64)
 
-    return intrinsics, extrinsics, water_zs, result.board
+    for i, (cx, cy) in enumerate(_POSITIONS_XY):
+        cam_name = f"cam{i}"
+        intrinsics[cam_name] = common_intrinsics
+        t = np.array([-cx, -cy, 0.0], dtype=np.float64)
+        extrinsics[cam_name] = CameraExtrinsics(R=R_identity.copy(), t=t)
+        water_zs[cam_name] = WATER_Z
+
+    return intrinsics, extrinsics, water_zs
 
 
 def generate_board_trajectory(
@@ -425,18 +343,18 @@ def generate_board_trajectory(
 
 def generate_real_rig_trajectory(
     n_frames: int = 100,
-    depth_range: tuple[float, float] = (0.9, 1.5),
+    depth_range: tuple[float, float] = (1.1, 2.0),
     seed: int = 42,
 ) -> list[BoardPose]:
-    """
-    Generate board trajectory appropriate for the real rig geometry.
+    """Generate board trajectory appropriate for the real rig geometry.
 
-    The real rig has cameras at 750mm above water, so the board should be
-    deeper underwater (depth_range default 0.9-1.5m from camera, i.e.,
-    ~150-750mm below water surface).
+    The real rig has cameras at Z ≈ 0 with water surface at Z ≈ 1.03 m, so
+    the board should be below the water surface (default 1.1–2.0 m, i.e.
+    ~70–970 mm below the surface).
 
     Trajectory covers the full field of view:
-    - Positions sweep across the ~1.2m diameter footprint of the outer ring
+
+    - Positions sweep across the ~1.3 × 1.2 m footprint of the camera array
     - Ensures connectivity by visiting regions seen by multiple cameras
 
     Args:
@@ -449,16 +367,18 @@ def generate_real_rig_trajectory(
     """
     rng = np.random.default_rng(seed)
 
-    # The rig spans ~1.2m diameter (outer ring at 600mm radius)
-    # Board should move throughout this area to ensure all cameras see it
-    XY_EXTENT = 0.5  # +/-500mm from center to ensure coverage
+    # The rig spans ~1.3m in X (-1.00 to +0.34) and ~1.2m in Y (0 to 1.19).
+    # Center of the rig footprint is approximately (-0.34, 0.55).
+    # Board should move throughout this area to ensure all cameras see it.
+    X_CENTER, Y_CENTER = -0.34, 0.55
+    XY_EXTENT = 0.7  # +/-700mm from center to ensure full coverage
     ROTATION_RANGE_DEG = 20.0
 
     poses: list[BoardPose] = []
     for frame_idx in range(n_frames):
         # Position: random within footprint, random depth
-        x = rng.uniform(-XY_EXTENT, XY_EXTENT)
-        y = rng.uniform(-XY_EXTENT, XY_EXTENT)
+        x = X_CENTER + rng.uniform(-XY_EXTENT, XY_EXTENT)
+        y = Y_CENTER + rng.uniform(-XY_EXTENT, XY_EXTENT)
         z = rng.uniform(depth_range[0], depth_range[1])
         tvec = np.array([x, y, z], dtype=np.float64)
 
@@ -478,12 +398,12 @@ def generate_dense_xy_grid(
     depth: float,
     n_grid: int = 7,
     xy_extent: float = 0.5,
+    xy_center: tuple[float, float] = (0.0, 0.0),
     tilt_deg: float = 3.0,
     frame_offset: int = 0,
     seed: int = 42,
 ) -> list[BoardPose]:
-    """
-    Generate board poses at a regular XY grid at a fixed depth.
+    """Generate board poses at a regular XY grid at a fixed depth.
 
     Used for dense spatial coverage in reconstruction evaluation and heatmaps.
     Each grid position has a small random tilt and random in-plane rotation.
@@ -491,19 +411,24 @@ def generate_dense_xy_grid(
     Args:
         depth: Z coordinate for all board poses (meters)
         n_grid: Number of grid positions per axis (total poses = n_grid^2)
-        xy_extent: Grid spans from -xy_extent to +xy_extent in X and Y (meters)
+        xy_extent: Grid spans from -xy_extent to +xy_extent around xy_center
+            in X and Y (meters)
+        xy_center: (x, y) center of the grid (meters). Should match the
+            centroid of the camera array for best coverage.
         tilt_deg: Maximum random tilt from horizontal (degrees)
         frame_offset: Starting frame index (default 0)
         seed: Random seed for reproducible tilts and rotations
 
     Returns:
-        List of n_grid^2 BoardPose objects with frame indices starting from frame_offset
+        List of n_grid^2 BoardPose objects with frame indices starting from
+        frame_offset.
     """
     rng = np.random.default_rng(seed)
 
-    # Generate grid positions
-    x_values = np.linspace(-xy_extent, xy_extent, n_grid)
-    y_values = np.linspace(-xy_extent, xy_extent, n_grid)
+    # Generate grid positions centered on xy_center
+    cx, cy = xy_center
+    x_values = np.linspace(cx - xy_extent, cx + xy_extent, n_grid)
+    y_values = np.linspace(cy - xy_extent, cy + xy_extent, n_grid)
 
     poses: list[BoardPose] = []
     frame_idx = frame_offset
@@ -693,62 +618,41 @@ def compute_calibration_errors(
     }
 
 
-def generate_synthetic_rig(
-    preset: str, *, include_images: bool = False, noisy: bool = False
-) -> SyntheticScenario:
-    """
-    Generate a complete synthetic calibration scenario with fixed presets.
+def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
+    """Create a predefined test scenario with complete ground truth.
 
-    This function produces synthetic multi-camera calibration data with known
-    ground truth. It's designed for testing and validating the AquaCal pipeline.
+    Available scenarios:
 
-    Available presets:
+    - ``'ideal'``: 4 cameras, 20 frames, 0 noise — verify math correctness
+    - ``'minimal'``: 2 cameras, 10 frames, 0.3 px noise — edge case
+    - ``'realistic'``: 12 cameras matching actual hardware, 30 frames, 0.5 px noise
 
-    - ``'small'``: 2 cameras (line layout), 10 frames. Good for quick smoke
-      tests and debugging.
-    - ``'medium'``: 6 cameras (grid layout), 80 frames. Balanced size for
-      integration testing.
-    - ``'large'``: 13 cameras (real rig geometry), 300 frames. Full-scale
-      realistic scenario matching actual hardware.
-
-    All presets use the same ChArUco board (12x9 squares, 60mm square size,
-    45mm marker size, DICT_5X5_100).
+    All presets use the same ChArUco board (12x9 squares, 60 mm square size,
+    45 mm marker size, DICT_5X5_100).
 
     Args:
-        preset: Preset name ('small', 'medium', or 'large')
-        include_images: If True, render synthetic ChArUco images for all cameras and frames.
-            Increases generation time but provides visual validation data.
-        noisy: If True, add Gaussian pixel noise to detections. Noise levels:
-            small=0.3px, medium=0.5px, large=0.5px. Default False (clean detections).
+        name: Scenario name (``'ideal'``, ``'minimal'``, or ``'realistic'``)
+        seed: Random seed for reproducibility
 
     Returns:
         SyntheticScenario with complete ground truth (intrinsics, extrinsics,
-        interface distances, board poses, detections). If include_images=True,
-        scenario.images contains rendered ChArUco frames.
+        interface distances, board poses).
 
     Raises:
-        ValueError: If preset name is not recognized.
+        ValueError: If scenario name is not recognized.
 
     Examples:
-        >>> from aquacal.datasets import generate_synthetic_rig
-        >>> # Quick test scenario
-        >>> scenario = generate_synthetic_rig('small')
+        >>> from aquacal.datasets import create_scenario
+        >>> scenario = create_scenario('ideal')
         >>> print(f"{len(scenario.intrinsics)} cameras, {len(scenario.board_poses)} frames")
-        2 cameras, 10 frames
+        4 cameras, 20 frames
         >>>
-        >>> # With rendered images for visual validation
-        >>> scenario = generate_synthetic_rig('small', include_images=True)
-        >>> img = scenario.images['cam0'][0]  # First frame from cam0
-        >>> print(img.shape, img.dtype)
-        (1080, 1920) uint8
-        >>>
-        >>> # Noisy detections for robustness testing
-        >>> scenario = generate_synthetic_rig('medium', noisy=True)
-        >>> print(f"Noise std: {scenario.noise_std}px")
-        Noise std: 0.5px
+        >>> scenario = create_scenario('realistic')
+        >>> print(f"{len(scenario.intrinsics)} cameras")
+        12 cameras
     """
-    # Common board config for all presets (matches real hardware)
-    board_config = BoardConfig(
+    # Common board config (matches real hardware)
+    default_board = BoardConfig(
         squares_x=12,
         squares_y=9,
         square_size=0.060,
@@ -756,10 +660,36 @@ def generate_synthetic_rig(
         dictionary="DICT_5X5_100",
     )
 
-    # Preset configurations
-    if preset == "small":
-        seed = 42
-        noise_std = 0.3 if noisy else 0.0
+    if name == "ideal":
+        intrinsics, extrinsics, distances = generate_camera_array(
+            n_cameras=4,
+            layout="grid",
+            spacing=0.1,
+            height_above_water=0.15,
+            height_variation=0.0,
+            seed=seed,
+        )
+        camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+        board_poses = generate_board_trajectory(
+            n_frames=20,
+            camera_positions=camera_positions,
+            water_zs=distances,
+            depth_range=(0.25, 0.45),
+            xy_extent=0.08,
+            seed=seed,
+        )
+        return SyntheticScenario(
+            name="ideal",
+            board_config=default_board,
+            intrinsics=intrinsics,
+            extrinsics=extrinsics,
+            water_zs=distances,
+            board_poses=board_poses,
+            noise_std=0.0,
+            description="Ideal conditions: 4 cameras, 20 frames, 0 noise",
+        )
+
+    elif name == "minimal":
         intrinsics, extrinsics, distances = generate_camera_array(
             n_cameras=2,
             layout="line",
@@ -777,79 +707,34 @@ def generate_synthetic_rig(
             xy_extent=0.06,
             seed=seed,
         )
-        description = f"Small: 2 cameras, 10 frames, {noise_std}px noise"
-
-    elif preset == "medium":
-        seed = 123
-        noise_std = 0.5 if noisy else 0.0
-        intrinsics, extrinsics, distances = generate_camera_array(
-            n_cameras=6,
-            layout="grid",
-            spacing=0.12,
-            height_above_water=0.15,
-            height_variation=0.005,
-            seed=seed,
-        )
-        camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
-        board_poses = generate_board_trajectory(
-            n_frames=80,
-            camera_positions=camera_positions,
+        return SyntheticScenario(
+            name="minimal",
+            board_config=default_board,
+            intrinsics=intrinsics,
+            extrinsics=extrinsics,
             water_zs=distances,
-            depth_range=(0.25, 0.45),
-            xy_extent=0.10,
-            seed=seed,
+            board_poses=board_poses,
+            noise_std=0.3,
+            description="Minimal scenario: 2 cameras, 10 frames, 0.3px noise",
         )
-        description = f"Medium: 6 cameras, 80 frames, {noise_std}px noise"
 
-    elif preset == "large":
-        seed = 456
-        noise_std = 0.5 if noisy else 0.0
-        intrinsics, extrinsics, distances = generate_real_rig_array(
-            height_above_water=0.75,
-            height_variation=0.002,
-            seed=seed,
-        )
+    elif name == "realistic":
+        intrinsics, extrinsics, distances = generate_real_rig_array()
         board_poses = generate_real_rig_trajectory(
-            n_frames=300,
-            depth_range=(0.9, 1.5),
+            n_frames=30,
+            depth_range=(1.1, 2.0),
             seed=seed,
         )
-        description = f"Large: 13 cameras (real rig), 300 frames, {noise_std}px noise"
+        return SyntheticScenario(
+            name="realistic",
+            board_config=default_board,
+            intrinsics=intrinsics,
+            extrinsics=extrinsics,
+            water_zs=distances,
+            board_poses=board_poses,
+            noise_std=0.5,
+            description="12-camera rig matching real hardware (idealized geometry)",
+        )
 
-    else:
-        valid_presets = ["small", "medium", "large"]
-        raise ValueError(f"Unknown preset: '{preset}'. Valid presets: {valid_presets}")
-
-    # Generate detections
-    board = BoardGeometry(board_config)
-    detection_result = generate_synthetic_detections(
-        intrinsics=intrinsics,
-        extrinsics=extrinsics,
-        water_zs=distances,
-        board=board,
-        board_poses=board_poses,
-        noise_std=noise_std,
-        min_corners=8,
-        seed=seed,
-    )
-
-    # Create scenario
-    scenario = SyntheticScenario(
-        name=preset,
-        board_config=board_config,
-        intrinsics=intrinsics,
-        extrinsics=extrinsics,
-        water_zs=distances,
-        board_poses=board_poses,
-        noise_std=noise_std,
-        description=description,
-        images=None,
-    )
-
-    # Optionally render images
-    if include_images:
-        from aquacal.datasets.rendering import render_scenario_images
-
-        scenario.images = render_scenario_images(scenario, detection_result)
-
-    return scenario
+    valid_names = ["ideal", "minimal", "realistic"]
+    raise ValueError(f"Unknown scenario: '{name}'. Valid names: {valid_names}")
