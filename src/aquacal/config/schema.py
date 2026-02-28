@@ -167,6 +167,7 @@ class DiagnosticsData:
         validation_3d_error_mean: Mean 3D reconstruction error in meters (holdout set, primary cameras only)
         validation_3d_error_std: Standard deviation of 3D errors in meters (primary cameras only)
         per_corner_residuals: Optional (N, 2) array of pixel errors for each corner
+        per_corner_camera_labels: Optional list of camera names parallel to per_corner_residuals
         per_frame_errors: Optional dict mapping frame index to error value
     """
 
@@ -175,6 +176,9 @@ class DiagnosticsData:
     validation_3d_error_mean: float  # meters (primary cameras only)
     validation_3d_error_std: float  # meters (primary cameras only)
     per_corner_residuals: Optional[NDArray[np.float64]] = None  # (N, 2) pixel errors
+    per_corner_camera_labels: Optional[list[str]] = (
+        None  # (N,) camera name per residual
+    )
     per_frame_errors: Optional[dict[int, float]] = None
 
 

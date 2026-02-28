@@ -84,9 +84,9 @@ def calibrate_from_detections(
         frame index to the optimized BoardPose.
 
     Example:
-        >>> from aquacal.datasets import generate_synthetic_rig, generate_synthetic_detections
+        >>> from aquacal.datasets import create_scenario, generate_synthetic_detections
         >>> from aquacal.calibration import calibrate_from_detections
-        >>> scenario = generate_synthetic_rig("small", noisy=True)
+        >>> scenario = create_scenario("minimal")
         >>> board = BoardGeometry(scenario.board_config)
         >>> detections = generate_synthetic_detections(
         ...     scenario.intrinsics, scenario.extrinsics, scenario.water_zs,
@@ -797,7 +797,7 @@ def run_calibration_from_config(
         loss=config.robust_loss,
         loss_scale=config.loss_scale,
         min_corners=config.min_corners_per_frame,
-        verbose=2 if verbose else 0,
+        verbose=2 if verbose else 1,
         normal_fixed=config.interface_normal_fixed,
     )
     elapsed = time.perf_counter() - t0
@@ -851,7 +851,7 @@ def run_calibration_from_config(
             n_water=config.n_water,
             loss=config.robust_loss,
             loss_scale=config.loss_scale,
-            verbose=2 if verbose else 0,
+            verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
         )
         elapsed = time.perf_counter() - t0
@@ -918,7 +918,7 @@ def run_calibration_from_config(
                     n_air=config.n_air,
                     n_water=config.n_water,
                     refine_intrinsics=config.refine_auxiliary_intrinsics,
-                    verbose=2 if verbose else 0,
+                    verbose=2 if verbose else 1,
                 )
 
                 # Handle variable-length return
@@ -1096,14 +1096,40 @@ def run_calibration_from_config(
     print(f"  Saved diagnostics to {config.output_dir}")
 
     # --- Build Final Result ---
+    # Merge primary + auxiliary per-camera errors so all cameras appear in diagnostics
+    all_per_camera = dict(reproj_errors.per_camera)
+    if aux_reproj is not None:
+        all_per_camera.update(aux_reproj.per_camera)
+
+    # Merge primary + auxiliary residuals and camera labels
+    if config.save_detailed_residuals:
+        all_residuals = reproj_errors.residuals
+        all_labels = (
+            reproj_errors.camera_labels.tolist()
+            if reproj_errors.camera_labels is not None
+            else []
+        )
+        if aux_reproj is not None and len(aux_reproj.residuals) > 0:
+            all_residuals = np.concatenate(
+                [reproj_errors.residuals, aux_reproj.residuals]
+            )
+            aux_labels = (
+                aux_reproj.camera_labels.tolist()
+                if aux_reproj.camera_labels is not None
+                else []
+            )
+            all_labels = all_labels + aux_labels
+    else:
+        all_residuals = None
+        all_labels = None
+
     diagnostics = DiagnosticsData(
         reprojection_error_rms=reproj_errors.rms,
-        reprojection_error_per_camera=reproj_errors.per_camera,
+        reprojection_error_per_camera=all_per_camera,
         validation_3d_error_mean=reconstruction_errors.mean,
         validation_3d_error_std=reconstruction_errors.std,
-        per_corner_residuals=(
-            reproj_errors.residuals if config.save_detailed_residuals else None
-        ),
+        per_corner_residuals=all_residuals,
+        per_corner_camera_labels=all_labels or None,
         per_frame_errors=(
             reproj_errors.per_frame if config.save_detailed_residuals else None
         ),

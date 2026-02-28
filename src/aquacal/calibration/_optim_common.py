@@ -19,7 +19,7 @@ from aquacal.config.schema import (
 from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
-from aquacal.core.refractive_geometry import refractive_project
+from aquacal.core.refractive_geometry import refractive_project_batch
 from aquacal.utils.transforms import matrix_to_rvec, rvec_to_matrix
 
 
@@ -476,23 +476,19 @@ def compute_residuals(
                 n_water=n_water,
             )
 
-            for i, corner_id in enumerate(detection.corner_ids):
-                point_3d = corners_3d[corner_id]
-                detected_px = detection.corners_2d[i]
+            # Batch-project all corners for this camera-frame pair
+            points_3d = np.array([corners_3d[cid] for cid in detection.corner_ids])
+            projected_batch = refractive_project_batch(camera, interface, points_3d)
 
-                projected = refractive_project(camera, interface, point_3d)
+            # Compute residuals: NaN entries get penalty of 100px
+            diff = projected_batch - detection.corners_2d
+            invalid = np.isnan(diff).any(axis=1)
+            diff[invalid] = 100.0
+            residuals.append(diff.ravel())
 
-                if projected is None:
-                    residuals.extend([100.0, 100.0])
-                else:
-                    residuals.extend(
-                        [
-                            projected[0] - detected_px[0],
-                            projected[1] - detected_px[1],
-                        ]
-                    )
-
-    return np.array(residuals, dtype=np.float64)
+    if residuals:
+        return np.concatenate(residuals).astype(np.float64)
+    return np.array([], dtype=np.float64)
 
 
 def make_sparse_jacobian_func(
