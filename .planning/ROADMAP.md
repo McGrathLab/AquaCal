@@ -56,7 +56,10 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
   3. `refine_calibration()` accepts a `CalibrationResult` and a list of `PointCorrespondence` objects and returns without error
   4. After refinement, extrinsic parameters and water_z have changed to better fit the input correspondences (reprojection error decreases on training data)
   5. Intrinsics remain unchanged by default (fixed during optimization)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 13-01-PLAN.md — PointCorrespondence dataclass + refine_calibration() implementation + public API wiring
+- [ ] 13-02-PLAN.md — Comprehensive tests for input validation and optimization correctness
 
 ### Phase 14: Optimization Extensions
 **Goal**: Callers can enable optional intrinsics refinement and apply robust loss functions to tolerate outlier observations
@@ -97,6 +100,6 @@ See `.planning/milestones/v1.4-ROADMAP.md` for full details.
 | 10. Documentation Audit | v1.4 | 3/3 | Complete | 2026-02-16 |
 | 11. Documentation Visuals | v1.4 | 2/2 | Complete | 2026-02-17 |
 | 12. Tutorial Verification | v1.4 | 3/3 | Complete | 2026-02-19 |
-| 13. Core Refinement | v1.6 | 0/TBD | Not started | - |
+| 13. Core Refinement | v1.6 | 0/2 | In progress | - |
 | 14. Optimization Extensions | v1.6 | 0/TBD | Not started | - |
 | 15. Validation and Result Contract | v1.6 | 0/TBD | Not started | - |
