@@ -52,22 +52,22 @@ Requirements for the Refinement API milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | — | Pending |
-| API-02 | — | Pending |
-| API-03 | — | Pending |
-| OPT-01 | — | Pending |
-| OPT-02 | — | Pending |
-| OPT-03 | — | Pending |
-| VAL-01 | — | Pending |
-| VAL-02 | — | Pending |
-| VAL-03 | — | Pending |
-| VAL-04 | — | Pending |
+| API-01 | Phase 13 | Pending |
+| API-02 | Phase 15 | Pending |
+| API-03 | Phase 13 | Pending |
+| OPT-01 | Phase 13 | Pending |
+| OPT-02 | Phase 14 | Pending |
+| OPT-03 | Phase 14 | Pending |
+| VAL-01 | Phase 15 | Pending |
+| VAL-02 | Phase 15 | Pending |
+| VAL-03 | Phase 15 | Pending |
+| VAL-04 | Phase 15 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10
+- Mapped to phases: 10
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 after roadmap creation*
