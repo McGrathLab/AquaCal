@@ -22,6 +22,7 @@ from aquacal.calibration.pipeline import (
     run_calibration_from_config,
     split_detections,
 )
+from aquacal.calibration.point_refinement import refine_calibration
 from aquacal.calibration.refinement import (
     joint_refinement,
 )
@@ -41,6 +42,8 @@ __all__ = [
     "optimize_interface",
     # refinement
     "joint_refinement",
+    # point refinement
+    "refine_calibration",
     # pipeline
     "calibrate_from_detections",
     "load_config",

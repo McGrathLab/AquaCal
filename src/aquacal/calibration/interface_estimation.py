@@ -133,7 +133,7 @@ def optimize_interface(
     loss_scale: float = 1.0,
     min_corners: int = 4,
     use_sparse_jacobian: bool = True,
-    verbose: int = 0,
+    verbose: int = 1,
     normal_fixed: bool = True,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
@@ -168,7 +168,7 @@ def optimize_interface(
         min_corners: Minimum corners per detection to include in optimization
         use_sparse_jacobian: Use sparse Jacobian structure (default True).
             Dramatically improves performance for large camera arrays.
-        verbose: Verbosity level for scipy.optimize.least_squares (default 0).
+        verbose: Verbosity level for scipy.optimize.least_squares (default 1).
             0 = silent, 1 = one-line per iteration, 2 = full per-iteration report.
         normal_fixed: If False, estimate reference camera tilt (2 DOF) to account
             for non-perpendicular camera-to-water-surface alignment.

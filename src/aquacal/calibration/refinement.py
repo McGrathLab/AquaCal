@@ -46,7 +46,7 @@ def joint_refinement(
     loss_scale: float = 1.0,
     min_corners: int = 4,
     use_sparse_jacobian: bool = True,
-    verbose: int = 0,
+    verbose: int = 1,
     normal_fixed: bool = True,
 ) -> tuple[
     dict[str, CameraExtrinsics],

@@ -167,6 +167,7 @@ class DiagnosticsData:
         validation_3d_error_mean: Mean 3D reconstruction error in meters (holdout set, primary cameras only)
         validation_3d_error_std: Standard deviation of 3D errors in meters (primary cameras only)
         per_corner_residuals: Optional (N, 2) array of pixel errors for each corner
+        per_corner_camera_labels: Optional list of camera names parallel to per_corner_residuals
         per_frame_errors: Optional dict mapping frame index to error value
     """
 
@@ -175,6 +176,9 @@ class DiagnosticsData:
     validation_3d_error_mean: float  # meters (primary cameras only)
     validation_3d_error_std: float  # meters (primary cameras only)
     per_corner_residuals: Optional[NDArray[np.float64]] = None  # (N, 2) pixel errors
+    per_corner_camera_labels: Optional[list[str]] = (
+        None  # (N,) camera name per residual
+    )
     per_frame_errors: Optional[dict[int, float]] = None
 
 
@@ -308,6 +312,82 @@ class Detection:
             Count of detected corners
         """
         return len(self.corner_ids)
+
+
+@dataclass
+class PointCorrespondence:
+    """A 3D point with its observed 2D projections across cameras.
+
+    Used by refine_calibration() to refine an existing calibration
+    using 3D-to-2D point correspondences from downstream analysis.
+
+    Attributes:
+        point_3d: 3D point in world coordinates, shape (3,)
+        observations: Dict mapping camera name to observed pixel coordinate (u, v).
+            Must contain at least 2 cameras.
+        weight: Optional non-negative weight for this correspondence.
+            Default 1.0. Set to 0.0 to soft-disable without removing.
+    """
+
+    point_3d: Vec3  # shape (3,)
+    observations: dict[str, Vec2]  # camera_name -> pixel (u, v)
+    weight: float = 1.0
+
+
+@dataclass
+class CameraDrift:
+    """Per-camera extrinsics drift metrics from refinement.
+
+    Attributes:
+        translation_mm: Translation shift magnitude in millimeters.
+        rotation_deg: Rotation shift magnitude in degrees.
+        exceeded: True if either translation or rotation exceeds its threshold.
+    """
+
+    translation_mm: float
+    rotation_deg: float
+    exceeded: bool
+
+
+@dataclass
+class ValidationReport:
+    """Structured validation report for a calibration refinement.
+
+    Attributes:
+        holdout_reproj_error: RMS reprojection error on held-out correspondences
+            (pixels).
+        triangulation_consistency_before: Mean ray intersection residual before
+            refinement (meters).
+        triangulation_consistency_after: Mean ray intersection residual after
+            refinement (meters).
+        camera_drifts: Per-camera extrinsics drift, mapping camera name to
+            CameraDrift.
+        accepted: True if all thresholds pass, False if any exceeded.
+        summary: Human-readable explanation of the accept/reject decision.
+    """
+
+    holdout_reproj_error: float
+    triangulation_consistency_before: float
+    triangulation_consistency_after: float
+    camera_drifts: dict[str, CameraDrift]
+    accepted: bool
+    summary: str
+
+
+@dataclass
+class RefinementResult:
+    """Result of refine_calibration() with optional validation.
+
+    Attributes:
+        result: The refined CalibrationResult.
+        validation_report: Structured validation metrics, or None if
+            validate=False was passed.
+        accepted: True/False recommendation, or None if validate=False.
+    """
+
+    result: CalibrationResult
+    validation_report: ValidationReport | None
+    accepted: bool | None
 
 
 @dataclass

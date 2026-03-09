@@ -715,7 +715,7 @@ def plot_per_camera_error(result: CalibrationResult) -> "plt.Figure":
 
     cam_names = sorted(result.cameras.keys())
     rms_values = [
-        result.diagnostics.reprojection_error_per_camera.get(cam, 0.0)
+        result.diagnostics.reprojection_error_per_camera.get(cam, float("nan"))
         for cam in cam_names
     ]
 
@@ -737,11 +737,19 @@ def plot_per_camera_error(result: CalibrationResult) -> "plt.Figure":
     return fig
 
 
-def plot_error_distribution(reprojection_errors: ReprojectionErrors) -> "plt.Figure":
+def plot_error_distribution(
+    reprojection_errors: ReprojectionErrors,
+    auxiliary_cameras: set[str] | None = None,
+) -> "plt.Figure":
     """Histogram of per-corner reprojection error magnitudes.
+
+    When *auxiliary_cameras* is provided and camera labels are available,
+    draws separate normalised distributions for primary and auxiliary cameras.
 
     Args:
         reprojection_errors: Pre-computed reprojection errors with residuals.
+        auxiliary_cameras: Set of auxiliary camera names. When provided with
+            camera labels, the plot shows separate distributions.
 
     Returns:
         matplotlib Figure.
@@ -749,27 +757,86 @@ def plot_error_distribution(reprojection_errors: ReprojectionErrors) -> "plt.Fig
     import matplotlib.pyplot as plt
 
     all_errors = np.linalg.norm(reprojection_errors.residuals, axis=1)
+    labels = reprojection_errors.camera_labels
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.hist(all_errors, bins=30, color="steelblue", alpha=0.7, edgecolor="black")
-    ax.axvline(
-        np.mean(all_errors),
-        color="red",
-        linestyle="--",
-        label=f"Mean: {np.mean(all_errors):.3f} px",
+    # Determine if we can split by primary / auxiliary
+    has_split = (
+        auxiliary_cameras and labels is not None and len(labels) == len(all_errors)
     )
-    ax.set_xlabel("Reprojection Error (px)")
-    ax.set_ylabel("Frequency")
-    ax.set_title("Reprojection Error Distribution (All Cameras)")
-    ax.legend()
-    ax.grid(axis="y", alpha=0.3)
-    fig.tight_layout()
 
-    print("Error statistics:")
-    print(f"  Mean:            {np.mean(all_errors):.3f} px")
-    print(f"  Median:          {np.median(all_errors):.3f} px")
-    print(f"  95th percentile: {np.percentile(all_errors, 95):.3f} px")
-    print(f"  Max:             {np.max(all_errors):.3f} px")
+    if has_split:
+        aux_set = set(auxiliary_cameras)
+        aux_mask = np.array([lbl in aux_set for lbl in labels])
+        primary_errors = all_errors[~aux_mask]
+        aux_errors = all_errors[aux_mask]
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+        bins = np.histogram_bin_edges(all_errors, bins=30)
+
+        if len(primary_errors) > 0:
+            ax.hist(
+                primary_errors,
+                bins=bins,
+                density=True,
+                color="steelblue",
+                alpha=0.7,
+                edgecolor="black",
+                label=f"Primary ({len(primary_errors):,} obs, "
+                f"mean {np.mean(primary_errors):.3f} px)",
+            )
+        if len(aux_errors) > 0:
+            ax.hist(
+                aux_errors,
+                bins=bins,
+                density=True,
+                color="orange",
+                alpha=0.7,
+                edgecolor="black",
+                label=f"Auxiliary ({len(aux_errors):,} obs, "
+                f"mean {np.mean(aux_errors):.3f} px)",
+            )
+
+        ax.set_xlabel("Reprojection Error (px)")
+        ax.set_ylabel("Density")
+        ax.set_title("Reprojection Error Distribution")
+        ax.legend()
+        ax.grid(axis="y", alpha=0.3)
+        fig.tight_layout()
+
+        def _print_stats(name: str, errors: np.ndarray) -> None:
+            print(f"  {name}:")
+            print(f"    N:               {len(errors):,}")
+            print(f"    Mean:            {np.mean(errors):.3f} px")
+            print(f"    Median:          {np.median(errors):.3f} px")
+            print(f"    95th percentile: {np.percentile(errors, 95):.3f} px")
+            print(f"    Max:             {np.max(errors):.3f} px")
+
+        print("Error statistics:")
+        if len(primary_errors) > 0:
+            _print_stats("Primary cameras", primary_errors)
+        if len(aux_errors) > 0:
+            _print_stats("Auxiliary cameras", aux_errors)
+    else:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.hist(all_errors, bins=30, color="steelblue", alpha=0.7, edgecolor="black")
+        ax.axvline(
+            np.mean(all_errors),
+            color="red",
+            linestyle="--",
+            label=f"Mean: {np.mean(all_errors):.3f} px",
+        )
+        ax.set_xlabel("Reprojection Error (px)")
+        ax.set_ylabel("Frequency")
+        ax.set_title("Reprojection Error Distribution (All Cameras)")
+        ax.legend()
+        ax.grid(axis="y", alpha=0.3)
+        fig.tight_layout()
+
+        print("Error statistics:")
+        print(f"  Mean:            {np.mean(all_errors):.3f} px")
+        print(f"  Median:          {np.median(all_errors):.3f} px")
+        print(f"  95th percentile: {np.percentile(all_errors, 95):.3f} px")
+        print(f"  Max:             {np.max(all_errors):.3f} px")
 
     return fig
 

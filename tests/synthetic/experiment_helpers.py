@@ -71,21 +71,39 @@ def calibrate_synthetic(
 
     # Stage 2: Extrinsic initialization
     print("Stage 2: Extrinsic initialization...")
-    reference_camera = "cam0"
+    # Use the camera closest to the world origin as reference — this matches
+    # the reference camera from the original calibration (which defines the
+    # world frame origin) and avoids coordinate-frame mismatch with GT.
+    reference_camera = min(
+        scenario.extrinsics,
+        key=lambda c: np.linalg.norm(scenario.extrinsics[c].C),
+    )
+    interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
     pose_graph = build_pose_graph(detections, min_cameras=2)
     initial_extrinsics = estimate_extrinsics(
-        pose_graph, scenario.intrinsics, board, reference_camera
+        pose_graph,
+        scenario.intrinsics,
+        board,
+        reference_camera,
+        water_zs=scenario.water_zs if n_water != 1.0 else None,
+        interface_normal=interface_normal,
+        n_air=1.0,
+        n_water=n_water,
     )
 
     # Stage 3: Joint refractive optimization
     print("Stage 3: Joint refractive optimization...")
-    interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
     opt_extrinsics, opt_distances, opt_poses, rms = optimize_interface(
         detections=detections,
         intrinsics=scenario.intrinsics,
         initial_extrinsics=initial_extrinsics,
         board=board,
         reference_camera=reference_camera,
+        initial_water_zs=(
+            scenario.water_zs
+            if scenario.name != "calibration"
+            else {cam: 1.0 for cam in scenario.intrinsics}
+        ),
         interface_normal=interface_normal,
         n_air=1.0,
         n_water=n_water,

@@ -1,56 +1,53 @@
+---
+gsd_state_version: 1.0
+milestone: v1.6
+milestone_name: Refinement API
+status: complete
+last_updated: "2026-03-09"
+progress:
+  total_phases: 15
+  completed_phases: 15
+  total_plans: 36
+  completed_plans: 36
+---
+
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-19)
+See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** v1.5 AquaKit Integration — Phase 13: Setup
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 13 of 17 (Setup)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-19 — Roadmap created for v1.5 AquaKit Integration
-
-Progress: [████████░░░░░░░░░░░░] 12/17 phases complete (v1.2 + v1.4 shipped)
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 30
-- v1.2: 20 plans, ~1.85 hours
-- v1.4: 10 plans
-
-**Recent Trend:**
-- Stable
-
-*Updated after each plan completion*
+Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09)
+All 3 phases (13-15), 6 plans complete.
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-
-Recent decisions affecting current work:
-- [v1.5 start]: NumPy internals retained; torch conversion happens only at AquaKit call boundaries
-- [v1.5 start]: Delete-after-tests strategy — rewire first, test equivalence, then delete originals
-- [v1.5 start]: AquaKit bug fixes performed as needed during rewiring
+Key v1.6 decisions:
+- Refinement API accepts abstract float weights — caller defines "goodness"
+- No CLI command for refinement — library API only
+- Local _pack/_unpack in point_refinement.py (separate from board-pose _optim_common)
+- Parameterized extensions on single function (refine_intrinsics, loss, normal_fixed)
+- Any-fail accept/reject logic — conservative validation
 
 ### Pending Todos
 
-- Design better hero image for README (deferred from Phase 11 — user wants to rethink concept)
+- Design better hero image for README (deferred from Phase 11)
 - Reduce memory and CPU load during calibration
 
 ### Blockers/Concerns
 
-- PyTorch is not an aquakit pip dependency — users must install it manually; SETUP-02 must document this clearly
-- `refractive_project` API change is non-trivial (two-step process; returns interface point not pixel) — Phase 14 needs careful call-site audit
+None.
 
 ## Session Continuity
 
-Last session: 2026-02-19 (roadmap created)
-Stopped at: Roadmap written, ready to plan Phase 13
+Last session: 2026-03-09
+Stopped at: Completed v1.6 milestone
 Resume file: None

@@ -35,6 +35,7 @@ class ReprojectionErrors:
     per_frame: dict[int, float]
     residuals: NDArray[np.float64]  # (N, 2)
     num_observations: int
+    camera_labels: NDArray[np.object_] | None = None  # (N,) camera name per residual
 
 
 def compute_reprojection_errors(
@@ -70,6 +71,7 @@ def compute_reprojection_errors(
     board = BoardGeometry(calibration.board)
 
     all_residuals = []
+    all_camera_labels = []
     per_camera_residuals = {cam: [] for cam in calibration.cameras}
     per_frame_residuals = {idx: [] for idx in board_poses}
 
@@ -101,6 +103,7 @@ def compute_reprojection_errors(
                     detected = detection.corners_2d[i]
                     residual = detected - projected
                     all_residuals.append(residual)
+                    all_camera_labels.append(cam_name)
                     per_camera_residuals[cam_name].append(residual)
                     per_frame_residuals[frame_idx].append(residual)
 
@@ -115,6 +118,9 @@ def compute_reprojection_errors(
 
     # Build final result
     residuals_array = np.array(all_residuals) if all_residuals else np.empty((0, 2))
+    labels_array = (
+        np.array(all_camera_labels, dtype=object) if all_camera_labels else None
+    )
 
     per_camera_rms = {
         cam: compute_rms(resids)
@@ -134,6 +140,7 @@ def compute_reprojection_errors(
         per_frame=per_frame_rms,
         residuals=residuals_array,
         num_observations=len(all_residuals),
+        camera_labels=labels_array,
     )
 
 

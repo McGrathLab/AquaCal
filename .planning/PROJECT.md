@@ -2,7 +2,7 @@
 
 ## What This Is
 
-AquaCal is a Python library for calibrating multi-camera arrays that view underwater scenes through a flat water surface. It models Snell's law refraction at the air-water interface to jointly optimize camera extrinsics, water surface position, and calibration board poses. Available on PyPI with Sphinx documentation, example datasets, Jupyter tutorials, and comprehensive user guides.
+AquaCal is a Python library for calibrating multi-camera arrays that view underwater scenes through a flat water surface. It models Snell's law refraction at the air-water interface to jointly optimize camera extrinsics, water surface position, and calibration board poses. Includes a refinement API for downstream consumers to improve calibration using 3D-to-2D point correspondences with validation and accept/reject recommendations. Available on PyPI with Sphinx documentation, example datasets, Jupyter tutorials, and comprehensive user guides.
 
 ## Core Value
 
@@ -40,20 +40,16 @@ Accurate refractive camera calibration from standard ChArUco board observations 
 - ✓ Documentation visuals: palette system, Mermaid pipeline, BFS graph, sparsity pattern — v1.4
 - ✓ Tutorials restructured (3→2) with pre-executed outputs and progressive experiments — v1.4
 - ✓ User guide pages: CLI reference, camera models, troubleshooting, glossary — v1.4
+- ✓ Public `refine_calibration()` API with weighted 3D-to-2D point correspondences — v1.6
+- ✓ Bundle adjustment over extrinsics + water_z with optional intrinsics refinement — v1.6
+- ✓ Robust loss functions (Huber/Cauchy) for outlier tolerance — v1.6
+- ✓ Structured validation report: holdout reproj error, triangulation consistency, extrinsics drift — v1.6
+- ✓ Accept/reject recommendation based on validation thresholds — v1.6
+- ✓ Clean input contracts: PointCorrespondence, RefinementResult, ValidationReport, CameraDrift — v1.6
 
 ### Active
 
-#### Current Milestone: v1.5 AquaKit Integration
-
-**Goal:** Wire AquaKit shared library into AquaCal, replace redundant code, verify numerical equivalence, and identify future migration candidates.
-
-**Target features:**
-- Add `aquakit` as a pip dependency
-- Rewire geometry (refractive projection, Snell's law, ray tracing), transforms, schema types, and I/O to use AquaKit
-- NumPy internals with torch conversion at AquaKit call boundaries
-- Remove dead/redundant code after rewiring
-- Numerical equivalence tests (1e-4 relative tolerance)
-- Written migration report for conservative future AquaKit candidates
+(No active milestone — run `/gsd:new-milestone` to plan next)
 
 ### Out of Scope
 
@@ -68,15 +64,22 @@ Accurate refractive camera calibration from standard ChArUco board observations 
 
 ## Context
 
-Shipped v1.4.1 with ~40,000 LOC Python.
+Shipped v1.6 with ~13,100 LOC Python.
 Tech stack: NumPy, SciPy, OpenCV, Matplotlib, Pandas, PyYAML, Sphinx (Furo), GitHub Actions.
-Published on PyPI as `aquacal` v1.4.1. Sphinx docs live on Read the Docs. Zenodo DOI active.
-584 tests passing (unit + synthetic). Two Jupyter tutorial notebooks with pre-executed outputs.
+Published on PyPI as `aquacal`. Sphinx docs live on Read the Docs. Zenodo DOI active.
+45+ tests for refinement API alone; full test suite spans unit + synthetic.
+Two Jupyter tutorial notebooks with pre-executed outputs.
 
 Known issues / tech debt:
 - Hero image redesign deferred (user wants to rethink concept; generation script kept)
 - Memory/CPU optimization for large calibrations not yet addressed
 - ~~Version field in JSON output~~ — fixed
+- Phase 15 SUMMARY.md files not generated (work done, UAT/verification passed)
+
+Primary downstream consumer: AquaPose — a 13-camera 3D fish tracking pipeline that produces
+hundreds of thousands of triangulated 3D points with known camera correspondences from animal
+tracking. The refinement API allows AquaPose to feed tracked keypoint observations back into
+AquaCal to improve calibration accuracy over time.
 
 ## Constraints
 
@@ -105,6 +108,10 @@ Known issues / tech debt:
 | Mermaid for pipeline diagram | Renders in Sphinx, easier to maintain than ASCII | ✓ Good |
 | Merge diagnostics into tutorial 01 | Single calibrate-then-diagnose flow is more natural | ✓ Good |
 | 2-tutorial structure | Pipeline + synthetic validation covers key use cases | ✓ Good |
+| Local pack/unpack for point refinement | Point correspondences have no board poses, separate from _optim_common | ✓ Good |
+| Parameterized extensions over separate functions | refine_intrinsics, loss, normal_fixed as params on single function | ✓ Good |
+| Validation as optional post-step | validate=True default, holdout split before optimization | ✓ Good |
+| Any-fail accept/reject logic | Conservative — any threshold exceeded rejects refinement | ✓ Good |
 
 ---
-*Last updated: 2026-02-19 after v1.5 milestone started*
+*Last updated: 2026-03-09 after v1.6 milestone*

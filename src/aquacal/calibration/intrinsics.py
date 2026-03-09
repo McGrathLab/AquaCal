@@ -11,8 +11,7 @@ from numpy.typing import NDArray
 
 from aquacal.config.schema import CameraIntrinsics
 from aquacal.core.board import BoardGeometry
-from aquacal.io.detection import detect_charuco
-from aquacal.io.video import VideoSet
+from aquacal.io.detection import _create_frame_source, detect_charuco
 
 
 def validate_intrinsics(
@@ -238,7 +237,7 @@ def calibrate_intrinsics_single(
     all_detections: list[tuple[NDArray[np.int32], NDArray[np.float64]]] = []
     image_size: tuple[int, int] | None = None
 
-    with VideoSet({video_path.stem: str(video_path)}) as vs:
+    with _create_frame_source({video_path.stem: str(video_path)}) as vs:
         for frame_idx, frames in vs.iterate_frames(step=frame_step):
             frame = frames[video_path.stem]
             if frame is None:

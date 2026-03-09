@@ -161,6 +161,8 @@ def _serialize_diagnostics(diag: DiagnosticsData) -> dict[str, Any]:
     # Only include optional fields if not None
     if diag.per_corner_residuals is not None:
         result["per_corner_residuals"] = _ndarray_to_list(diag.per_corner_residuals)
+    if diag.per_corner_camera_labels is not None:
+        result["per_corner_camera_labels"] = diag.per_corner_camera_labels
     if diag.per_frame_errors is not None:
         # Convert int keys to strings for JSON compatibility
         result["per_frame_errors"] = {
@@ -175,6 +177,8 @@ def _deserialize_diagnostics(data: dict[str, Any]) -> DiagnosticsData:
     if "per_corner_residuals" in data:
         per_corner_residuals = _list_to_ndarray(data["per_corner_residuals"])
 
+    per_corner_camera_labels = data.get("per_corner_camera_labels")
+
     per_frame_errors = None
     if "per_frame_errors" in data:
         # Convert string keys back to int
@@ -186,6 +190,7 @@ def _deserialize_diagnostics(data: dict[str, Any]) -> DiagnosticsData:
         validation_3d_error_mean=data["validation_3d_error_mean"],
         validation_3d_error_std=data["validation_3d_error_std"],
         per_corner_residuals=per_corner_residuals,
+        per_corner_camera_labels=per_corner_camera_labels,
         per_frame_errors=per_frame_errors,
     )
 

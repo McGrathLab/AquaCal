@@ -1408,11 +1408,11 @@ class TestAuxiliaryCameraSeparation:
 
             result = run_calibration_from_config(config)
 
-            # Verify DiagnosticsData uses primary-only metrics
+            # Overall RMS is primary-only; per-camera dict includes all cameras
             assert result.diagnostics.reprojection_error_rms == 0.7  # Primary only
-            assert "aux_cam" not in result.diagnostics.reprojection_error_per_camera
             assert "cam0" in result.diagnostics.reprojection_error_per_camera
             assert "cam1" in result.diagnostics.reprojection_error_per_camera
+            assert "aux_cam" in result.diagnostics.reprojection_error_per_camera
 
     def test_auxiliary_cameras_in_final_result(
         self, mock_calibration_stages_with_aux, sample_board_config
