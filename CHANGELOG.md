@@ -2,6 +2,154 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-03-09)
+
+### Bug Fixes
+
+- Variable name typo fix
+  ([`72eff64`](https://github.com/tlancaster6/AquaCal/commit/72eff64564c7e9040ddbe6e36b6f2a71518f6f11))
+
+- Variable name typo fix
+  ([`0010db2`](https://github.com/tlancaster6/AquaCal/commit/0010db25738fbb86cb13f780f0627e643ae6eb11))
+
+### Chores
+
+- Complete v1.6 Refinement API milestone
+  ([`1af31b8`](https://github.com/tlancaster6/AquaCal/commit/1af31b801e5ab8c0c171b93a602937e6f1f8f4e2))
+
+### Documentation
+
+- Capture todo - Add active calibration refinement API for downstream consumers
+  ([`3931863`](https://github.com/tlancaster6/AquaCal/commit/393186343b2ebb5e9a19d2b4a11af21c75be6782))
+
+- Capture todo - Upload new Zenodo dataset with image-based inputs
+  ([`cc777a1`](https://github.com/tlancaster6/AquaCal/commit/cc777a188475b574b5403476435e985638501454))
+
+- Create milestone v1.6 roadmap (3 phases)
+  ([`6c5c8a4`](https://github.com/tlancaster6/AquaCal/commit/6c5c8a48babd52ec09b40e8d0ebf224a29548f14))
+
+- Define milestone v1.6 requirements
+  ([`bd1054d`](https://github.com/tlancaster6/AquaCal/commit/bd1054d63de366dc075c90bb6c2ca978f49eb491))
+
+- Enhance tutorial notebooks with new visualizations, data export, and Colab support
+  ([`70df96d`](https://github.com/tlancaster6/AquaCal/commit/70df96d01b271635d72182b74746887f1db98f2b))
+
+- Start milestone v1.6 Refinement API
+  ([`81ba39f`](https://github.com/tlancaster6/AquaCal/commit/81ba39f0712597ffe81d1026fc6eb1d76abc9789))
+
+- Update tutorials with per-camera diagnostics, data export, and technique report
+  ([`92a120c`](https://github.com/tlancaster6/AquaCal/commit/92a120c8e6d6bb3431390d6426e09ed1e2dedaae))
+
+- **13**: Capture phase context
+  ([`de67db9`](https://github.com/tlancaster6/AquaCal/commit/de67db91f0141cfb0f8d0c4c5e0973e21fa6740c))
+
+- **13**: Create phase plan
+  ([`4fb5240`](https://github.com/tlancaster6/AquaCal/commit/4fb52400959d58a55c5dfdfff24c68bd50cb3102))
+
+- **13-01**: Complete core refinement API plan
+  ([`05e498d`](https://github.com/tlancaster6/AquaCal/commit/05e498d8cd7bf7aea0f1df72c0158a3bf1e6f546))
+
+- **13-02**: Complete point refinement tests plan
+  ([`56af3aa`](https://github.com/tlancaster6/AquaCal/commit/56af3aa0c56489035ea45e8b9e38e80fb2528e05))
+
+- **14**: Capture phase context
+  ([`ef73dff`](https://github.com/tlancaster6/AquaCal/commit/ef73dff5ec94ef92f04fddd6b046c2ac4f689f85))
+
+- **14**: Create phase plan for optimization extensions
+  ([`d3a0fa8`](https://github.com/tlancaster6/AquaCal/commit/d3a0fa8f9ece6beb0a0f7f9d39354801b8e1a875))
+
+- **14-01**: Complete plan execution summary
+  ([`b0b4cf0`](https://github.com/tlancaster6/AquaCal/commit/b0b4cf040efc25cbafc70cdf7d1605be4fb4ae62))
+
+- **14-02**: Complete plan execution summary
+  ([`c6f22b2`](https://github.com/tlancaster6/AquaCal/commit/c6f22b2f3d526cd5951f7d52d86332e7719f3a5a))
+
+- **15**: Add edge case note for holdout split minimum
+  ([`fa44671`](https://github.com/tlancaster6/AquaCal/commit/fa4467139ae636f091dd579143c055234f70e5d8))
+
+- **15**: Capture phase context
+  ([`574ce9e`](https://github.com/tlancaster6/AquaCal/commit/574ce9edf2c993358ee8219d267631b5e98ae908))
+
+- **15**: Create phase plans for validation and result contract
+  ([`6a3727d`](https://github.com/tlancaster6/AquaCal/commit/6a3727d7a2b97cd20e664f7364f338d0cd7b5de6))
+
+- **phase-13**: Complete phase execution
+  ([`3f05d21`](https://github.com/tlancaster6/AquaCal/commit/3f05d213d94368f2fd4c3af936e45b590a7156c8))
+
+- **phase-14**: Complete phase execution
+  ([`c6fc987`](https://github.com/tlancaster6/AquaCal/commit/c6fc987925de48196d65ef973414090f2dccd0c8))
+
+- **phase-15**: Complete phase execution
+  ([`e246a9a`](https://github.com/tlancaster6/AquaCal/commit/e246a9ae0b3af7950133d3dc7616d0e65303a118))
+
+- **quick-1**: Add calibration-file-based synthetic rig to 02_synthetic_validation
+  ([`eac1132`](https://github.com/tlancaster6/AquaCal/commit/eac1132644a7c7861f6b2b0fc04f102220efd356))
+
+- **quick-1**: Complete add-calibration-file-based-synthetic-rig plan
+  ([`a24c8d6`](https://github.com/tlancaster6/AquaCal/commit/a24c8d62ee5788ae1b59ceaafc39132949eac169))
+
+### Features
+
+- Batch projection in residuals, per-camera labels in diagnostics
+  ([`4c586d6`](https://github.com/tlancaster6/AquaCal/commit/4c586d614d1e3467455a44b1a9f569b385d8c6b2))
+
+- **13-01**: Add PointCorrespondence dataclass and export from public API
+  ([`52c0ceb`](https://github.com/tlancaster6/AquaCal/commit/52c0cebd44f5fa74e9bc0b7e3b9b51e00e886a70))
+
+- **13-01**: Implement refine_calibration() with point correspondence bundle adjustment
+  ([`929d64c`](https://github.com/tlancaster6/AquaCal/commit/929d64c3b4d0fe816d4475aea16d1fb24e5ff964))
+
+- **13-01**: Wire refine_calibration into public API and calibration package
+  ([`3832637`](https://github.com/tlancaster6/AquaCal/commit/38326371b7e3742833c8eb6f7c45e42464f7b8fa))
+
+- **14-01**: Extend refine_calibration with intrinsics, loss, and tilt
+  ([`6f98e17`](https://github.com/tlancaster6/AquaCal/commit/6f98e1741f6a678880b075ca16ceefee88d96503))
+
+- **15-01**: Add CameraDrift, ValidationReport, RefinementResult dataclasses
+  ([`dc6361d`](https://github.com/tlancaster6/AquaCal/commit/dc6361d3f2636dc566826585a585c17229b2331d))
+
+- **15-01**: Add validation module with holdout, triangulation, drift checks
+  ([`85a6bf7`](https://github.com/tlancaster6/AquaCal/commit/85a6bf771859eb235e4081dfd4696f7ebd16b100))
+
+- **15-01**: Export RefinementResult, ValidationReport, CameraDrift from aquacal
+  ([`081fa43`](https://github.com/tlancaster6/AquaCal/commit/081fa43a80538e1034d6b8987d9bee28abb36ef0))
+
+- **15-01**: Update refine_calibration to return RefinementResult with validation
+  ([`cf73c9a`](https://github.com/tlancaster6/AquaCal/commit/cf73c9a0d2c914ec5028b5bfb74667fab34c906f))
+
+- **quick-1**: Add calibration file support to synthetic validation notebook
+  ([`e849bca`](https://github.com/tlancaster6/AquaCal/commit/e849bca59e9992379eceb6a7ac1dfdb2438dc4c9))
+
+- **quick-1**: Add rig_from_calibration() to datasets API
+  ([`8743756`](https://github.com/tlancaster6/AquaCal/commit/8743756d30bbd5689a0d3e3ead6fcdfe38793c20))
+
+### Refactoring
+
+- Simplify datasets module — rename generate_synthetic_rig to create_scenario, remove bundled small
+  dataset
+  ([`38047a2`](https://github.com/tlancaster6/AquaCal/commit/38047a28642b50347a0a0d1fc4892522bd09ed84))
+
+### Testing
+
+- Update synthetic tests and pipeline tests for new datasets API and batch projection
+  ([`2ef1c5f`](https://github.com/tlancaster6/AquaCal/commit/2ef1c5fbd401838be29b0ff728cb80e9a8e6ea69))
+
+- **13-02**: Add synthetic data fixtures for point refinement tests
+  ([`cf30c61`](https://github.com/tlancaster6/AquaCal/commit/cf30c61885553f2b849d8acfa560b21259613a88))
+
+- **14-02**: Add tests for intrinsics refinement, robust loss, and tilt
+  ([`0d846ff`](https://github.com/tlancaster6/AquaCal/commit/0d846ffee2a8288be66113786f51e16d84947a23))
+
+- **15**: Complete UAT - 7 passed, 0 issues
+  ([`1719101`](https://github.com/tlancaster6/AquaCal/commit/17191010be0cee15a0f28e39240b46bcf7f0e732))
+
+- **15-02**: Add unit tests for validation module
+  ([`a4a0bff`](https://github.com/tlancaster6/AquaCal/commit/a4a0bfff65e322fdffb2dcac97dafb8290cbf937))
+
+- **15-02**: Update test_point_refinement for RefinementResult return type
+  ([`e32bb0a`](https://github.com/tlancaster6/AquaCal/commit/e32bb0a00669183d2669746180a6bc5c910b3b82))
+
+
 ## v1.4.2 (2026-02-19)
 
 ### Bug Fixes
