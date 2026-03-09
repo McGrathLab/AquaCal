@@ -39,3 +39,22 @@
 5. Restructured tutorials (3→2), rewrote synthetic validation with 3 progressive experiments
 
 ---
+
+## v1.6 Refinement API (Shipped: 2026-03-09)
+
+**Phases completed:** 3 phases (13-15), 6 plans
+**Timeline:** 1 day (2026-02-28)
+**Changes:** 27 files, +5,027 / -133 lines
+**Git range:** `docs(13)` → `test(15)`
+
+**Delivered:** Public refinement API enabling downstream consumers (e.g., AquaPose) to refine an existing AquaCal calibration using 3D-to-2D point correspondences, with optional intrinsics refinement, robust loss functions, and a structured validation pipeline with accept/reject recommendations.
+
+**Key accomplishments:**
+1. `PointCorrespondence` dataclass and `refine_calibration()` API — bundle adjustment over extrinsics + water_z using point correspondences
+2. Optional intrinsics refinement (fx/fy/cx/cy) with configurable bounds and drift warnings
+3. Robust loss functions (Huber/Cauchy) via scipy native API for outlier tolerance
+4. Validation pipeline: holdout reprojection error, triangulation consistency, extrinsics drift detection with per-camera details
+5. `RefinementResult` contract with `CalibrationResult`, `ValidationReport`, and accept/reject recommendation
+6. 45 tests across input validation, optimization correctness, extensions, and validation
+
+---
