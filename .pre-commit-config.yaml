@@ -21,6 +21,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
+        exclude: ^docs/tutorials/.*\.ipynb$
 
   - repo: local
     hooks:
