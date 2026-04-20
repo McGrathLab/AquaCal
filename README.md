@@ -11,6 +11,8 @@ Refractive multi-camera calibration for underwater arrays. AquaCal calibrates ca
 - **Joint bundle adjustment** — Simultaneous optimization of extrinsics, interface distances, and board poses
 - **Sparse Jacobian optimization** — Scalable to 10+ cameras with column grouping
 - **ChArUco board detection** — Robust corner detection for calibration targets
+- **Validation diagnostics** — Holdout reprojection, 3D triangulation checks, and per-camera error breakdowns
+- **Active re-calibration (beta)** — `refine_calibration()` updates an existing calibration from point correspondences collected in the field; not yet fully tested
 
 ## Installation
 
