@@ -4,12 +4,6 @@
 
 Refractive multi-camera calibration for underwater arrays. AquaCal calibrates cameras in air viewing through a flat water surface, using Snell's law to achieve accurate 3D reconstruction in refractive environments.
 
-## :construction: Status :construction:
-**02/17/26: This project is under active and rapid development.**
-The API and internal structure are subject to frequent breaking changes without notice. It is not yet recommended for
-production use. A stable release is planned by the end of the month. This section will be updated accordingly once that
-milestone is reached.
-
 ## Features
 
 - **Snell's law refractive projection** — Accurate ray-tracing through air-water interfaces
@@ -17,6 +11,8 @@ milestone is reached.
 - **Joint bundle adjustment** — Simultaneous optimization of extrinsics, interface distances, and board poses
 - **Sparse Jacobian optimization** — Scalable to 10+ cameras with column grouping
 - **ChArUco board detection** — Robust corner detection for calibration targets
+- **Validation diagnostics** — Holdout reprojection, 3D triangulation checks, and per-camera error breakdowns
+- **Active re-calibration (beta)** — `refine_calibration()` updates an existing calibration from point correspondences collected in the field; not yet fully tested
 
 ## Installation
 
