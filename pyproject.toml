@@ -55,6 +55,7 @@ docs = [
     "sphinx-design",
     "nbsphinx>=0.9.8",
     "sphinxcontrib-mermaid",
+    "ipython",
 ]
 
 [project.urls]
