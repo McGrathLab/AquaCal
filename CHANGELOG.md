@@ -2,6 +2,36 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-05-05)
+
+### Continuous Integration
+
+- Exclude tutorial notebooks from detect-secrets
+  ([`ae6f769`](https://github.com/tlancaster6/AquaCal/commit/ae6f7695c8ee4b2636bf6108b2f9be1c4d3af230))
+
+- **docs**: Add ipython to [docs] extra for nbsphinx lexer
+  ([`c60acaf`](https://github.com/tlancaster6/AquaCal/commit/c60acaf8866770ed760b9ff86079bb2bf16117ce))
+
+- **docs**: Install docs extras in workflow
+  ([`61825d3`](https://github.com/tlancaster6/AquaCal/commit/61825d36764e5f8150823dcfe40e191f70ce6d54))
+
+- **docs**: Install pandoc for nbsphinx
+  ([`09b58dc`](https://github.com/tlancaster6/AquaCal/commit/09b58dcd4611ddd2872257cdf03ac91dec8e33c8))
+
+### Documentation
+
+- Add validation + refinement features to README, mark refinement beta
+  ([`efe8588`](https://github.com/tlancaster6/AquaCal/commit/efe8588946fbc552de3841bfc16d0971030c2455))
+
+- Remove WIP status warning from README
+  ([`5ee0a51`](https://github.com/tlancaster6/AquaCal/commit/5ee0a51824233b80836427121a3412189a47accb))
+
+### Features
+
+- Persist per-stage calibration timings to diagnostics.json
+  ([`e3cf40d`](https://github.com/tlancaster6/AquaCal/commit/e3cf40d1432a4a86d964784c156f8633855bef40))
+
+
 ## v1.5.0 (2026-03-09)
 
 ### Bug Fixes
