@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import importlib.metadata
 import random
 import time
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -558,6 +560,16 @@ def run_calibration(
     return run_calibration_from_config(config, verbose=verbose)
 
 
+@contextlib.contextmanager
+def _time_stage(timings: dict[str, float], key: str) -> Iterator[None]:
+    """Record elapsed wall time of the wrapped block into ``timings[key]``."""
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        timings[key] = time.perf_counter() - t0
+
+
 def run_calibration_from_config(
     config: CalibrationConfig, verbose: bool = False
 ) -> CalibrationResult:
@@ -598,6 +610,10 @@ def run_calibration_from_config(
     # Create output directory
     config.output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Accumulator for per-stage wall-clock timings (seconds). Skipped stages
+    # are simply absent from this dict.
+    timings: dict[str, float] = {}
+
     # Save board reference images for visual verification
     _save_board_reference_images(board, intrinsic_board, config.output_dir)
 
@@ -607,17 +623,18 @@ def run_calibration_from_config(
 
     # --- Stage 1: Intrinsic Calibration ---
     print("\n[Stage 1] Intrinsic calibration (in-air)...")
-    intrinsics_results = calibrate_intrinsics_all(
-        video_paths={k: str(v) for k, v in config.intrinsic_video_paths.items()},
-        board=intrinsic_board,
-        min_corners=config.min_corners_per_frame,
-        frame_step=config.frame_step,
-        rational_model_cameras=config.rational_model_cameras or None,
-        fisheye_cameras=config.fisheye_cameras or None,
-        progress_callback=lambda name, cur, total: print(
-            f"  Calibrating {name} ({cur}/{total})..."
-        ),
-    )
+    with _time_stage(timings, "stage1_intrinsics"):
+        intrinsics_results = calibrate_intrinsics_all(
+            video_paths={k: str(v) for k, v in config.intrinsic_video_paths.items()},
+            board=intrinsic_board,
+            min_corners=config.min_corners_per_frame,
+            frame_step=config.frame_step,
+            rational_model_cameras=config.rational_model_cameras or None,
+            fisheye_cameras=config.fisheye_cameras or None,
+            progress_callback=lambda name, cur, total: print(
+                f"  Calibrating {name} ({cur}/{total})..."
+            ),
+        )
     # Extract just intrinsics from (intrinsics, error) tuples
     intrinsics = {name: result[0] for name, result in intrinsics_results.items()}
     for name, (_, rms) in intrinsics_results.items():
@@ -640,14 +657,15 @@ def run_calibration_from_config(
         if total > 0 and (current % max(1, total // 10) == 0 or current == total):
             print(f"  Frame {current}/{total} ({100 * current // total}%)")
 
-    all_detections = detect_all_frames(
-        video_paths={k: str(v) for k, v in config.extrinsic_video_paths.items()},
-        board=board,
-        intrinsics={k: (v.K, v.dist_coeffs) for k, v in intrinsics.items()},
-        min_corners=config.min_corners_per_frame,
-        frame_step=config.frame_step,
-        progress_callback=_detection_progress,
-    )
+    with _time_stage(timings, "detection_underwater"):
+        all_detections = detect_all_frames(
+            video_paths={k: str(v) for k, v in config.extrinsic_video_paths.items()},
+            board=board,
+            intrinsics={k: (v.K, v.dist_coeffs) for k, v in intrinsics.items()},
+            min_corners=config.min_corners_per_frame,
+            frame_step=config.frame_step,
+            progress_callback=_detection_progress,
+        )
     usable_frames = all_detections.get_frames_with_min_cameras(
         config.min_cameras_per_frame
     )
@@ -685,24 +703,27 @@ def run_calibration_from_config(
 
     # --- Stage 2: Extrinsic Initialization ---
     print("\n[Stage 2] Extrinsic initialization...")
-    pose_graph = build_pose_graph(primary_cal_detections, config.min_cameras_per_frame)
     reference_camera = config.camera_names[0]
     interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
-    extrinsics = estimate_extrinsics(
-        pose_graph,
-        primary_intrinsics,
-        board,
-        reference_camera,
-        water_zs=config.initial_water_z,
-        interface_normal=interface_normal,
-        n_air=config.n_air,
-        n_water=config.n_water,
-        progress_callback=lambda cam, cur, total: print(
-            "  Averaging poses..."
-            if cam == "_averaging"
-            else f"  Located {cam} ({cur}/{total})"
-        ),
-    )
+    with _time_stage(timings, "stage2_extrinsic_init"):
+        pose_graph = build_pose_graph(
+            primary_cal_detections, config.min_cameras_per_frame
+        )
+        extrinsics = estimate_extrinsics(
+            pose_graph,
+            primary_intrinsics,
+            board,
+            reference_camera,
+            water_zs=config.initial_water_z,
+            interface_normal=interface_normal,
+            n_air=config.n_air,
+            n_water=config.n_water,
+            progress_callback=lambda cam, cur, total: print(
+                "  Averaging poses..."
+                if cam == "_averaging"
+                else f"  Located {cam} ({cur}/{total})"
+            ),
+        )
     print(f"  Initialized {len(extrinsics)} camera poses")
 
     # Build initial CalibrationResult for saving and visualization
@@ -801,6 +822,7 @@ def run_calibration_from_config(
         normal_fixed=config.interface_normal_fixed,
     )
     elapsed = time.perf_counter() - t0
+    timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
 
     if not config.interface_normal_fixed:
@@ -855,6 +877,7 @@ def run_calibration_from_config(
             normal_fixed=config.interface_normal_fixed,
         )
         elapsed = time.perf_counter() - t0
+        timings["stage4_joint_refinement"] = elapsed
         print(f"  Stage 4 RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
 
         # Water surface and camera heights after refinement
@@ -895,49 +918,54 @@ def run_calibration_from_config(
         # Derive water_z from Stage 3 output (reference camera has C_z = 0)
         water_z = float(final_distances[reference_camera])
 
-        for aux_cam in config.auxiliary_cameras:
-            # Count observations
-            n_frames = 0
-            n_corners = 0
-            for frame_idx, frame_det in all_detections.frames.items():
-                if aux_cam in frame_det.detections and frame_idx in board_poses_dict:
-                    n_frames += 1
-                    n_corners += frame_det.detections[aux_cam].num_corners
+        # Time the full auxiliary registration loop as a single stage.
+        with _time_stage(timings, "auxiliary_registration"):
+            for aux_cam in config.auxiliary_cameras:
+                # Count observations
+                n_frames = 0
+                n_corners = 0
+                for frame_idx, frame_det in all_detections.frames.items():
+                    if (
+                        aux_cam in frame_det.detections
+                        and frame_idx in board_poses_dict
+                    ):
+                        n_frames += 1
+                        n_corners += frame_det.detections[aux_cam].num_corners
 
-            print(f"  {aux_cam}: {n_frames} frames, {n_corners} corners")
+                print(f"  {aux_cam}: {n_frames} frames, {n_corners} corners")
 
-            try:
-                result = register_auxiliary_camera(
-                    camera_name=aux_cam,
-                    intrinsics=intrinsics[aux_cam],
-                    detections=all_detections,
-                    board_poses=board_poses_dict,
-                    board=board,
-                    water_z=water_z,
-                    interface_normal=interface_normal,
-                    n_air=config.n_air,
-                    n_water=config.n_water,
-                    refine_intrinsics=config.refine_auxiliary_intrinsics,
-                    verbose=2 if verbose else 1,
-                )
-
-                # Handle variable-length return
-                if config.refine_auxiliary_intrinsics:
-                    aux_ext, aux_dist, aux_rms, aux_intr = result
-                    intrinsics[aux_cam] = aux_intr
-                    print(
-                        f"  {aux_cam}: RMS {aux_rms:.2f} px, interface_d={aux_dist:.4f}m (intrinsics refined)"
-                    )
-                else:
-                    aux_ext, aux_dist, aux_rms = result
-                    print(
-                        f"  {aux_cam}: RMS {aux_rms:.2f} px, interface_d={aux_dist:.4f}m"
+                try:
+                    result = register_auxiliary_camera(
+                        camera_name=aux_cam,
+                        intrinsics=intrinsics[aux_cam],
+                        detections=all_detections,
+                        board_poses=board_poses_dict,
+                        board=board,
+                        water_z=water_z,
+                        interface_normal=interface_normal,
+                        n_air=config.n_air,
+                        n_water=config.n_water,
+                        refine_intrinsics=config.refine_auxiliary_intrinsics,
+                        verbose=2 if verbose else 1,
                     )
 
-                aux_extrinsics[aux_cam] = aux_ext
-                aux_distances[aux_cam] = aux_dist
-            except Exception as e:
-                print(f"  {aux_cam}: FAILED - {e}")
+                    # Handle variable-length return
+                    if config.refine_auxiliary_intrinsics:
+                        aux_ext, aux_dist, aux_rms, aux_intr = result
+                        intrinsics[aux_cam] = aux_intr
+                        print(
+                            f"  {aux_cam}: RMS {aux_rms:.2f} px, interface_d={aux_dist:.4f}m (intrinsics refined)"
+                        )
+                    else:
+                        aux_ext, aux_dist, aux_rms = result
+                        print(
+                            f"  {aux_cam}: RMS {aux_rms:.2f} px, interface_d={aux_dist:.4f}m"
+                        )
+
+                    aux_extrinsics[aux_cam] = aux_ext
+                    aux_distances[aux_cam] = aux_dist
+                except Exception as e:
+                    print(f"  {aux_cam}: FAILED - {e}")
 
         # Merge auxiliary cameras into working dicts so validation includes them
         if aux_extrinsics:
@@ -947,6 +975,7 @@ def run_calibration_from_config(
 
     # Estimate board poses for validation frames
     print("\n[Validation] Estimating board poses for held-out frames...")
+    _validation_t0 = time.perf_counter()
     val_initial_poses = _compute_initial_board_poses(
         val_detections,
         final_intrinsics,
@@ -1071,18 +1100,27 @@ def run_calibration_from_config(
     # Store primary metrics for later use
     reproj_errors = primary_reproj
     reconstruction_errors = primary_3d
+    timings["validation"] = time.perf_counter() - _validation_t0
 
     # --- Generate Diagnostics ---
     print("\n[Diagnostics] Generating report...")
-    diagnostic_report = generate_diagnostic_report(
-        calibration=primary_result,  # Use primary-only for summary stats
-        detections=val_detections,
-        board_poses=board_poses_dict,
-        reprojection_errors=reproj_errors,
-        reconstruction_errors=reconstruction_errors,
-        board=board,
-        auxiliary_reprojection=aux_reproj,
-    )
+    with _time_stage(timings, "diagnostics_generate"):
+        diagnostic_report = generate_diagnostic_report(
+            calibration=primary_result,  # Use primary-only for summary stats
+            detections=val_detections,
+            board_poses=board_poses_dict,
+            reprojection_errors=reproj_errors,
+            reconstruction_errors=reconstruction_errors,
+            board=board,
+            auxiliary_reprojection=aux_reproj,
+        )
+
+    # Build timings payload AFTER all timed regions and BEFORE the save call
+    # (the save itself is intentionally not in the timing block).
+    timings_payload = {
+        "seconds_per_stage": dict(timings),
+        "total_seconds": float(sum(timings.values())),
+    }
 
     # Save diagnostics (uses full temp_result for plots, but report has primary-only stats)
     save_diagnostic_report(
@@ -1092,6 +1130,7 @@ def run_calibration_from_config(
         config.output_dir,
         save_images=True,
         auxiliary_reprojection=aux_reproj,
+        timings=timings_payload,
     )
     print(f"  Saved diagnostics to {config.output_dir}")
 

@@ -712,6 +712,137 @@ class TestSaveDiagnosticReport:
             assert result["json"].exists()
             assert result["csv"].exists()
 
+    def test_writes_timings_when_provided(
+        self,
+        calibration_result,
+        simple_detections,
+        board_poses,
+        simple_reprojection_errors,
+        board_geometry,
+    ):
+        """timings payload is embedded under the top-level ``timings`` key."""
+        recon_errors = DistanceErrors(
+            mean=0.001, std=0.0005, max_error=0.002, num_comparisons=20
+        )
+        report = generate_diagnostic_report(
+            calibration=calibration_result,
+            detections=simple_detections,
+            board_poses=board_poses,
+            reprojection_errors=simple_reprojection_errors,
+            reconstruction_errors=recon_errors,
+            board=board_geometry,
+        )
+
+        timings_payload = {
+            "seconds_per_stage": {
+                "stage1_intrinsics": 1.5,
+                "stage3_interface_optimization": 4.0,
+            },
+            "total_seconds": 5.5,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = save_diagnostic_report(
+                report,
+                calibration_result,
+                simple_detections,
+                Path(tmpdir),
+                save_images=False,
+                timings=timings_payload,
+            )
+
+            with open(result["json"]) as f:
+                data = json.load(f)
+
+            assert "timings" in data
+            assert data["timings"]["seconds_per_stage"] == {
+                "stage1_intrinsics": 1.5,
+                "stage3_interface_optimization": 4.0,
+            }
+            assert data["timings"]["total_seconds"] == 5.5
+
+    def test_omits_timings_when_none(
+        self,
+        calibration_result,
+        simple_detections,
+        board_poses,
+        simple_reprojection_errors,
+        board_geometry,
+    ):
+        """No ``timings`` key when caller does not pass one (backward compat)."""
+        recon_errors = DistanceErrors(
+            mean=0.001, std=0.0005, max_error=0.002, num_comparisons=20
+        )
+        report = generate_diagnostic_report(
+            calibration=calibration_result,
+            detections=simple_detections,
+            board_poses=board_poses,
+            reprojection_errors=simple_reprojection_errors,
+            reconstruction_errors=recon_errors,
+            board=board_geometry,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = save_diagnostic_report(
+                report,
+                calibration_result,
+                simple_detections,
+                Path(tmpdir),
+                save_images=False,
+            )
+
+            with open(result["json"]) as f:
+                data = json.load(f)
+
+            assert "timings" not in data
+            for key in (
+                "summary",
+                "recommendations",
+                "reprojection",
+                "reconstruction",
+                "camera_heights",
+            ):
+                assert key in data
+
+    def test_timings_empty_payload_round_trips(
+        self,
+        calibration_result,
+        simple_detections,
+        board_poses,
+        simple_reprojection_errors,
+        board_geometry,
+    ):
+        """Empty ``seconds_per_stage`` and zero total serializes without error."""
+        recon_errors = DistanceErrors(
+            mean=0.001, std=0.0005, max_error=0.002, num_comparisons=20
+        )
+        report = generate_diagnostic_report(
+            calibration=calibration_result,
+            detections=simple_detections,
+            board_poses=board_poses,
+            reprojection_errors=simple_reprojection_errors,
+            reconstruction_errors=recon_errors,
+            board=board_geometry,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = save_diagnostic_report(
+                report,
+                calibration_result,
+                simple_detections,
+                Path(tmpdir),
+                save_images=False,
+                timings={"seconds_per_stage": {}, "total_seconds": 0.0},
+            )
+
+            with open(result["json"]) as f:
+                data = json.load(f)
+
+            assert data["timings"] == {
+                "seconds_per_stage": {},
+                "total_seconds": 0.0,
+            }
+
 
 class TestPlotCameraRig:
     """Tests for plot_camera_rig()."""

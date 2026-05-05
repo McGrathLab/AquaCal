@@ -848,6 +848,7 @@ def save_diagnostic_report(
     output_dir: Path,
     save_images: bool = True,
     auxiliary_reprojection: ReprojectionErrors | None = None,
+    timings: dict[str, object] | None = None,
 ) -> dict[str, Path]:
     """
     Save diagnostic report to disk.
@@ -866,6 +867,10 @@ def save_diagnostic_report(
         output_dir: Directory for output files (created if doesn't exist)
         save_images: Whether to render and save images
         auxiliary_reprojection: Optional reprojection errors for auxiliary cameras
+        timings: Optional pre-shaped timings payload (e.g.,
+            ``{"seconds_per_stage": {...}, "total_seconds": 123.4}``) to embed
+            under the top-level ``"timings"`` key in ``diagnostics.json``.
+            When ``None``, the key is omitted (backward compatible).
 
     Returns:
         Dict mapping output type to file path:
@@ -918,6 +923,11 @@ def save_diagnostic_report(
             cam_name: {"reprojection_rms": rms}
             for cam_name, rms in auxiliary_reprojection.per_camera.items()
         }
+
+    # Add per-stage wall-clock timings if provided
+    if timings is not None:
+        json_data["timings"] = timings
+
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2)
     result["json"] = json_path
