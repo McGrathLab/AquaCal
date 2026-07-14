@@ -220,6 +220,12 @@ class CalibrationConfig:
         min_corners_per_frame: Minimum corners required to use a detection
         min_cameras_per_frame: Minimum cameras required to use a frame
         frame_step: Process every Nth frame (1 = all frames, default 1)
+        extrinsic_start_frame: First frame index (inclusive) to process in the
+            extrinsic-stage videos. Applied identically to every extrinsic camera
+            via a single synchronized frame iterator, so frame-index alignment
+            (video sync) is preserved. Use to skip contaminated frames at the
+            start of the extrinsic capture (e.g. board out of water / surface
+            ripples). Does NOT affect intrinsic calibration videos. Default 0.
         holdout_fraction: Fraction of frames to hold out for validation
         max_calibration_frames: Maximum number of frames for Stages 3-4 optimization.
             None (default) = use all calibration frames. When set, calibration frames
@@ -264,6 +270,7 @@ class CalibrationConfig:
     min_corners_per_frame: int = 8
     min_cameras_per_frame: int = 2
     frame_step: int = 1  # Process every Nth frame (1 = all frames)
+    extrinsic_start_frame: int = 0  # First frame index (inclusive) for extrinsic detection; skips contaminated start-of-video frames. Applied uniformly to all extrinsic cameras (sync-preserving). Does not affect intrinsic videos.
     holdout_fraction: float = (
         0.2  # Random selection; frames are held out entirely (not per-detection)
     )

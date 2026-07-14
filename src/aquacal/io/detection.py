@@ -143,6 +143,7 @@ def detect_all_frames(
     | None = None,
     min_corners: int = 4,
     frame_step: int = 1,
+    start_frame: int = 0,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> DetectionResult:
     """
@@ -163,6 +164,10 @@ def detect_all_frames(
                     Used for corner refinement. Cameras not in dict use None.
         min_corners: Minimum corners required to keep a detection (default 4)
         frame_step: Process every Nth frame (default 1 = all frames)
+        start_frame: First frame index (inclusive) to process (default 0). Applied
+                     identically to every camera through a single synchronized
+                     iterator, so cross-camera frame alignment is preserved. Use
+                     to skip contaminated frames at the start of a capture.
         progress_callback: Optional callback(current_frame, total_frames) called
                           after processing each frame
 
@@ -192,11 +197,13 @@ def detect_all_frames(
     try:
         camera_names = frame_source.camera_names
         total_frames = frame_source.frame_count
-        total_to_process = max(1, total_frames // frame_step)
+        total_to_process = max(1, (total_frames - start_frame) // frame_step)
         processed_count = 0
         frames: dict[int, FrameDetections] = {}
 
-        for frame_idx, frame_dict in frame_source.iterate_frames(step=frame_step):
+        for frame_idx, frame_dict in frame_source.iterate_frames(
+            start=start_frame, step=frame_step
+        ):
             processed_count += 1
             frame_detections: dict[str, Detection] = {}
 

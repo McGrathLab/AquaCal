@@ -605,6 +605,7 @@ def _generate_config_yaml(
             "  min_corners: 8         # Minimum corners per frame to use detection",
             "  min_cameras: 2         # Minimum cameras seeing board to use frame",
             "  frame_step: 5          # Process every Nth frame (1 = all frames)",
+            "  # start_frame: 0         # Skip first N frames of extrinsic videos (uniform across cameras; sync-preserving). Use to drop board-out-of-water/rippled start frames.",
             "",
             "validation:",
             "  holdout_fraction: 0.2  # Fraction of frames held out for validation",

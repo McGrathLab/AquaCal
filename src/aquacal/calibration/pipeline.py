@@ -368,6 +368,7 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     min_corners = det.get("min_corners", 8)
     min_cameras = det.get("min_cameras", 2)
     frame_step = det.get("frame_step", 1)
+    extrinsic_start_frame = int(det.get("start_frame", 0))
 
     # Camera model settings
     rational_model_cameras = data.get("rational_model_cameras", [])
@@ -409,6 +410,7 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         min_corners_per_frame=min_corners,
         min_cameras_per_frame=min_cameras,
         frame_step=frame_step,
+        extrinsic_start_frame=extrinsic_start_frame,
         holdout_fraction=holdout_fraction,
         max_calibration_frames=max_cal_frames,
         refine_intrinsics=refine_intrinsics,
@@ -664,7 +666,13 @@ def run_calibration_from_config(
             intrinsics={k: (v.K, v.dist_coeffs) for k, v in intrinsics.items()},
             min_corners=config.min_corners_per_frame,
             frame_step=config.frame_step,
+            start_frame=config.extrinsic_start_frame,
             progress_callback=_detection_progress,
+        )
+    if config.extrinsic_start_frame > 0:
+        print(
+            f"  Skipping first {config.extrinsic_start_frame} extrinsic frames "
+            f"(start_frame={config.extrinsic_start_frame}, applied uniformly to all cameras)"
         )
     usable_frames = all_detections.get_frames_with_min_cameras(
         config.min_cameras_per_frame

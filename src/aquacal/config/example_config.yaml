@@ -85,6 +85,11 @@ detection:
   min_corners: 8         # Minimum corners per frame to use detection
   min_cameras: 2         # Minimum cameras seeing board to use frame
   frame_step: 5          # Process every Nth frame (1 = all frames)
+  # start_frame: 0       # First frame index to process in EXTRINSIC videos.
+                         # Applied uniformly to all cameras (frame-index sync is
+                         # preserved). Use to skip contaminated start-of-video
+                         # frames (board out of water / surface ripples).
+                         # Does not affect intrinsic calibration videos.
 
 validation:
   holdout_fraction: 0.2  # Fraction of frames held out for validation
