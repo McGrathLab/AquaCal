@@ -16,6 +16,11 @@ import numpy as np
 import yaml
 
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
+from aquacal.calibration.frame_rejection import (
+    compute_per_frame_rms,
+    drop_frames,
+    identify_outlier_frames,
+)
 from aquacal.calibration.interface_estimation import (
     _compute_initial_board_poses,
     optimize_interface,
@@ -363,12 +368,18 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     max_cal_frames = int(max_cal_frames_raw) if max_cal_frames_raw is not None else None
     refine_intrinsics = opt.get("refine_intrinsics", False)
     refine_auxiliary_intrinsics = opt.get("refine_auxiliary_intrinsics", False)
+    reject_outlier_frames = bool(opt.get("reject_outlier_frames", True))
+    frame_rejection_k = float(opt.get("frame_rejection_k", 5.0))
+    frame_rejection_floor_px = float(opt.get("frame_rejection_floor_px", 5.0))
+    frame_rejection_max_fraction = float(opt.get("frame_rejection_max_fraction", 0.25))
     # Detection settings
     det = data.get("detection", {})
     min_corners = det.get("min_corners", 8)
     min_cameras = det.get("min_cameras", 2)
     frame_step = det.get("frame_step", 1)
     extrinsic_start_frame = int(det.get("start_frame", 0))
+    stop_frame_raw = det.get("stop_frame")
+    extrinsic_stop_frame = int(stop_frame_raw) if stop_frame_raw is not None else None
 
     # Camera model settings
     rational_model_cameras = data.get("rational_model_cameras", [])
@@ -411,10 +422,15 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         min_cameras_per_frame=min_cameras,
         frame_step=frame_step,
         extrinsic_start_frame=extrinsic_start_frame,
+        extrinsic_stop_frame=extrinsic_stop_frame,
         holdout_fraction=holdout_fraction,
         max_calibration_frames=max_cal_frames,
         refine_intrinsics=refine_intrinsics,
         refine_auxiliary_intrinsics=refine_auxiliary_intrinsics,
+        reject_outlier_frames=reject_outlier_frames,
+        frame_rejection_k=frame_rejection_k,
+        frame_rejection_floor_px=frame_rejection_floor_px,
+        frame_rejection_max_fraction=frame_rejection_max_fraction,
         save_detailed_residuals=save_detailed,
         initial_water_z=initial_water_z,
         rational_model_cameras=rational_model_cameras,
@@ -667,12 +683,18 @@ def run_calibration_from_config(
             min_corners=config.min_corners_per_frame,
             frame_step=config.frame_step,
             start_frame=config.extrinsic_start_frame,
+            stop_frame=config.extrinsic_stop_frame,
             progress_callback=_detection_progress,
         )
     if config.extrinsic_start_frame > 0:
         print(
             f"  Skipping first {config.extrinsic_start_frame} extrinsic frames "
             f"(start_frame={config.extrinsic_start_frame}, applied uniformly to all cameras)"
+        )
+    if config.extrinsic_stop_frame is not None:
+        print(
+            f"  Skipping extrinsic frames at/after index {config.extrinsic_stop_frame} "
+            f"(stop_frame={config.extrinsic_stop_frame}, applied uniformly to all cameras)"
         )
     usable_frames = all_detections.get_frames_with_min_cameras(
         config.min_cameras_per_frame
@@ -812,26 +834,128 @@ def run_calibration_from_config(
     # --- Stage 3: Interface Optimization ---
     print("\n[Stage 3] Interface and pose optimization...")
 
+    def _run_stage3(dets):
+        """Run Stage 3 interface optimization on the given detection set."""
+        return optimize_interface(
+            detections=dets,
+            intrinsics=primary_intrinsics,
+            initial_extrinsics=extrinsics,
+            board=board,
+            reference_camera=reference_camera,
+            initial_water_zs=config.initial_water_z,
+            interface_normal=interface_normal,
+            n_air=config.n_air,
+            n_water=config.n_water,
+            loss=config.robust_loss,
+            loss_scale=config.loss_scale,
+            min_corners=config.min_corners_per_frame,
+            verbose=2 if verbose else 1,
+            normal_fixed=config.interface_normal_fixed,
+        )
+
     t0 = time.perf_counter()
-    stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = optimize_interface(
-        detections=optim_detections,
-        intrinsics=primary_intrinsics,
-        initial_extrinsics=extrinsics,
-        board=board,
-        reference_camera=reference_camera,
-        initial_water_zs=config.initial_water_z,
-        interface_normal=interface_normal,
-        n_air=config.n_air,
-        n_water=config.n_water,
-        loss=config.robust_loss,
-        loss_scale=config.loss_scale,
-        min_corners=config.min_corners_per_frame,
-        verbose=2 if verbose else 1,
-        normal_fixed=config.interface_normal_fixed,
+    stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
+        optim_detections
     )
     elapsed = time.perf_counter() - t0
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
+
+    # --- Automatic per-frame outlier rejection (optional) ---
+    # A few catastrophically-bad frames (board out of water, ripples,
+    # mis-detections) inject large coherent residuals that a robust loss only
+    # partially suppresses, biasing the affected cameras' extrinsics. Identify
+    # them from per-frame RMS, drop them, and re-run Stage 3 once.
+    #
+    # IMPORTANT: the per-frame RMS must be computed against INDEPENDENTLY
+    # estimated board poses (per-frame PnP + 6-DOF refine with fixed cameras),
+    # NOT the jointly-optimized Stage-3 poses. A high-leverage outlier frame
+    # biases the shared extrinsics to fit ITSELF, so with the joint poses it
+    # hides with a low residual. An independent per-frame fit cannot reconcile a
+    # geometrically-inconsistent (e.g. near-surface) frame across cameras, so it
+    # surfaces at a large residual - the same quantity holdout validation reports.
+    frame_rejection_info = None
+    if config.reject_outlier_frames:
+        rej_initial_poses = _compute_initial_board_poses(
+            optim_detections,
+            primary_intrinsics,
+            stage3_extrinsics,
+            board,
+            config.min_corners_per_frame,
+            stage3_distances,
+            interface_normal,
+            config.n_air,
+            config.n_water,
+        )
+        rej_independent_poses = _estimate_validation_poses(
+            optim_detections,
+            rej_initial_poses,
+            primary_intrinsics,
+            stage3_extrinsics,
+            stage3_distances,
+            board,
+            interface_normal,
+            config.n_air,
+            config.n_water,
+        )
+        per_frame_rms = compute_per_frame_rms(
+            detections=optim_detections,
+            intrinsics=primary_intrinsics,
+            extrinsics=stage3_extrinsics,
+            distances=stage3_distances,
+            board_poses=list(rej_independent_poses.values()),
+            board=board,
+            interface_normal=interface_normal,
+            n_air=config.n_air,
+            n_water=config.n_water,
+        )
+        rejection = identify_outlier_frames(
+            per_frame_rms,
+            k=config.frame_rejection_k,
+            absolute_floor_px=config.frame_rejection_floor_px,
+            max_reject_fraction=config.frame_rejection_max_fraction,
+        )
+        frame_rejection_info = rejection.to_diagnostics_dict()
+
+        if rejection.guardrail_triggered:
+            n_flagged = sum(
+                1 for rms in per_frame_rms.values() if rms > rejection.threshold_px
+            )
+            print(
+                f"  [Frame Rejection] WARNING: {n_flagged}/{rejection.num_evaluated} "
+                f"frames exceed the outlier threshold ({rejection.threshold_px:.2f} px), "
+                f"more than the {config.frame_rejection_max_fraction:.0%} guardrail. "
+                f"Rejection SUPPRESSED - dataset may be broadly contaminated; "
+                f"review calibration inputs. Proceeding with all frames."
+            )
+        elif rejection.rejected_frames:
+            print(
+                f"  [Frame Rejection] Dropping {len(rejection.rejected_frames)} "
+                f"outlier frame(s) (RMS > {rejection.threshold_px:.2f} px, "
+                f"median={rejection.median_rms_px:.2f} px): "
+                f"{rejection.rejected_frames}"
+            )
+            optim_detections = drop_frames(optim_detections, rejection.rejected_frames)
+            print(
+                f"  [Frame Rejection] Re-running Stage 3 on "
+                f"{len(optim_detections.frames)} cleaned frames..."
+            )
+            t0 = time.perf_counter()
+            stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
+                optim_detections
+            )
+            elapsed = time.perf_counter() - t0
+            timings["stage3_interface_optimization"] += elapsed
+            print(
+                f"  Stage 3 RMS (after rejection): {stage3_rms:.3f} pixels "
+                f"({elapsed:.1f}s)"
+            )
+        else:
+            print(
+                f"  [Frame Rejection] No outlier frames "
+                f"(median={rejection.median_rms_px:.2f} px, "
+                f"threshold={rejection.threshold_px:.2f} px). No frames dropped."
+            )
 
     if not config.interface_normal_fixed:
         ref_R = stage3_extrinsics[reference_camera].R
@@ -1139,6 +1263,7 @@ def run_calibration_from_config(
         save_images=True,
         auxiliary_reprojection=aux_reproj,
         timings=timings_payload,
+        frame_rejection=frame_rejection_info,
     )
     print(f"  Saved diagnostics to {config.output_dir}")
 

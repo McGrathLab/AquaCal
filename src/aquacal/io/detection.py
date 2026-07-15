@@ -144,6 +144,7 @@ def detect_all_frames(
     min_corners: int = 4,
     frame_step: int = 1,
     start_frame: int = 0,
+    stop_frame: int | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> DetectionResult:
     """
@@ -168,6 +169,11 @@ def detect_all_frames(
                      identically to every camera through a single synchronized
                      iterator, so cross-camera frame alignment is preserved. Use
                      to skip contaminated frames at the start of a capture.
+        stop_frame: Frame index (exclusive) to stop processing at (default None =
+                    process to the end). Applied identically to every camera
+                    through the same synchronized iterator, so cross-camera frame
+                    alignment is preserved. Use to skip contaminated frames at the
+                    end of a capture (e.g. the board leaving the water).
         progress_callback: Optional callback(current_frame, total_frames) called
                           after processing each frame
 
@@ -197,12 +203,15 @@ def detect_all_frames(
     try:
         camera_names = frame_source.camera_names
         total_frames = frame_source.frame_count
-        total_to_process = max(1, (total_frames - start_frame) // frame_step)
+        effective_stop = (
+            total_frames if stop_frame is None else min(stop_frame, total_frames)
+        )
+        total_to_process = max(1, (effective_stop - start_frame) // frame_step)
         processed_count = 0
         frames: dict[int, FrameDetections] = {}
 
         for frame_idx, frame_dict in frame_source.iterate_frames(
-            start=start_frame, step=frame_step
+            start=start_frame, stop=stop_frame, step=frame_step
         ):
             processed_count += 1
             frame_detections: dict[str, Detection] = {}

@@ -429,6 +429,32 @@ class TestLoadConfig:
 
         assert config.frame_step == 1
 
+    def test_load_config_with_start_and_stop_frame(self, valid_config_yaml):
+        """Test loading config with detection.start_frame and stop_frame."""
+        valid_config_yaml["detection"]["start_frame"] = 600
+        valid_config_yaml["detection"]["stop_frame"] = 2400
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.extrinsic_start_frame == 600
+        assert config.extrinsic_stop_frame == 2400
+
+    def test_load_config_start_and_stop_frame_defaults(self, valid_config_yaml):
+        """Without start_frame/stop_frame, defaults are 0 and None."""
+        valid_config_yaml["detection"].pop("start_frame", None)
+        valid_config_yaml["detection"].pop("stop_frame", None)
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.extrinsic_start_frame == 0
+        assert config.extrinsic_stop_frame is None
+
     def test_load_config_with_legacy_pattern_true(self, valid_config_yaml):
         """Test loading config with legacy_pattern: true."""
         valid_config_yaml["board"]["legacy_pattern"] = True

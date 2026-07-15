@@ -849,6 +849,7 @@ def save_diagnostic_report(
     save_images: bool = True,
     auxiliary_reprojection: ReprojectionErrors | None = None,
     timings: dict[str, object] | None = None,
+    frame_rejection: dict[str, object] | None = None,
 ) -> dict[str, Path]:
     """
     Save diagnostic report to disk.
@@ -870,6 +871,10 @@ def save_diagnostic_report(
         timings: Optional pre-shaped timings payload (e.g.,
             ``{"seconds_per_stage": {...}, "total_seconds": 123.4}``) to embed
             under the top-level ``"timings"`` key in ``diagnostics.json``.
+            When ``None``, the key is omitted (backward compatible).
+        frame_rejection: Optional automatic per-frame outlier-rejection summary
+            (e.g. ``{"enabled": True, "rejected_frames": [...], ...}``) to embed
+            under the top-level ``"frame_rejection"`` key in ``diagnostics.json``.
             When ``None``, the key is omitted (backward compatible).
 
     Returns:
@@ -927,6 +932,10 @@ def save_diagnostic_report(
     # Add per-stage wall-clock timings if provided
     if timings is not None:
         json_data["timings"] = timings
+
+    # Add automatic frame-rejection summary if provided
+    if frame_rejection is not None:
+        json_data["frame_rejection"] = frame_rejection
 
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2)

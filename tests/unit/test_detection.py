@@ -188,6 +188,45 @@ class TestDetectAllFrames:
         expected = {0, 2, 4, 6, 8}
         assert processed_indices.issubset(expected)
 
+    def test_start_frame(self, board, test_videos_with_charuco):
+        """Respects start_frame: no frame index below start_frame is processed."""
+        result = detect_all_frames(test_videos_with_charuco, board, start_frame=4)
+
+        processed_indices = set(result.frames.keys())
+        # 10-frame videos; frames 0-3 skipped, 4-9 processed.
+        assert processed_indices.issubset({4, 5, 6, 7, 8, 9})
+        assert all(idx >= 4 for idx in processed_indices)
+
+    def test_stop_frame(self, board, test_videos_with_charuco):
+        """Respects stop_frame (exclusive): no frame index >= stop_frame is processed."""
+        result = detect_all_frames(test_videos_with_charuco, board, stop_frame=6)
+
+        processed_indices = set(result.frames.keys())
+        # 10-frame videos; frames 0-5 processed, 6-9 skipped (stop is exclusive).
+        assert processed_indices.issubset({0, 1, 2, 3, 4, 5})
+        assert all(idx < 6 for idx in processed_indices)
+
+    def test_start_and_stop_frame_window(self, board, test_videos_with_charuco):
+        """start_frame and stop_frame together restrict to a [start, stop) window."""
+        result = detect_all_frames(
+            test_videos_with_charuco, board, start_frame=3, stop_frame=7
+        )
+
+        processed_indices = set(result.frames.keys())
+        assert processed_indices.issubset({3, 4, 5, 6})
+        assert all(3 <= idx < 7 for idx in processed_indices)
+
+    def test_stop_frame_none_processes_to_end(self, board, test_videos_with_charuco):
+        """stop_frame=None (default) processes through the final frame."""
+        result_default = detect_all_frames(test_videos_with_charuco, board)
+        result_explicit_none = detect_all_frames(
+            test_videos_with_charuco, board, stop_frame=None
+        )
+
+        assert set(result_default.frames.keys()) == set(
+            result_explicit_none.frames.keys()
+        )
+
     def test_min_corners_filtering(self, board, test_videos_with_charuco):
         """Filters detections by min_corners."""
         # With very high min_corners, might get fewer results

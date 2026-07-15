@@ -8,6 +8,12 @@ from aquacal.calibration.extrinsics import (
     estimate_extrinsics,
     refractive_solve_pnp,
 )
+from aquacal.calibration.frame_rejection import (
+    FrameRejectionResult,
+    compute_per_frame_rms,
+    drop_frames,
+    identify_outlier_frames,
+)
 from aquacal.calibration.interface_estimation import (
     optimize_interface,
 )
@@ -40,6 +46,11 @@ __all__ = [
     "estimate_extrinsics",
     # interface_estimation
     "optimize_interface",
+    # frame rejection
+    "FrameRejectionResult",
+    "compute_per_frame_rms",
+    "identify_outlier_frames",
+    "drop_frames",
     # refinement
     "joint_refinement",
     # point refinement

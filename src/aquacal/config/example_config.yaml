@@ -80,6 +80,15 @@ optimization:
   # refine_auxiliary_intrinsics: false  # Stage 4b: also optimize auxiliary camera
                                          # focal lengths and principal points.
                                          # Requires auxiliary_cameras to be set.
+  # reject_outlier_frames: true  # After Stage 3, auto-drop frames whose per-frame
+                                 # reprojection RMS is a catastrophic outlier, then
+                                 # re-run Stage 3 on the cleaned set. No-op on clean
+                                 # data. Catches board-out-of-water / rippled /
+                                 # mis-detected frames anywhere in the capture.
+  # frame_rejection_k: 5.0         # Reject if per-frame RMS > k * median per-frame RMS
+  # frame_rejection_floor_px: 5.0  # ...and only if RMS also exceeds this pixel floor
+  # frame_rejection_max_fraction: 0.25  # Guardrail: if more than this fraction would
+                                        # be dropped, suppress rejection and warn.
 
 detection:
   min_corners: 8         # Minimum corners per frame to use detection
@@ -89,6 +98,11 @@ detection:
                          # Applied uniformly to all cameras (frame-index sync is
                          # preserved). Use to skip contaminated start-of-video
                          # frames (board out of water / surface ripples).
+                         # Does not affect intrinsic calibration videos.
+  # stop_frame: null     # Frame index (exclusive) to stop at in EXTRINSIC videos.
+                         # Applied uniformly to all cameras (frame-index sync is
+                         # preserved). Use to skip contaminated end-of-video
+                         # frames (board leaving the water). null = to the end.
                          # Does not affect intrinsic calibration videos.
 
 validation:

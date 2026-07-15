@@ -226,6 +226,12 @@ class CalibrationConfig:
             (video sync) is preserved. Use to skip contaminated frames at the
             start of the extrinsic capture (e.g. board out of water / surface
             ripples). Does NOT affect intrinsic calibration videos. Default 0.
+        extrinsic_stop_frame: Frame index (exclusive) to stop processing at in the
+            extrinsic-stage videos. Applied identically to every extrinsic camera
+            via the same synchronized frame iterator, so frame-index alignment
+            (video sync) is preserved. Use to skip contaminated frames at the end
+            of the extrinsic capture (e.g. the board leaving the water). Does NOT
+            affect intrinsic calibration videos. Default None (process to the end).
         holdout_fraction: Fraction of frames to hold out for validation
         max_calibration_frames: Maximum number of frames for Stages 3-4 optimization.
             None (default) = use all calibration frames. When set, calibration frames
@@ -254,6 +260,22 @@ class CalibrationConfig:
             auxiliary_cameras to be set. Independent of refine_intrinsics (which
             controls primary camera refinement in Stage 4). Distortion coefficients
             are NOT refined.
+        reject_outlier_frames: If True (default), after Stage 3 the pipeline
+            computes per-frame reprojection RMS and drops frames whose RMS is a
+            catastrophic outlier, then re-runs Stage 3 on the cleaned set before
+            Stage 4. This is a no-op on already-clean data (see thresholds below),
+            so the default only affects datasets with genuinely bad frames (e.g.
+            board out of water / surface ripples / mis-detections).
+        frame_rejection_k: Relative multiplier on the median per-frame RMS used to
+            flag outliers; a frame is rejected if RMS > k * median (and also above
+            the absolute floor). Default 5.0.
+        frame_rejection_floor_px: Absolute minimum RMS in pixels a frame must
+            exceed to be eligible for rejection, regardless of the relative bound.
+            Prevents over-rejection when the median RMS is tiny. Default 5.0.
+        frame_rejection_max_fraction: Guardrail. If the fraction of frames that
+            would be rejected exceeds this, rejection is suppressed entirely and a
+            warning is emitted, so a broadly-broken dataset surfaces loudly rather
+            than being silently gutted. Default 0.25.
     """
 
     board: BoardConfig
@@ -271,12 +293,21 @@ class CalibrationConfig:
     min_cameras_per_frame: int = 2
     frame_step: int = 1  # Process every Nth frame (1 = all frames)
     extrinsic_start_frame: int = 0  # First frame index (inclusive) for extrinsic detection; skips contaminated start-of-video frames. Applied uniformly to all extrinsic cameras (sync-preserving). Does not affect intrinsic videos.
+    extrinsic_stop_frame: int | None = (
+        None  # Frame index (exclusive) to stop extrinsic detection at; skips contaminated end-of-video frames. None = process to the end. Applied uniformly to all extrinsic cameras (sync-preserving). Does not affect intrinsic videos.
+    )
     holdout_fraction: float = (
         0.2  # Random selection; frames are held out entirely (not per-detection)
     )
     max_calibration_frames: int | None = None  # None = no limit, use all frames
     refine_intrinsics: bool = False
     refine_auxiliary_intrinsics: bool = False  # If True, Stage 4b refines auxiliary camera intrinsics (fx, fy, cx, cy) alongside extrinsics. Requires auxiliary_cameras to be set. Independent of refine_intrinsics (which controls primary camera refinement in Stage 4). Distortion coefficients are NOT refined.
+    reject_outlier_frames: bool = True  # After Stage 3, drop catastrophic-outlier frames and re-optimize. No-op on clean data (see thresholds). Guards against board-out-of-water/rippled/mis-detected frames biasing extrinsics.
+    frame_rejection_k: float = (
+        5.0  # Reject frames with per-frame RMS > k * median per-frame RMS.
+    )
+    frame_rejection_floor_px: float = 5.0  # ...and only if RMS also exceeds this absolute pixel floor (prevents over-rejection on clean, low-median datasets).
+    frame_rejection_max_fraction: float = 0.25  # Guardrail: if more than this fraction would be rejected, suppress rejection and warn (dataset likely broadly broken).
     save_detailed_residuals: bool = True
     initial_water_z: dict[str, float] | None = None
     rational_model_cameras: list[str] = field(default_factory=list)
