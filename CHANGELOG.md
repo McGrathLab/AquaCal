@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.7.0 (2026-07-15)
+
+### Documentation
+
+- **planning**: Add rig-tilt debug session and inbox notes
+  ([`a87f28f`](https://github.com/McGrathLab/AquaCal/commit/a87f28f17d9caea7364fbd6f9a13b99076d88ede))
+
+- **troubleshooting**: Explain weakly-observable camera layout
+  ([`ed500c2`](https://github.com/McGrathLab/AquaCal/commit/ed500c2bd1ba688adcb7647dc65de3eb6b2967ea))
+
+### Features
+
+- Add outlier-frame rejection and detection.stop_frame
+  ([`e4be63a`](https://github.com/McGrathLab/AquaCal/commit/e4be63a971cb185ee8c2ec1efd786889fe6c548c))
+
+- **detection**: Add detection.start_frame to skip leading extrinsic frames
+  ([`9f3ccf5`](https://github.com/McGrathLab/AquaCal/commit/9f3ccf51f53795dbe888a3f3c7e059faf68686b1))
+
+
 ## v1.6.0 (2026-05-05)
 
 ### Continuous Integration
