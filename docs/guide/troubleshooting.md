@@ -100,6 +100,72 @@ Ensure the final water_z value is within the optimization bounds `[0.01, 2.0]` m
 
 ---
 
+(camera-layout-looks-wrong)=
+## Camera Layout Looks Wrong Despite Low Errors
+
+**Problem:** The recovered camera positions look physically implausible — most often the cameras appear *out of plane* (their heights/depths scatter by centimeters, or the whole rig looks tilted) by much more than your real mounting could account for — yet Stage 3/4 reprojection RMS is low **and** 3D validation error is small.
+
+**Why it happens:** Low reprojection error only certifies that your parameters are self-consistent in the directions the data actually *constrains*. It does **not** certify that every camera parameter was independently measured. In a downward-looking refractive array, the **out-of-plane arrangement of the cameras (their depth/height along the viewing axis) is only weakly observable**, so large deviations there cost almost nothing in residual. The optimizer isn't wrong; it is sliding freely along a "soft" direction the geometry barely pins down. Concretely, that direction is soft because:
+
+- **Cameras measure bearings, not range.** Each corner tightly fixes the *direction* to a point but only weakly its *depth*. Depth separation between cameras comes from cross-camera parallax plus the known board scale — and for a top-down array over a limited board-depth range, the parallax that would separate camera *heights* is thin.
+- **Small height spread vs. working distance.** If the cameras span, say, ~10 cm in height but sit ~1 m from the board, height differences barely move where corners land — poor signal-to-noise on exactly that coordinate.
+- **Refraction supplies compensating degrees of freedom.** Each camera's `interface_distance` equals `water_z − C_z`, so a camera's height and its interface distance trade off almost exactly; the free per-frame board poses absorb the rest. A camera placed too high can produce nearly the same refracted rays as a correctly-placed one — at ~zero reprojection cost. (The axial camera-to-interface distance being weakly observable is a known property of flat-refractive calibration.)
+
+Because these modes are so soft, ordinary sub-pixel detection noise and small unmodeled effects get *amplified* into centimeter-scale scatter in the recovered layout. **Low error ≠ faithful metric camera layout.**
+
+**When NOT to worry (the common case):**
+- Stage 3/4 RMS is low **and** the holdout 3D validation error is small, **and**
+- you use the calibration for **triangulation/reconstruction within the captured volume**.
+
+The soft-mode deformation is self-consistent, so it preserves ray geometry — including for held-out points — which is exactly why 3D validation stays accurate even when the drawn camera positions look off. For reconstruction, this calibration is fine.
+
+**When to actually worry:**
+- **You need the metric camera layout itself** (e.g. reporting inter-camera distances, comparing against a CAD/survey of the rig, or feeding poses to another system). Then don't trust the out-of-plane numbers until you've excited that mode (see below) — a low RMS alone won't tell you they're right.
+- **The apparent misarrangement comes *with* elevated or bimodal errors** — e.g. a few cameras at 10–15 px while the rest are ~1–2 px, or validation 3D error that is also high. That is not benign soft-mode wander; it is **bias**, usually from contaminated frames (board at/above the surface, ripples, mis-detections) that inject a coherent error along the same soft direction. See {ref}`Contaminated Frames <contaminated-frames>` below.
+- **The layout changes substantially run-to-run or when you change the frame subset.** Large sensitivity to which frames you use is a direct symptom of an under-excited soft mode.
+
+**What to do (to make the layout trustworthy):**
+1. **Excite the weak direction.** Present the board across a **wide depth range** and with **strong tilts**, and get corners out toward the **image edges** (larger incidence angles carry more refractive-geometry information). Ensure frames with genuine cross-camera parallax.
+2. **Add what you know as a prior.** Provide measured `initial_water_z` per camera; if the mounting plane is known, that constrains heights.
+3. **Remove bias first.** Trim contaminated segments with `detection.start_frame` / `detection.stop_frame` and keep automatic `reject_outlier_frames` on, so a biased soft-mode tilt isn't mistaken for real geometry.
+
+For the underlying theory, see the [Refractive Geometry](refractive_geometry.md) and [Optimizer Pipeline](optimizer.md) guides.
+
+---
+
+(contaminated-frames)=
+## Contaminated Frames (Board Near the Surface, Ripples)
+
+**Problem:** A subset of cameras show much higher reprojection RMS than the rest (e.g. 10–15 px vs. 1–2 px), and/or the rig looks tilted — typically the cameras physically nearest where the board enters the water.
+
+**Why it happens:** Frames where the ChArUco board is at or above the water surface, or where the surface is rippled, violate the flat-interface refraction model. Near the surface, refractive projection is extremely sensitive to geometry, so these frames produce large, spatially-coherent residuals that a robust loss only partially suppresses. Their leverage biases the extrinsics of nearby cameras — and, because the bias lies along the weakly-observed out-of-plane direction (see {ref}`Camera Layout Looks Wrong <camera-layout-looks-wrong>`), it can tilt the rig while barely raising overall RMS. Such segments are common at the **start** (board being lowered in) and **end** (board lifted out) of a capture.
+
+**Solutions:**
+
+### 1. Trim contaminated start/end segments
+If the board is out of the water or the surface is settling at the start (or end) of the extrinsic capture, skip those frames. These apply uniformly across all cameras, preserving frame-index (video) synchronization, and affect only the extrinsic stage:
+```yaml
+detection:
+  start_frame: 600   # Skip the first N frames (board entering / ripples settling)
+  stop_frame: 5400   # Stop at frame N, exclusive (board being lifted out)
+```
+
+### 2. Keep automatic outlier-frame rejection on
+By default (`reject_outlier_frames: true`), after Stage 3 the pipeline scores each frame by its reprojection RMS against **independently estimated** per-frame board poses, drops catastrophic outliers, and re-optimizes once. This is a no-op on clean data. It reliably catches *discrete* bad frames anywhere in the capture; a guardrail suppresses rejection (and warns) if more than `frame_rejection_max_fraction` of frames would be dropped, so a broadly-contaminated dataset surfaces loudly instead of being silently gutted. Tune with:
+```yaml
+optimization:
+  reject_outlier_frames: true
+  frame_rejection_k: 5.0             # Reject if RMS > k × median RMS ...
+  frame_rejection_floor_px: 5.0      # ... and above this absolute pixel floor
+  frame_rejection_max_fraction: 0.25 # Guardrail
+```
+
+> **Note:** Automatic rejection catches *discrete catastrophic* frames well, but a *contiguous segment of mildly* contaminated frames (each only a few pixels off) may not exceed any safe threshold. For those, prefer trimming by `start_frame` / `stop_frame` — position in the capture is the meaningful signal. The best fix is a clean capture: keep the board fully submerged and the surface calm while collecting extrinsic frames.
+
+Check the `frame_rejection` block in `diagnostics.json` to see what was flagged and why.
+
+---
+
 (camera-models-and-overfitting)=
 ## Camera Models and Overfitting
 
