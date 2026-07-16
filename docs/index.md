@@ -1,7 +1,7 @@
 # AquaCal Documentation
 
-[![Build Status](https://github.com/tlancaster6/AquaCal/actions/workflows/test.yml/badge.svg)](https://github.com/tlancaster6/AquaCal/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/tlancaster6/AquaCal/branch/main/graph/badge.svg)](https://codecov.io/gh/tlancaster6/AquaCal)
+[![Build Status](https://github.com/McGrathLab/AquaCal/actions/workflows/test.yml/badge.svg)](https://github.com/McGrathLab/AquaCal/actions/workflows/test.yml)
+[![Coverage](https://codecov.io/gh/McGrathLab/AquaCal/branch/main/graph/badge.svg)](https://codecov.io/gh/McGrathLab/AquaCal)
 [![PyPI version](https://badge.fury.io/py/aquacal.svg)](https://badge.fury.io/py/aquacal)
 [![Python](https://img.shields.io/pypi/pyversions/aquacal.svg)](https://pypi.org/project/aquacal/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

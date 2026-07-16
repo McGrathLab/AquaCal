@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+from importlib.metadata import version as _get_version
 from pathlib import Path
 
 # Add project source to path for autodoc
@@ -9,9 +10,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Project information
 project = "AquaCal"
-copyright = "2024, Tucker Lancaster"
+copyright = "2026-present, AquaCal Contributors"
 author = "Tucker Lancaster"
-release = "1.0.3"
+release = _get_version("aquacal")
 
 # Extensions
 extensions = [

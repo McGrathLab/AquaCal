@@ -5,7 +5,7 @@ type: software
 authors:
   - given-names: Tucker
     family-names: Lancaster
-repository-code: "https://github.com/tlancaster6/AquaCal"
+repository-code: "https://github.com/McGrathLab/AquaCal"
 license: MIT
 keywords:
   - calibration
@@ -15,5 +15,5 @@ keywords:
   - computer-vision
   - snell-law
 doi: "10.5281/zenodo.18644658"
-version: 1.2.0
-date-released: "2026-02-14"
+version: 1.7.0
+date-released: "2026-07-15"
