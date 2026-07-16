@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.7.1 (2026-07-16)
+
+### Bug Fixes
+
+- **metadata**: Correct stale package metadata, URLs, and version references
+  ([`0ba9f96`](https://github.com/McGrathLab/AquaCal/commit/0ba9f968ed07daf4c0acdf8c3337389230829947))
+
+
 ## v1.7.0 (2026-07-15)
 
 ### Documentation
