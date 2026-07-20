@@ -2,6 +2,36 @@
 
 <!-- version list -->
 
+## v1.8.0 (2026-07-20)
+
+### Documentation
+
+- Refresh commit hash references after rebase onto v1.7.1
+  ([`0fbcbb2`](https://github.com/McGrathLab/AquaCal/commit/0fbcbb28b6e8576cfa9f5a713c7799bf5847ccac))
+
+- **debug**: Close out callibration071626 and rig-tilt debug sessions
+  ([`2dd0cff`](https://github.com/McGrathLab/AquaCal/commit/2dd0cff5c17d7e443fd388bcbd8c00da0f522cf7))
+
+- **quick-2**: Complete reject_outlier_frames config discoverability task
+  ([`00dc76a`](https://github.com/McGrathLab/AquaCal/commit/00dc76a0b7a62ac4976a01839aae826d319b7d3f))
+
+- **quick-2**: Record quick task 2 in STATE.md
+  ([`0ebbe28`](https://github.com/McGrathLab/AquaCal/commit/0ebbe28977e3149278a3261f0040d532c4b69696))
+
+### Features
+
+- **config**: Emit reject_outlier_frames as an active line in generated configs
+  ([`8b6eb0d`](https://github.com/McGrathLab/AquaCal/commit/8b6eb0d46a782e65204610b0cc10a90cf44de480))
+
+- **intrinsics**: Seed calibration and warn on fronto-parallel board views
+  ([`16fd84f`](https://github.com/McGrathLab/AquaCal/commit/16fd84f111f8c0aba8fe4a67894e7401aeed69d2))
+
+### Testing
+
+- **cli**: Assert generated config exposes reject_outlier_frames as True
+  ([`5222a57`](https://github.com/McGrathLab/AquaCal/commit/5222a5790d410e867b8c16f1da4bffac9825266b))
+
+
 ## v1.7.1 (2026-07-16)
 
 ### Bug Fixes
