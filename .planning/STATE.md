@@ -46,6 +46,12 @@ Key v1.6 decisions:
 
 None.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 7cb8715 | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
+
 ## Session Continuity
 
 Last session: 2026-07-20
