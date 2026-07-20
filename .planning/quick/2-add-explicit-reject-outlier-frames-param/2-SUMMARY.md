@@ -82,8 +82,8 @@ None - plan executed exactly as written.
 
 | Task | Commit | Message |
 | ---- | ------ | ------- |
-| 1 | `7cb8715` | `feat(config): emit reject_outlier_frames as an active line in generated configs` |
-| 2 | `9a7a845` | `test(cli): assert generated config exposes reject_outlier_frames as True` |
+| 1 | `8b6eb0d` | `feat(config): emit reject_outlier_frames as an active line in generated configs` |
+| 2 | `5222a57` | `test(cli): assert generated config exposes reject_outlier_frames as True` |
 
 The `feat:` subject on Task 1 ensures python-semantic-release generates the changelog entry on the next release. CHANGELOG.md and version files were not hand-edited.
 
@@ -102,5 +102,5 @@ Exactly the three intended files.
 - `src/aquacal/cli.py` — FOUND, contains active `reject_outlier_frames: true`
 - `src/aquacal/config/example_config.yaml` — FOUND, parses to `True`
 - `tests/unit/test_cli.py` — FOUND, contains parsed-YAML assertion
-- Commit `7cb8715` — FOUND
-- Commit `9a7a845` — FOUND
+- Commit `8b6eb0d` — FOUND
+- Commit `5222a57` — FOUND

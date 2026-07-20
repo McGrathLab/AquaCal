@@ -57,7 +57,7 @@ None.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 7cb8715 | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
+| 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 8b6eb0d | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
 
 ## Session Continuity
 
@@ -65,5 +65,5 @@ Last session: 2026-07-20
 Stopped at: Resolved debug session callibration071626-tilt-high-reproj (Stage 1
   intrinsics local minimum on camera e3v82e0; fixed by seeding cv2.calibrateCamera,
   verified end-to-end: rig RMS 4.789 -> 1.627 px). Added validate_view_diversity()
-  Stage 1 check for fronto-parallel board captures. Commit ad30a75.
+  Stage 1 check for fronto-parallel board captures. Commit 16fd84f.
 Resume file: None

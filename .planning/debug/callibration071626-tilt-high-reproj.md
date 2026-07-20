@@ -9,7 +9,7 @@ updated: 2026-07-20T01:00:00Z
 
 status: RESOLVED. Root cause fixed and confirmed end-to-end by a full 4-stage re-run
 (overall RMS 4.789 -> 1.627 px, e3v82e0 15.51 -> 1.44 px, rig planar). Committed as
-ad30a75 together with a new `validate_view_diversity()` Stage 1 check. See
+16fd84f together with a new `validate_view_diversity()` Stage 1 check. See
 "End-to-end verification" below.
 next_action: None. One unrelated follow-up remains outside this session's scope: user
 will recapture e3v83ef's in-air intrinsic video with deliberate board tilting (see
@@ -84,7 +84,7 @@ verification: PARTIAL - scoped verification complete, full end-to-end verificati
 files_changed:
   - src/aquacal/calibration/intrinsics.py (calibrate_intrinsics_single: seed cv2.calibrateCamera with a generic CALIB_USE_INTRINSIC_GUESS instead of no guess, for both the primary call and the k3/k2 fallback retries)
 
-## End-to-end verification (2026-07-20, commit ad30a75)
+## End-to-end verification (2026-07-20, commit 16fd84f)
 
 Full 4-stage pipeline re-run on the real dataset with the fix. Pre-fix artifacts
 preserved at `C:/Users/tucke/Desktop/callibration071626/output_before_intrinsics_fix/`
@@ -128,7 +128,7 @@ frame_step, e3v83ef yielded only 30 usable views spanning 1.1-11.5 deg of board 
 peers. Fronto-parallel views leave fx degenerate with board distance.
 
 This is NOT a code defect -- it is a data-collection deficiency. Resolution:
-  1. `validate_view_diversity()` added (commit ad30a75) so this warns at Stage 1
+  1. `validate_view_diversity()` added (commit 16fd84f) so this warns at Stage 1
      instead of silently displacing a camera. Warns when 90th-pct tilt < 15 deg;
      cleanly separates e3v83ef (7.2) from all correct cameras (19.6-29.7).
   2. User will recapture e3v83ef's in-air video with deliberate board tilting.
