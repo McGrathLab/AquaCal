@@ -571,6 +571,8 @@ class TestCmdInit:
         assert config["interface"]["normal_fixed"] is False
         assert config["optimization"]["robust_loss"] == "huber"
         assert config["optimization"]["loss_scale"] == 1.0
+        # Active (uncommented) line: parsing proves it is not just present in text
+        assert config["optimization"]["reject_outlier_frames"] is True
         assert config["detection"]["min_corners"] == 8
         assert config["detection"]["min_cameras"] == 2
         assert config["validation"]["holdout_fraction"] == 0.2
