@@ -48,6 +48,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-09
-Stopped at: Completed v1.6 milestone
+Last session: 2026-07-20
+Stopped at: Completed quick task 2 (reject_outlier_frames config discoverability)
 Resume file: None
