@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: resolved
 trigger: "callibration071626-tilt-high-reproj: calibration produces tilted/implausible rig with elevated reprojection error; camera e3v82e0 is a dramatic outlier"
 created: 2026-07-20T00:00:00Z
 updated: 2026-07-20T01:00:00Z
@@ -7,8 +7,13 @@ updated: 2026-07-20T01:00:00Z
 
 ## Current Focus
 
-status: FIX APPLIED AND SCOPE-VERIFIED (Stage 1+2 only). Awaiting human decision on whether to run the full ~87min pipeline for final end-to-end confirmation before archiving.
-next_action: Present CHECKPOINT to user - offer to kick off full pipeline re-run in background, or let user do it, to get final Stage3/4 RMS numbers. Do not archive until either (a) full run confirms, or (b) user explicitly accepts the scoped verification as sufficient.
+status: RESOLVED. Root cause fixed and confirmed end-to-end by a full 4-stage re-run
+(overall RMS 4.789 -> 1.627 px, e3v82e0 15.51 -> 1.44 px, rig planar). Committed as
+ad30a75 together with a new `validate_view_diversity()` Stage 1 check. See
+"End-to-end verification" below.
+next_action: None. One unrelated follow-up remains outside this session's scope: user
+will recapture e3v83ef's in-air intrinsic video with deliberate board tilting (see
+"Follow-up finding" below) -- a data-collection issue, not a code defect.
 
 ## Symptoms
 
@@ -78,3 +83,67 @@ verification: PARTIAL - scoped verification complete, full end-to-end verificati
   - NOT YET DONE: full pipeline re-run (Stage 3/4 + final diagnostics/reprojection RMS/camera_rig.png) to confirm the final per-camera RMS and rig visualization are fixed end-to-end. This is the ~87-minute run the user flagged as expensive; deferred pending user decision on whether/how to run it (foreground, background, or reduced `max_calibration_frames`).
 files_changed:
   - src/aquacal/calibration/intrinsics.py (calibrate_intrinsics_single: seed cv2.calibrateCamera with a generic CALIB_USE_INTRINSIC_GUESS instead of no guess, for both the primary call and the k3/k2 fallback retries)
+
+## End-to-end verification (2026-07-20, commit ad30a75)
+
+Full 4-stage pipeline re-run on the real dataset with the fix. Pre-fix artifacts
+preserved at `C:/Users/tucke/Desktop/callibration071626/output_before_intrinsics_fix/`
+for comparison.
+
+| metric | before | after |
+|---|---|---|
+| e3v82e0 per-camera RMS | 15.51 px | 1.44 px |
+| e3v82e0 camera height | 3.060 m | 1.015 m |
+| overall primary RMS | 4.789 px | 1.627 px |
+| camera height spread | 2200.8 mm | 167.1 mm |
+| 3D error (MAE / % of square) | 0.90 mm / 1.51% | 0.49 mm / 0.81% |
+| camera_rig.png | tilted | planar |
+| runtime | 87 min | 48 min |
+
+All four acceptance criteria met. Runtime nearly halved because Stage 3 converges
+cleanly (3910s -> 1541s) and no post-rejection re-run was needed.
+
+### Prior-art hypothesis definitively ruled out
+
+`.planning/debug/rig-tilt-high-reproj.md` (the Calibration_Emily session) suggested
+diffuse near-surface frame contamination as the likely cause, since this dataset sets
+no `start_frame`/`stop_frame`. That was wrong for this dataset. Median per-frame RMS
+fell 3.457 -> 1.614 px, landing on the clean-data reference, and the auto-rejecter
+dropped ZERO frames post-fix (vs 1 before). The elevated median was a CONSEQUENCE of
+one poisoned camera dragging the joint solve, not contamination. There was never
+contamination here to remove.
+
+## Follow-up finding: e3v83ef (separate, milder, NOT the same root cause)
+
+The one remaining anomaly. e3v83ef solves at height 0.858 m (peers 0.99-1.03) with
+2.87 px RMS, unchanged by the seeding fix (its intrinsics are bit-identical before
+and after). Root cause is different: fx = 1367.9 against ~1578 for its eleven
+identical-lens peers (user confirmed only the auxiliary e3v8250 has a different
+lens). A 13% fx deficit maps directly onto the ~15 cm height offset, since PnP
+distance scales linearly with fx.
+
+Why fx is wrong: its in-air video is degenerate. Measured at the pipeline's
+frame_step, e3v83ef yielded only 30 usable views spanning 1.1-11.5 deg of board tilt
+(90th pct 7.2), versus 71-77 views spanning 1.6-33.2 deg (90th pct 19.6-29.7) for
+peers. Fronto-parallel views leave fx degenerate with board distance.
+
+This is NOT a code defect -- it is a data-collection deficiency. Resolution:
+  1. `validate_view_diversity()` added (commit ad30a75) so this warns at Stage 1
+     instead of silently displacing a camera. Warns when 90th-pct tilt < 15 deg;
+     cleanly separates e3v83ef (7.2) from all correct cameras (19.6-29.7).
+  2. User will recapture e3v83ef's in-air video with deliberate board tilting.
+
+An `expected_fx` cross-camera consistency check was considered and REJECTED by the
+user: the library must work with arbitrary, mixed camera sets, so it cannot assume
+prior knowledge of which cameras share a focal length. The tilt check needs no such
+assumption -- it is derived from the input geometry alone.
+
+### Methodology caveat worth preserving
+
+The first pass at this analysis used `frame_step=1` and did NOT reproduce the
+pipeline's fx values, because `_select_calibration_frames` then picks 100 frames by
+coverage from ~900 candidates -- a different subset than the pipeline sees. Re-run at
+the config's `frame_step=30` (which yields fewer candidates than the 100 cap, so all
+are used), the probe reproduced pipeline fx exactly (1367.9 / 1577.6 / 1575.9 /
+1574.1). Any offline analysis of Stage 1 behaviour must match the pipeline's
+frame_step or its numbers are not comparable.

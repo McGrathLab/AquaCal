@@ -1,5 +1,5 @@
 ---
-status: awaiting_human_decision
+status: resolved
 trigger: "rig-tilt-high-reproj: after aquacal calibrate on Calibration_Emily dataset, rig visualization shows tilt out of plane and bimodal reprojection error across cameras"
 created: 2026-07-14T00:00:00Z
 updated: 2026-07-14T00:00:00Z
@@ -167,3 +167,24 @@ files_changed:
   - src/aquacal/cli.py (documented start_frame in generated config template)
   - src/aquacal/config/example_config.yaml (documented start_frame)
   - Calibration_Emily/config_trimmed.yaml (new; start_frame=600, output_trimmed/) [user data dir, not repo]
+
+## Closed 2026-07-20
+
+Frontmatter was left at `awaiting_human_decision` after the decision had in fact been
+made and shipped. Closing it now to prevent further confusion -- it caused a later
+session to treat this as an open question.
+
+Decision taken and released as v1.7.0 (`e4be63a`): kept `detection.start_frame`, added
+symmetric `detection.stop_frame`, and shipped the catastrophic-RMS auto-rejecter
+(`reject_outlier_frames`, on by default). The below-/near-surface geometric filter was
+**dropped, not deferred** -- the real remedy is better data-collection practice. The
+weak-observability phenomenon (rig appears far more tilted than physical while RMS and
+3D validation stay low) is documented user-facing in `docs/guide/troubleshooting.md`.
+
+Note for future sessions: this session's conclusion -- that mild near-surface
+contamination cannot be separated by any safe RMS threshold -- is dataset-specific to
+`Calibration_Emily`. It did NOT generalize. A later tilted-rig report on the
+`callibration071626` dataset presented the same surface symptom but had an entirely
+different root cause (a Stage 1 intrinsics local minimum on one camera); there was no
+frame contamination there at all. See `.planning/debug/callibration071626-tilt-high-reproj.md`.
+Match the evidence, not the symptom.

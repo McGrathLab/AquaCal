@@ -52,6 +52,24 @@
 **References**: `_refractive_project_newton` line 357 (h_q guard), `compute_residuals` line 486 (100px penalty), `dev/tasks/water_z_nonrefractive_report.md`.
 **Added**: 2026-02-13
 
+### Fronto-parallel board views leave focal length degenerate
+**Context**: One camera on a 13-camera rig solved 15 cm out of the rig plane with 2.9 px reprojection error, while its intrinsics passed every `validate_intrinsics()` check. Its fx was 1367.9 against ~1578 for eleven identical-lens peers.
+**Insight**: Focal length is recovered from perspective foreshortening. When board views are near fronto-parallel, the projection is nearly a pure scaling and fx becomes degenerate with board distance -- they can be scaled together with almost no change in reprojection error. The optimizer settles anywhere along that valley, producing a *self-consistent* calibration (low RMS, sane distortion, centered principal point) whose fx is badly wrong. Downstream, PnP distance scales linearly with fx, so a 13% fx deficit displaced the camera ~15 cm toward the water. `validate_intrinsics()` cannot detect this -- all of its checks pass. `validate_view_diversity()` (added `ad30a75`) inspects the input geometry instead and warns when 90th-percentile board tilt < 15 deg. Measured separation on the real rig: bad camera 7.2 deg, correct cameras 19.6-29.7 deg. A cross-camera `expected_fx` check was rejected as a fix: the library must support arbitrary mixed camera sets and cannot assume prior knowledge of shared focal lengths.
+**References**: `src/aquacal/calibration/intrinsics.py:validate_view_diversity`, `.planning/debug/callibration071626-tilt-high-reproj.md`.
+**Added**: 2026-07-20
+
+### cv2.calibrateCamera needs an explicit initial guess
+**Context**: One camera calibrated to fx=3844 against ~1580 for its peers, with distortion k2=-10.9, k3=+32.7 and Stage 1 RMS 2.87 px vs 0.37-0.61 px. Its board-view data was verified to be as good as a normal camera's.
+**Insight**: Without `CALIB_USE_INTRINSIC_GUESS`, OpenCV auto-initializes K from a homography/DLT decomposition that can be badly ill-conditioned for some board-pose distributions, and the nonlinear refinement never escapes the resulting basin. A richer distortion model does not help (rational 8-coeff produced fx=3971). Seeding `fx = fy = max(image_width, image_height)` with the principal point at the image center fixes it and reproduces the unguided result to 6+ significant figures on well-behaved cameras, so it is a safe no-op where calibration already worked. A bad K here poisons Stage 2 PnP directly -- the camera was already misplaced in `calibration_initial.json`, before any joint optimization -- and Stage 3/4 does not self-correct, because the wrong intrinsics and wrong pose are locally mutually consistent.
+**References**: `src/aquacal/calibration/intrinsics.py:calibrate_intrinsics_single`, `.planning/debug/callibration071626-tilt-high-reproj.md`.
+**Added**: 2026-07-20
+
 ## Known Issues & Workarounds
 
 ## Debugging Recipes
+
+### Offline Stage 1 analysis must match the pipeline's frame_step
+**Context**: An offline probe reproducing Stage 1 intrinsic calibration produced fx values (841, 1300) that did not match the pipeline's (1368, 1578) for the same cameras and videos.
+**Insight**: `_select_calibration_frames` caps at `max_frames` (default 100). At `frame_step=1` a video yields ~900-2200 candidate views and the probe picks 100 *by coverage*; at the config's `frame_step=30` it yields only ~30-77 candidates, all of which are used. These are entirely different frame sets, so fx differs materially. Re-run at the pipeline's frame_step, the probe reproduced its fx exactly (1367.9 / 1577.6 / 1575.9 / 1574.1). Always pass the config's `detection.frame_step` when analyzing Stage 1 behaviour offline. A corollary worth noting: fx that shifts by ~20% purely from a different frame subset is itself evidence that fx is weakly constrained for that camera.
+**References**: `src/aquacal/calibration/intrinsics.py:_select_calibration_frames`, `.planning/debug/callibration071626-tilt-high-reproj.md`.
+**Added**: 2026-07-20
