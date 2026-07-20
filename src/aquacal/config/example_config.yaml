@@ -80,7 +80,7 @@ optimization:
   # refine_auxiliary_intrinsics: false  # Stage 4b: also optimize auxiliary camera
                                          # focal lengths and principal points.
                                          # Requires auxiliary_cameras to be set.
-  # reject_outlier_frames: true  # After Stage 3, auto-drop frames whose per-frame
+  reject_outlier_frames: true  # After Stage 3, auto-drop frames whose per-frame
                                  # reprojection RMS is a catastrophic outlier, then
                                  # re-run Stage 3 on the cleaned set. No-op on clean
                                  # data. Catches board-out-of-water / rippled /

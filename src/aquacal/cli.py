@@ -600,7 +600,7 @@ def _generate_config_yaml(
             "  # max_calibration_frames: 150  # Max frames for Stage 3/4 (null = no limit)",
             "  # refine_intrinsics: false  # Stage 4: refine focal lengths and principal points",
             "  # refine_auxiliary_intrinsics: false  # Stage 4b: refine auxiliary camera intrinsics",
-            "  # reject_outlier_frames: true  # Auto-drop catastrophic-outlier frames after Stage 3 and re-optimize (no-op on clean data)",
+            "  reject_outlier_frames: true  # Auto-drop catastrophic-outlier frames after Stage 3 and re-optimize (no-op on clean data)",
             "  # frame_rejection_k: 5.0         # Reject frames with per-frame RMS > k * median RMS",
             "  # frame_rejection_floor_px: 5.0  # ...and only if RMS also exceeds this absolute pixel floor",
             "  # frame_rejection_max_fraction: 0.25  # Guardrail: suppress rejection + warn if more than this fraction would be dropped",
