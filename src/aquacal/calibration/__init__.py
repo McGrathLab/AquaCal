@@ -20,6 +20,7 @@ from aquacal.calibration.interface_estimation import (
 from aquacal.calibration.intrinsics import (
     calibrate_intrinsics_all,
     calibrate_intrinsics_single,
+    validate_view_diversity,
 )
 from aquacal.calibration.pipeline import (
     calibrate_from_detections,
@@ -37,6 +38,7 @@ __all__ = [
     # intrinsics
     "calibrate_intrinsics_single",
     "calibrate_intrinsics_all",
+    "validate_view_diversity",
     # extrinsics
     "Observation",
     "PoseGraph",

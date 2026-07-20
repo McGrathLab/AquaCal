@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings as _warnings
 from pathlib import Path
 from typing import Callable
 
@@ -12,6 +13,70 @@ from numpy.typing import NDArray
 from aquacal.config.schema import CameraIntrinsics
 from aquacal.core.board import BoardGeometry
 from aquacal.io.detection import _create_frame_source, detect_charuco
+
+
+def validate_view_diversity(
+    rvecs: list[NDArray[np.float64]],
+    camera_name: str = "",
+    min_tilt_deg: float = 15.0,
+    percentile: float = 90.0,
+) -> list[str]:
+    """
+    Check that calibration board views span a range of orientations.
+
+    Focal length is recovered from perspective foreshortening. When every board
+    view is close to fronto-parallel, the projection is nearly a pure scaling and
+    focal length becomes degenerate with board distance: fx and Z can be scaled
+    together with almost no change in reprojection error. The optimizer then
+    settles anywhere along that valley, producing a self-consistent calibration
+    (low RMS, sane distortion, centered principal point) whose fx can be badly
+    wrong. Tilting the board is what breaks the degeneracy.
+
+    Because a wrong-but-self-consistent fx cannot be detected from the intrinsics
+    alone, this check looks at the input geometry instead. It requires no prior
+    knowledge of the camera or lens.
+
+    Args:
+        rvecs: Per-view board rotation vectors (Rodrigues), as returned by
+            cv2.calibrateCamera. One entry per calibration view.
+        camera_name: For warning messages (default "")
+        min_tilt_deg: Minimum acceptable tilt at the given percentile, in degrees
+            (default 15.0). Below this, fx is not reliably determined.
+        percentile: Percentile of the tilt distribution to test (default 90.0).
+            Using a high percentile rather than the maximum keeps a single
+            strongly-tilted view from masking an otherwise flat capture.
+
+    Returns:
+        List of warning strings (empty = check passed)
+
+    Example:
+        >>> warnings = validate_view_diversity(rvecs, camera_name="cam0")
+        >>> for w in warnings:
+        ...     print(f"WARNING: {w}")
+    """
+    if len(rvecs) == 0:
+        return []
+
+    # Tilt = angle between the board normal (its local +Z) and the camera
+    # optical axis. 0 deg is fronto-parallel.
+    tilts = []
+    for rvec in rvecs:
+        R, _ = cv2.Rodrigues(np.asarray(rvec, dtype=np.float64))
+        tilts.append(np.degrees(np.arccos(np.clip(abs(R[2, 2]), 0.0, 1.0))))
+    tilt_at_pct = float(np.percentile(tilts, percentile))
+
+    if tilt_at_pct >= min_tilt_deg:
+        return []
+
+    prefix = f"Camera '{camera_name}': " if camera_name else ""
+    return [
+        f"{prefix}calibration board views are nearly fronto-parallel "
+        f"({percentile:.0f}th-percentile tilt {tilt_at_pct:.1f} deg < "
+        f"{min_tilt_deg:.1f} deg). Focal length is poorly constrained by this "
+        f"data and may be substantially wrong even though reprojection error "
+        f"looks good. Recapture the in-air video with the board held at varied "
+        f"orientations (roughly +/-30 deg about both axes)."
+    ]
 
 
 def validate_intrinsics(
@@ -318,6 +383,9 @@ def calibrate_intrinsics_single(
                 f"OpenCV error: {e}"
             ) from e
 
+        for _msg in validate_view_diversity(rvecs, camera_name=video_path.stem):
+            _warnings.warn(_msg, UserWarning, stacklevel=2)
+
         intrinsics = CameraIntrinsics(
             K=K.astype(np.float64),
             dist_coeffs=D.flatten().astype(np.float64),
@@ -327,19 +395,49 @@ def calibrate_intrinsics_single(
 
         return intrinsics, float(ret)
 
-    # Run OpenCV calibration (pinhole model)
-    flags = cv2.CALIB_RATIONAL_MODEL if rational_model else 0
+    # Run OpenCV calibration (pinhole model).
+    #
+    # Seed with a physically plausible initial guess (fx = fy = max image
+    # dimension, principal point at image center) rather than letting
+    # cv2.calibrateCamera fall back to its default DLT-based auto-init.
+    # Without CALIB_USE_INTRINSIC_GUESS, OpenCV estimates the initial K from
+    # a linear homography-based decomposition that can be badly ill-conditioned
+    # for some board-pose distributions, sending the nonlinear refinement into
+    # a wildly wrong local minimum (e.g. fx off by 2-3x with huge, physically
+    # implausible distortion coefficients) even though the same detections and
+    # a sane initial guess converge cleanly. This has been observed to poison
+    # downstream extrinsic initialization (Stage 2) and persist through the
+    # joint bundle adjustment (Stage 3/4). The generic guess below has been
+    # verified to reproduce the unguided result (to 6+ significant figures)
+    # for well-behaved cameras, so it is a safe default for all cameras.
+    w_img, h_img = image_size
+    K_guess = np.array(
+        [
+            [max(w_img, h_img), 0.0, w_img / 2.0],
+            [0.0, max(w_img, h_img), h_img / 2.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    flags = cv2.CALIB_USE_INTRINSIC_GUESS
+    if rational_model:
+        flags |= cv2.CALIB_RATIONAL_MODEL
     ret, K, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(  # type: ignore[call-overload]
         object_points,
         image_points,
         image_size,
-        None,
+        K_guess.copy(),
         None,
         flags=flags,
     )
 
     if not ret:
         raise ValueError("OpenCV calibration failed")
+
+    # Warn if the board was held nearly fronto-parallel throughout, which leaves
+    # focal length degenerate with board distance.
+    for _msg in validate_view_diversity(rvecs, camera_name=video_path.stem):
+        _warnings.warn(_msg, UserWarning, stacklevel=2)
 
     intrinsics = CameraIntrinsics(
         K=K.astype(np.float64),
@@ -364,9 +462,9 @@ def calibrate_intrinsics_single(
                 object_points,
                 image_points,
                 image_size,
+                K_guess.copy(),
                 None,
-                None,
-                flags=simp_flags,
+                flags=simp_flags | cv2.CALIB_USE_INTRINSIC_GUESS,
             )
             if ret_s:
                 intrinsics = CameraIntrinsics(

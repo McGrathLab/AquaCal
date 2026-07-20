@@ -11,6 +11,7 @@ from aquacal.calibration.intrinsics import (
     calibrate_intrinsics_all,
     calibrate_intrinsics_single,
     validate_intrinsics,
+    validate_view_diversity,
 )
 from aquacal.config.schema import BoardConfig, CameraIntrinsics
 from aquacal.core.board import BoardGeometry
@@ -433,3 +434,73 @@ class TestValidateIntrinsics:
         assert isinstance(warnings, list)
         # Reasonable rational model should pass
         # (may or may not have warnings depending on coefficients)
+
+
+def _rvec_with_tilt(tilt_deg: float, azimuth_deg: float = 0.0) -> np.ndarray:
+    """Build a Rodrigues vector tilting the board by tilt_deg about an in-plane axis."""
+    axis = np.array(
+        [np.cos(np.radians(azimuth_deg)), np.sin(np.radians(azimuth_deg)), 0.0]
+    )
+    return (axis * np.radians(tilt_deg)).astype(np.float64)
+
+
+class TestValidateViewDiversity:
+    """Tests for the board-orientation diversity check."""
+
+    def test_fronto_parallel_views_warn(self):
+        """Near-zero tilt leaves focal length degenerate and must warn."""
+        rvecs = [_rvec_with_tilt(t) for t in np.linspace(0.5, 4.5, 20)]
+
+        warnings = validate_view_diversity(rvecs, camera_name="flat_cam")
+
+        assert len(warnings) == 1
+        assert "flat_cam" in warnings[0]
+        assert "fronto-parallel" in warnings[0]
+
+    def test_well_tilted_views_pass(self):
+        """A spread of real orientations constrains fx, so no warning."""
+        rvecs = [
+            _rvec_with_tilt(t, az)
+            for t, az in zip(np.linspace(2.0, 40.0, 20), np.linspace(0.0, 180.0, 20))
+        ]
+
+        assert validate_view_diversity(rvecs, camera_name="good_cam") == []
+
+    def test_single_tilted_view_does_not_mask_flat_capture(self):
+        """A lone tilted view must not rescue an otherwise fronto-parallel set."""
+        rvecs = [_rvec_with_tilt(1.0) for _ in range(30)] + [_rvec_with_tilt(45.0)]
+
+        assert validate_view_diversity(rvecs) != []
+
+    def test_empty_input_returns_no_warnings(self):
+        """No views is a different failure; this check stays silent."""
+        assert validate_view_diversity([]) == []
+
+    def test_threshold_is_configurable(self):
+        """Lowering the threshold accepts data the default rejects."""
+        rvecs = [_rvec_with_tilt(t) for t in np.linspace(5.0, 9.0, 20)]
+
+        assert validate_view_diversity(rvecs) != []
+        assert validate_view_diversity(rvecs, min_tilt_deg=5.0) == []
+
+    def test_camera_name_omitted_when_blank(self):
+        """Message stays clean when no camera name is supplied."""
+        rvecs = [_rvec_with_tilt(1.0) for _ in range(10)]
+
+        assert not validate_view_diversity(rvecs)[0].startswith("Camera")
+
+    def test_matches_measured_field_data(self):
+        """Reproduces the real rig case that motivated this check.
+
+        Measured on the callibration071626 dataset at the frame_step the pipeline
+        actually uses. e3v83ef's in-air video yielded 30 views spanning 1.1-11.5
+        deg of board tilt (90th pct 7.2) and produced fx=1367.9, ~13% below its
+        eleven identical-lens peers. e3v83e9 yielded 77 views spanning 1.6-26.6
+        deg (90th pct 19.8) and recovered fx=1575.9, matching the peer cluster.
+        The check must separate these two.
+        """
+        bad = [_rvec_with_tilt(t) for t in np.linspace(1.1, 11.5, 30)]
+        good = [_rvec_with_tilt(t) for t in np.linspace(1.6, 26.6, 77)]
+
+        assert validate_view_diversity(bad, camera_name="e3v83ef") != []
+        assert validate_view_diversity(good, camera_name="e3v83e9") == []
