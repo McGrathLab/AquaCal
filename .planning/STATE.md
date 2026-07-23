@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -22,10 +22,14 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 
 ## Current Position
 
-Phase: 16 (Experiment Observability Hooks) — planned, not started
-Plan: 7 plans (16-01..16-07) across 5 waves, plan-checker PASSED first iteration
-Status: Awaiting `/gsd:execute-phase 16`
-Last activity: 2026-07-23 — research + planning completed (commits `3a4e88d`, `2759dd5`).
+Phase: 16 (Experiment Observability Hooks) — executing
+Plan: 16-01 of 7 (16-01..16-07) across 5 waves complete; plan-checker PASSED first iteration
+Status: `/gsd:execute-phase 16` in progress
+Last activity: 2026-07-23 — plan 16-01 (conditioning diagnostics, HOOK-03) executed:
+  `compute_conditioning`/`ConditioningReport`/`save_conditioning_report`/
+  `load_conditioning_report` added to `aquacal.validation.conditioning`, 12 new unit tests,
+  no regressions (675 passed). Commits `cd5dd00`, `67f38b9`. See
+  `16-01-SUMMARY.md` for the chunk_rows re-tuning note for plan 16-05.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -103,6 +107,16 @@ Open as of 2026-07-23:
 
 None.
 
+### Phase 16 Plan Progress
+
+- Plan 16-02 (Datasets: synthetic sweep-axis support, HOOK-05/HOOK-06) — COMPLETE
+  2026-07-23. Commits `85e60c2` (feat), `25cf08a` (test). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-02-SUMMARY.md`.
+  Plumbed n_air/n_water through `generate_synthetic_detections`; `SyntheticScenario`
+  now records n_air/n_water/seed; added executable sweep-axis audit
+  (`tests/unit/test_synthetic_sweep_axes.py`). Zero behavior change to existing
+  callers (defaults 1.0/1.333/42 preserved).
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -134,7 +148,9 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
+Stopped at: Plan 16-01 (conditioning diagnostics) executed and committed; awaiting
+  continued execution of the remaining phase 16 plans.
+Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
   Benchmark Instrumentation (19) -> Index Helper (20) -> Docs/Dataset Refresh (21) ->

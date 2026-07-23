@@ -40,8 +40,8 @@ numerical behavior**.
 - [ ] **HOOK-02**: An opt-in per-iteration trace for the bundle-adjustment stages records iteration index, cost, step norm, optimality, and the current interface parameters, persisted to the run's output dir
 - [ ] **HOOK-03**: Conditioning diagnostics are available at solution — the Jacobian's singular-value spectrum or condition number, plus the approximate parameter correlation matrix or at minimum the camera-height ↔ interface-distance block
 - [ ] **HOOK-04**: Held-out evaluation is callable standalone, so a calibration can be scored against a set generated under different assumptions (WP4 needs to calibrate at n=1.333 and evaluate against ground truth generated at a different n)
-- [ ] **HOOK-05**: The synthetic generator is audited against the WP5 sweep list — refractive index, layout, and tank-scale/working-distance independently controllable — and returns ground-truth board poses and the true interface height alongside detections, so sweeps can compute absolute error
-- [ ] **HOOK-06**: Every sweep entry point accepts a seed and threads it through, so a surprising result is reproducible
+- [x] **HOOK-05**: The synthetic generator is audited against the WP5 sweep list — refractive index, layout, and tank-scale/working-distance independently controllable — and returns ground-truth board poses and the true interface height alongside detections, so sweeps can compute absolute error
+- [x] **HOOK-06**: Every sweep entry point accepts a seed and threads it through, so a surprising result is reproducible
 
 ### Refractive Index Helper
 
@@ -141,8 +141,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | HOOK-02 | Phase 16 | Pending |
 | HOOK-03 | Phase 16 | Pending |
 | HOOK-04 | Phase 16 | Pending |
-| HOOK-05 | Phase 16 | Pending |
-| HOOK-06 | Phase 16 | Pending |
+| HOOK-05 | Phase 16 | Complete |
+| HOOK-06 | Phase 16 | Complete |
 | IFACE-01 | Phase 17 | Pending |
 | IFACE-02 | Phase 17 | Pending |
 | IFACE-03 | Phase 17 | Pending |
