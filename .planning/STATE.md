@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
+milestone: v1.2
 milestone_name: Publication Prep
-status: in-progress
-last_updated: "2026-07-23"
+status: unknown
+last_updated: "2026-07-23T20:58:13.882Z"
 progress:
-  total_phases: 7
-  completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 14
+  completed_phases: 12
+  total_plans: 42
+  completed_plans: 41
 ---
 
 # Project State
