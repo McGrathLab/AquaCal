@@ -41,9 +41,11 @@ from aquacal.config.schema import (
     DiagnosticsData,
     FrameDetections,
     InterfaceParams,
+    Vec3,
 )
 from aquacal.core.board import BoardGeometry
 from aquacal.io.detection import detect_all_frames
+from aquacal.io.internals import ensure_internals_dir, warn_if_overwriting
 from aquacal.io.serialization import save_calibration
 from aquacal.utils.transforms import matrix_to_rvec
 from aquacal.validation.diagnostics import (
@@ -874,6 +876,17 @@ def run_calibration_from_config(
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
 
+    if config.save_stage_calibrations:
+        _dump_stage_calibration(
+            "stage3",
+            config,
+            primary_intrinsics,
+            stage3_extrinsics,
+            stage3_distances,
+            interface_normal,
+        )
+        print("  Saved internals/calibration_stage3.json")
+
     # --- Automatic per-frame outlier rejection (optional) ---
     # A few catastrophically-bad frames (board out of water, ripples,
     # mis-detections) inject large coherent residuals that a robust loss only
@@ -963,6 +976,17 @@ def run_calibration_from_config(
                 f"  Stage 3 RMS (after rejection): {stage3_rms:.3f} pixels "
                 f"({elapsed:.1f}s)"
             )
+
+            if config.save_stage_calibrations:
+                _dump_stage_calibration(
+                    "stage3_rerun",
+                    config,
+                    primary_intrinsics,
+                    stage3_extrinsics,
+                    stage3_distances,
+                    interface_normal,
+                )
+                print("  Saved internals/calibration_stage3_rerun.json")
         else:
             print(
                 f"  [Frame Rejection] No outlier frames "
@@ -1040,6 +1064,17 @@ def run_calibration_from_config(
 
         heights_final = np.array(heights_final)
         print(f"  Camera height spread: {np.ptp(heights_final):.4f} m")
+
+        if config.save_stage_calibrations:
+            _dump_stage_calibration(
+                "stage4",
+                config,
+                final_intrinsics,
+                final_extrinsics,
+                final_distances,
+                interface_normal,
+            )
+            print("  Saved internals/calibration_stage4.json")
     else:
         print("\n[Stage 4] Skipped (refine_intrinsics=False)")
         final_extrinsics = stage3_extrinsics
@@ -1536,6 +1571,72 @@ def _build_calibration_result(
         diagnostics=diagnostics,
         metadata=metadata,
     )
+
+
+def _dump_stage_calibration(
+    stage: str,
+    config: CalibrationConfig,
+    intrinsics: dict[str, CameraIntrinsics],
+    extrinsics: dict[str, CameraExtrinsics],
+    water_z_values: dict[str, float],
+    interface_normal: Vec3,
+    auxiliary_cameras: set[str] | None = None,
+) -> Path:
+    """Write one bundle-adjustment stage's intermediate calibration.
+
+    Purely additive observability hook (HOOK-01): builds a `CalibrationResult`
+    from the stage's intermediate extrinsics/water_z (following the same
+    zeroed-`DiagnosticsData` template as the unconditional post-Stage-2
+    `calibration_initial.json` dump) and writes it to
+    `output_dir/internals/calibration_{stage}.json`. Does not read or mutate
+    any value flowing into `calibration_initial.json` or `calibration.json`.
+
+    Args:
+        stage: Stage label used in the output filename, e.g. "stage3",
+            "stage3_rerun", "stage4".
+        config: Calibration configuration (used for output_dir, board, n_air,
+            n_water, and config_hash).
+        intrinsics: Per-camera intrinsic parameters at this stage.
+        extrinsics: Per-camera extrinsic parameters at this stage.
+        water_z_values: Per-camera interface distances at this stage.
+        interface_normal: Interface normal vector, shape (3,).
+        auxiliary_cameras: Set of auxiliary camera names, if any.
+
+    Returns:
+        Path to the written JSON file.
+    """
+    internals_dir = ensure_internals_dir(config.output_dir)
+    path = internals_dir / f"calibration_{stage}.json"
+    warn_if_overwriting(path)
+
+    result = _build_calibration_result(
+        intrinsics=intrinsics,
+        extrinsics=extrinsics,
+        water_z_values=water_z_values,
+        board_config=config.board,
+        interface_params=InterfaceParams(
+            normal=interface_normal,
+            n_air=config.n_air,
+            n_water=config.n_water,
+        ),
+        diagnostics=DiagnosticsData(
+            reprojection_error_rms=0.0,
+            reprojection_error_per_camera={},
+            validation_3d_error_mean=0.0,
+            validation_3d_error_std=0.0,
+        ),
+        metadata=CalibrationMetadata(
+            calibration_date=datetime.now().isoformat(),
+            software_version=importlib.metadata.version("aquacal"),
+            config_hash=_compute_config_hash(config),
+            num_frames_used=0,
+            num_frames_holdout=0,
+        ),
+        auxiliary_cameras=auxiliary_cameras,
+    )
+
+    save_calibration(result, path)
+    return path
 
 
 def _compute_config_hash(config: CalibrationConfig) -> str:

@@ -11,6 +11,7 @@ import yaml
 from aquacal.calibration.pipeline import (
     _build_calibration_result,
     _compute_config_hash,
+    _dump_stage_calibration,
     _save_board_reference_images,
     load_config,
     run_calibration,
@@ -31,6 +32,8 @@ from aquacal.config.schema import (
     FrameDetections,
     InterfaceParams,
 )
+from aquacal.datasets import create_scenario
+from aquacal.io.serialization import load_calibration
 
 # --- Fixtures ---
 
@@ -735,6 +738,118 @@ class TestBuildCalibrationResult:
         assert result.metadata.num_frames_used == 80
 
 
+# --- Test _dump_stage_calibration ---
+
+
+class TestDumpStageCalibration:
+    """Tests for _dump_stage_calibration function."""
+
+    @pytest.fixture
+    def scenario(self):
+        """A tiny two-camera scenario with realistic intrinsics/extrinsics."""
+        return create_scenario("minimal")
+
+    @pytest.fixture
+    def dump_config(self, tmp_path, scenario):
+        """Minimal CalibrationConfig pointing at a tmp_path output_dir."""
+        return CalibrationConfig(
+            board=scenario.board_config,
+            camera_names=list(scenario.intrinsics.keys()),
+            intrinsic_video_paths={},
+            extrinsic_video_paths={},
+            output_dir=tmp_path,
+        )
+
+    def test_dump_stage_calibration_writes_loadable_json(self, dump_config, scenario):
+        """The dumped calibration must round-trip through load_calibration."""
+        interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+
+        path = _dump_stage_calibration(
+            "stage3",
+            dump_config,
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            interface_normal,
+        )
+
+        loaded = load_calibration(path)
+
+        assert set(loaded.cameras.keys()) == set(scenario.intrinsics.keys())
+        for cam_name, water_z in scenario.water_zs.items():
+            assert loaded.cameras[cam_name].water_z == pytest.approx(water_z)
+        assert np.allclose(loaded.interface.normal, interface_normal)
+
+    def test_dump_stage_calibration_path_layout(self, dump_config, scenario):
+        """The returned path must be output_dir/internals/calibration_stage3.json."""
+        interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+
+        path = _dump_stage_calibration(
+            "stage3",
+            dump_config,
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            interface_normal,
+        )
+
+        assert path == dump_config.output_dir / "internals" / "calibration_stage3.json"
+
+    def test_dump_stage_calibration_warns_on_overwrite(
+        self, dump_config, scenario, caplog
+    ):
+        """Calling twice for the same stage should log a warning on the second call."""
+        interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+
+        _dump_stage_calibration(
+            "stage3",
+            dump_config,
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            interface_normal,
+        )
+
+        with caplog.at_level("WARNING"):
+            _dump_stage_calibration(
+                "stage3",
+                dump_config,
+                scenario.intrinsics,
+                scenario.extrinsics,
+                scenario.water_zs,
+                interface_normal,
+            )
+
+        assert any(
+            "calibration_stage3.json" in record.getMessage()
+            for record in caplog.records
+        )
+
+    def test_dump_stage_calibration_respects_stage_name(self, dump_config, scenario):
+        """Different stage names should produce correspondingly named files."""
+        interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+
+        rerun_path = _dump_stage_calibration(
+            "stage3_rerun",
+            dump_config,
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            interface_normal,
+        )
+        stage4_path = _dump_stage_calibration(
+            "stage4",
+            dump_config,
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            interface_normal,
+        )
+
+        assert rerun_path.name == "calibration_stage3_rerun.json"
+        assert stage4_path.name == "calibration_stage4.json"
+
+
 # --- Test _compute_config_hash ---
 
 
@@ -1062,8 +1177,9 @@ class TestRunCalibrationFromConfig:
             mock_calibration_stages["3d"].assert_called_once()
             mock_calibration_stages["diag"].assert_called_once()
             mock_calibration_stages["save_diag"].assert_called_once()
-            # save_cal called twice: once for calibration_initial.json, once for calibration.json
-            assert mock_calibration_stages["save_cal"].call_count == 2
+            # save_cal called 3 times: calibration_initial.json, the default-on
+            # internals/calibration_stage3.json dump, and calibration.json
+            assert mock_calibration_stages["save_cal"].call_count == 3
 
             # Verify result
             assert isinstance(result, CalibrationResult)
@@ -1090,13 +1206,19 @@ class TestRunCalibrationFromConfig:
 
             run_calibration_from_config(config)
 
-            # Verify save_calibration was called twice
-            assert mock_calibration_stages["save_cal"].call_count == 2
+            # Verify save_calibration was called 3 times: calibration_initial.json,
+            # the default-on internals/calibration_stage3.json dump, and calibration.json
+            assert mock_calibration_stages["save_cal"].call_count == 3
             # First call: calibration_initial.json
             initial_call_args = mock_calibration_stages["save_cal"].call_args_list[0]
             assert str(initial_call_args[0][1]).endswith("calibration_initial.json")
-            # Second call: calibration.json
-            final_call_args = mock_calibration_stages["save_cal"].call_args_list[1]
+            # Second call: internals/calibration_stage3.json (HOOK-01 stage dump)
+            stage3_call_args = mock_calibration_stages["save_cal"].call_args_list[1]
+            assert str(stage3_call_args[0][1]).endswith(
+                str(Path("internals") / "calibration_stage3.json")
+            )
+            # Third call: calibration.json
+            final_call_args = mock_calibration_stages["save_cal"].call_args_list[2]
             assert str(final_call_args[0][1]).endswith("calibration.json")
 
     def test_run_calibration_from_config_saves_diagnostics(
