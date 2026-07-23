@@ -138,6 +138,7 @@ def optimize_interface(
     verbose: int = 1,
     normal_fixed: bool = True,
     observer: OptimizerObserver | None = None,
+    shared_interface: bool = True,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -177,6 +178,10 @@ def optimize_interface(
             for non-perpendicular camera-to-water-surface alignment.
         observer: Optional read-only observer for per-iteration tracing and
             solution-point diagnostics. Has no effect on the returned values.
+        shared_interface: If True (default), all cameras share a single global
+            water_z. If False (analysis/ablation only), each camera solves its
+            own water_z, seeded individually from initial_water_zs; the returned
+            distances dict then holds each camera's independently-solved value.
 
     Returns:
         Tuple of:
@@ -237,7 +242,8 @@ def optimize_interface(
     # C_z_ref = 0 since reference camera is at origin, so water_z = d_ref
     initial_water_z = initial_water_zs[reference_camera]
 
-    # Pack initial parameters
+    # Pack initial parameters. In per-camera mode each camera is seeded from its
+    # own initial_water_zs value (never collapsed to the reference camera's).
     initial_params = pack_params(
         initial_extrinsics,
         initial_water_z,
@@ -246,6 +252,8 @@ def optimize_interface(
         camera_order,
         frame_order,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
+        water_z_per_camera=initial_water_zs,
     )
 
     # Build bounds
@@ -254,6 +262,7 @@ def optimize_interface(
         frame_order,
         reference_camera,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
     # Reference extrinsics (fixed during optimization)
@@ -286,6 +295,7 @@ def optimize_interface(
             frame_order,
             min_corners,
             normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
         )
         jac = make_sparse_jacobian_func(
             compute_residuals,
@@ -298,6 +308,7 @@ def optimize_interface(
                 len(frame_order),
                 refine_intrinsics=False,
                 normal_fixed=normal_fixed,
+                shared_interface=shared_interface,
             ),
         )
 
@@ -313,6 +324,7 @@ def optimize_interface(
                 reference_camera,
                 refine_intrinsics=False,
                 normal_fixed=normal_fixed,
+                shared_interface=shared_interface,
             ),
         )
         cost_func = observer.wrap_fun(compute_residuals)
@@ -348,6 +360,7 @@ def optimize_interface(
         camera_order,
         frame_order,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
     # Compute final RMS error
