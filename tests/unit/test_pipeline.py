@@ -1198,6 +1198,31 @@ class TestComputeConfigHash:
         assert hash2 != hash3
         assert hash1 != hash3
 
+    def test_config_hash_changes_with_seed(self, sample_board_config):
+        """Two configs differing only by seed must hash differently."""
+        config1 = CalibrationConfig(
+            board=sample_board_config,
+            camera_names=["cam0"],
+            intrinsic_video_paths={"cam0": Path("/a")},
+            extrinsic_video_paths={"cam0": Path("/c")},
+            output_dir=Path("/out"),
+            seed=42,
+        )
+
+        config2 = CalibrationConfig(
+            board=sample_board_config,
+            camera_names=["cam0"],
+            intrinsic_video_paths={"cam0": Path("/a")},
+            extrinsic_video_paths={"cam0": Path("/c")},
+            output_dir=Path("/out"),
+            seed=7,
+        )
+
+        hash1 = _compute_config_hash(config1)
+        hash2 = _compute_config_hash(config2)
+
+        assert hash1 != hash2
+
 
 # --- Test run_calibration ---
 

@@ -400,3 +400,48 @@ class TestFisheyeSerialization:
         # Non-fisheye cameras should not have the field at all
         for cam_data in data["cameras"].values():
             assert "is_fisheye" not in cam_data["intrinsics"]
+
+
+class TestMetadataSeedSerialization:
+    def test_metadata_seed_roundtrips(self, tmp_path, sample_calibration_result):
+        """metadata.seed survives a save/load roundtrip."""
+        seeded_metadata = CalibrationMetadata(
+            calibration_date=sample_calibration_result.metadata.calibration_date,
+            software_version=sample_calibration_result.metadata.software_version,
+            config_hash=sample_calibration_result.metadata.config_hash,
+            num_frames_used=sample_calibration_result.metadata.num_frames_used,
+            num_frames_holdout=sample_calibration_result.metadata.num_frames_holdout,
+            seed=7,
+        )
+        result = CalibrationResult(
+            cameras=sample_calibration_result.cameras,
+            interface=sample_calibration_result.interface,
+            board=sample_calibration_result.board,
+            diagnostics=sample_calibration_result.diagnostics,
+            metadata=seeded_metadata,
+        )
+
+        path = tmp_path / "calibration.json"
+        save_calibration(result, path)
+        loaded = load_calibration(path)
+
+        assert loaded.metadata.seed == 7
+
+    def test_load_calibration_without_seed_key(
+        self, tmp_path, sample_calibration_result
+    ):
+        """Loading a calibration JSON with no 'seed' key defaults to None."""
+        path = tmp_path / "calibration.json"
+        save_calibration(sample_calibration_result, path)
+
+        with open(path) as f:
+            data = json.load(f)
+
+        assert "seed" in data["metadata"]
+        del data["metadata"]["seed"]
+
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+        loaded = load_calibration(path)
+        assert loaded.metadata.seed is None

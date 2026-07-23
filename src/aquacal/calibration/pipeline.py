@@ -842,6 +842,7 @@ def run_calibration_from_config(
             config_hash=_compute_config_hash(config),
             num_frames_used=0,
             num_frames_holdout=0,
+            seed=config.seed,
         ),
     )
 
@@ -1479,6 +1480,7 @@ def run_calibration_from_config(
         config_hash=_compute_config_hash(config),
         num_frames_used=len(optim_detections.frames),
         num_frames_holdout=len(val_detections.frames),
+        seed=config.seed,
     )
 
     result = _build_calibration_result(
@@ -1749,6 +1751,7 @@ def _dump_stage_calibration(
             config_hash=_compute_config_hash(config),
             num_frames_used=0,
             num_frames_holdout=0,
+            seed=config.seed,
         ),
         auxiliary_cameras=auxiliary_cameras,
     )
@@ -1773,7 +1776,7 @@ def _compute_config_hash(config: CalibrationConfig) -> str:
         f"{config.board.square_size},{config.board.marker_size},"
         f"{config.n_air},{config.n_water},"
         f"{config.robust_loss},{config.loss_scale},"
-        f"{config.holdout_fraction}"
+        f"{config.holdout_fraction},{config.seed}"
     )
 
     # Include intrinsic_board if provided

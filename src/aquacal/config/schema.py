@@ -192,6 +192,8 @@ class CalibrationMetadata:
         config_hash: Hash of configuration for reproducibility
         num_frames_used: Number of frames used in calibration
         num_frames_holdout: Number of frames held out for validation
+        seed: Random seed that produced the calibration/validation frame split.
+            None for calibrations written before this field existed.
     """
 
     calibration_date: str
@@ -199,6 +201,7 @@ class CalibrationMetadata:
     config_hash: str
     num_frames_used: int
     num_frames_holdout: int
+    seed: int | None = None
 
 
 @dataclass

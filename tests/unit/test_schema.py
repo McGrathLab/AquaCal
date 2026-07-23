@@ -199,6 +199,17 @@ class TestCalibrationMetadata:
         assert meta.num_frames_used == 50
         assert meta.num_frames_holdout == 10
 
+    def test_calibration_metadata_seed_defaults_none(self):
+        """Constructing CalibrationMetadata without seed should give None."""
+        meta = CalibrationMetadata(
+            calibration_date="2026-02-03",
+            software_version="0.1.0",
+            config_hash="abc123",
+            num_frames_used=50,
+            num_frames_holdout=10,
+        )
+        assert meta.seed is None
+
 
 class TestCalibrationConfig:
     """Test CalibrationConfig dataclass."""

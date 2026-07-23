@@ -203,6 +203,7 @@ def _serialize_metadata(meta: CalibrationMetadata) -> dict[str, Any]:
         "config_hash": meta.config_hash,
         "num_frames_used": meta.num_frames_used,
         "num_frames_holdout": meta.num_frames_holdout,
+        "seed": meta.seed,
     }
 
 
@@ -214,6 +215,7 @@ def _deserialize_metadata(data: dict[str, Any]) -> CalibrationMetadata:
         config_hash=data["config_hash"],
         num_frames_used=data["num_frames_used"],
         num_frames_holdout=data["num_frames_holdout"],
+        seed=data.get("seed"),
     )
 
 
