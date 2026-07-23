@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 5/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05); plan-checker PASSED first
-  iteration
+Plan: 6/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05, 16-06); plan-checker PASSED
+  first iteration
 Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-05 (wire conditioning diagnostics into the pipeline,
-  HOOK-03) executed; see "Phase 16 Plan Progress" below for details.
+Last activity: 2026-07-23 — plan 16-06 (seed threading & recording, HOOK-06 gap closure)
+  executed; see "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -84,6 +84,7 @@ Key v1.9 roadmap decisions:
   phase finished first, so splitting them added a phase without adding sequencing value
 - DOCS-07 (release cut) kept as its own single-requirement final phase — it's a capstone
   step, not incoherent with anything else
+- [Phase 16]: HOOK-06 gap closure: config.seed now threaded into split_detections and recorded in CalibrationMetadata (backward-compatible via .get); config_hash distinguishes seed-only differences
 
 ### Pending Todos
 
@@ -173,6 +174,21 @@ None.
   first `save_conditioning: true` real run will be the first data point.
   No regressions: 712 passed (full unit suite, +16 new), 717 passed/29
   deselected (`tests/ -m "not slow"`).
+- Plan 16-06 (Seed threading & recording, HOOK-06 gap closure) — COMPLETE
+  2026-07-23. Commits `e92a01d` (thread config.seed into split_detections),
+  `f4f0249` (record seed in CalibrationMetadata). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-06-SUMMARY.md`.
+  Audit-driven plan: five of the six HOOK-06 entry points (all generators,
+  `split_holdout`, `refine_calibration`) were already threaded and needed no
+  code. Closed the two real gaps: `run_calibration_from_config`'s
+  `split_detections` call now passes `seed=config.seed` (was silently always
+  42, no config control), and `CalibrationMetadata` gained `seed: int | None
+  = None`, written to `calibration_initial.json`, the final `calibration.json`,
+  and every stage dump, with `.get("seed")` on deserialize for backward
+  compatibility. `_compute_config_hash` now includes seed so seed-only config
+  differences no longer collide. Zero behavior change verified: default seed
+  (42) reproduces the exact pre-change split. No regressions: 718 passed
+  (full unit suite, +1 net), 723 passed/29 deselected (`tests/ -m "not slow"`).
 
 ### Quick Tasks Completed
 
@@ -205,9 +221,9 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-05 (wire conditioning diagnostics into the pipeline, HOOK-03)
-  executed and committed; awaiting continued execution of the remaining phase 16 plans
-  (16-06, 16-07).
+Stopped at: Plan 16-06 (seed threading & recording, HOOK-06 gap closure)
+  executed and committed; awaiting continued execution of the remaining phase 16 plan
+  (16-07).
 Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
