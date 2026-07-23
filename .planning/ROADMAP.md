@@ -123,8 +123,9 @@ model across both code and documentation surfaces, so the stage keys are settled
 benchmark instrumentation writes them into `benchmark.json`.
 **Depends on**: Nothing (independent of Phases 16-17; may run in parallel with them)
 **Note**: DOCS-01 (the wrong ~12x column-grouping claim, actually 43-52x) is a live factual
-error in currently published docs. It can and should be fixed at any point — it does not
-need to wait for this phase to be reached in execution order.
+error in currently published docs, so it is a candidate for pulling forward. Decided
+2026-07-23 to leave it here and fix it with the rest of the docs pass — do not split it
+out as a quick task.
 **Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-06
 **Success Criteria** (what must be TRUE):
   1. `docs/guide/optimizer.md` states the correct column-grouping numbers (13 groups, 17 with
