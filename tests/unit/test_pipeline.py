@@ -1270,9 +1270,11 @@ class TestRunCalibrationFromConfig:
             patch("aquacal.calibration.pipeline.estimate_extrinsics") as mock_ext,
             patch("aquacal.calibration.pipeline.optimize_interface") as mock_opt,
             patch(
-                "aquacal.calibration.pipeline.compute_reprojection_errors"
+                "aquacal.validation.evaluation.compute_reprojection_errors"
             ) as mock_reproj,
-            patch("aquacal.calibration.pipeline.compute_3d_distance_errors") as mock_3d,
+            patch(
+                "aquacal.validation.evaluation.compute_3d_distance_errors"
+            ) as mock_3d,
             patch(
                 "aquacal.calibration.pipeline.generate_diagnostic_report"
             ) as mock_diag,
@@ -1628,9 +1630,11 @@ class TestAuxiliaryCameraSeparation:
             patch("aquacal.calibration.pipeline.optimize_interface") as mock_opt,
             patch("aquacal.calibration.pipeline.register_auxiliary_camera") as mock_aux,
             patch(
-                "aquacal.calibration.pipeline.compute_reprojection_errors"
+                "aquacal.validation.evaluation.compute_reprojection_errors"
             ) as mock_reproj,
-            patch("aquacal.calibration.pipeline.compute_3d_distance_errors") as mock_3d,
+            patch(
+                "aquacal.validation.evaluation.compute_3d_distance_errors"
+            ) as mock_3d,
             patch(
                 "aquacal.calibration.pipeline.generate_diagnostic_report"
             ) as mock_diag,
@@ -1897,3 +1901,27 @@ class TestAuxiliaryCameraSeparation:
             assert "Primary cameras:" in captured.out
             assert "Auxiliary cameras:" in captured.out
             assert "aux_cam: RMS" in captured.out
+
+
+class TestSharedEvaluationRefactor:
+    """Tests guarding the HOOK-04 refactor: pipeline calls evaluate_calibration."""
+
+    def test_pipeline_uses_shared_evaluation(self):
+        """The held-out block is a call to evaluate_calibration, one code path."""
+        source = Path("src/aquacal/calibration/pipeline.py").read_text(encoding="utf-8")
+
+        assert "evaluate_calibration(" in source
+        # No second compute_3d_distance_errors call path inside pipeline.py itself
+        # (evaluate_calibration is the sole caller now).
+        assert "compute_3d_distance_errors(" not in source
+
+    def test_estimate_validation_poses_moved(self):
+        """_estimate_validation_poses moved to validation/evaluation.py."""
+        source = Path("src/aquacal/calibration/pipeline.py").read_text(encoding="utf-8")
+
+        assert "def _estimate_validation_poses" not in source
+
+        # Still resolves via the import, proving the move did not break importers.
+        from aquacal.calibration.pipeline import _estimate_validation_poses
+
+        assert callable(_estimate_validation_poses)
