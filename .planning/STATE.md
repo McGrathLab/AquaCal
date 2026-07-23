@@ -113,11 +113,23 @@ None.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Roadmap for v1.9 Publication Prep created, then revised per coordinator
-  feedback to run the experiment-blocking chain first. ROADMAP.md now carries phases
-  16-22 in the order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18)
-  -> Benchmark Instrumentation (19) -> Index Helper (20) -> Docs/Dataset Refresh (21) ->
-  Release Cut (22). REQUIREMENTS.md traceability table maps all 29 v1 requirements to
-  exactly one phase (100% coverage, no orphans) under the new numbering.
+Stopped at: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
+  run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
+  order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
+  Benchmark Instrumentation (19) -> Index Helper (20) -> Docs/Dataset Refresh (21) ->
+  Release Cut (22). All 29 requirements map to exactly one phase.
+
+  Phase 16 CONTEXT.md then settled the observability design: flat per-hook config keys
+  following `save_detailed_residuals`, config-only with no CLI flags, stage dumps on by
+  default with trace and conditioning opt-in, artifacts in `output_dir/internals/`
+  (not `diagnostics/` — a `diagnostics.json` file already sits at that level), trace as
+  CSV, conditioning split across JSON scalars and an NPZ matrix, `evaluate_calibration`
+  as a top-level export with conditioning in `aquacal.validation.*`.
+
+  Two flags for planning: conditioning computes the full correlation matrix by explicit
+  choice on a run already peaking at ~3.6 GB, so headroom needs verifying and the
+  pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
+  look largely satisfied already, so both are audits rather than assumed work.
+
   Next step is `/gsd:plan-phase 16`.
-Resume file: None
+Resume file: .planning/phases/16-experiment-observability-hooks/16-CONTEXT.md
