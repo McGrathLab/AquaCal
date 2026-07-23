@@ -212,7 +212,9 @@ FRAME_ORDER = [10, 20]
 REFERENCE_CAMERA = "camA"
 
 
-def _pack_params_fixture(refine_intrinsics: bool, normal_fixed: bool) -> np.ndarray:
+def _pack_params_fixture(
+    refine_intrinsics: bool, normal_fixed: bool, shared_interface: bool = True
+) -> np.ndarray:
     """Build a small pack_params(...) vector matching CAMERA_ORDER/FRAME_ORDER."""
     extrinsics = {
         cam: CameraExtrinsics(R=np.eye(3), t=np.array([1.0, 2.0, 3.0]))
@@ -246,6 +248,7 @@ def _pack_params_fixture(refine_intrinsics: bool, normal_fixed: bool) -> np.ndar
         intrinsics=intrinsics,
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
 
@@ -290,6 +293,37 @@ class TestBuildParameterLabels:
             or label.startswith(f"{REFERENCE_CAMERA}_tvec")
             for label in labels
         )
+
+    @pytest.mark.parametrize("refine_intrinsics", [False, True])
+    @pytest.mark.parametrize("normal_fixed", [False, True])
+    def test_per_camera_labels_length_matches_packed_vector(
+        self, refine_intrinsics, normal_fixed
+    ):
+        """shared_interface=False labels align 1:1 with the per-camera packed vector."""
+        x0 = _pack_params_fixture(
+            refine_intrinsics, normal_fixed, shared_interface=False
+        )
+        labels = build_parameter_labels(
+            CAMERA_ORDER,
+            FRAME_ORDER,
+            REFERENCE_CAMERA,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=False,
+        )
+        assert len(labels) == len(x0)
+
+    def test_per_camera_water_z_labels_one_per_camera_in_order(self):
+        """shared_interface=False emits one {cam}_water_z label per camera, in order."""
+        labels = build_parameter_labels(
+            CAMERA_ORDER,
+            FRAME_ORDER,
+            REFERENCE_CAMERA,
+            shared_interface=False,
+        )
+        water_z_labels = [label for label in labels if label.endswith("_water_z")]
+        assert water_z_labels == [f"{cam}_water_z" for cam in CAMERA_ORDER]
+        assert "water_z" not in labels
 
 
 # --- OptimizerObserver.on_solution / conditioning ------------------------------

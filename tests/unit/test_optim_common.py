@@ -6,11 +6,20 @@ import scipy.sparse
 from scipy.optimize._numdiff import approx_derivative, group_columns
 
 from aquacal.calibration._optim_common import (
+    build_bounds,
     build_jacobian_sparsity,
     build_structural_column_groups,
     make_sparse_jacobian_func,
+    pack_params,
+    unpack_params,
 )
-from aquacal.config.schema import Detection, DetectionResult, FrameDetections
+from aquacal.config.schema import (
+    BoardPose,
+    CameraExtrinsics,
+    Detection,
+    DetectionResult,
+    FrameDetections,
+)
 
 
 def _toy_cost(params, A):
@@ -175,6 +184,256 @@ class TestBuildStructuralColumnGroups:
         for group_id in np.unique(groups):
             cols = np.flatnonzero(groups == group_id)
             assert S[:, cols].sum(axis=1).max() <= 1
+
+
+def _make_extrinsics(camera_order):
+    """Build a per-camera extrinsics dict with distinct translations."""
+    rng = np.random.default_rng(1)
+    return {
+        cam: CameraExtrinsics(R=np.eye(3), t=rng.normal(size=3)) for cam in camera_order
+    }
+
+
+def _make_board_poses(frame_order):
+    """Build a per-frame board-pose dict with distinct rvec/tvec."""
+    rng = np.random.default_rng(2)
+    return {
+        f: BoardPose(frame_idx=f, rvec=rng.normal(size=3), tvec=rng.normal(size=3))
+        for f in frame_order
+    }
+
+
+# shared_interface x refine_intrinsics x normal_fixed (8 combinations)
+_MODE_MATRIX = [
+    (shared, refine, nf)
+    for shared in (True, False)
+    for refine in (True, False)
+    for nf in (True, False)
+]
+
+
+class TestPerCameraInterface:
+    """IFACE-02/03/04: per-camera water_z packing, sparsity, and grouping."""
+
+    @pytest.mark.parametrize(
+        "shared_interface, refine_intrinsics, normal_fixed", _MODE_MATRIX
+    )
+    def test_grouping_valid_all_modes(
+        self, shared_interface, refine_intrinsics, normal_fixed
+    ):
+        """IFACE-03: valid grouping in every mode combination (8 total)."""
+        n_cams, n_frames = 4, 5
+        camera_order = [f"cam{i}" for i in range(n_cams)]
+        detections = _make_detections(n_cams, n_frames, visibility=1.0)
+        S = build_jacobian_sparsity(
+            detections,
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=list(range(n_frames)),
+            min_corners=1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+        groups = build_structural_column_groups(
+            S,
+            n_cams,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        # (a) no group has two columns sharing a residual row
+        for group_id in np.unique(groups):
+            cols = np.flatnonzero(groups == group_id)
+            assert S[:, cols].sum(axis=1).max() <= 1, (
+                f"Group {group_id} has columns sharing a residual row"
+            )
+        # (b) group ids are contiguous 0..m-1
+        assert set(groups.tolist()) == set(range(groups.max() + 1))
+        # (c) one group entry per column
+        assert len(groups) == S.shape[1]
+        # (d) group count == max nonzeros per row (the lower bound)
+        assert groups.max() + 1 == S.sum(axis=1).max()
+        # per-camera lower bound equals the shared lower bound (13 / 17)
+        expected = 13 + (4 if refine_intrinsics else 0)
+        assert groups.max() + 1 == expected
+
+    @pytest.mark.parametrize(
+        "refine_intrinsics, normal_fixed", [(False, True), (True, False)]
+    )
+    def test_per_camera_group_count_equals_shared(
+        self, refine_intrinsics, normal_fixed
+    ):
+        """Per-camera mode does NOT increase the group count vs shared mode."""
+        n_cams, n_frames = 4, 5
+        camera_order = [f"cam{i}" for i in range(n_cams)]
+        detections = _make_detections(n_cams, n_frames, visibility=1.0)
+        common = dict(
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=list(range(n_frames)),
+            min_corners=1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        S_shared = build_jacobian_sparsity(detections, shared_interface=True, **common)
+        S_pc = build_jacobian_sparsity(detections, shared_interface=False, **common)
+        g_shared = build_structural_column_groups(
+            S_shared,
+            n_cams,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=True,
+        )
+        g_pc = build_structural_column_groups(
+            S_pc,
+            n_cams,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=False,
+        )
+        assert g_pc.max() + 1 == g_shared.max() + 1
+
+    def test_per_camera_pack_unpack_roundtrip(self):
+        """IFACE-04 packing layer: each camera's water_z round-trips individually."""
+        camera_order = ["cam0", "cam1", "cam2"]
+        frame_order = [0, 1]
+        extrinsics = _make_extrinsics(camera_order)
+        board_poses = _make_board_poses(frame_order)
+        water_z_per_camera = {"cam0": 0.11, "cam1": 0.19, "cam2": 0.27}
+
+        packed = pack_params(
+            extrinsics,
+            0.15,
+            board_poses,
+            "cam0",
+            camera_order,
+            frame_order,
+            shared_interface=False,
+            water_z_per_camera=water_z_per_camera,
+        )
+        _, distances, _, _ = unpack_params(
+            packed,
+            "cam0",
+            extrinsics["cam0"],
+            camera_order,
+            frame_order,
+            shared_interface=False,
+        )
+
+        for cam, expected in water_z_per_camera.items():
+            assert distances[cam] == pytest.approx(expected)
+        # Distinct values preserved -- not collapsed to a mean or all-equal.
+        assert len({round(v, 9) for v in distances.values()}) == 3
+
+    def test_per_camera_sparsity_columns(self):
+        """N water_z columns, each residual depends on exactly one (its camera's)."""
+        n_cams, n_frames = 3, 4
+        camera_order = [f"cam{i}" for i in range(n_cams)]
+        S = build_jacobian_sparsity(
+            _make_detections(n_cams, n_frames, visibility=1.0),
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=list(range(n_frames)),
+            min_corners=1,
+            shared_interface=False,
+        )
+        n_extrinsic = 6 * (n_cams - 1)
+        water_z_cols = list(range(n_extrinsic, n_extrinsic + n_cams))
+
+        # Exactly n_cams water_z columns, each touched by at least one residual.
+        for c in water_z_cols:
+            assert S[:, c].sum() > 0
+        # Every residual depends on exactly one water_z column (its own camera's).
+        per_row = S[:, water_z_cols].sum(axis=1)
+        assert per_row.max() == 1
+        assert per_row.min() == 1
+
+    def test_per_camera_fd_jacobian_matches_group_columns(self):
+        """Per-camera structural grouping yields the same FD Jacobian as group_columns."""
+        n_cams, n_frames = 4, 5
+        camera_order = [f"cam{i}" for i in range(n_cams)]
+        S = build_jacobian_sparsity(
+            _make_detections(n_cams, n_frames, visibility=0.7),
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=list(range(n_frames)),
+            min_corners=1,
+            refine_intrinsics=True,
+            normal_fixed=False,
+            shared_interface=False,
+        )
+        structural = build_structural_column_groups(
+            S,
+            n_cams,
+            n_frames,
+            refine_intrinsics=True,
+            normal_fixed=False,
+            shared_interface=False,
+        )
+
+        rng = np.random.default_rng(42)
+        masked_coeff = S * rng.normal(size=S.shape)
+        x0 = rng.normal(size=S.shape[1])
+
+        def f(x):
+            return _patterned_residuals(x, masked_coeff)
+
+        J_structural = approx_derivative(
+            f, x0, method="2-point", sparsity=(S, structural)
+        )
+        J_greedy = approx_derivative(
+            f, x0, method="2-point", sparsity=(S, group_columns(S))
+        )
+        np.testing.assert_allclose(
+            J_structural.toarray(), J_greedy.toarray(), rtol=0, atol=0
+        )
+
+    def test_shared_mode_bit_identity_default(self):
+        """Omitting shared_interface equals passing shared_interface=True, exactly."""
+        n_cams, n_frames = 4, 5
+        camera_order = [f"cam{i}" for i in range(n_cams)]
+        frame_order = list(range(n_frames))
+        detections = _make_detections(n_cams, n_frames, visibility=0.7)
+        extrinsics = _make_extrinsics(camera_order)
+        board_poses = _make_board_poses(frame_order)
+
+        p_default = pack_params(
+            extrinsics, 0.15, board_poses, "cam0", camera_order, frame_order
+        )
+        p_shared = pack_params(
+            extrinsics,
+            0.15,
+            board_poses,
+            "cam0",
+            camera_order,
+            frame_order,
+            shared_interface=True,
+        )
+        np.testing.assert_array_equal(p_default, p_shared)
+
+        lo_d, up_d = build_bounds(camera_order, frame_order, "cam0")
+        lo_s, up_s = build_bounds(
+            camera_order, frame_order, "cam0", shared_interface=True
+        )
+        np.testing.assert_array_equal(lo_d, lo_s)
+        np.testing.assert_array_equal(up_d, up_s)
+
+        S_d = build_jacobian_sparsity(detections, "cam0", camera_order, frame_order, 1)
+        S_s = build_jacobian_sparsity(
+            detections, "cam0", camera_order, frame_order, 1, shared_interface=True
+        )
+        np.testing.assert_array_equal(S_d, S_s)
+
+        g_d = build_structural_column_groups(S_d, n_cams, n_frames)
+        g_s = build_structural_column_groups(
+            S_s, n_cams, n_frames, shared_interface=True
+        )
+        np.testing.assert_array_equal(g_d, g_s)
 
 
 class TestMakeSparseJacobianFunc:
