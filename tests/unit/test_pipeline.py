@@ -1,5 +1,6 @@
 """Unit tests for calibration pipeline orchestration."""
 
+import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -10,8 +11,10 @@ import yaml
 
 from aquacal.calibration.pipeline import (
     _build_calibration_result,
+    _build_interface_spread_report,
     _compute_config_hash,
     _dump_stage_calibration,
+    _resolve_per_camera_water_z_seeds,
     _save_board_reference_images,
     load_config,
     run_calibration,
@@ -1981,3 +1984,73 @@ class TestSharedEvaluationRefactor:
         from aquacal.calibration.pipeline import _estimate_validation_poses
 
         assert callable(_estimate_validation_poses)
+
+
+class TestResolvePerCameraWaterZSeeds:
+    """IFACE-04 seed-resolution rules for the per-camera path."""
+
+    CAMERAS = ["cam0", "cam1", "cam2"]
+    AUX = ["aux0"]
+
+    def test_none_fills_default_silently(self, recwarn):
+        """initial_water_z is None -> every camera gets 0.15, no warning."""
+        resolved = _resolve_per_camera_water_z_seeds(None, self.CAMERAS, self.AUX)
+        assert resolved == {"cam0": 0.15, "cam1": 0.15, "cam2": 0.15}
+        assert len(recwarn) == 0
+
+    def test_partial_dict_fills_and_warns(self):
+        """Missing cameras are filled with 0.15 and named in a single warning."""
+        with pytest.warns(UserWarning, match="defaulted to 0.15m") as record:
+            resolved = _resolve_per_camera_water_z_seeds(
+                {"cam0": 0.22}, self.CAMERAS, self.AUX
+            )
+        assert resolved == {"cam0": 0.22, "cam1": 0.15, "cam2": 0.15}
+        message = str(record[0].message)
+        assert "cam1" in message and "cam2" in message
+
+    def test_unknown_key_warns_as_typo(self):
+        """A key matching no primary or auxiliary camera warns as a likely typo."""
+        with pytest.warns(UserWarning, match="unknown camera name") as record:
+            resolved = _resolve_per_camera_water_z_seeds(
+                {"cam0": 0.2, "cam1": 0.2, "cam2": 0.2, "typo9": 0.3},
+                self.CAMERAS,
+                self.AUX,
+            )
+        assert set(resolved.keys()) == set(self.CAMERAS)
+        assert "typo9" in str(record[0].message)
+
+    def test_auxiliary_key_silently_ignored(self, recwarn):
+        """An auxiliary-camera key is a valid exclusion, not a typo -> no warning."""
+        resolved = _resolve_per_camera_water_z_seeds(
+            {"cam0": 0.2, "cam1": 0.2, "cam2": 0.2, "aux0": 0.3},
+            self.CAMERAS,
+            self.AUX,
+        )
+        assert set(resolved.keys()) == set(self.CAMERAS)
+        assert "aux0" not in resolved
+        # No warning about the auxiliary key (all primaries were covered).
+        assert len(recwarn) == 0
+
+
+class TestBuildInterfaceSpreadReport:
+    """Per-camera water_z spread report (meters + stats)."""
+
+    def test_report_math_and_schema(self):
+        distances = {"cam0": 0.10, "cam1": 0.20, "cam2": 0.30}
+        report = _build_interface_spread_report(distances, "stage3")
+
+        assert report["stage"] == "stage3"
+        assert report["unit"] == "meters"
+        assert report["per_camera"] == {"cam0": 0.10, "cam1": 0.20, "cam2": 0.30}
+
+        values = np.array([0.10, 0.20, 0.30])
+        stats = report["stats"]
+        assert stats["min"] == pytest.approx(values.min())
+        assert stats["max"] == pytest.approx(values.max())
+        assert stats["mean"] == pytest.approx(values.mean())
+        assert stats["std"] == pytest.approx(values.std())  # population std (ddof=0)
+        assert stats["range"] == pytest.approx(np.ptp(values))
+
+    def test_report_json_round_trips(self):
+        report = _build_interface_spread_report({"cam0": 0.12, "cam1": 0.18}, "stage4")
+        assert json.loads(json.dumps(report)) == report
