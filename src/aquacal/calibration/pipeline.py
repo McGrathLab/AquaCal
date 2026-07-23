@@ -258,6 +258,10 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     n_air = interface.get("n_air", 1.0)
     n_water = interface.get("n_water", 1.333)
     normal_fixed = interface.get("normal_fixed", True)
+    # Analysis/ablation flag: pass-through only, no cross-field validation here.
+    # Must be in scope before the initial_water_z dict branches so the
+    # missing-camera coverage gate can be conditioned on it.
+    shared_interface = bool(interface.get("shared_interface", True))
 
     # Parse initial_water_z (optional) with backward compatibility
     initial_water_z = None
@@ -282,9 +286,12 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
             }
         # Handle dict format (per-camera)
         elif isinstance(raw_distances, dict):
-            # Validate all cameras are covered
+            # Validate all cameras are covered. In per-camera mode
+            # (shared_interface=False) a partial dict is allowed through so the
+            # pipeline's per-camera seed resolver can fill the missing cameras
+            # (0.15m) and warn; in shared mode a partial dict still hard-fails.
             missing_cameras = set(data["cameras"]) - set(raw_distances.keys())
-            if missing_cameras:
+            if missing_cameras and shared_interface:
                 raise ValueError(
                     f"initial_water_z dict must cover all cameras. "
                     f"Missing: {sorted(missing_cameras)}"
@@ -331,9 +338,12 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
             }
         # Handle dict format (per-camera)
         elif isinstance(raw_distances, dict):
-            # Validate all cameras are covered
+            # Validate all cameras are covered. In per-camera mode
+            # (shared_interface=False) a partial dict is allowed through so the
+            # pipeline's per-camera seed resolver can fill the missing cameras
+            # (0.15m) and warn; in shared mode a partial dict still hard-fails.
             missing_cameras = set(data["cameras"]) - set(raw_distances.keys())
-            if missing_cameras:
+            if missing_cameras and shared_interface:
                 raise ValueError(
                     f"initial_water_z dict must cover all cameras. "
                     f"Missing: {sorted(missing_cameras)}"
@@ -452,6 +462,7 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         save_optimization_trace=save_optimization_trace,
         save_conditioning=save_conditioning,
         seed=seed,
+        shared_interface=shared_interface,
         initial_water_z=initial_water_z,
         rational_model_cameras=rational_model_cameras,
         auxiliary_cameras=auxiliary_cameras,

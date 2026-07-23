@@ -581,6 +581,7 @@ def _generate_config_yaml(
             "  n_air: 1.0             # Refractive index of air",
             "  n_water: 1.333         # Refractive index of water (1.333 for fresh water at 20C)",
             "  normal_fixed: false    # If true, assume reference camera is perpendicular to water surface",
+            "  # shared_interface: true  # set false for per-camera water_z ablation (analysis only, not recommended)",
             "",
             "  # Optional: approximate camera-to-water-surface distances (meters)",
             "  # Improves Stage 3 initialization",
