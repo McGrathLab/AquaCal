@@ -436,6 +436,156 @@ class TestPerCameraInterface:
         np.testing.assert_array_equal(g_d, g_s)
 
 
+class TestSharedModeBitIdentityIFACE05:
+    """IFACE-05: the shared path is bit-identical with/without shared_interface=True.
+
+    Locks the packing/structure layer so any future change that perturbs the
+    default single-water_z behavior fails loudly. Complements the end-to-end
+    regression in tests/synthetic/test_per_camera_interface.py.
+    """
+
+    N_CAMS = 4
+    N_FRAMES = 3
+
+    def _fixture(self):
+        camera_order = [f"cam{i}" for i in range(self.N_CAMS)]
+        frame_order = list(range(self.N_FRAMES))
+        detections = _make_detections(self.N_CAMS, self.N_FRAMES, visibility=0.8)
+        extrinsics = _make_extrinsics(camera_order)
+        board_poses = _make_board_poses(frame_order)
+        return camera_order, frame_order, detections, extrinsics, board_poses
+
+    @pytest.mark.parametrize(
+        "refine_intrinsics, normal_fixed", [(False, True), (True, False)]
+    )
+    def test_pack_and_structure_exactly_equal(self, refine_intrinsics, normal_fixed):
+        camera_order, frame_order, detections, extrinsics, board_poses = self._fixture()
+        # Intrinsics are only needed by pack/bounds when refining.
+        intrinsics = None
+        if refine_intrinsics:
+            from aquacal.config.schema import CameraIntrinsics
+
+            intrinsics = {
+                cam: CameraIntrinsics(
+                    K=np.array([[900.0, 0, 640.0], [0, 900.0, 360.0], [0, 0, 1]]),
+                    dist_coeffs=np.zeros(5),
+                    image_size=(1280, 720),
+                )
+                for cam in camera_order
+            }
+
+        pack_kw = dict(
+            intrinsics=intrinsics,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        p_default = pack_params(
+            extrinsics, 0.15, board_poses, "cam0", camera_order, frame_order, **pack_kw
+        )
+        p_shared = pack_params(
+            extrinsics,
+            0.15,
+            board_poses,
+            "cam0",
+            camera_order,
+            frame_order,
+            shared_interface=True,
+            **pack_kw,
+        )
+        np.testing.assert_array_equal(p_default, p_shared)
+
+        bounds_kw = dict(
+            base_intrinsics=intrinsics,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        lo_d, up_d = build_bounds(camera_order, frame_order, "cam0", **bounds_kw)
+        lo_s, up_s = build_bounds(
+            camera_order, frame_order, "cam0", shared_interface=True, **bounds_kw
+        )
+        np.testing.assert_array_equal(lo_d, lo_s)
+        np.testing.assert_array_equal(up_d, up_s)
+
+        S_d = build_jacobian_sparsity(
+            detections,
+            "cam0",
+            camera_order,
+            frame_order,
+            1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        S_s = build_jacobian_sparsity(
+            detections,
+            "cam0",
+            camera_order,
+            frame_order,
+            1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=True,
+        )
+        np.testing.assert_array_equal(S_d, S_s)
+
+        g_d = build_structural_column_groups(
+            S_d,
+            self.N_CAMS,
+            self.N_FRAMES,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        g_s = build_structural_column_groups(
+            S_s,
+            self.N_CAMS,
+            self.N_FRAMES,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=True,
+        )
+        np.testing.assert_array_equal(g_d, g_s)
+
+    @pytest.mark.parametrize(
+        "refine_intrinsics, normal_fixed", [(False, True), (True, False)]
+    )
+    def test_single_water_z_layout(self, refine_intrinsics, normal_fixed):
+        """Shared mode packs exactly one water_z at the expected index."""
+        camera_order, frame_order, _, extrinsics, board_poses = self._fixture()
+        intrinsics = None
+        if refine_intrinsics:
+            from aquacal.config.schema import CameraIntrinsics
+
+            intrinsics = {
+                cam: CameraIntrinsics(
+                    K=np.array([[900.0, 0, 640.0], [0, 900.0, 360.0], [0, 0, 1]]),
+                    dist_coeffs=np.zeros(5),
+                    image_size=(1280, 720),
+                )
+                for cam in camera_order
+            }
+
+        packed = pack_params(
+            extrinsics,
+            0.15,
+            board_poses,
+            "cam0",
+            camera_order,
+            frame_order,
+            intrinsics=intrinsics,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+
+        n_tilt = 0 if normal_fixed else 2
+        n_extrinsic = 6 * (self.N_CAMS - 1)
+        n_pose = 6 * self.N_FRAMES
+        n_intr = 4 * self.N_CAMS if refine_intrinsics else 0
+        expected_len = n_tilt + n_extrinsic + 1 + n_pose + n_intr
+        assert len(packed) == expected_len
+        # The single water_z sits right after the extrinsic block.
+        water_z_idx = n_tilt + n_extrinsic
+        assert packed[water_z_idx] == pytest.approx(0.15)
+
+
 class TestMakeSparseJacobianFunc:
     """Tests for make_sparse_jacobian_func with dense_threshold behavior."""
 
