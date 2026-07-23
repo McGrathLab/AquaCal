@@ -6,9 +6,9 @@ status: planned
 last_updated: "2026-07-23"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 
 ## Current Position
 
-Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 6/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05, 16-06); plan-checker PASSED
-  first iteration
-Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-06 (seed threading & recording, HOOK-06 gap closure)
-  executed; see "Phase 16 Plan Progress" below for details.
+Phase: 16 (Experiment Observability Hooks) — COMPLETE
+Plan: 7/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05, 16-06, 16-07); plan-checker
+  PASSED first iteration
+Status: Phase 16 complete. Ready for `/gsd:plan-phase 17`.
+Last activity: 2026-07-23 — plan 16-07 (standalone held-out evaluation, HOOK-04) executed;
+  see "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -189,6 +189,23 @@ None.
   differences no longer collide. Zero behavior change verified: default seed
   (42) reproduces the exact pre-change split. No regressions: 718 passed
   (full unit suite, +1 net), 723 passed/29 deselected (`tests/ -m "not slow"`).
+- Plan 16-07 (Standalone held-out evaluation, HOOK-04) — COMPLETE 2026-07-23. Commits
+  `c5c8218` (feat: evaluate_calibration + move _estimate_validation_poses), `f04a093`
+  (test: standalone behaviour + exact-equality legacy-equivalence regression),
+  `c27c747` (refactor: pipeline calls evaluate_calibration), `375e1a1` (test: retarget
+  mocks + refactor guards). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-07-SUMMARY.md`. Added
+  `aquacal.evaluate_calibration` (16th top-level public name) and
+  `aquacal.validation.evaluation.HeldOutEvaluation`; moved `_estimate_validation_poses`
+  out of `pipeline.py` into `validation/evaluation.py`; refactored
+  `run_calibration_from_config`'s inline held-out block to call `evaluate_calibration`
+  for both primary and auxiliary cameras (auxiliary reuses primary's poses instead of
+  re-estimating), with a `temp_result`-construction reordering that carries no numerical
+  effect. Guarded by an exact-equality (not approx) regression test proving the refactor
+  changed no numbers, plus an executable WP4 test showing a >2x reprojection-RMS
+  degradation when scoring against a held-out set generated at a different n_water.
+  All six HOOK-01..06 requirements for Phase 16 are now complete. No regressions: 763
+  passed (full unit suite, +45 net), 734 passed/29 deselected (`tests/ -m "not slow"`).
 
 ### Quick Tasks Completed
 
@@ -221,9 +238,9 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-06 (seed threading & recording, HOOK-06 gap closure)
-  executed and committed; awaiting continued execution of the remaining phase 16 plan
-  (16-07).
+Stopped at: Plan 16-07 (standalone held-out evaluation, HOOK-04) executed and committed.
+  Phase 16 (Experiment Observability Hooks) is now COMPLETE — all 7 plans done, all six
+  HOOK-01..06 requirements satisfied. Next step is `/gsd:plan-phase 17`.
 Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
