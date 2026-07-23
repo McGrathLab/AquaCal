@@ -5,6 +5,13 @@ from aquacal.validation.comparison import (
     compare_calibrations,
     write_comparison_report,
 )
+from aquacal.validation.conditioning import (
+    ConditioningMemoryError,
+    ConditioningReport,
+    compute_conditioning,
+    load_conditioning_report,
+    save_conditioning_report,
+)
 from aquacal.validation.diagnostics import (
     plot_error_distribution,
     plot_per_camera_error,
@@ -18,4 +25,10 @@ __all__ = [
     "compare_calibrations",
     "ComparisonResult",
     "write_comparison_report",
+    # conditioning
+    "ConditioningMemoryError",
+    "ConditioningReport",
+    "compute_conditioning",
+    "load_conditioning_report",
+    "save_conditioning_report",
 ]
