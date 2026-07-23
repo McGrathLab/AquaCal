@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
-from aquacal.calibration._observability import OptimizerObserver
+from aquacal.calibration._observability import OptimizerObserver, build_parameter_labels
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -307,6 +307,13 @@ def optimize_interface(
         observer.configure_layout(
             water_z_index=(0 if normal_fixed else 2) + 6 * (len(camera_order) - 1),
             normal_fixed=normal_fixed,
+            parameter_labels=build_parameter_labels(
+                camera_order,
+                frame_order,
+                reference_camera,
+                refine_intrinsics=False,
+                normal_fixed=normal_fixed,
+            ),
         )
         cost_func = observer.wrap_fun(compute_residuals)
         jac = observer.wrap_jac(jac)

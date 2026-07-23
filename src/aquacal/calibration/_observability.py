@@ -21,12 +21,15 @@ import math
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from numpy.typing import NDArray
 
 from aquacal.io.internals import warn_if_overwriting
+
+if TYPE_CHECKING:
+    from aquacal.validation.conditioning import ConditioningReport
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,82 @@ class TraceRow:
     tilt_ry: float
 
 
+def build_parameter_labels(
+    camera_order: list[str],
+    frame_order: list[int],
+    reference_camera: str,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+) -> list[str]:
+    """Build a human-readable name for each entry of the packed parameter vector.
+
+    Mirrors `_optim_common.pack_params`'s layout exactly (same argument order, same
+    conditional blocks) so that `labels[i]` names `x[i]` for any `x` produced by
+    `pack_params` with the same arguments. This is the only way the conditioning
+    correlation matrix's rows/columns become readable -- e.g. finding `water_z`
+    and each camera's `_tvec_z` to inspect the camera-height / water_z coupling.
+
+    Args:
+        camera_order: Ordered list of camera names, matching `pack_params`.
+        frame_order: Ordered list of frame indices, matching `pack_params`.
+        reference_camera: Name of the reference camera (skipped in extrinsics
+            packing).
+        refine_intrinsics: Whether intrinsics are included in the parameter
+            vector.
+        normal_fixed: If False, the first two labels are the reference camera's
+            tilt rx/ry.
+
+    Returns:
+        List of parameter names, one per entry of the packed vector, in the
+        same order `pack_params` emits values.
+    """
+    labels: list[str] = []
+
+    if not normal_fixed:
+        labels.extend(["ref_tilt_rx", "ref_tilt_ry"])
+
+    for cam_name in camera_order:
+        if cam_name == reference_camera:
+            continue
+        labels.extend(
+            [
+                f"{cam_name}_rvec_x",
+                f"{cam_name}_rvec_y",
+                f"{cam_name}_rvec_z",
+                f"{cam_name}_tvec_x",
+                f"{cam_name}_tvec_y",
+                f"{cam_name}_tvec_z",
+            ]
+        )
+
+    labels.append("water_z")
+
+    for frame_idx in frame_order:
+        labels.extend(
+            [
+                f"frame{frame_idx}_rvec_x",
+                f"frame{frame_idx}_rvec_y",
+                f"frame{frame_idx}_rvec_z",
+                f"frame{frame_idx}_tvec_x",
+                f"frame{frame_idx}_tvec_y",
+                f"frame{frame_idx}_tvec_z",
+            ]
+        )
+
+    if refine_intrinsics:
+        for cam_name in camera_order:
+            labels.extend(
+                [
+                    f"{cam_name}_fx",
+                    f"{cam_name}_fy",
+                    f"{cam_name}_cx",
+                    f"{cam_name}_cy",
+                ]
+            )
+
+    return labels
+
+
 class OptimizerObserver:
     """Read-only observer for a single `least_squares` bundle-adjustment call.
 
@@ -83,6 +162,7 @@ class OptimizerObserver:
         stage: str,
         water_z_index: int | None = None,
         normal_fixed: bool = True,
+        conditioning: bool = False,
     ) -> None:
         """Create an observer for one bundle-adjustment stage.
 
@@ -94,10 +174,16 @@ class OptimizerObserver:
                 `configure_layout` if not known at construction time.
             normal_fixed: If `False`, `x[0]`/`x[1]` are the reference camera's tilt
                 rx/ry and are recorded; if `True`, both are `nan`.
+            conditioning: If `True`, `on_solution` computes Jacobian conditioning
+                diagnostics (singular-value spectrum, condition number, parameter
+                correlation) from `result.jac`. If `False`, `on_solution` is a no-op.
         """
         self.stage = stage
         self.water_z_index = water_z_index
         self.normal_fixed = normal_fixed
+        self.conditioning = conditioning
+        self.parameter_labels: list[str] | None = None
+        self.conditioning_report: ConditioningReport | None = None
 
         self.rows: list[TraceRow] = []
 
@@ -106,16 +192,25 @@ class OptimizerObserver:
         self._x_cached: NDArray[np.float64] | None = None
         self._last_optimality: float = math.nan
 
-    def configure_layout(self, water_z_index: int, normal_fixed: bool) -> None:
+    def configure_layout(
+        self,
+        water_z_index: int,
+        normal_fixed: bool,
+        parameter_labels: list[str] | None = None,
+    ) -> None:
         """Set the parameter-vector layout indices used to slice interface params.
 
         Args:
             water_z_index: Index of `water_z` within the packed parameter vector.
             normal_fixed: Whether the reference camera's tilt is fixed (excluded
                 from the parameter vector).
+            parameter_labels: Optional per-parameter names (from
+                `build_parameter_labels`) used to label the conditioning
+                correlation matrix. Ignored unless `conditioning=True`.
         """
         self.water_z_index = water_z_index
         self.normal_fixed = normal_fixed
+        self.parameter_labels = parameter_labels
 
     def wrap_fun(self, fun: Callable) -> Callable:
         """Wrap a residual function, caching its result for the optimality proxy.
@@ -209,17 +304,40 @@ class OptimizerObserver:
         )
 
     def on_solution(self, result) -> None:
-        """No-op extension point for solution-point diagnostics.
+        """Compute Jacobian conditioning diagnostics at the solution, if enabled.
 
-        Plan 16-05 will use this hook to compute Jacobian conditioning while
-        `result.jac` is still alive at the caller's scope. This plan defines the
-        hook but leaves the body empty; it MUST NOT retain `result` (or
-        `result.jac`) as an attribute -- doing so would pin a potentially
-        multi-gigabyte Jacobian in memory for the observer's lifetime.
+        Called once, immediately after `least_squares` returns, while `result.jac`
+        is still alive in the caller's scope. When `self.conditioning` is `True`,
+        computes a `ConditioningReport` via `compute_conditioning` and stores it
+        on `self.conditioning_report` -- only that small `(n, n)` report survives;
+        `result`/`result.jac` are never retained as attributes on this observer.
 
         Args:
             result: The final `scipy.optimize.OptimizeResult` from `least_squares`.
+
+        Raises:
+            ConditioningMemoryError: Re-raised (with this observer's stage name
+                prefixed to the message) if the conditioning computation's
+                analytic memory pre-check refuses the allocation. This
+                propagates all the way out -- the caller must not narrow the
+                metric to keep the run alive.
         """
+        if not self.conditioning:
+            return
+
+        # Local import: avoids a calibration -> validation import at module load.
+        from aquacal.validation.conditioning import (
+            ConditioningMemoryError,
+            compute_conditioning,
+        )
+
+        try:
+            self.conditioning_report = compute_conditioning(
+                result.jac,
+                parameter_names=self.parameter_labels,
+            )
+        except ConditioningMemoryError as exc:
+            raise ConditioningMemoryError(f"[{self.stage}] {exc}") from exc
 
     def write_trace_csv(self, path: Path) -> None:
         """Write the captured per-iteration trace to a CSV file.

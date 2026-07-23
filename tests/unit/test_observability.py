@@ -4,13 +4,18 @@ import csv
 import math
 
 import numpy as np
+import pytest
 from scipy.optimize import least_squares
 
 from aquacal.calibration._observability import (
     TRACE_CSV_HEADER,
     OptimizerObserver,
     TraceRow,
+    build_parameter_labels,
 )
+from aquacal.calibration._optim_common import pack_params
+from aquacal.config.schema import BoardPose, CameraExtrinsics, CameraIntrinsics
+from aquacal.validation.conditioning import ConditioningMemoryError, ConditioningReport
 
 # --- A tiny, real (non-mocked) least_squares problem: two independent
 # Rosenbrock-style 2-parameter blocks stacked to n=4 params, m=4 residuals.
@@ -198,3 +203,157 @@ class TestTraceRowDataclass:
         )
         assert row.iteration == 0
         assert row.water_z == 0.15
+
+
+# --- build_parameter_labels ---------------------------------------------------
+
+CAMERA_ORDER = ["camA", "camB", "camC"]
+FRAME_ORDER = [10, 20]
+REFERENCE_CAMERA = "camA"
+
+
+def _pack_params_fixture(refine_intrinsics: bool, normal_fixed: bool) -> np.ndarray:
+    """Build a small pack_params(...) vector matching CAMERA_ORDER/FRAME_ORDER."""
+    extrinsics = {
+        cam: CameraExtrinsics(R=np.eye(3), t=np.array([1.0, 2.0, 3.0]))
+        for cam in CAMERA_ORDER
+    }
+    board_poses = {
+        frame_idx: BoardPose(
+            frame_idx=frame_idx,
+            rvec=np.array([0.1, 0.2, 0.3]),
+            tvec=np.array([0.4, 0.5, 0.6]),
+        )
+        for frame_idx in FRAME_ORDER
+    }
+    intrinsics = None
+    if refine_intrinsics:
+        intrinsics = {
+            cam: CameraIntrinsics(
+                K=np.array([[100.0, 0, 50.0], [0, 100.0, 50.0], [0, 0, 1]]),
+                dist_coeffs=np.zeros(5),
+                image_size=(100, 100),
+            )
+            for cam in CAMERA_ORDER
+        }
+    return pack_params(
+        extrinsics=extrinsics,
+        water_z=0.15,
+        board_poses=board_poses,
+        reference_camera=REFERENCE_CAMERA,
+        camera_order=CAMERA_ORDER,
+        frame_order=FRAME_ORDER,
+        intrinsics=intrinsics,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
+    )
+
+
+class TestBuildParameterLabels:
+    @pytest.mark.parametrize("refine_intrinsics", [False, True])
+    @pytest.mark.parametrize("normal_fixed", [False, True])
+    def test_parameter_labels_length_matches_packed_vector(
+        self, refine_intrinsics, normal_fixed
+    ):
+        x0 = _pack_params_fixture(refine_intrinsics, normal_fixed)
+        labels = build_parameter_labels(
+            CAMERA_ORDER,
+            FRAME_ORDER,
+            REFERENCE_CAMERA,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+        assert len(labels) == len(x0)
+
+    @pytest.mark.parametrize("normal_fixed", [False, True])
+    def test_parameter_labels_water_z_index(self, normal_fixed):
+        labels = build_parameter_labels(
+            CAMERA_ORDER,
+            FRAME_ORDER,
+            REFERENCE_CAMERA,
+            refine_intrinsics=False,
+            normal_fixed=normal_fixed,
+        )
+        expected_index = (0 if normal_fixed else 2) + 6 * (len(CAMERA_ORDER) - 1)
+        assert labels.index("water_z") == expected_index
+
+    def test_reference_camera_has_no_extrinsic_labels(self):
+        labels = build_parameter_labels(
+            CAMERA_ORDER,
+            FRAME_ORDER,
+            REFERENCE_CAMERA,
+            refine_intrinsics=False,
+            normal_fixed=True,
+        )
+        assert not any(
+            label.startswith(f"{REFERENCE_CAMERA}_rvec")
+            or label.startswith(f"{REFERENCE_CAMERA}_tvec")
+            for label in labels
+        )
+
+
+# --- OptimizerObserver.on_solution / conditioning ------------------------------
+
+
+def _run_observed_conditioning(conditioning: bool = True):
+    """Run the Rosenbrock problem with conditioning enabled, calling on_solution."""
+    observer = OptimizerObserver(stage="test_stage", conditioning=conditioning)
+    observer.configure_layout(
+        water_z_index=2,
+        normal_fixed=False,
+        parameter_labels=["p0", "p1", "p2", "p3"],
+    )
+    fun = observer.wrap_fun(rosenbrock_residuals)
+    jac = observer.wrap_jac(rosenbrock_jac)
+    result = least_squares(
+        fun,
+        x0=X0,
+        jac=jac,
+        method="trf",
+        callback=observer.callback,
+    )
+    observer.on_solution(result)
+    return observer, result
+
+
+class TestOnSolutionConditioning:
+    def test_on_solution_populates_report_when_enabled(self):
+        observer, result = _run_observed_conditioning(conditioning=True)
+        assert isinstance(observer.conditioning_report, ConditioningReport)
+        assert observer.conditioning_report.n_params == len(result.x)
+
+    def test_on_solution_noop_when_disabled(self):
+        observer, _ = _run_observed_conditioning(conditioning=False)
+        assert observer.conditioning_report is None
+
+    def test_observer_does_not_retain_jacobian_after_conditioning(self):
+        observer, _ = _run_observed_conditioning(conditioning=True)
+        n_params = observer.conditioning_report.n_params
+        for value in vars(observer).values():
+            if isinstance(value, np.ndarray) and value.ndim == 2:
+                assert value.shape[0] <= n_params, (
+                    "Observer must never retain a Jacobian-shaped (m, n) array; "
+                    "only the small (n, n) correlation matrix inside the report "
+                    "is permitted."
+                )
+
+    def test_memory_error_propagates_with_stage_name(self, monkeypatch):
+        observer = OptimizerObserver(stage="stage3", conditioning=True)
+        observer.configure_layout(water_z_index=2, normal_fixed=False)
+
+        def _raise_memory_error(*args, **kwargs):
+            raise ConditioningMemoryError("boom")
+
+        monkeypatch.setattr(
+            "aquacal.validation.conditioning.compute_conditioning",
+            _raise_memory_error,
+        )
+
+        class _FakeResult:
+            jac = np.zeros((4, 4))
+
+        with pytest.raises(ConditioningMemoryError) as excinfo:
+            observer.on_solution(_FakeResult())
+
+        assert "stage3" in str(excinfo.value)
+        assert "boom" in str(excinfo.value)
