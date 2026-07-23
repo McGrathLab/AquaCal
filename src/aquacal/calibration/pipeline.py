@@ -754,9 +754,11 @@ def run_calibration_from_config(
     print(f"  Found {len(usable_frames)} usable frames")
 
     # --- Split calibration/validation ---
-    print(f"\n[Split] Holdout fraction: {config.holdout_fraction}")
+    print(
+        f"\n[Split] Holdout fraction: {config.holdout_fraction} (seed: {config.seed})"
+    )
     cal_detections, val_detections = split_detections(
-        all_detections, config.holdout_fraction
+        all_detections, config.holdout_fraction, seed=config.seed
     )
     print(f"  Calibration frames: {len(cal_detections.frames)}")
     print(f"  Validation frames: {len(val_detections.frames)}")

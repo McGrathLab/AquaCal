@@ -677,6 +677,23 @@ class TestSplitDetections:
         assert len(cal.frames) == 0
         assert len(val.frames) == 10
 
+    def test_split_detections_default_seed_is_42(self, sample_detection_result):
+        """Omitting seed must reproduce the seed=42 split exactly (backward compat)."""
+        cal_default, val_default = split_detections(sample_detection_result, 0.2)
+        cal_42, val_42 = split_detections(sample_detection_result, 0.2, seed=42)
+
+        assert set(cal_default.frames.keys()) == set(cal_42.frames.keys())
+        assert set(val_default.frames.keys()) == set(val_42.frames.keys())
+
+    def test_pipeline_passes_config_seed_to_split(self):
+        """Wiring guard: the pipeline call site must thread config.seed through."""
+        import inspect
+
+        import aquacal.calibration.pipeline as pipeline_module
+
+        source = inspect.getsource(pipeline_module)
+        assert "seed=config.seed" in source
+
 
 # --- Test _build_calibration_result ---
 
