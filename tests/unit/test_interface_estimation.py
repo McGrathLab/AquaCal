@@ -455,9 +455,13 @@ class TestOptimizeInterface:
             shared_interface=False,
         )
 
-        # One independently-solved water_z per camera; finite RMS.
+        # One independently-solved water_z per camera.
         assert set(dist_opt.keys()) == set(intrinsics.keys())
-        assert np.isfinite(rms)
+        # A sane fit -- guards the per-camera parameter alignment. If
+        # compute_residuals mis-reads the N-water_z packed vector (reading a
+        # single water_z and shifting every later block), the optimizer diverges
+        # to a huge RMS instead of the ~sub-pixel fit expected at noise_std=0.5.
+        assert rms < 5.0, f"per-camera Stage 3 fit diverged: RMS={rms}"
 
     def test_raises_for_invalid_reference(
         self, board, intrinsics, ground_truth_extrinsics

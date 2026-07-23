@@ -182,6 +182,7 @@ def joint_refinement(
         min_corners,
         refine_intrinsics,
         normal_fixed,
+        shared_interface,
     )
 
     # Build sparse Jacobian if enabled

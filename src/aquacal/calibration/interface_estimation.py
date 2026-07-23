@@ -283,6 +283,7 @@ def optimize_interface(
         min_corners,
         False,  # refine_intrinsics
         normal_fixed,
+        shared_interface,
     )
 
     # Build sparse Jacobian if enabled

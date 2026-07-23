@@ -557,6 +557,7 @@ def compute_residuals(
     min_corners: int,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> NDArray[np.float64]:
     """
     Compute reprojection residuals for all observations.
@@ -581,6 +582,10 @@ def compute_residuals(
         min_corners: Minimum corners per detection
         refine_intrinsics: Whether intrinsics are being refined
         normal_fixed: If False, first 2 params are tilt for reference camera
+        shared_interface: If True (default), one global water_z is unpacked and
+            filled for all cameras. If False, N per-camera water_z values are
+            unpacked. MUST match the shared_interface used to pack ``params``,
+            or the whole vector past the water_z block is misaligned.
 
     Returns:
         1D array of residuals [r0_x, r0_y, r1_x, r1_y, ...] in pixels.
@@ -594,6 +599,7 @@ def compute_residuals(
         base_intrinsics=base_intrinsics,
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
     residuals = []
