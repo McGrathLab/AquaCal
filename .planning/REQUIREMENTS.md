@@ -36,7 +36,7 @@ it from scratch.
 WP5/WP6 enablement. Everything here is visibility and persistence — **no change to
 numerical behavior**.
 
-- [ ] **HOOK-01**: Each pipeline stage's intermediate calibration (post-Stage-2 init, post-Stage-3, post-intrinsic-refinement) can be dumped to the output dir, extending the existing `calibration_initial.json` pattern
+- [x] **HOOK-01**: Each pipeline stage's intermediate calibration (post-Stage-2 init, post-Stage-3, post-intrinsic-refinement) can be dumped to the output dir, extending the existing `calibration_initial.json` pattern
 - [ ] **HOOK-02**: An opt-in per-iteration trace for the bundle-adjustment stages records iteration index, cost, step norm, optimality, and the current interface parameters, persisted to the run's output dir
 - [x] **HOOK-03**: Conditioning diagnostics are available at solution — the Jacobian's singular-value spectrum or condition number, plus the approximate parameter correlation matrix or at minimum the camera-height ↔ interface-distance block
 - [ ] **HOOK-04**: Held-out evaluation is callable standalone, so a calibration can be scored against a set generated under different assumptions (WP4 needs to calibrate at n=1.333 and evaluate against ground truth generated at a different n)
@@ -137,7 +137,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HOOK-01 | Phase 16 | Pending |
+| HOOK-01 | Phase 16 | Complete |
 | HOOK-02 | Phase 16 | Pending |
 | HOOK-03 | Phase 16 | Complete |
 | HOOK-04 | Phase 16 | Pending |

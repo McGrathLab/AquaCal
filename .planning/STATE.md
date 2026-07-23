@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -23,9 +23,10 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 2/7 plans complete (16-01, 16-02); plan-checker PASSED first iteration
+Plan: 3/7 plans complete (16-01, 16-02, 16-03); plan-checker PASSED first iteration
 Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-01 (conditioning diagnostics, HOOK-03) executed; see
+Last activity: 2026-07-23 — plan 16-03 (observability config foundation + Stage-3/3rerun/4
+  calibration dumps, HOOK-01/02/03/06 config surface) executed; see
   "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
@@ -120,6 +121,21 @@ None.
   now records n_air/n_water/seed; added executable sweep-axis audit
   (`tests/unit/test_synthetic_sweep_axes.py`). Zero behavior change to existing
   callers (defaults 1.0/1.333/42 preserved).
+- Plan 16-03 (Observability config foundation + Stage-3/rerun/4 calibration dumps) —
+  COMPLETE 2026-07-23. Commits `bb523a7` (config fields + YAML parsing + `aquacal init`),
+  `afe54e8` (`internals/` directory helper), `ce94111` (`_dump_stage_calibration` + three
+  call sites). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-03-SUMMARY.md`. Added
+  `CalibrationConfig.save_stage_calibrations/save_optimization_trace/save_conditioning/seed`,
+  a new `internals:`/`seed:` YAML surface, `aquacal.io.ensure_internals_dir` +
+  `warn_if_overwriting`, and default-on Stage-3/Stage-3-rerun/Stage-4 calibration JSON
+  dumps under `output_dir/internals/`. `calibration_initial.json` (post-Stage-2)
+  deliberately left untouched. Note: this plan's `requirements` frontmatter listed
+  HOOK-02, but only the config *switch* (`save_optimization_trace`) was added here — the
+  actual per-iteration trace is plan 16-04's job (`depends_on: ["16-03"]`), so HOOK-02 was
+  intentionally left unchecked in REQUIREMENTS.md pending 16-04, not marked complete.
+  No regressions: 679 passed (full unit suite), 684 passed/29 deselected
+  (`tests/ -m "not slow"`).
 
 ### Quick Tasks Completed
 
@@ -152,8 +168,9 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-01 (conditioning diagnostics) executed and committed; awaiting
-  continued execution of the remaining phase 16 plans.
+Stopped at: Plan 16-03 (observability config foundation + stage calibration dumps)
+  executed and committed; awaiting continued execution of the remaining phase 16 plans
+  (16-04 depends on 16-03 and owns the actual HOOK-02 trace implementation).
 Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->

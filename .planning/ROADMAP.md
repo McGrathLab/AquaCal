@@ -233,7 +233,7 @@ behavior the published artifacts actually reflect.
 | 13. Core Refinement | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 14. Optimization Extensions | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
-| 16. Experiment Observability Hooks | 2/7 | In Progress|  | - |
+| 16. Experiment Observability Hooks | 3/7 | In Progress|  | - |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 0/TBD | Not started | - |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
