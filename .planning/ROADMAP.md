@@ -64,7 +64,7 @@ reconciliation and benchmarking follow, independent of that chain except where D
 must settle the stage-key schema before benchmark.json locks it in.
 
 - [x] **Phase 16: Experiment Observability Hooks** - Researchers can inspect and reproduce optimizer internals needed for WP5/WP6 without changing numeric behavior (completed 2026-07-23)
-- [ ] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior
+- [x] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior (completed 2026-07-23)
 - [ ] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
 - [ ] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
@@ -239,7 +239,7 @@ behavior the published artifacts actually reflect.
 | 14. Optimization Extensions | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 16. Experiment Observability Hooks | 7/7 | Complete    | 2026-07-23 | - |
-| 17. Per-Camera Interface Ablation Mode | 4/5 | In Progress|  | - |
+| 17. Per-Camera Interface Ablation Mode | 5/5 | Complete   | 2026-07-23 | - |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
