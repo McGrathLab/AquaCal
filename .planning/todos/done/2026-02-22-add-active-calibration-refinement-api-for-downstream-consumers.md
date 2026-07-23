@@ -19,3 +19,10 @@ Design and implement flexible public functions/methods that external libraries c
 - Consider both single-camera and multi-camera refinement scenarios.
 - Entry points should be importable as `from aquacal import refine_calibration` or similar.
 - Preserve the existing pipeline as the primary calibration path; refinement is an optional follow-up.
+
+## Resolution
+
+Delivered by milestone v1.6 "Refinement API" (phases 13-15, shipped 2026-03-09).
+`refine_calibration()` and `PointCorrespondence` are exported from `aquacal`
+(`src/aquacal/__init__.py`), implemented in
+`src/aquacal/calibration/point_refinement.py`. Closed 2026-07-23.

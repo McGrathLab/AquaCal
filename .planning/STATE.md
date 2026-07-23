@@ -39,17 +39,16 @@ Key v1.6 decisions:
 
 ### Pending Todos
 
-- Design better hero image for README (deferred from Phase 11)
-- Reduce memory and CPU load during calibration (Stage 3 on the 13-camera rig peaks
-  at ~3.6 GB and ~26-65 min; the dense `.toarray()` Jacobian is the suspected driver).
-  Partially addressed by quick task 3, which cut FD residual evaluations per Jacobian
-  by 15-23%; the dense `.toarray()` memory peak is untouched.
-- Recapture e3v83ef's in-air intrinsic video with deliberate board tilting — its
-  current video has only 30 usable views spanning 1.1-11.5 deg, leaving fx 13% low
-  and the camera 15 cm off the rig plane (data issue, not a code defect)
-- Consider a perspective-warped synthetic fixture in tests/unit/test_intrinsics.py —
-  the current affine-warped fixture has ~0 board tilt, so it now (correctly) trips
-  the new fronto-parallel warning in 12 tests
+Tracked as files in `.planning/todos/pending/` — see `/gsd:check-todos`. Do not
+duplicate the list here; the two copies drifted apart between v1.6 and v1.8.
+
+Open as of 2026-07-23:
+
+- Reduce memory and CPU load during calibration (dense `.toarray()` Jacobian peak;
+  CPU side partially addressed by quick task 3)
+- Upload new Zenodo dataset with image-based inputs (blocked on an external upload;
+  `load_example("real-rig")` may still serve a config with the deprecated
+  `initial_distances` key — unverified)
 
 ### Blockers/Concerns
 
