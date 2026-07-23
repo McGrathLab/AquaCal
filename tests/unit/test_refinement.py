@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import pytest
 
+from aquacal.calibration._observability import OptimizerObserver
 from aquacal.calibration._optim_common import pack_params, unpack_params
 from aquacal.calibration.refinement import joint_refinement
 from aquacal.config.schema import (
@@ -572,3 +573,95 @@ class TestJointRefinement:
                 board=board,
                 reference_camera="cam0",
             )
+
+
+class TestJointRefinementObserver:
+    """Tests for the optional OptimizerObserver wiring in joint_refinement."""
+
+    def test_joint_refinement_observer_does_not_change_result(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        stage3_result,
+    ):
+        """Passing an observer must not change any returned value."""
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        ext_no_obs, dist_no_obs, poses_no_obs, intr_no_obs, rms_no_obs = (
+            joint_refinement(
+                stage3_result=stage3_result,
+                detections=detections,
+                intrinsics=intrinsics,
+                board=board,
+                reference_camera="cam0",
+                verbose=0,
+            )
+        )
+
+        observer = OptimizerObserver(stage="stage4")
+        ext_obs, dist_obs, poses_obs, intr_obs, rms_obs = joint_refinement(
+            stage3_result=stage3_result,
+            detections=detections,
+            intrinsics=intrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            observer=observer,
+        )
+
+        for cam in intrinsics:
+            np.testing.assert_array_equal(ext_obs[cam].R, ext_no_obs[cam].R)
+            np.testing.assert_array_equal(ext_obs[cam].t, ext_no_obs[cam].t)
+            assert dist_obs[cam] == dist_no_obs[cam]
+            np.testing.assert_array_equal(intr_obs[cam].K, intr_no_obs[cam].K)
+
+        assert rms_obs == rms_no_obs
+        for bp_obs, bp_no_obs in zip(poses_obs, poses_no_obs):
+            np.testing.assert_array_equal(bp_obs.rvec, bp_no_obs.rvec)
+            np.testing.assert_array_equal(bp_obs.tvec, bp_no_obs.tvec)
+
+    def test_joint_refinement_observer_traces_water_z(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        stage3_result,
+    ):
+        """The observer's final trace row water_z matches the returned solution."""
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        observer = OptimizerObserver(stage="stage4")
+        _, dist_opt, _, _, _ = joint_refinement(
+            stage3_result=stage3_result,
+            detections=detections,
+            intrinsics=intrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            observer=observer,
+        )
+
+        assert len(observer.rows) > 0
+        # Reference camera has C_z=0, so its distance equals water_z exactly.
+        assert observer.rows[-1].water_z == dist_opt["cam0"]

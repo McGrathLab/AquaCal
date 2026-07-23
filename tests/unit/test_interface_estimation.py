@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import pytest
 
+from aquacal.calibration._observability import OptimizerObserver
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -792,6 +793,145 @@ class TestOptimizeInterface:
                 f"Camera {cam_name} C_z not recovered: "
                 f"expected {gt_C_z:.4f}, got {opt_C_z:.4f}"
             )
+
+
+class TestOptimizeInterfaceObserver:
+    """Tests for the optional OptimizerObserver wiring in optimize_interface."""
+
+    def test_optimize_interface_observer_does_not_change_result(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+    ):
+        """Passing an observer must not change any returned value."""
+        np.random.seed(42)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        ext_no_obs, dist_no_obs, poses_no_obs, rms_no_obs = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+        )
+
+        observer = OptimizerObserver(stage="stage3")
+        ext_obs, dist_obs, poses_obs, rms_obs = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            observer=observer,
+        )
+
+        for cam in intrinsics:
+            np.testing.assert_array_equal(ext_obs[cam].R, ext_no_obs[cam].R)
+            np.testing.assert_array_equal(ext_obs[cam].t, ext_no_obs[cam].t)
+            assert dist_obs[cam] == dist_no_obs[cam]
+
+        assert rms_obs == rms_no_obs
+        for bp_obs, bp_no_obs in zip(poses_obs, poses_no_obs):
+            np.testing.assert_array_equal(bp_obs.rvec, bp_no_obs.rvec)
+            np.testing.assert_array_equal(bp_obs.tvec, bp_no_obs.tvec)
+
+    def test_optimize_interface_observer_traces_water_z(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+    ):
+        """The observer's final trace row water_z matches the returned solution."""
+        np.random.seed(42)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        observer = OptimizerObserver(stage="stage3")
+        _, dist_opt, _, _ = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            observer=observer,
+        )
+
+        assert len(observer.rows) > 0
+        # Reference camera has C_z=0, so its distance equals water_z exactly.
+        assert observer.rows[-1].water_z == dist_opt["cam0"]
+
+    def test_observer_tilt_columns_when_normal_free(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+    ):
+        """tilt_rx/tilt_ry are finite when normal_fixed=False, nan otherwise."""
+        np.random.seed(42)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        observer_free = OptimizerObserver(stage="stage3")
+        optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            normal_fixed=False,
+            observer=observer_free,
+        )
+        assert len(observer_free.rows) > 0
+        assert np.isfinite(observer_free.rows[-1].tilt_rx)
+        assert np.isfinite(observer_free.rows[-1].tilt_ry)
+
+        observer_fixed = OptimizerObserver(stage="stage3")
+        optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            normal_fixed=True,
+            observer=observer_fixed,
+        )
+        assert len(observer_fixed.rows) > 0
+        assert np.isnan(observer_fixed.rows[-1].tilt_rx)
+        assert np.isnan(observer_fixed.rows[-1].tilt_ry)
 
 
 class TestBuildJacobianSparsity:

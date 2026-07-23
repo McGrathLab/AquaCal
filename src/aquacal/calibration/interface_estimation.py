@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
+from aquacal.calibration._observability import OptimizerObserver
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -136,6 +137,7 @@ def optimize_interface(
     use_sparse_jacobian: bool = True,
     verbose: int = 1,
     normal_fixed: bool = True,
+    observer: OptimizerObserver | None = None,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -173,6 +175,8 @@ def optimize_interface(
             0 = silent, 1 = one-line per iteration, 2 = full per-iteration report.
         normal_fixed: If False, estimate reference camera tilt (2 DOF) to account
             for non-perpendicular camera-to-water-surface alignment.
+        observer: Optional read-only observer for per-iteration tracing and
+            solution-point diagnostics. Has no effect on the returned values.
 
     Returns:
         Tuple of:
@@ -298,8 +302,20 @@ def optimize_interface(
         )
 
     # Run optimization
+    ls_kwargs = {}
+    if observer is not None:
+        observer.configure_layout(
+            water_z_index=(0 if normal_fixed else 2) + 6 * (len(camera_order) - 1),
+            normal_fixed=normal_fixed,
+        )
+        cost_func = observer.wrap_fun(compute_residuals)
+        jac = observer.wrap_jac(jac)
+        ls_kwargs["callback"] = observer.callback
+    else:
+        cost_func = compute_residuals
+
     result = least_squares(
-        compute_residuals,
+        cost_func,
         x0=initial_params,
         args=cost_args,
         method="trf",
@@ -308,10 +324,14 @@ def optimize_interface(
         bounds=(lower, upper),
         jac=jac,
         verbose=verbose,
+        **ls_kwargs,
     )
 
     if result.status <= 0:
         raise ConvergenceError(f"Optimization failed: {result.message}")
+
+    if observer is not None:
+        observer.on_solution(result)
 
     # Unpack optimized parameters
     opt_extrinsics, opt_distances, opt_board_poses, _ = unpack_params(
