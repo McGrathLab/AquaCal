@@ -5,8 +5,10 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import importlib.metadata
+import json
 import random
 import time
+import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -266,8 +268,6 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     # Parse initial_water_z (optional) with backward compatibility
     initial_water_z = None
     if "initial_distances" in interface:
-        import warnings
-
         warnings.warn(
             "Config field 'initial_distances' is deprecated. Use 'initial_water_z' instead.",
             UserWarning,
@@ -654,6 +654,103 @@ def _select_conditioning_report(
     return obs.conditioning_report if obs is not None else None
 
 
+def _resolve_per_camera_water_z_seeds(
+    initial_water_z: dict[str, float] | None,
+    camera_order: list[str],
+    auxiliary_cameras: list[str],
+    default: float = 0.15,
+) -> dict[str, float]:
+    """Resolve per-camera water_z seeds for the ablation (per-camera) path.
+
+    Rules (per-camera path only; shared mode never routes through here, which
+    protects the IFACE-05 bit-exactness guarantee):
+    - ``initial_water_z is None`` -> every camera gets ``default``, silently.
+    - dict provided -> each camera in ``camera_order`` uses its provided value
+      if present, else ``default``; if any were defaulted, warn once naming
+      them.
+    - any key NOT in ``camera_order``: silently ignored if it is an auxiliary
+      camera (legitimately has no water_z parameter), otherwise warned as a
+      likely typo.
+
+    Args:
+        initial_water_z: Raw (possibly partial or None) config dict.
+        camera_order: Primary optimized camera names (each gets a water_z param).
+        auxiliary_cameras: Auxiliary camera names, excluded from joint BA.
+        default: Fallback seed in meters for missing cameras.
+
+    Returns:
+        Dict covering exactly ``camera_order``, one seed (meters) per camera.
+    """
+    if initial_water_z is None:
+        return {cam: default for cam in camera_order}
+
+    resolved: dict[str, float] = {}
+    defaulted: list[str] = []
+    for cam in camera_order:
+        if cam in initial_water_z:
+            resolved[cam] = float(initial_water_z[cam])
+        else:
+            resolved[cam] = default
+            defaulted.append(cam)
+
+    if defaulted:
+        warnings.warn(
+            f"initial_water_z did not cover all cameras; defaulted to {default}m: "
+            f"{sorted(defaulted)}",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    unknown = [
+        key
+        for key in initial_water_z
+        if key not in camera_order and key not in auxiliary_cameras
+    ]
+    if unknown:
+        warnings.warn(
+            f"initial_water_z contains unknown camera name(s) (likely a typo): "
+            f"{sorted(unknown)}",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    return resolved
+
+
+def _build_interface_spread_report(
+    distances: dict[str, float],
+    stage: str,
+) -> dict:
+    """Build the per-camera water_z spread report (meters).
+
+    Args:
+        distances: Final per-camera water_z values (meters), one per optimized
+            camera.
+        stage: Producing-stage tag ("stage3", "stage3_rerun", or "stage4"),
+            matching the conditioning-report stage tag.
+
+    Returns:
+        A JSON-serializable dict with the producing stage, ``unit`` ("meters"),
+        a ``per_camera`` map (sorted by name), and ``stats`` with
+        min/max/mean/std/range in meters. ``std`` is the population standard
+        deviation (numpy default, ddof=0).
+    """
+    cams = sorted(distances)
+    values = np.array([distances[cam] for cam in cams], dtype=np.float64)
+    return {
+        "stage": stage,
+        "unit": "meters",
+        "per_camera": {cam: float(distances[cam]) for cam in cams},
+        "stats": {
+            "min": float(values.min()),
+            "max": float(values.max()),
+            "mean": float(values.mean()),
+            "std": float(values.std()),
+            "range": float(np.ptp(values)),
+        },
+    }
+
+
 def run_calibration_from_config(
     config: CalibrationConfig, verbose: bool = False
 ) -> CalibrationResult:
@@ -913,6 +1010,19 @@ def run_calibration_from_config(
     # --- Stage 3: Interface Optimization ---
     print("\n[Stage 3] Interface and pose optimization...")
 
+    # In per-camera mode, resolve the (possibly None / partial) initial_water_z
+    # dict into a full per-camera seed dict (fills missing cameras with 0.15m,
+    # warns as needed). Shared mode passes config.initial_water_z through
+    # unchanged to protect IFACE-05 bit-exactness.
+    if config.shared_interface:
+        stage3_initial_water_zs = config.initial_water_z
+    else:
+        stage3_initial_water_zs = _resolve_per_camera_water_z_seeds(
+            config.initial_water_z,
+            config.camera_names,
+            config.auxiliary_cameras,
+        )
+
     def _run_stage3(dets, observer=None):
         """Run Stage 3 interface optimization on the given detection set."""
         return optimize_interface(
@@ -921,7 +1031,7 @@ def run_calibration_from_config(
             initial_extrinsics=extrinsics,
             board=board,
             reference_camera=reference_camera,
-            initial_water_zs=config.initial_water_z,
+            initial_water_zs=stage3_initial_water_zs,
             interface_normal=interface_normal,
             n_air=config.n_air,
             n_water=config.n_water,
@@ -1227,6 +1337,31 @@ def run_calibration_from_config(
                 f"  Saved internals/conditioning.json (+ .npz) "
                 f"[stage: {conditioning_stage}]"
             )
+
+    # --- Per-camera interface spread report (IFACE-04) ---
+    # The ablation's headline number: always written in per-camera mode (not
+    # gated behind any save flag). Console line is millimeters (human display);
+    # the JSON file is meters (machine-readable). Shared mode writes nothing.
+    if not config.shared_interface:
+        spread_stage = (
+            "stage4"
+            if refine_intrinsics
+            else ("stage3_rerun" if stage3_rerun_observer is not None else "stage3")
+        )
+        spread_report = _build_interface_spread_report(final_distances, spread_stage)
+        s = spread_report["stats"]
+        print(
+            "  [Per-Camera Interface] water_z spread (mm): "
+            f"min={s['min'] * 1000:.2f} max={s['max'] * 1000:.2f} "
+            f"mean={s['mean'] * 1000:.2f} std={s['std'] * 1000:.2f} "
+            f"range={s['range'] * 1000:.2f}"
+        )
+        internals_dir = ensure_internals_dir(config.output_dir)
+        spread_path = internals_dir / "interface_spread.json"
+        warn_if_overwriting(spread_path)
+        with open(spread_path, "w") as f:
+            json.dump(spread_report, f, indent=2, sort_keys=True)
+        print("  Saved internals/interface_spread.json")
 
     # Convert poses list to dict
     board_poses_dict = {bp.frame_idx: bp for bp in final_poses}
