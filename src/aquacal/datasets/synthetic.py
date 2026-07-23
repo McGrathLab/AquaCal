@@ -42,6 +42,14 @@ class SyntheticScenario:
         noise_std: Gaussian noise standard deviation applied to detections (pixels)
         description: Human-readable description
         images: Optional dict of rendered images (camera_name -> frame_idx -> image)
+        n_air: Refractive index of the medium above the interface, recorded as
+            ground truth. Does not by itself generate detections at this index —
+            callers must also pass it to ``generate_synthetic_detections``.
+        n_water: Refractive index of the medium below the interface, recorded as
+            ground truth. Does not by itself generate detections at this index —
+            callers must also pass it to ``generate_synthetic_detections``.
+        seed: Random seed used to generate this scenario's geometry and
+            trajectory, recorded for reproducibility (HOOK-06).
     """
 
     name: str
@@ -53,6 +61,9 @@ class SyntheticScenario:
     noise_std: float
     description: str
     images: dict[str, dict[int, NDArray]] | None = None
+    n_air: float = 1.0
+    n_water: float = 1.333
+    seed: int = 42
 
 
 def generate_camera_intrinsics(
@@ -458,6 +469,8 @@ def generate_synthetic_detections(
     board_poses: list[BoardPose],
     noise_std: float = 0.0,
     min_corners: int = 8,
+    n_air: float = 1.0,
+    n_water: float = 1.333,
     seed: int = 42,
 ) -> DetectionResult:
     """
@@ -470,6 +483,11 @@ def generate_synthetic_detections(
     4. Filter corners outside image bounds
     5. Only include camera if >= min_corners visible
 
+    Generating detections at a refractive index different from the one used
+    during calibration is exactly the WP4 evaluation-under-perturbed-assumptions
+    setup: it measures how calibration accuracy degrades when the assumed
+    refractive index does not match the true one.
+
     Args:
         intrinsics: Per-camera intrinsics
         extrinsics: Per-camera extrinsics
@@ -478,6 +496,8 @@ def generate_synthetic_detections(
         board_poses: List of board poses
         noise_std: Gaussian noise standard deviation (pixels)
         min_corners: Minimum corners for valid detection
+        n_air: Refractive index of the medium above the interface
+        n_water: Refractive index of the medium below the interface
         seed: Random seed for noise
 
     Returns:
@@ -496,6 +516,8 @@ def generate_synthetic_detections(
             interface = Interface(
                 normal=interface_normal,
                 camera_distances={cam_name: water_zs[cam_name]},
+                n_air=n_air,
+                n_water=n_water,
             )
 
             corner_ids: list[int] = []
@@ -618,7 +640,9 @@ def compute_calibration_errors(
     }
 
 
-def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
+def create_scenario(
+    name: str, seed: int = 42, n_air: float = 1.0, n_water: float = 1.333
+) -> SyntheticScenario:
     """Create a predefined test scenario with complete ground truth.
 
     Available scenarios:
@@ -630,9 +654,18 @@ def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
     All presets use the same ChArUco board (12x9 squares, 60 mm square size,
     45 mm marker size, DICT_5X5_100).
 
+    ``create_scenario`` does not itself generate detections, so ``n_air`` and
+    ``n_water`` are recorded on the returned scenario as ground-truth metadata
+    only. Callers must pass the same values to ``generate_synthetic_detections``
+    to actually generate detections at that refractive index.
+
     Args:
         name: Scenario name (``'ideal'``, ``'minimal'``, or ``'realistic'``)
         seed: Random seed for reproducibility
+        n_air: Refractive index of the medium above the interface, recorded
+            as ground truth on the returned scenario
+        n_water: Refractive index of the medium below the interface, recorded
+            as ground truth on the returned scenario
 
     Returns:
         SyntheticScenario with complete ground truth (intrinsics, extrinsics,
@@ -687,6 +720,9 @@ def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
             board_poses=board_poses,
             noise_std=0.0,
             description="Ideal conditions: 4 cameras, 20 frames, 0 noise",
+            n_air=n_air,
+            n_water=n_water,
+            seed=seed,
         )
 
     elif name == "minimal":
@@ -716,6 +752,9 @@ def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
             board_poses=board_poses,
             noise_std=0.3,
             description="Minimal scenario: 2 cameras, 10 frames, 0.3px noise",
+            n_air=n_air,
+            n_water=n_water,
+            seed=seed,
         )
 
     elif name == "realistic":
@@ -734,6 +773,9 @@ def create_scenario(name: str, seed: int = 42) -> SyntheticScenario:
             board_poses=board_poses,
             noise_std=0.5,
             description="12-camera rig matching real hardware (idealized geometry)",
+            n_air=n_air,
+            n_water=n_water,
+            seed=seed,
         )
 
     valid_names = ["ideal", "minimal", "realistic"]
