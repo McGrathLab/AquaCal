@@ -14,11 +14,20 @@ __all__ = [
     # From serialization.py (Task 3.3):
     "save_calibration",
     "load_calibration",
+    # From internals.py (Phase 16 observability hooks):
+    "INTERNALS_DIRNAME",
+    "ensure_internals_dir",
+    "warn_if_overwriting",
 ]
 
 # Imports will be added as modules are implemented:
 from aquacal.io.detection import detect_all_frames, detect_charuco
 from aquacal.io.frameset import FrameSet
 from aquacal.io.images import ImageSet
+from aquacal.io.internals import (
+    INTERNALS_DIRNAME,
+    ensure_internals_dir,
+    warn_if_overwriting,
+)
 from aquacal.io.serialization import load_calibration, save_calibration
 from aquacal.io.video import VideoSet
