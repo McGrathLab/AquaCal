@@ -1,9 +1,16 @@
 """Tests for optimization common utilities (_optim_common.py)."""
 
 import numpy as np
+import pytest
 import scipy.sparse
+from scipy.optimize._numdiff import approx_derivative, group_columns
 
-from aquacal.calibration._optim_common import make_sparse_jacobian_func
+from aquacal.calibration._optim_common import (
+    build_jacobian_sparsity,
+    build_structural_column_groups,
+    make_sparse_jacobian_func,
+)
+from aquacal.config.schema import Detection, DetectionResult, FrameDetections
 
 
 def _toy_cost(params, A):
@@ -12,6 +19,162 @@ def _toy_cost(params, A):
     For this linear function f(x) = A @ x, the Jacobian is exactly A.
     """
     return A @ params
+
+
+def _make_detections(n_cams, n_frames, visibility, corners_per_view=4, seed=0):
+    """Build a DetectionResult where each camera sees each frame with prob `visibility`.
+
+    At least one camera is guaranteed per frame so no frame is empty.
+
+    Args:
+        n_cams: Number of cameras, named ``cam0``..``cam{n_cams-1}``.
+        n_frames: Number of frames, indexed ``0``..``n_frames-1``.
+        visibility: Probability that a given camera sees a given frame.
+        corners_per_view: Corners detected in each (camera, frame) view.
+        seed: Seed for the visibility draws and corner coordinates.
+
+    Returns:
+        DetectionResult with the requested partial visibility pattern.
+    """
+    rng = np.random.default_rng(seed)
+    camera_names = [f"cam{i}" for i in range(n_cams)]
+    corner_ids = np.arange(corners_per_view, dtype=np.int32)
+
+    frames = {}
+    for frame_idx in range(n_frames):
+        visible = [c for c in camera_names if rng.random() < visibility]
+        if not visible:
+            # Guarantee a non-empty frame.
+            visible = [camera_names[rng.integers(n_cams)]]
+
+        detections = {
+            cam: Detection(
+                corner_ids=corner_ids.copy(),
+                corners_2d=rng.uniform(0.0, 1000.0, size=(corners_per_view, 2)),
+            )
+            for cam in visible
+        }
+        frames[frame_idx] = FrameDetections(frame_idx=frame_idx, detections=detections)
+
+    return DetectionResult(
+        frames=frames,
+        camera_names=camera_names,
+        total_frames=n_frames,
+    )
+
+
+def _make_pattern(
+    n_cams, n_frames, visibility, refine_intrinsics, normal_fixed, seed=0
+):
+    """Build a board-observation sparsity pattern for the given configuration."""
+    detections = _make_detections(n_cams, n_frames, visibility, seed=seed)
+    return build_jacobian_sparsity(
+        detections,
+        reference_camera="cam0",
+        camera_order=[f"cam{i}" for i in range(n_cams)],
+        frame_order=list(range(n_frames)),
+        min_corners=1,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
+    )
+
+
+def _patterned_residuals(x, masked_coeff):
+    """Nonlinear residuals honoring a sparsity pattern.
+
+    Row ``i`` depends only on the columns where the pattern is nonzero, because
+    ``masked_coeff`` is a dense coefficient matrix multiplied elementwise by the
+    pattern. ``sin`` makes the function nonlinear, so the finite-difference
+    result genuinely depends on how columns are grouped.
+    """
+    return np.sin(masked_coeff @ x)
+
+
+# (normal_fixed, refine_intrinsics, expected_group_count)
+_CONFIGS = [(True, False, 13), (False, True, 17)]
+
+
+class TestBuildStructuralColumnGroups:
+    """Tests for the structural finite-difference column grouping."""
+
+    @pytest.mark.parametrize("visibility", [1.0, 0.7, 0.4])
+    @pytest.mark.parametrize("normal_fixed, refine_intrinsics, _expected", _CONFIGS)
+    def test_grouping_is_valid(
+        self, visibility, normal_fixed, refine_intrinsics, _expected
+    ):
+        """No two columns in a group share a residual row, at any visibility."""
+        S = _make_pattern(4, 5, visibility, refine_intrinsics, normal_fixed)
+        groups = build_structural_column_groups(
+            S,
+            4,
+            5,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+
+        for group_id in np.unique(groups):
+            cols = np.flatnonzero(groups == group_id)
+            overlap = S[:, cols].sum(axis=1).max()
+            assert overlap <= 1, (
+                f"Group {group_id} has {overlap} columns sharing a residual row"
+            )
+
+        assert set(groups.tolist()) == set(range(groups.max() + 1))
+
+    def test_fd_jacobian_matches_group_columns(self):
+        """Structural grouping yields the same FD Jacobian as group_columns."""
+        S = _make_pattern(4, 5, 0.7, refine_intrinsics=True, normal_fixed=False)
+        structural = build_structural_column_groups(
+            S, 4, 5, refine_intrinsics=True, normal_fixed=False
+        )
+
+        rng = np.random.default_rng(42)
+        masked_coeff = S * rng.normal(size=S.shape)
+        x0 = rng.normal(size=S.shape[1])
+
+        def f(x):
+            return _patterned_residuals(x, masked_coeff)
+
+        J_structural = approx_derivative(
+            f, x0, method="2-point", sparsity=(S, structural)
+        )
+        J_greedy = approx_derivative(
+            f, x0, method="2-point", sparsity=(S, group_columns(S))
+        )
+
+        # A valid grouping only changes how FD perturbations are batched, so
+        # the difference quotients -- and hence the Jacobians -- are identical.
+        np.testing.assert_allclose(
+            J_structural.toarray(), J_greedy.toarray(), rtol=0, atol=0
+        )
+
+    @pytest.mark.parametrize("normal_fixed, refine_intrinsics, expected", _CONFIGS)
+    def test_group_count_hits_lower_bound(
+        self, normal_fixed, refine_intrinsics, expected
+    ):
+        """Group count equals the max nonzeros per row (13 base, 17 w/ intrinsics)."""
+        S = _make_pattern(4, 5, 0.7, refine_intrinsics, normal_fixed)
+        groups = build_structural_column_groups(
+            S,
+            4,
+            5,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+
+        lower_bound = S.sum(axis=1).max()
+        assert groups.max() + 1 == lower_bound
+        assert lower_bound == expected
+
+    def test_single_camera_yields_contiguous_groups(self):
+        """Degenerate n_cams == 1 (no extrinsic columns) still compacts to 0..m-1."""
+        S = _make_pattern(1, 5, 1.0, refine_intrinsics=False, normal_fixed=True)
+        groups = build_structural_column_groups(S, 1, 5)
+
+        assert set(groups.tolist()) == set(range(groups.max() + 1))
+        for group_id in np.unique(groups):
+            cols = np.flatnonzero(groups == group_id)
+            assert S[:, cols].sum(axis=1).max() <= 1
 
 
 class TestMakeSparseJacobianFunc:
