@@ -33,6 +33,8 @@ def pack_params(
     intrinsics: dict[str, CameraIntrinsics] | None = None,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
+    water_z_per_camera: dict[str, float] | None = None,
 ) -> NDArray[np.float64]:
     """
     Pack optimization parameters into a 1D array.
@@ -41,7 +43,9 @@ def pack_params(
     - If not normal_fixed: reference camera tilt rx, ry (2)
     - For each non-reference camera (in camera_order, skipping reference):
         cam_rvec (3), cam_tvec (3)
-    - water_z (1): global water surface Z coordinate
+    - water_z: global water surface Z coordinate. One value when
+        shared_interface=True; N values (one per camera in camera_order,
+        reference included) when shared_interface=False.
     - For each frame (in frame_order):
         board_rvec (3), board_tvec (3)
     - If refine_intrinsics, for each camera (in camera_order):
@@ -50,7 +54,10 @@ def pack_params(
     Args:
         extrinsics: Camera extrinsics dict
         water_z: Global water surface Z coordinate. This is stored as the
-            water_z for all cameras (a Z-coordinate, not a distance).
+            water_z for all cameras (a Z-coordinate, not a distance). In
+            per-camera mode it is the fallback value used for any camera not
+            present in water_z_per_camera (or for all cameras when that dict
+            is None).
         board_poses: Board poses dict (frame_idx -> BoardPose)
         reference_camera: Name of reference camera (skipped in extrinsics packing)
         camera_order: Ordered list of camera names
@@ -58,6 +65,13 @@ def pack_params(
         intrinsics: Per-camera intrinsics (required if refine_intrinsics=True)
         refine_intrinsics: Whether to include intrinsics in parameter vector
         normal_fixed: If False, prepend 2 tilt params (rx, ry) for reference camera
+        shared_interface: If True (default), a single global water_z parameter is
+            packed (bit-identical to the historical single-water_z behavior). If
+            False, N per-camera water_z parameters are packed contiguously in the
+            slot the single water_z occupies, one per camera in camera_order.
+        water_z_per_camera: Per-camera seed water_z values (meters), keyed by
+            camera name. Used only when shared_interface=False; if None, every
+            camera is seeded with the scalar water_z.
 
     Returns:
         1D parameter vector
@@ -78,8 +92,16 @@ def pack_params(
         params.extend(rvec.tolist())
         params.extend(ext.t.tolist())
 
-    # Pack water surface Z (single parameter replacing N distances)
-    params.append(water_z)
+    # Pack water surface Z. Shared mode: a single global parameter (replacing N
+    # distances). Per-camera mode: one value per camera in camera_order
+    # (reference included), packed contiguously in the same slot.
+    if shared_interface:
+        params.append(water_z)
+    else:
+        if water_z_per_camera is None:
+            water_z_per_camera = {cam: water_z for cam in camera_order}
+        for cam_name in camera_order:
+            params.append(water_z_per_camera[cam_name])
 
     # Pack board poses
     for frame_idx in frame_order:
@@ -105,6 +127,7 @@ def unpack_params(
     base_intrinsics: dict[str, CameraIntrinsics] | None = None,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -127,6 +150,9 @@ def unpack_params(
             if provided, otherwise an empty dict.
         refine_intrinsics: Whether intrinsics are included in params
         normal_fixed: If False, first 2 params are tilt (rx, ry) for reference camera
+        shared_interface: If True (default), a single water_z parameter is read
+            and filled for every camera. If False, N consecutive per-camera
+            water_z parameters are read, one per camera in camera_order.
 
     Returns:
         Tuple of (extrinsics_dict, distances_dict, board_poses_dict, intrinsics_dict)
@@ -154,15 +180,19 @@ def unpack_params(
             R = rvec_to_matrix(rvec)
             extrinsics_out[cam_name] = CameraExtrinsics(R=R, t=tvec.copy())
 
-    # Unpack water surface Z (single parameter)
-    water_z = float(params[idx])
-    idx += 1
-
-    # Derive per-camera interface distances from water_z
-    # water_z is the Z-coordinate of the water surface for all cameras
+    # Unpack water surface Z. Shared mode: one global value (a Z-coordinate,
+    # not a distance) filled for every camera. Per-camera mode: N consecutive
+    # values, one per camera in camera_order.
     distances_out = {}
-    for cam_name in camera_order:
-        distances_out[cam_name] = water_z
+    if shared_interface:
+        water_z = float(params[idx])
+        idx += 1
+        for cam_name in camera_order:
+            distances_out[cam_name] = water_z
+    else:
+        for cam_name in camera_order:
+            distances_out[cam_name] = float(params[idx])
+            idx += 1
 
     # Unpack board poses
     board_poses_out = {}
@@ -419,6 +449,7 @@ def build_bounds(
     base_intrinsics: dict[str, CameraIntrinsics] | None = None,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """
     Build lower and upper bounds for optimization.
@@ -430,6 +461,9 @@ def build_bounds(
         base_intrinsics: Base intrinsics (required if refine_intrinsics=True)
         refine_intrinsics: Whether intrinsics are being refined
         normal_fixed: If False, 2 tilt bounds are prepended
+        shared_interface: If True (default), a single water_z bound is emitted.
+            If False, N per-camera water_z bounds are emitted, each the same
+            [0.01, 2.0] as the shared bound.
 
     Returns:
         Tuple of (lower_bounds, upper_bounds) arrays
@@ -438,7 +472,7 @@ def build_bounds(
     n_frames = len(frame_order)
     n_tilt_params = 0 if normal_fixed else 2
     n_extrinsic_params = 6 * (n_cams - 1)
-    n_water_z_params = 1
+    n_water_z_params = 1 if shared_interface else n_cams
     n_pose_params = 6 * n_frames
     n_intrinsic_params = 4 * n_cams if refine_intrinsics else 0
     total = (
@@ -457,10 +491,11 @@ def build_bounds(
         lower[0:2] = -0.2
         upper[0:2] = 0.2
 
-    # Water surface Z bound: [0.01, 2.0] meters
+    # Water surface Z bound: [0.01, 2.0] meters. In per-camera mode every one of
+    # the N water_z parameters gets the same bound.
     water_z_idx = n_tilt_params + n_extrinsic_params
-    lower[water_z_idx] = 0.01
-    upper[water_z_idx] = 2.0
+    lower[water_z_idx : water_z_idx + n_water_z_params] = 0.01
+    upper[water_z_idx : water_z_idx + n_water_z_params] = 2.0
 
     # Intrinsic bounds
     if refine_intrinsics:
