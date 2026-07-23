@@ -46,10 +46,44 @@ Accurate refractive camera calibration from standard ChArUco board observations 
 - ✓ Structured validation report: holdout reproj error, triangulation consistency, extrinsics drift — v1.6
 - ✓ Accept/reject recommendation based on validation thresholds — v1.6
 - ✓ Clean input contracts: PointCorrespondence, RefinementResult, ValidationReport, CameraDrift — v1.6
+- ✓ Outlier-frame rejection scored from independent PnP poses — v1.7
+- ✓ `detection.start_frame` / `detection.stop_frame` to trim contaminated frame ranges — v1.7
+- ✓ `reject_outlier_frames` emitted as an active key in generated configs — v1.8
+- ✓ Seeded `cv2.calibrateCamera` with fronto-parallel board view warning — v1.8
+- ✓ Structural FD column grouping (theoretical-minimum group count) — quick task 3
+
+## Current Milestone: v1.9 Publication Prep
+
+**Goal:** Build all remaining code-side tooling the SoftwareX reviewer responses depend on,
+so the revision experiments run against a stable library rather than a moving target.
+
+**Context:** The AquaCal SoftwareX paper is in minor revision; the revised manuscript is due
+**2026-08-21**. Several reviewer responses (R1.2, R1.5, R2, R3.2, R4.2, R4.3) require
+capabilities that do not exist yet. Source worklist: `aquacal-post-review-milestone.md`,
+with line-level documentation findings in `aquacal-docs-accuracy-fixes.md`.
+
+**Target features:**
+- Benchmark instrumentation: solver diagnostics, opt-in peak memory, measured column-group
+  reduction, and a machine-readable `benchmark.json` run record + sweep runner
+- Experiment hooks: per-stage intermediate calibrations, optimization trace, conditioning
+  and parameter-correlation diagnostics, standalone held-out evaluation, deterministic seeding
+- Per-camera interface mode (`shared_interface=False`) as an ablation option
+- Water refractive-index helper with a cited empirical formulation and `calc-index` CLI
+- Documentation reconciliation against the paper, including the three-stage model across
+  both docs and code surfaces
+- Dataset refresh on Zenodo and tutorial re-execution
+
+**Explicitly not in this milestone:** running the experiments themselves (WP5/WP6),
+manuscript prose, and the structural column-grouping change (already shipped).
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to plan next)
+- [ ] Benchmark instrumentation and machine-readable run records
+- [ ] Experiment observability hooks (traces, conditioning, held-out evaluation, seeding)
+- [ ] Per-camera interface ablation mode
+- [ ] Refractive-index helper and CLI subcommand
+- [ ] Documentation reconciliation with the paper
+- [ ] Dataset refresh and tutorial re-execution
 
 ### Out of Scope
 
@@ -64,7 +98,8 @@ Accurate refractive camera calibration from standard ChArUco board observations 
 
 ## Context
 
-Shipped v1.6 with ~13,100 LOC Python.
+Shipped v1.8.0 (2026-07-23). v1.7/v1.7.1/v1.8 landed outside the GSD milestone
+framework, via debug sessions and quick tasks; the last GSD phase was 15.
 Tech stack: NumPy, SciPy, OpenCV, Matplotlib, Pandas, PyYAML, Sphinx (Furo), GitHub Actions.
 Published on PyPI as `aquacal`. Sphinx docs live on Read the Docs. Zenodo DOI active.
 45+ tests for refinement API alone; full test suite spans unit + synthetic.
@@ -72,9 +107,14 @@ Two Jupyter tutorial notebooks with pre-executed outputs.
 
 Known issues / tech debt:
 - Hero image redesign deferred (user wants to rethink concept; generation script kept)
-- Memory/CPU optimization for large calibrations not yet addressed
+- Peak memory (~3.6 GB on the 13-camera rig) from the dense `.toarray()` Jacobian —
+  v1.9 measures and reports it; reducing it stays deferred (the dense return exists
+  because sparse `jac_sparsity` forces LSMR, observed to diverge on this problem)
 - ~~Version field in JSON output~~ — fixed
 - Phase 15 SUMMARY.md files not generated (work done, UAT/verification passed)
+- `initial_distances` compat shim in `pipeline.py` cannot be retired until the Zenodo
+  dataset is re-uploaded (v1.9 Task Group F)
+- Paper metadata cell C1 says v1.6.0 against v1.8.0 shipped — bumped once at end of v1.9
 
 Primary downstream consumer: AquaPose — a 13-camera 3D fish tracking pipeline that produces
 hundreds of thousands of triangulated 3D points with known camera correspondences from animal
@@ -112,6 +152,10 @@ AquaCal to improve calibration accuracy over time.
 | Parameterized extensions over separate functions | refine_intrinsics, loss, normal_fixed as params on single function | ✓ Good |
 | Validation as optional post-step | validate=True default, holdout split before optimization | ✓ Good |
 | Any-fail accept/reject logic | Conservative — any threshold exceeded rejects refinement | ✓ Good |
+| Reconcile stage model to three stages in code, not just docs | Paper, docs, console output, and benchmark.json must agree; A4 would otherwise bake `stage4_*` into the artifact the results table is generated from | — Pending |
+| Measure peak memory, do not reduce it in v1.9 | The dense `.toarray()` trades memory for solver stability; changing it before the 2026-08-21 deadline risks destabilizing every experiment | — Pending |
+| Per-camera interface as ablation only, default `shared_interface=True` | The paper's central claim is that the shared parameter is the correct model; docs must not present per-camera as co-equal | — Pending |
+| Generate the results table from `benchmark.json`, not by hand | The paper has already been bitten by stale hand-copied numbers across a 9-run grid | — Pending |
 
 ---
-*Last updated: 2026-03-09 after v1.6 milestone*
+*Last updated: 2026-07-23 after starting v1.9 Publication Prep milestone*

@@ -58,3 +58,21 @@
 6. 45 tests across input validation, optimization correctness, extensions, and validation
 
 ---
+
+## Interim releases v1.7 – v1.8 (2026-07-15 → 2026-07-23)
+
+Shipped **outside** the GSD milestone framework — no phases, no roadmap entries. Recorded
+here so phase numbering and the release history stay reconcilable. The last GSD phase was 15.
+
+| Release | Date | Delivered | Origin |
+|---------|------|-----------|--------|
+| v1.7.0 | 2026-07-15 | Outlier-frame rejection (`reject_outlier_frames`) scored from independent PnP poses; `detection.start_frame` / `detection.stop_frame` | Frame-contamination debug session |
+| v1.7.1 | 2026-07-16 | Metadata-only patch: PEP 639 license form, McGrathLab URLs, CITATION/README resync, self-updating Sphinx `release` | Housekeeping |
+| v1.8.0 | 2026-07-23 | Seeded `cv2.calibrateCamera` + `validate_view_diversity()` fronto-parallel warning; `reject_outlier_frames` emitted in generated configs | Rig-tilt debug session, quick task 2 |
+| (unreleased) | 2026-07-23 | Structural FD column grouping — theoretical-minimum group count, output-neutral | Quick task 3 |
+
+**Documentation debt this created:** every v1.7–v1.8 feature is discoverable only from
+`troubleshooting.md`, and the intrinsics seeding is undocumented entirely. Addressed by
+v1.9 Task Group E.
+
+---
