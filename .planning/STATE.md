@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,13 +23,10 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 16-01 of 7 (16-01..16-07) across 5 waves complete; plan-checker PASSED first iteration
+Plan: 2/7 plans complete (16-01, 16-02); plan-checker PASSED first iteration
 Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-01 (conditioning diagnostics, HOOK-03) executed:
-  `compute_conditioning`/`ConditioningReport`/`save_conditioning_report`/
-  `load_conditioning_report` added to `aquacal.validation.conditioning`, 12 new unit tests,
-  no regressions (675 passed). Commits `cd5dd00`, `67f38b9`. See
-  `16-01-SUMMARY.md` for the chunk_rows re-tuning note for plan 16-05.
+Last activity: 2026-07-23 — plan 16-01 (conditioning diagnostics, HOOK-03) executed; see
+  "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -109,6 +106,13 @@ None.
 
 ### Phase 16 Plan Progress
 
+- Plan 16-01 (Conditioning diagnostics, HOOK-03) — COMPLETE 2026-07-23. Commits
+  `cd5dd00` (compute_conditioning core), `67f38b9` (JSON/NPZ writer + exports). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-01-SUMMARY.md`. Added
+  `aquacal.validation.conditioning` (blocked tall-skinny QR + single SVD of the (n,n) R
+  factor); 12 new unit tests; no regressions (675 passed). `chunk_rows` left at the
+  plan-specified default (8192), flagged for re-tuning against a real `result.jac` once
+  plan 16-05 wires this into the pipeline.
 - Plan 16-02 (Datasets: synthetic sweep-axis support, HOOK-05/HOOK-06) — COMPLETE
   2026-07-23. Commits `85e60c2` (feat), `25cf08a` (test). Summary:
   `.planning/phases/16-experiment-observability-hooks/16-02-SUMMARY.md`.
