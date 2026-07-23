@@ -29,7 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "scipy",
+    "scipy>=1.16",
     "opencv-python>=4.6",
     "pyyaml",
     "matplotlib",
