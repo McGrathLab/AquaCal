@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: roadmapped
+status: planned
 last_updated: "2026-07-23"
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
+  total_plans: 7
   completed_plans: 0
 ---
 
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** v1.9 Publication Prep — roadmap approved, ready for phase planning
+**Current focus:** v1.9 Publication Prep — Phase 16 planned, ready to execute
 
 ## Current Position
 
-Phase: 16 (Experiment Observability Hooks) — not started
-Plan: —
-Status: Roadmap created (revised), awaiting `/gsd:plan-phase 16`
-Last activity: 2026-07-23 — ROADMAP.md reordered so the experiment-blocking chain
-  (Hooks then Per-Camera Interface) runs first; REQUIREMENTS.md traceability updated
-  to match
+Phase: 16 (Experiment Observability Hooks) — planned, not started
+Plan: 7 plans (16-01..16-07) across 5 waves, plan-checker PASSED first iteration
+Status: Awaiting `/gsd:execute-phase 16`
+Last activity: 2026-07-23 — research + planning completed (commits `3a4e88d`, `2759dd5`).
+  An earlier planning session crashed the machine mid-research-followup; recovered from
+  its transcript, see the HOOK-03 note below.
 
 Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09), phases 13-15.
 v1.7–v1.8 shipped outside the milestone framework (see MILESTONES.md).
@@ -109,6 +109,27 @@ None.
 |---|-------------|------|--------|-----------|
 | 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 8b6eb0d | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
 | 3 | use a structural column grouping for the FD Jacobian | 2026-07-23 | 3c8685c | [3-use-a-structural-column-grouping-for-the](./quick/3-use-a-structural-column-grouping-for-the/) |
+
+### Phase 16 HOOK-03 conditioning route (settled by measurement, 2026-07-23)
+
+Blocked tall-skinny QR — row-chunks of `result.jac` maintaining an `(n,n)` R via
+`qr(..., mode='economic')`, then one `svd(R, full_matrices=False)` for spectrum and `V`.
+Measured on a near-degenerate synthetic problem, this is not a preference:
+
+- `eigh(J.T @ J)` returns sigma_min = **exactly 0.0** (cond = inf) and `inv(J.T@J)` gives an
+  all-NaN correlation matrix. It fails precisely in the WP6 degeneracy regime HOOK-03 exists
+  to measure. Forbidden in the plans, not even as a fallback.
+- `svd(J, compute_uv=False)` gives the spectrum but no `V`, so it cannot produce the
+  correlation matrix success criterion 3 requires.
+- Blocked TSQR: peak extra memory is O(chunk·n), independent of m; sigma_min accurate to
+  ~7e-8 relative. Because it is O(chunk), the memory pre-check is a cheap analytic guard —
+  no `psutil` dependency.
+
+**OOM trap, documented in plan 16-01:** `scipy.linalg.qr(J, mode='r')` returns R shaped
+`(m, n)`, NOT `(n, n)` — only `mode='economic'` gives `(n, n)`. Feeding a `mode='r'` result
+into `svd(R)` with default `full_matrices=True` allocates an m×m `U`: 12.8 GB at m=40000.
+**This is what crashed the machine during the first planning session.** Full derivation in
+the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
