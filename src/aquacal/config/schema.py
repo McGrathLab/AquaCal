@@ -294,6 +294,12 @@ class CalibrationConfig:
             correlation matrix over hundreds of parameters) — off by default.
         seed: Master seed controlling the calibration/validation frame holdout
             split, for reproducibility across repeated runs. Default 42.
+        shared_interface: Analysis/ablation option, NOT a recommended setting.
+            When True (default) all cameras share a single global water_z (the
+            shared-interface assumption that underlies the paper's central
+            claim). When False, each optimized camera solves its own water_z;
+            this exists only for degeneracy/ablation analysis (e.g. the WP6
+            experiment) and is not recommended for production calibration.
     """
 
     board: BoardConfig
@@ -335,6 +341,7 @@ class CalibrationConfig:
     )
     save_conditioning: bool = False  # Opt-in: Jacobian singular-value spectrum + parameter correlation matrix at the solution
     seed: int = 42  # Master seed for the pipeline's holdout split (reproducibility)
+    shared_interface: bool = True  # Analysis/ablation only: False gives each camera its own water_z (not recommended for production; the shared-interface assumption underlies the paper's central claim)
     initial_water_z: dict[str, float] | None = None
     rational_model_cameras: list[str] = field(default_factory=list)
     auxiliary_cameras: list[str] = field(default_factory=list)
