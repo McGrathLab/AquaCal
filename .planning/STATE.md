@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,10 +23,11 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 4/7 plans complete (16-01, 16-02, 16-03, 16-04); plan-checker PASSED first iteration
+Plan: 5/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05); plan-checker PASSED first
+  iteration
 Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-04 (OptimizerObserver + per-stage optimization trace
-  CSVs, HOOK-02) executed; see "Phase 16 Plan Progress" below for details.
+Last activity: 2026-07-23 — plan 16-05 (wire conditioning diagnostics into the pipeline,
+  HOOK-03) executed; see "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -151,6 +152,27 @@ None.
   `on_solution(result)` defined as a no-op extension point for plan 16-05's
   conditioning work. No regressions: 696 passed (full unit suite, +17 new),
   701 passed/29 deselected (`tests/ -m "not slow"`).
+- Plan 16-05 (Wire conditioning diagnostics into the pipeline, HOOK-03) —
+  COMPLETE 2026-07-23. Commits `ccc61ac` (labelled conditioning inside
+  `on_solution`), `f5ea190` (enable on final reported stage, write once).
+  Summary: `.planning/phases/16-experiment-observability-hooks/16-05-SUMMARY.md`.
+  Added `build_parameter_labels` (mirrors `_optim_common.pack_params`'s layout
+  exactly) and gave `OptimizerObserver` a `conditioning` flag: when set,
+  `on_solution` calls `compute_conditioning(result.jac, ...)` (built in 16-01)
+  while `result` is still in the optimizer function's scope, storing only the
+  small `ConditioningReport` and letting `ConditioningMemoryError` propagate
+  with the stage name prefixed. Pipeline creates observers when
+  `save_optimization_trace OR save_conditioning` is set, enables conditioning
+  only on whichever stage produces the final reported result (Stage 4 when
+  `refine_intrinsics`, else Stage 3 — initial or the outlier-rejection rerun,
+  whichever ran last), and writes exactly one `internals/conditioning.json` +
+  `.npz` pair via a new pure `_select_conditioning_report` helper, tagged with
+  the producing stage (`save_conditioning_report` gained an additive `stage`
+  kwarg). No real 13-camera rig run was performed this session, so no sharper
+  peak-memory/runtime figure exists yet for the deferred PERF-01 todo — the
+  first `save_conditioning: true` real run will be the first data point.
+  No regressions: 712 passed (full unit suite, +16 new), 717 passed/29
+  deselected (`tests/ -m "not slow"`).
 
 ### Quick Tasks Completed
 
@@ -183,10 +205,9 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-04 (OptimizerObserver + per-stage optimization trace CSVs, HOOK-02)
+Stopped at: Plan 16-05 (wire conditioning diagnostics into the pipeline, HOOK-03)
   executed and committed; awaiting continued execution of the remaining phase 16 plans
-  (16-05/16-06 depend on 16-04's `on_solution` extension point for conditioning
-  diagnostics).
+  (16-06, 16-07).
 Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
