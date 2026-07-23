@@ -239,7 +239,7 @@ behavior the published artifacts actually reflect.
 | 14. Optimization Extensions | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 16. Experiment Observability Hooks | 7/7 | Complete    | 2026-07-23 | - |
-| 17. Per-Camera Interface Ablation Mode | 2/5 | In Progress|  | - |
+| 17. Per-Camera Interface Ablation Mode | 3/5 | In Progress|  | - |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
