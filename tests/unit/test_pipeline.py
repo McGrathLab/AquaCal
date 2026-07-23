@@ -850,6 +850,63 @@ class TestDumpStageCalibration:
         assert stage4_path.name == "calibration_stage4.json"
 
 
+class TestStage3ObserverWiring:
+    """Behavioral + source-guard tests for the per-stage trace wiring (HOOK-02)."""
+
+    def test_run_stage3_accepts_observer(self, tmp_path):
+        """optimize_interface, called the way the pipeline calls it, accepts an
+        observer and produces a header-correct trace CSV."""
+        from aquacal.calibration._observability import (
+            TRACE_CSV_HEADER,
+            OptimizerObserver,
+        )
+        from aquacal.calibration.interface_estimation import optimize_interface
+        from aquacal.core.board import BoardGeometry
+        from aquacal.datasets import create_scenario, generate_synthetic_detections
+
+        scenario = create_scenario("minimal")
+        board = BoardGeometry(scenario.board_config)
+        reference_camera = sorted(scenario.intrinsics.keys())[0]
+        detections = generate_synthetic_detections(
+            scenario.intrinsics,
+            scenario.extrinsics,
+            scenario.water_zs,
+            board,
+            scenario.board_poses,
+            noise_std=scenario.noise_std,
+        )
+
+        observer = OptimizerObserver(stage="stage3")
+        optimize_interface(
+            detections=detections,
+            intrinsics=scenario.intrinsics,
+            initial_extrinsics=scenario.extrinsics,
+            board=board,
+            reference_camera=reference_camera,
+            initial_water_zs=scenario.water_zs,
+            verbose=0,
+            observer=observer,
+        )
+
+        assert len(observer.rows) > 0
+
+        path = tmp_path / "trace_stage3.csv"
+        observer.write_trace_csv(path)
+
+        import csv
+
+        with open(path, newline="") as f:
+            reader = csv.DictReader(f)
+            assert reader.fieldnames == TRACE_CSV_HEADER
+
+    def test_trace_filenames_are_distinct_per_stage(self):
+        """Guard the 'one file per stage' decision against a future merge."""
+        source = Path("src/aquacal/calibration/pipeline.py").read_text()
+        assert "trace_stage3.csv" in source
+        assert "trace_stage3_rerun.csv" in source
+        assert "trace_stage4.csv" in source
+
+
 # --- Test _compute_config_hash ---
 
 

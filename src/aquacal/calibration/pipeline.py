@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 import yaml
 
+from aquacal.calibration._observability import OptimizerObserver
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
 from aquacal.calibration.frame_rejection import (
     compute_per_frame_rms,
@@ -849,7 +850,7 @@ def run_calibration_from_config(
     # --- Stage 3: Interface Optimization ---
     print("\n[Stage 3] Interface and pose optimization...")
 
-    def _run_stage3(dets):
+    def _run_stage3(dets, observer=None):
         """Run Stage 3 interface optimization on the given detection set."""
         return optimize_interface(
             detections=dets,
@@ -866,15 +867,25 @@ def run_calibration_from_config(
             min_corners=config.min_corners_per_frame,
             verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
+            observer=observer,
         )
 
+    stage3_observer = (
+        OptimizerObserver(stage="stage3") if config.save_optimization_trace else None
+    )
     t0 = time.perf_counter()
     stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
-        optim_detections
+        optim_detections, observer=stage3_observer
     )
     elapsed = time.perf_counter() - t0
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
+
+    if stage3_observer is not None:
+        stage3_observer.write_trace_csv(
+            ensure_internals_dir(config.output_dir) / "trace_stage3.csv"
+        )
+        print("  Saved internals/trace_stage3.csv")
 
     if config.save_stage_calibrations:
         _dump_stage_calibration(
@@ -966,9 +977,14 @@ def run_calibration_from_config(
                 f"  [Frame Rejection] Re-running Stage 3 on "
                 f"{len(optim_detections.frames)} cleaned frames..."
             )
+            stage3_rerun_observer = (
+                OptimizerObserver(stage="stage3_rerun")
+                if config.save_optimization_trace
+                else None
+            )
             t0 = time.perf_counter()
             stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
-                optim_detections
+                optim_detections, observer=stage3_rerun_observer
             )
             elapsed = time.perf_counter() - t0
             timings["stage3_interface_optimization"] += elapsed
@@ -976,6 +992,12 @@ def run_calibration_from_config(
                 f"  Stage 3 RMS (after rejection): {stage3_rms:.3f} pixels "
                 f"({elapsed:.1f}s)"
             )
+
+            if stage3_rerun_observer is not None:
+                stage3_rerun_observer.write_trace_csv(
+                    ensure_internals_dir(config.output_dir) / "trace_stage3_rerun.csv"
+                )
+                print("  Saved internals/trace_stage3_rerun.csv")
 
             if config.save_stage_calibrations:
                 _dump_stage_calibration(
@@ -1023,6 +1045,11 @@ def run_calibration_from_config(
     if refine_intrinsics:
         print("\n[Stage 4] Joint refinement with intrinsics...")
         stage3_result = (stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms)
+        stage4_observer = (
+            OptimizerObserver(stage="stage4")
+            if config.save_optimization_trace
+            else None
+        )
         t0 = time.perf_counter()
         (
             final_extrinsics,
@@ -1044,10 +1071,17 @@ def run_calibration_from_config(
             loss_scale=config.loss_scale,
             verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
+            observer=stage4_observer,
         )
         elapsed = time.perf_counter() - t0
         timings["stage4_joint_refinement"] = elapsed
         print(f"  Stage 4 RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
+
+        if stage4_observer is not None:
+            stage4_observer.write_trace_csv(
+                ensure_internals_dir(config.output_dir) / "trace_stage4.csv"
+            )
+            print("  Saved internals/trace_stage4.csv")
 
         # Water surface and camera heights after refinement
         water_z_final = list(final_distances.values())[0]
