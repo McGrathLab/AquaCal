@@ -54,6 +54,7 @@ from aquacal.validation.diagnostics import (
     generate_diagnostic_report,
     save_diagnostic_report,
 )
+from aquacal.validation.evaluation import _estimate_validation_poses
 from aquacal.validation.reconstruction import compute_3d_distance_errors
 from aquacal.validation.reprojection import compute_reprojection_errors
 
@@ -1524,101 +1525,6 @@ def run_calibration_from_config(
     print("=" * 60)
 
     return result
-
-
-def _estimate_validation_poses(
-    detections: DetectionResult,
-    initial_poses: dict[int, BoardPose],
-    intrinsics: dict[str, CameraIntrinsics],
-    extrinsics: dict[str, CameraExtrinsics],
-    water_z_values: dict[str, float],
-    board: BoardGeometry,
-    interface_normal: np.ndarray,
-    n_air: float,
-    n_water: float,
-) -> dict[int, BoardPose]:
-    """Refine board poses for validation frames via per-frame optimization.
-
-    For each frame, minimizes refractive reprojection error over the 6 pose
-    parameters (rvec, tvec) while holding all camera parameters fixed.
-
-    Args:
-        detections: Detection results for validation frames
-        initial_poses: PnP-initialized board poses
-        intrinsics: Per-camera intrinsics
-        extrinsics: Per-camera extrinsics
-        water_z_values: Per-camera interface distances
-        board: Board geometry
-        interface_normal: Interface normal vector
-        n_air: Refractive index of air
-        n_water: Refractive index of water
-
-    Returns:
-        Dict mapping frame_idx to refined BoardPose
-    """
-    from scipy.optimize import least_squares
-
-    from aquacal.core.camera import create_camera
-    from aquacal.core.interface_model import Interface
-    from aquacal.core.refractive_geometry import refractive_project
-
-    refined_poses = {}
-
-    for frame_idx, initial_pose in initial_poses.items():
-        if frame_idx not in detections.frames:
-            continue
-        frame_det = detections.frames[frame_idx]
-
-        # Build cameras and interface objects
-        cameras = {}
-        for cam_name in frame_det.detections:
-            if cam_name not in intrinsics:
-                continue
-            cameras[cam_name] = create_camera(
-                cam_name, intrinsics[cam_name], extrinsics[cam_name]
-            )
-
-        interface = Interface(
-            normal=interface_normal,
-            camera_distances=water_z_values,
-            n_air=n_air,
-            n_water=n_water,
-        )
-
-        # Cost function: refractive reprojection residuals for this frame
-        def frame_residuals(params):
-            rvec = params[:3]
-            tvec = params[3:]
-            corners_3d = board.transform_corners(rvec, tvec)
-
-            residuals = []
-            for cam_name, det in frame_det.detections.items():
-                if cam_name not in cameras:
-                    continue
-                camera = cameras[cam_name]
-                for i, corner_id in enumerate(det.corner_ids):
-                    pt_3d = corners_3d[int(corner_id)]
-                    projected = refractive_project(camera, interface, pt_3d)
-                    if projected is not None:
-                        residuals.append(det.corners_2d[i, 0] - projected[0])
-                        residuals.append(det.corners_2d[i, 1] - projected[1])
-                    else:
-                        residuals.append(100.0)
-                        residuals.append(100.0)
-
-            return residuals if residuals else [0.0, 0.0]
-
-        x0 = np.concatenate([initial_pose.rvec, initial_pose.tvec])
-
-        result = least_squares(frame_residuals, x0, method="lm", max_nfev=100)
-
-        refined_poses[frame_idx] = BoardPose(
-            frame_idx=frame_idx,
-            rvec=result.x[:3],
-            tvec=result.x[3:],
-        )
-
-    return refined_poses
 
 
 def _filter_cameras(

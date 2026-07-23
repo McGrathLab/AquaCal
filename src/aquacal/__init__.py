@@ -28,6 +28,9 @@ from aquacal.config.schema import (
 )
 from aquacal.io.serialization import load_calibration, save_calibration
 
+# Held-out evaluation
+from aquacal.validation.evaluation import evaluate_calibration
+
 __all__ = [
     "__version__",
     # Load/save
@@ -48,4 +51,6 @@ __all__ = [
     "load_config",
     # Refinement API
     "refine_calibration",
+    # Held-out evaluation
+    "evaluate_calibration",
 ]

@@ -16,6 +16,7 @@ from aquacal.validation.diagnostics import (
     plot_error_distribution,
     plot_per_camera_error,
 )
+from aquacal.validation.evaluation import HeldOutEvaluation, evaluate_calibration
 
 __all__ = [
     # diagnostics
@@ -31,4 +32,7 @@ __all__ = [
     "compute_conditioning",
     "load_conditioning_report",
     "save_conditioning_report",
+    # evaluation
+    "evaluate_calibration",
+    "HeldOutEvaluation",
 ]
