@@ -77,6 +77,7 @@ def build_parameter_labels(
     reference_camera: str,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> list[str]:
     """Build a human-readable name for each entry of the packed parameter vector.
 
@@ -95,6 +96,9 @@ def build_parameter_labels(
             vector.
         normal_fixed: If False, the first two labels are the reference camera's
             tilt rx/ry.
+        shared_interface: If True (default), a single `water_z` label is emitted.
+            If False, one `{cam}_water_z` label per camera in camera_order is
+            emitted, matching pack_params' per-camera emission order.
 
     Returns:
         List of parameter names, one per entry of the packed vector, in the
@@ -119,7 +123,11 @@ def build_parameter_labels(
             ]
         )
 
-    labels.append("water_z")
+    if shared_interface:
+        labels.append("water_z")
+    else:
+        for cam_name in camera_order:
+            labels.append(f"{cam_name}_water_z")
 
     for frame_idx in frame_order:
         labels.extend(

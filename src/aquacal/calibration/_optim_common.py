@@ -242,6 +242,7 @@ def build_jacobian_sparsity(
     min_corners: int,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> NDArray[np.int8]:
     """
     Build sparse Jacobian structure matrix.
@@ -249,7 +250,9 @@ def build_jacobian_sparsity(
     Each residual (x and y error for one corner observation) depends only on:
     - Tilt params: 2 params (only if normal_fixed=False AND camera is reference)
     - Camera extrinsics: 6 params (or 0 if reference camera)
-    - water_z: 1 param (dense — ALL cameras depend on it)
+    - water_z: shared mode — 1 dense param (ALL cameras depend on it);
+      per-camera mode — N params, but this residual depends only on its own
+      camera's water_z column.
     - Board pose for that frame: 6 params
     - Camera intrinsics for that camera: 4 params (if refine_intrinsics)
 
@@ -261,6 +264,9 @@ def build_jacobian_sparsity(
         min_corners: Minimum corners per detection
         refine_intrinsics: Whether intrinsics are in the parameter vector
         normal_fixed: If False, 2 tilt params are prepended to the parameter vector
+        shared_interface: If True (default), a single dense water_z column is
+            emitted. If False, N per-camera water_z columns are emitted, each
+            nonzero only in that camera's residual rows.
 
     Returns:
         Sparse matrix of shape (n_residuals, n_params) with 1s where
@@ -271,7 +277,7 @@ def build_jacobian_sparsity(
 
     n_tilt_params = 0 if normal_fixed else 2
     n_extrinsic_params = 6 * (n_cams - 1)
-    n_water_z_params = 1
+    n_water_z_params = 1 if shared_interface else n_cams
     n_pose_params = 6 * n_frames
     n_intrinsic_params = 4 * n_cams if refine_intrinsics else 0
     n_params = (
@@ -324,8 +330,13 @@ def build_jacobian_sparsity(
                     ext_start = n_tilt_params + cam_to_ext_idx[cam_name] * 6
                     row[ext_start : ext_start + 6] = 1
 
-                # 2. water_z affects ALL cameras (dense column)
-                row[water_z_col] = 1
+                # 2. water_z. Shared mode: one dense column touched by every
+                # camera's residuals. Per-camera mode: camera i's own column at
+                # water_z_col + i, nonzero only in camera i's residual rows.
+                if shared_interface:
+                    row[water_z_col] = 1
+                else:
+                    row[water_z_col + cam_to_cam_idx[cam_name]] = 1
 
                 # 3. Board pose for this frame
                 pose_start = (
@@ -358,6 +369,7 @@ def build_structural_column_groups(
     n_frames: int,
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
+    shared_interface: bool = True,
 ) -> NDArray[np.intp]:
     """
     Build an optimal finite-difference column grouping from the parameter layout.
@@ -375,7 +387,11 @@ def build_structural_column_groups(
     real 12-camera rig at 72% visibility it produces 20 groups where 17 suffice,
     costing three extra full residual evaluations per Jacobian. The structural
     grouping below always attains the theoretical lower bound: 13 groups, or 17
-    with ``refine_intrinsics=True``.
+    with ``refine_intrinsics=True``. This lower bound is invariant to
+    ``shared_interface``: in per-camera mode the N water_z columns all collapse
+    into the single water_z group slot, because two different cameras' water_z
+    columns never share a residual row (the same argument as like-indexed
+    extrinsic columns of different cameras).
 
     Correctness: a residual is one board corner seen by *one* camera in *one*
     frame. Therefore like-indexed extrinsic columns of different cameras never
@@ -394,6 +410,9 @@ def build_structural_column_groups(
         n_frames: Number of frames in ``frame_order``.
         refine_intrinsics: Whether 4 intrinsic params per camera are appended.
         normal_fixed: If False, 2 tilt params are prepended.
+        shared_interface: If True (default), one water_z column occupies the
+            water_z group slot. If False, N per-camera water_z columns all share
+            that one slot (the group count is unchanged).
 
     Returns:
         Array of shape (n_params,) of contiguous group indices ``0..m-1``,
@@ -418,8 +437,11 @@ def build_structural_column_groups(
     # 1. Camera extrinsics: 6 slots, shared across cameras.
     raw_groups.extend(j % 6 for j in range(n_extrinsic_params))
 
-    # 2. water_z: dense column, needs a slot of its own.
-    raw_groups.append(6)
+    # 2. water_z: needs a slot of its own (id 6). Shared mode has one such
+    # column; per-camera mode has n_cams columns that all share this one slot,
+    # so the group-count lower bound is invariant to shared_interface.
+    n_water_z_params = 1 if shared_interface else n_cams
+    raw_groups.extend([6] * n_water_z_params)
 
     # 3. Board poses: 6 slots, shared across frames.
     raw_groups.extend(7 + (j % 6) for j in range(n_pose_params))
