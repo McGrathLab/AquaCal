@@ -59,8 +59,8 @@ per-camera (`Interface.camera_distances` is a `dict[str, float]`), so this is an
 change — the geometry code learns nothing new.
 
 - [ ] **IFACE-01**: A `shared_interface: bool = True` config flag exists, documented as an analysis/ablation option rather than a recommended setting
-- [ ] **IFACE-02**: `pack_params`, `unpack_params`, `build_jacobian_sparsity`, and `build_bounds` handle *N* per-camera `water_z` parameters when `shared_interface=False`, with the formerly-dense `water_z` column becoming N sparse columns
-- [ ] **IFACE-03**: `build_structural_column_groups` produces a valid grouping in every mode combination — shared/per-camera × intrinsics on/off × tilt on/off — asserted by test, because an invalid grouping yields a wrong Jacobian with no error raised
+- [x] **IFACE-02**: `pack_params`, `unpack_params`, `build_jacobian_sparsity`, and `build_bounds` handle *N* per-camera `water_z` parameters when `shared_interface=False`, with the formerly-dense `water_z` column becoming N sparse columns
+- [x] **IFACE-03**: `build_structural_column_groups` produces a valid grouping in every mode combination — shared/per-camera × intrinsics on/off × tilt on/off — asserted by test, because an invalid grouping yields a wrong Jacobian with no error raised
 - [ ] **IFACE-04**: Per-camera mode seeds from the per-camera `initial_water_z` dict values individually rather than collapsing them to a mean
 - [ ] **IFACE-05**: `shared_interface=True` is bit-unchanged from current behavior, and per-camera mode with equal initial values recovers the shared solution on shared-interface ground truth
 
@@ -144,8 +144,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | HOOK-05 | Phase 16 | Complete |
 | HOOK-06 | Phase 16 | Complete |
 | IFACE-01 | Phase 17 | Pending |
-| IFACE-02 | Phase 17 | Pending |
-| IFACE-03 | Phase 17 | Pending |
+| IFACE-02 | Phase 17 | Complete |
+| IFACE-03 | Phase 17 | Complete |
 | IFACE-04 | Phase 17 | Pending |
 | IFACE-05 | Phase 17 | Pending |
 | DOCS-01 | Phase 18 | Pending |
