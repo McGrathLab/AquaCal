@@ -412,6 +412,53 @@ class TestOptimizeInterface:
                 f"Distance for {cam} off by {abs(dist_opt[cam] - ground_truth_distances[cam])}"
             )
 
+    def test_per_camera_interface_runs_end_to_end(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+    ):
+        """shared_interface=False runs and returns one water_z per camera."""
+        np.random.seed(7)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+        initial_extrinsics = {}
+        for cam, ext in ground_truth_extrinsics.items():
+            if cam == "cam0":
+                initial_extrinsics[cam] = ext
+            else:
+                initial_extrinsics[cam] = CameraExtrinsics(
+                    R=ext.R.copy(),
+                    t=ext.t + np.random.normal(0, 0.01, 3),
+                )
+        initial_water_zs = {
+            cam: dist + np.random.normal(0, 0.01)
+            for cam, dist in ground_truth_distances.items()
+        }
+
+        ext_opt, dist_opt, poses_opt, rms = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=initial_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            initial_water_zs=initial_water_zs,
+            shared_interface=False,
+        )
+
+        # One independently-solved water_z per camera; finite RMS.
+        assert set(dist_opt.keys()) == set(intrinsics.keys())
+        assert np.isfinite(rms)
+
     def test_raises_for_invalid_reference(
         self, board, intrinsics, ground_truth_extrinsics
     ):

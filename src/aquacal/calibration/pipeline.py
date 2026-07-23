@@ -705,6 +705,16 @@ def run_calibration_from_config(
     print("AquaCal Calibration Pipeline")
     print("=" * 60)
 
+    # Single ablation warning, emitted once at start (not per stage).
+    if not config.shared_interface:
+        print(
+            "  WARNING: Per-camera interface mode is active (shared_interface=false): "
+            "each camera solves its own water_z. This is for degeneracy/ablation "
+            "analysis only. The shared-interface assumption underlies AquaCal's "
+            "central modeling claim; per-camera mode is NOT recommended for "
+            "production calibration."
+        )
+
     # --- Stage 1: Intrinsic Calibration ---
     print("\n[Stage 1] Intrinsic calibration (in-air)...")
     with _time_stage(timings, "stage1_intrinsics"):
@@ -921,6 +931,7 @@ def run_calibration_from_config(
             verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
             observer=observer,
+            shared_interface=config.shared_interface,
         )
 
     # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
@@ -1145,6 +1156,7 @@ def run_calibration_from_config(
             verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
             observer=stage4_observer,
+            shared_interface=config.shared_interface,
         )
         elapsed = time.perf_counter() - t0
         timings["stage4_joint_refinement"] = elapsed
