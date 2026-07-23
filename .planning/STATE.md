@@ -46,9 +46,9 @@ Open as of 2026-07-23:
 
 - Reduce memory and CPU load during calibration (dense `.toarray()` Jacobian peak;
   CPU side partially addressed by quick task 3)
-- Upload new Zenodo dataset with image-based inputs (blocked on an external upload;
-  `load_example("real-rig")` may still serve a config with the deprecated
-  `initial_distances` key — unverified)
+- Upload new Zenodo dataset with image-based inputs (confirmed still the 2026-02-14
+  upload; serves the deprecated `initial_distances` key, which currently loads fine
+  via the compat shim — low priority, but the shim can't be removed until this lands)
 
 ### Blockers/Concerns
 
