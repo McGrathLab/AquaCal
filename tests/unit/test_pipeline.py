@@ -158,6 +158,10 @@ class TestLoadConfig:
         assert config.min_cameras_per_frame == 2
         assert config.holdout_fraction == 0.2
         assert config.save_detailed_residuals is True
+        assert config.save_stage_calibrations is True
+        assert config.save_optimization_trace is False
+        assert config.save_conditioning is False
+        assert config.seed == 42
 
     def test_load_config_missing_file(self):
         """Test that missing file raises FileNotFoundError."""
@@ -231,6 +235,30 @@ class TestLoadConfig:
         assert config.save_detailed_residuals is True
         assert config.initial_water_z is None  # Should default to None
         assert config.refine_intrinsics is False
+        # Observability hooks and seed default (config omits both sections
+        # entirely, exercising backward compatibility with existing configs)
+        assert config.save_stage_calibrations is True
+        assert config.save_optimization_trace is False
+        assert config.save_conditioning is False
+        assert config.seed == 42
+
+    def test_load_config_with_internals_and_seed(self, valid_config_yaml):
+        """Test that an `internals:` section and top-level `seed:` load correctly."""
+        valid_config_yaml["internals"] = {
+            "save_stage_calibrations": False,
+            "save_optimization_trace": True,
+            "save_conditioning": True,
+        }
+        valid_config_yaml["seed"] = 7
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.save_stage_calibrations is False
+        assert config.save_optimization_trace is True
+        assert config.save_conditioning is True
+        assert config.seed == 7
 
     def test_load_config_with_intrinsic_board(self, valid_config_yaml):
         """Test loading config with separate intrinsic_board section."""

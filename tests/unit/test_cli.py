@@ -577,10 +577,53 @@ class TestCmdInit:
         assert config["detection"]["min_cameras"] == 2
         assert config["validation"]["holdout_fraction"] == 0.2
         assert config["validation"]["save_detailed_residuals"] is True
+        # Active (uncommented) lines: parsing proves they are not just present in text
+        assert config["internals"]["save_stage_calibrations"] is True
+        assert config["seed"] == 42
 
         # Check that commented-out fields are present in raw text
         raw_text = output_file.read_text()
         assert "refine_intrinsics" in raw_text
+
+    def test_init_internals_opt_in_keys_commented_out(self, tmp_path):
+        """Opt-in observability keys are absent from parsed YAML but present as text."""
+        intrinsic_dir = tmp_path / "intrinsic"
+        extrinsic_dir = tmp_path / "extrinsic"
+        intrinsic_dir.mkdir()
+        extrinsic_dir.mkdir()
+
+        (intrinsic_dir / "cam0.mp4").touch()
+        (extrinsic_dir / "cam0.mp4").touch()
+
+        output_file = tmp_path / "config.yaml"
+
+        parser = create_parser()
+        args = parser.parse_args(
+            [
+                "init",
+                "--intrinsic-dir",
+                str(intrinsic_dir),
+                "--extrinsic-dir",
+                str(extrinsic_dir),
+                "--output",
+                str(output_file),
+            ]
+        )
+
+        exit_code = cmd_init(args)
+        assert exit_code == 0
+
+        with open(output_file) as f:
+            config = yaml.safe_load(f)
+
+        # Opt-in keys are commented out, so they must be absent from the parsed dict
+        assert "save_optimization_trace" not in config["internals"]
+        assert "save_conditioning" not in config["internals"]
+
+        # But present as text in the raw config, so a user can find and uncomment them
+        raw_text = output_file.read_text()
+        assert "save_optimization_trace" in raw_text
+        assert "save_conditioning" in raw_text
 
 
 class TestCmdCompare:

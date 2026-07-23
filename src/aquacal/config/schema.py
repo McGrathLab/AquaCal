@@ -276,6 +276,21 @@ class CalibrationConfig:
             would be rejected exceeds this, rejection is suppressed entirely and a
             warning is emitted, so a broadly-broken dataset surfaces loudly rather
             than being silently gutted. Default 0.25.
+        save_stage_calibrations: If True (default), dump each bundle-adjustment
+            stage's intermediate calibration (Stage 3, the post-outlier-rejection
+            re-run, and Stage 4 when enabled) as loadable calibration JSON files
+            under output_dir/internals/. Extends the existing unconditional
+            calibration_initial.json (post-Stage-2) dump.
+        save_optimization_trace: Opt-in. If True, records a per-iteration CSV
+            trace (iteration index, cost, step norm, optimality, interface
+            parameters) for each bundle-adjustment stage under
+            output_dir/internals/. Default False.
+        save_conditioning: Opt-in. If True, computes and saves the Jacobian's
+            singular-value spectrum and the full parameter correlation matrix at
+            the solution under output_dir/internals/. Expensive (SVD + dense
+            correlation matrix over hundreds of parameters) — off by default.
+        seed: Master seed controlling the calibration/validation frame holdout
+            split, for reproducibility across repeated runs. Default 42.
     """
 
     board: BoardConfig
@@ -309,6 +324,14 @@ class CalibrationConfig:
     frame_rejection_floor_px: float = 5.0  # ...and only if RMS also exceeds this absolute pixel floor (prevents over-rejection on clean, low-median datasets).
     frame_rejection_max_fraction: float = 0.25  # Guardrail: if more than this fraction would be rejected, suppress rejection and warn (dataset likely broadly broken).
     save_detailed_residuals: bool = True
+    save_stage_calibrations: bool = (
+        True  # Dump each BA stage's intermediate calibration to output_dir/internals/
+    )
+    save_optimization_trace: bool = (
+        False  # Opt-in: per-iteration CSV trace for each bundle-adjustment stage
+    )
+    save_conditioning: bool = False  # Opt-in: Jacobian singular-value spectrum + parameter correlation matrix at the solution
+    seed: int = 42  # Master seed for the pipeline's holdout split (reproducibility)
     initial_water_z: dict[str, float] | None = None
     rational_model_cameras: list[str] = field(default_factory=list)
     auxiliary_cameras: list[str] = field(default_factory=list)

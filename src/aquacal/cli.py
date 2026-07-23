@@ -616,6 +616,13 @@ def _generate_config_yaml(
             "  holdout_fraction: 0.2  # Fraction of frames held out for validation",
             "  save_detailed_residuals: true  # Save per-corner residual data",
             "",
+            "internals:",
+            "  save_stage_calibrations: true   # Dump each stage's intermediate calibration to <output_dir>/internals/",
+            "  # save_optimization_trace: false  # Per-iteration CSV trace for each bundle-adjustment stage",
+            "  # save_conditioning: false        # Jacobian spectrum + parameter correlation at the solution (expensive)",
+            "",
+            "seed: 42                 # Master seed for the calibration/validation frame split",
+            "",
         ]
     )
 

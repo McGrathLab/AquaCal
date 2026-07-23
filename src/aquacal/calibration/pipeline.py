@@ -406,6 +406,15 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     holdout_fraction = val.get("holdout_fraction", 0.2)
     save_detailed = val.get("save_detailed_residuals", True)
 
+    # Observability hooks (see output_dir/internals/)
+    internals = data.get("internals", {})
+    save_stage_calibrations = bool(internals.get("save_stage_calibrations", True))
+    save_optimization_trace = bool(internals.get("save_optimization_trace", False))
+    save_conditioning = bool(internals.get("save_conditioning", False))
+
+    # Reproducibility
+    seed = int(data.get("seed", 42))
+
     return CalibrationConfig(
         board=board,
         camera_names=data["cameras"],
@@ -432,6 +441,10 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         frame_rejection_floor_px=frame_rejection_floor_px,
         frame_rejection_max_fraction=frame_rejection_max_fraction,
         save_detailed_residuals=save_detailed,
+        save_stage_calibrations=save_stage_calibrations,
+        save_optimization_trace=save_optimization_trace,
+        save_conditioning=save_conditioning,
+        seed=seed,
         initial_water_z=initial_water_z,
         rational_model_cameras=rational_model_cameras,
         auxiliary_cameras=auxiliary_cameras,

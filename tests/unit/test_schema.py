@@ -220,6 +220,10 @@ class TestCalibrationConfig:
         assert config.robust_loss == "huber"
         assert config.min_cameras_per_frame == 2
         assert config.refine_intrinsics is False
+        assert config.save_stage_calibrations is True
+        assert config.save_optimization_trace is False
+        assert config.save_conditioning is False
+        assert config.seed == 42
 
     def test_creation_with_custom_values(self):
         """Should accept custom parameter values."""
