@@ -52,3 +52,10 @@ So this is a hygiene item, not a bug. Two consequences worth keeping in view:
   scalar `1.0` (harmless) or a per-camera dict carrying pre-v1.4 *physical gap*
   semantics. The loader would silently reinterpret such values as water-surface Z.
   Settling this needs one download of the record, or is moot once re-uploaded.
+
+## Disposition
+
+Folded into the "Post-Review Updates" milestone as **Task Group F** (dataset
+refresh + tutorial re-execution), scheduled after all code work so the published
+artifacts reflect final behavior. Do not action this todo standalone — it now
+carries a sequencing constraint relative to E6 and E7. Close it when F lands.
