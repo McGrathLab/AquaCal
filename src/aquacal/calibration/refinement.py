@@ -51,6 +51,7 @@ def joint_refinement(
     verbose: int = 1,
     normal_fixed: bool = True,
     observer: OptimizerObserver | None = None,
+    shared_interface: bool = True,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -87,6 +88,10 @@ def joint_refinement(
             for non-perpendicular camera-to-water-surface alignment.
         observer: Optional read-only observer for per-iteration tracing and
             solution-point diagnostics. Has no effect on the returned values.
+        shared_interface: If True (default), all cameras share a single global
+            water_z. If False (analysis/ablation only), each camera refines its
+            own water_z, seeded individually from the Stage-3 per-camera
+            distances (never collapsed to the reference camera's value).
 
     Returns:
         Tuple of:
@@ -135,7 +140,8 @@ def joint_refinement(
     # C_z_ref = 0 since reference camera is at origin, so water_z = d_ref
     water_z = extrinsics_in[reference_camera].C[2] + distances_in[reference_camera]
 
-    # Pack initial parameters
+    # Pack initial parameters. In per-camera mode each camera is seeded from its
+    # own Stage-3 water_z (distances_in), never collapsed to the reference.
     initial_params = pack_params(
         extrinsics_in,
         water_z,
@@ -146,6 +152,8 @@ def joint_refinement(
         intrinsics=intrinsics,
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
+        water_z_per_camera=distances_in,
     )
 
     # Build bounds
@@ -156,6 +164,7 @@ def joint_refinement(
         base_intrinsics=intrinsics,
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
     # Build cost function args
@@ -186,6 +195,7 @@ def joint_refinement(
             min_corners,
             refine_intrinsics=refine_intrinsics,
             normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
         )
         jac = make_sparse_jacobian_func(
             compute_residuals,
@@ -198,6 +208,7 @@ def joint_refinement(
                 len(frame_order),
                 refine_intrinsics=refine_intrinsics,
                 normal_fixed=normal_fixed,
+                shared_interface=shared_interface,
             ),
         )
 
@@ -213,6 +224,7 @@ def joint_refinement(
                 reference_camera,
                 refine_intrinsics=refine_intrinsics,
                 normal_fixed=normal_fixed,
+                shared_interface=shared_interface,
             ),
         )
         cost_func = observer.wrap_fun(compute_residuals)
@@ -250,6 +262,7 @@ def joint_refinement(
         base_intrinsics=intrinsics,
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
     )
 
     # Convert board poses dict to sorted list
