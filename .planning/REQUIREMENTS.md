@@ -102,6 +102,10 @@ Not requirements, but binding on the roadmap:
    the paper supplement.
 4. **DATA-* runs after all code work and after DOCS-06**, and **before DOCS-07**, so the
    release named in the manuscript is the one whose behavior the published artifacts reflect.
+5. **HOOK-03 (conditioning diagnostics) precedes IFACE.** The Hooks → Per-Camera Interface
+   chain is the milestone's longest pole and only true experiment blocker, so it is
+   sequenced first in the roadmap — ahead of the documentation and benchmark phases,
+   which are otherwise independent of it.
 
 ## Future Requirements
 
@@ -133,13 +137,43 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| HOOK-01 | Phase 16 | Pending |
+| HOOK-02 | Phase 16 | Pending |
+| HOOK-03 | Phase 16 | Pending |
+| HOOK-04 | Phase 16 | Pending |
+| HOOK-05 | Phase 16 | Pending |
+| HOOK-06 | Phase 16 | Pending |
+| IFACE-01 | Phase 17 | Pending |
+| IFACE-02 | Phase 17 | Pending |
+| IFACE-03 | Phase 17 | Pending |
+| IFACE-04 | Phase 17 | Pending |
+| IFACE-05 | Phase 17 | Pending |
+| DOCS-01 | Phase 18 | Pending |
+| DOCS-02 | Phase 18 | Pending |
+| DOCS-03 | Phase 18 | Pending |
+| DOCS-04 | Phase 18 | Pending |
+| DOCS-06 | Phase 18 | Pending |
+| BENCH-01 | Phase 19 | Pending |
+| BENCH-02 | Phase 19 | Pending |
+| BENCH-03 | Phase 19 | Pending |
+| BENCH-04 | Phase 19 | Pending |
+| BENCH-05 | Phase 19 | Pending |
+| INDEX-01 | Phase 20 | Pending |
+| INDEX-02 | Phase 20 | Pending |
+| INDEX-03 | Phase 20 | Pending |
+| DOCS-05 | Phase 21 | Pending |
+| DATA-01 | Phase 21 | Pending |
+| DATA-02 | Phase 21 | Pending |
+| DATA-03 | Phase 21 | Pending |
+| DOCS-07 | Phase 22 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29 ⚠️
+- Mapped to phases: 29
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-23*
-*Last updated: 2026-07-23 after initial definition*
+*Last updated: 2026-07-23 after roadmap revision — reordered phases so the Hooks →
+Per-Camera Interface experiment-blocking chain runs first (phases 16-17), ahead of docs
+reconciliation and benchmark instrumentation (phases 18-19); coverage still 29/29*

@@ -5,6 +5,11 @@
 - ✅ **v1.2 MVP** — Phases 1-6 (shipped 2026-02-15)
 - ✅ **v1.4 QA & Polish** — Phases 7-12 (shipped 2026-02-19)
 - ✅ **v1.6 Refinement API** — Phases 13-15 (shipped 2026-03-09)
+- 🚧 **v1.9 Publication Prep** — Phases 16-22 (in progress)
+
+**Interim releases v1.7–v1.8** shipped outside the GSD framework (debug sessions,
+quick tasks) — no phases. See `.planning/MILESTONES.md`. v1.9 phase numbering
+continues from 16.
 
 ## Phases
 
@@ -47,6 +52,160 @@ See `.planning/milestones/v1.6-ROADMAP.md` for full details.
 
 </details>
 
+### 🚧 v1.9 Publication Prep (Phases 16-22, In Progress)
+
+**Milestone Goal:** Build all remaining code-side tooling the SoftwareX reviewer
+responses depend on, so the revision experiments (due 2026-08-21) run against a
+stable library rather than a moving target.
+
+**Ordering note:** the experiment-blocking chain (Hooks → Per-Camera Interface) runs
+first so WP5/WP6 experiments can start as early as possible against the deadline. Docs
+reconciliation and benchmarking follow, independent of that chain except where DOCS-06
+must settle the stage-key schema before benchmark.json locks it in.
+
+- [ ] **Phase 16: Experiment Observability Hooks** - Researchers can inspect and reproduce optimizer internals needed for WP5/WP6 without changing numeric behavior
+- [ ] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior
+- [ ] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
+- [ ] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
+- [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
+- [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
+- [ ] **Phase 22: Release Cut** - The version referenced by the manuscript and Zenodo archive is the one whose behavior the published artifacts reflect
+
+## Phase Details
+
+### Phase 16: Experiment Observability Hooks
+**Goal**: Researchers can inspect optimizer internals and reproduce results needed for the
+WP5/WP6 experiments, with zero change to numerical behavior. This is the first half of the
+milestone's longest pole and only true experiment blocker — sequenced first so the
+experiments can start as early as possible against the 2026-08-21 deadline.
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: HOOK-01, HOOK-02, HOOK-03, HOOK-04, HOOK-05, HOOK-06
+**Success Criteria** (what must be TRUE):
+  1. Each stage's intermediate calibration (post-Stage-2, post-Stage-3, post-intrinsic-refinement)
+     can be dumped to the output dir, extending the existing `calibration_initial.json` pattern.
+  2. An opt-in per-iteration trace for the bundle-adjustment stages records iteration index,
+     cost, step norm, optimality, and current interface parameters.
+  3. Conditioning diagnostics are available at solution: the Jacobian's singular-value
+     spectrum or condition number, plus the parameter correlation matrix (or at minimum the
+     camera-height / interface-distance block) — giving the WP6 degeneracy argument a metric.
+  4. Held-out evaluation is callable standalone, scoring a calibration against a set
+     generated under different assumptions (e.g., different refractive index).
+  5. The synthetic generator independently controls refractive index, layout, and
+     tank-scale/working-distance, and returns ground-truth board poses and true interface
+     height so sweeps can compute absolute error.
+  6. Every sweep entry point accepts and threads a seed, so a surprising result reproduces.
+**Plans**: TBD
+
+### Phase 17: Per-Camera Interface Ablation Mode
+**Goal**: A per-camera `water_z` ablation is available for the WP6 experiment and is provably
+correct, without disturbing the default shared-interface behavior the paper's central claim
+rests on. This is the second half of the milestone's longest pole and only true experiment
+blocker.
+**Depends on**: Phase 16 (HOOK-03 conditioning diagnostics are the metric the WP6 ablation
+argument needs; this is a prerequisite, not a convenience)
+**Requirements**: IFACE-01, IFACE-02, IFACE-03, IFACE-04, IFACE-05
+**Success Criteria** (what must be TRUE):
+  1. A `shared_interface: bool = True` config flag exists and is documented as an
+     analysis/ablation option, not a recommended setting.
+  2. `pack_params`, `unpack_params`, `build_jacobian_sparsity`, and `build_bounds` correctly
+     handle N per-camera `water_z` parameters when `shared_interface=False`.
+  3. `build_structural_column_groups` produces a valid grouping in every mode combination
+     (shared/per-camera x intrinsics on/off x tilt on/off), asserted by test.
+  4. Per-camera mode seeds from the per-camera `initial_water_z` dict values individually
+     rather than collapsing them to a mean.
+  5. `shared_interface=True` is bit-unchanged from current behavior, and per-camera mode
+     with equal initial values recovers the shared solution on shared-interface ground truth.
+**Plans**: TBD
+
+### Phase 18: Documentation Corrections & Stage-Model Reconciliation
+**Goal**: Fix live factual errors in published docs and reconcile the paper's three-stage
+model across both code and documentation surfaces, so the stage keys are settled before
+benchmark instrumentation writes them into `benchmark.json`.
+**Depends on**: Nothing (independent of Phases 16-17; may run in parallel with them)
+**Note**: DOCS-01 (the wrong ~12x column-grouping claim, actually 43-52x) is a live factual
+error in currently published docs. It can and should be fixed at any point — it does not
+need to wait for this phase to be reached in execution order.
+**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-06
+**Success Criteria** (what must be TRUE):
+  1. `docs/guide/optimizer.md` states the correct column-grouping numbers (13 groups, 17 with
+     intrinsic refinement; P = 673/675/727; 43-52x reduction), matching the paper supplement.
+  2. Every doc site and `extrinsics.py` docstring that misuses "BFS" now reads "best-first",
+     except `_find_connected_components` (genuinely BFS), which is untouched.
+  3. The glossary's pose-graph definition describes a bipartite camera/frame graph, and
+     `bfs_pose_graph.png` is regenerated from a script that replays the library's own heap logic.
+  4. `reject_outlier_frames`, `start_frame`/`stop_frame`, intrinsics seeding, and the
+     fronto-parallel warning are documented in the configuration reference and guide pages,
+     not only in troubleshooting.
+  5. Console output, timing keys, module/schema docstrings, and CLI config comments all
+     present the same three-stage model, and the documented loss default reads `huber`.
+**Plans**: TBD
+
+### Phase 19: Benchmark Instrumentation
+**Goal**: Every calibration run produces a trustworthy, machine-readable performance record
+that a sweep can aggregate without hand computation.
+**Depends on**: Phase 18 (stage-model rename must settle before benchmark.json keys are
+written — this constraint is preserved and still binding; settling the schema after the
+experiment grid runs would force a re-run)
+**Requirements**: BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05
+**Success Criteria** (what must be TRUE):
+  1. Solver diagnostics (`nfev`, `njev`, `cost`, `optimality`, `status`, termination message)
+     are captured for Stage 3, the intrinsic pass, interface estimation, and point refinement.
+  2. Peak memory is reported only behind an explicit opt-in flag, labeled with its
+     measurement mode, and never appears by default.
+  3. Each run reports parameter count P, column-group count, and the implied FD reduction,
+     all computed from the live run.
+  4. Every calibration run (real-rig and synthetic) writes a `benchmark.json` into
+     `output_dir` with problem shape, per-stage metrics, solver configuration, accuracy,
+     and environment (hardware, OS, package versions, AquaCal version/git SHA).
+  5. A `benchmarks/` runner sweeps the cameras x frames grid, collects each `benchmark.json`,
+     and emits a tidy CSV plus a LaTeX table fragment without recomputing anything.
+**Plans**: TBD
+
+### Phase 20: Refractive Index Helper
+**Goal**: Users can estimate `n_water` from environmental conditions and transfer the
+estimate into their config by hand.
+**Depends on**: Nothing (fully standalone)
+**Requirements**: INDEX-01, INDEX-02, INDEX-03
+**Success Criteria** (what must be TRUE):
+  1. `water_refractive_index(temperature_c, salinity_g_per_l, wavelength_nm, ...)` is a pure
+     function with no I/O or pipeline dependency, citing a published empirical formulation
+     and documenting its validity envelope, rejecting or warning on out-of-envelope inputs.
+  2. `aquacal calc-index` prints the estimated index, the inputs that produced it, and the
+     `n_water` config key to paste it into, in greppable form.
+  3. Tests cover the known reference value (distilled water at 20C ~= 1.333), monotonicity
+     in temperature and salinity, and rejection of out-of-envelope inputs.
+**Plans**: TBD
+
+### Phase 21: New-Feature Documentation & Dataset Refresh
+**Goal**: Every capability this milestone added is discoverable in the docs, and the
+published dataset and tutorial outputs reflect the current library rather than 2026-02.
+**Depends on**: Phase 16, Phase 17, Phase 18, Phase 19, Phase 20 (documents and exercises
+everything built in this milestone; dataset regeneration needs the settled stage model)
+**Requirements**: DOCS-05, DATA-01, DATA-02, DATA-03
+**Success Criteria** (what must be TRUE):
+  1. `calc-index`, the `benchmark.json` schema, the trace and conditioning flags, and
+     `shared_interface` (framed as an ablation option) are all documented.
+  2. The real-rig dataset config is regenerated through current `aquacal init` (not
+     hand-patched), with every difference from the shipped config confirmed deliberate,
+     settling whether `initial_distances` was a scalar or carried pre-v1.4 semantics.
+  3. A new Zenodo version is published; `manifest.json`'s `zenodo_record_id`, `checksum`,
+     and `size_bytes` are updated together; `load_example("real-rig")` is verified to
+     download, checksum, and extract at the path the notebook resolves.
+  4. Both tutorial notebooks are re-executed with fresh committed outputs, and any narration
+     the outputs contradict (including the three-stage framing and runtime estimate) is updated.
+**Plans**: TBD
+
+### Phase 22: Release Cut
+**Goal**: The version referenced by the manuscript and the Zenodo archive is the one whose
+behavior the published artifacts actually reflect.
+**Depends on**: Phase 21 (dataset/tutorial refresh must land before the release it's cut against)
+**Requirements**: DOCS-07
+**Success Criteria** (what must be TRUE):
+  1. A release is cut incorporating all v1.9 work.
+  2. The manuscript's C1 metadata cell is updated to the released version.
+  3. The Zenodo archive reference is updated to match the same version.
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -66,3 +225,10 @@ See `.planning/milestones/v1.6-ROADMAP.md` for full details.
 | 13. Core Refinement | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 14. Optimization Extensions | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
+| 16. Experiment Observability Hooks | v1.9 | 0/TBD | Not started | - |
+| 17. Per-Camera Interface Ablation Mode | v1.9 | 0/TBD | Not started | - |
+| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
+| 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
+| 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
+| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
+| 22. Release Cut | v1.9 | 0/TBD | Not started | - |
