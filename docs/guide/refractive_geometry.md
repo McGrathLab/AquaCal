@@ -114,6 +114,18 @@ For the reference camera at the world origin (C_z = 0), the water_z equals the p
 This reparameterization eliminates a mathematical degeneracy between camera Z position and interface distance. See the [Optimizer Pipeline](optimizer.md) page for details.
 :::
 
+:::{admonition} Ablation option: per-camera water_z (`shared_interface: false`)
+:class: note
+
+By default all cameras share a single global `water_z`. An opt-in config flag,
+`interface.shared_interface: false`, instead gives each optimized camera its own
+`water_z` parameter. This exists **only for degeneracy/ablation analysis** (e.g.
+the WP6 experiment that measures the per-camera `water_z` spread) and is **not a
+recommended production setting** — the shared-interface assumption underlies the
+library's core accuracy claim. A full worked example is deferred to a later
+documentation pass.
+:::
+
 ## Projection Model
 
 ### Forward Projection: 3D Point → Pixel

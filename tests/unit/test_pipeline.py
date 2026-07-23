@@ -373,6 +373,62 @@ class TestLoadConfig:
             ):
                 load_config(f.name)
 
+    def test_load_config_shared_interface_default_true(self, valid_config_yaml):
+        """shared_interface defaults to True when omitted from the config."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.shared_interface is True
+
+    def test_load_config_shared_interface_false(self, valid_config_yaml):
+        """interface.shared_interface: false is parsed through to the config."""
+        valid_config_yaml["interface"]["shared_interface"] = False
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.shared_interface is False
+
+    def test_load_config_partial_water_z_accepted_in_per_camera_mode(
+        self, valid_config_yaml
+    ):
+        """A partial initial_water_z dict loads without raising in per-camera mode.
+
+        The missing-camera coverage gate is skipped when shared_interface is
+        False, leaving the partial dict for the pipeline's per-camera seed
+        resolver to fill later.
+        """
+        valid_config_yaml["interface"]["shared_interface"] = False
+        valid_config_yaml["interface"]["initial_water_z"] = {"cam0": 0.25}
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        # Partial dict passed through unchanged (missing cam1 filled downstream).
+        assert config.shared_interface is False
+        assert config.initial_water_z == {"cam0": 0.25}
+
+    def test_load_config_partial_water_z_still_raises_in_shared_mode(
+        self, valid_config_yaml
+    ):
+        """The same partial dict still hard-fails when shared_interface is True."""
+        valid_config_yaml["interface"]["shared_interface"] = True
+        valid_config_yaml["interface"]["initial_water_z"] = {"cam0": 0.25}
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            with pytest.raises(
+                ValueError, match="initial_water_z dict must cover all cameras"
+            ):
+                load_config(f.name)
+
     def test_load_config_with_negative_scalar_initial_water_z(self, valid_config_yaml):
         """Test that negative scalar initial_water_z raises ValueError."""
         valid_config_yaml["interface"]["initial_water_z"] = -0.15
