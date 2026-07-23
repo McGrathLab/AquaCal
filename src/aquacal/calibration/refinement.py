@@ -11,6 +11,7 @@ from scipy.optimize import least_squares
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
+    build_structural_column_groups,
     compute_residuals,
     make_sparse_jacobian_func,
     pack_params,
@@ -187,6 +188,13 @@ def joint_refinement(
             cost_args,
             jac_sparsity,
             (lower, upper),
+            groups=build_structural_column_groups(
+                jac_sparsity,
+                len(camera_order),
+                len(frame_order),
+                refine_intrinsics=refine_intrinsics,
+                normal_fixed=normal_fixed,
+            ),
         )
 
     # Run optimization

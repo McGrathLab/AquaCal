@@ -322,6 +322,96 @@ def build_jacobian_sparsity(
     return np.array(residual_rows, dtype=np.int8)
 
 
+def build_structural_column_groups(
+    jac_sparsity: NDArray[np.int8],
+    n_cams: int,
+    n_frames: int,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+) -> NDArray[np.intp]:
+    """
+    Build an optimal finite-difference column grouping from the parameter layout.
+
+    This is a drop-in replacement for ``scipy.optimize._numdiff.group_columns``
+    for the board-observation sparsity pattern produced by
+    :func:`build_jacobian_sparsity`. It must be kept adjacent to that function:
+    the two agree on column order by construction, and a change to one requires
+    a matching change to the other.
+
+    Why not ``group_columns``? That routine is a generic greedy graph colorer
+    that rediscovers structure already known a priori here. Its quality degrades
+    as camera/board visibility gets sparser -- exactly the regime AquaCal
+    targets (wide baselines, few board placements visible to every camera). On a
+    real 12-camera rig at 72% visibility it produces 20 groups where 17 suffice,
+    costing three extra full residual evaluations per Jacobian. The structural
+    grouping below always attains the theoretical lower bound: 13 groups, or 17
+    with ``refine_intrinsics=True``.
+
+    Correctness: a residual is one board corner seen by *one* camera in *one*
+    frame. Therefore like-indexed extrinsic columns of different cameras never
+    share a residual row, and like-indexed board-placement columns of different
+    frames never share a residual row. That statement is about a single row and
+    never refers to which (camera, frame) pairs actually exist, so dropping
+    observations only removes conflicts and can never create one: a grouping
+    valid under full visibility is valid under any sub-pattern. Tilt parameters
+    reuse extrinsic group slots 0 and 1 because tilt appears only in reference
+    camera rows and the reference camera has no extrinsic columns.
+
+    Args:
+        jac_sparsity: Sparsity pattern of shape (n_residuals, n_params), used
+            only to validate the derived column count.
+        n_cams: Number of cameras in ``camera_order``.
+        n_frames: Number of frames in ``frame_order``.
+        refine_intrinsics: Whether 4 intrinsic params per camera are appended.
+        normal_fixed: If False, 2 tilt params are prepended.
+
+    Returns:
+        Array of shape (n_params,) of contiguous group indices ``0..m-1``,
+        suitable for the ``sparsity=(pattern, groups)`` argument of
+        ``scipy.optimize._numdiff.approx_derivative``.
+
+    Raises:
+        AssertionError: If the derived column count does not match
+            ``jac_sparsity.shape[1]``, which means the parameter layout changed
+            without this function being updated.
+    """
+    n_tilt_params = 0 if normal_fixed else 2
+    n_extrinsic_params = 6 * (n_cams - 1)
+    n_pose_params = 6 * n_frames
+    n_intrinsic_params = 4 * n_cams if refine_intrinsics else 0
+
+    raw_groups = []
+
+    # 0. Tilt params: reuse extrinsic slots 0, 1 (reference-camera rows only).
+    raw_groups.extend(range(n_tilt_params))
+
+    # 1. Camera extrinsics: 6 slots, shared across cameras.
+    raw_groups.extend(j % 6 for j in range(n_extrinsic_params))
+
+    # 2. water_z: dense column, needs a slot of its own.
+    raw_groups.append(6)
+
+    # 3. Board poses: 6 slots, shared across frames.
+    raw_groups.extend(7 + (j % 6) for j in range(n_pose_params))
+
+    # 4. Camera intrinsics: 4 slots, shared across cameras.
+    raw_groups.extend(13 + (j % 4) for j in range(n_intrinsic_params))
+
+    # Compact to contiguous ids 0..m-1 as SciPy requires. Degenerate configs
+    # (e.g. n_cams == 1 leaves no extrinsic columns) leave gaps in the raw ids.
+    groups = np.ravel(np.unique(np.asarray(raw_groups), return_inverse=True)[1])
+    groups = groups.astype(np.intp, copy=False)
+
+    assert len(groups) == jac_sparsity.shape[1], (
+        f"Structural column grouping has {len(groups)} columns but the sparsity "
+        f"pattern has {jac_sparsity.shape[1]}; the parameter layout in "
+        f"build_jacobian_sparsity changed without updating "
+        f"build_structural_column_groups."
+    )
+
+    return groups
+
+
 def build_bounds(
     camera_order: list[str],
     frame_order: list[int],
@@ -497,6 +587,7 @@ def make_sparse_jacobian_func(
     jac_sparsity: NDArray[np.int8],
     bounds: tuple[NDArray[np.float64], NDArray[np.float64]],
     dense_threshold: int = 500_000_000,
+    groups: NDArray[np.intp] | None = None,
 ):
     """
     Create a Jacobian callable that uses sparse finite differences.
@@ -512,11 +603,20 @@ def make_sparse_jacobian_func(
         bounds: Tuple of (lower, upper) bound arrays
         dense_threshold: Maximum number of elements (rows*cols) before
             returning sparse instead of dense. Default 500M (~4 GiB).
+        groups: Optional precomputed column grouping of shape (n_params,).
+            Defaults to SciPy's generic greedy colorer. For the
+            board-observation layout of :func:`build_jacobian_sparsity`, pass
+            ``build_structural_column_groups(...)`` instead -- it attains the
+            theoretical minimum group count at any visibility fraction, where
+            the greedy colorer degrades as visibility gets sparser. The
+            grouping affects only how FD perturbations are batched; any valid
+            grouping yields the identical Jacobian.
 
     Returns:
         Callable that takes (params, *args) and returns Jacobian matrix
     """
-    groups = group_columns(jac_sparsity)
+    if groups is None:
+        groups = group_columns(jac_sparsity)
     n_elements = jac_sparsity.shape[0] * jac_sparsity.shape[1]
     use_dense = n_elements <= dense_threshold
 
