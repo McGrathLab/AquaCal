@@ -49,6 +49,7 @@ from aquacal.io.detection import detect_all_frames
 from aquacal.io.internals import ensure_internals_dir, warn_if_overwriting
 from aquacal.io.serialization import save_calibration
 from aquacal.utils.transforms import matrix_to_rvec
+from aquacal.validation.conditioning import save_conditioning_report
 from aquacal.validation.diagnostics import (
     generate_diagnostic_report,
     save_diagnostic_report,
@@ -604,6 +605,41 @@ def _time_stage(timings: dict[str, float], key: str) -> Iterator[None]:
         timings[key] = time.perf_counter() - t0
 
 
+def _select_conditioning_report(
+    stage4_obs: OptimizerObserver | None,
+    rerun_obs: OptimizerObserver | None,
+    stage3_obs: OptimizerObserver | None,
+    refine_intrinsics: bool,
+):
+    """Pick the conditioning report from whichever stage produced the final result.
+
+    Exactly one report is selected per run: Stage 4's when intrinsics are
+    refined (Stage 4 is the final reported result), else the Stage-3
+    outlier-rejection re-run's if it fired, else the initial Stage-3 solve's.
+
+    Args:
+        stage4_obs: Observer for Stage 4, or `None` if Stage 4 was skipped or
+            not observed.
+        rerun_obs: Observer for the Stage-3 outlier-rejection re-run, or `None`
+            if the re-run did not fire or was not observed.
+        stage3_obs: Observer for the initial Stage-3 solve, or `None` if not
+            observed.
+        refine_intrinsics: Whether Stage 4 ran.
+
+    Returns:
+        The winning observer's `ConditioningReport`, or `None` if the winning
+        observer is `None` or produced no report (e.g. `save_conditioning` was
+        off for that observer).
+    """
+    if refine_intrinsics:
+        obs = stage4_obs
+    elif rerun_obs is not None:
+        obs = rerun_obs
+    else:
+        obs = stage3_obs
+    return obs.conditioning_report if obs is not None else None
+
+
 def run_calibration_from_config(
     config: CalibrationConfig, verbose: bool = False
 ) -> CalibrationResult:
@@ -870,8 +906,17 @@ def run_calibration_from_config(
             observer=observer,
         )
 
+    # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
+    # conditioning diagnostics (HOOK-03) are requested.
+    observe = config.save_optimization_trace or config.save_conditioning
+
     stage3_observer = (
-        OptimizerObserver(stage="stage3") if config.save_optimization_trace else None
+        OptimizerObserver(
+            stage="stage3",
+            conditioning=config.save_conditioning and not config.refine_intrinsics,
+        )
+        if observe
+        else None
     )
     t0 = time.perf_counter()
     stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
@@ -881,7 +926,7 @@ def run_calibration_from_config(
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
 
-    if stage3_observer is not None:
+    if stage3_observer is not None and config.save_optimization_trace:
         stage3_observer.write_trace_csv(
             ensure_internals_dir(config.output_dir) / "trace_stage3.csv"
         )
@@ -912,6 +957,7 @@ def run_calibration_from_config(
     # geometrically-inconsistent (e.g. near-surface) frame across cameras, so it
     # surfaces at a large residual - the same quantity holdout validation reports.
     frame_rejection_info = None
+    stage3_rerun_observer = None
     if config.reject_outlier_frames:
         rej_initial_poses = _compute_initial_board_poses(
             optim_detections,
@@ -977,9 +1023,18 @@ def run_calibration_from_config(
                 f"  [Frame Rejection] Re-running Stage 3 on "
                 f"{len(optim_detections.frames)} cleaned frames..."
             )
+            # The initial Stage-3 solve can't know in advance whether this
+            # re-run will fire, so when it does, conditioning (if enabled) runs
+            # a second time here and this later report wins -- see
+            # _select_conditioning_report. A bounded, deliberate duplication
+            # chosen over trying to predict the rejection outcome.
             stage3_rerun_observer = (
-                OptimizerObserver(stage="stage3_rerun")
-                if config.save_optimization_trace
+                OptimizerObserver(
+                    stage="stage3_rerun",
+                    conditioning=config.save_conditioning
+                    and not config.refine_intrinsics,
+                )
+                if observe
                 else None
             )
             t0 = time.perf_counter()
@@ -993,7 +1048,7 @@ def run_calibration_from_config(
                 f"({elapsed:.1f}s)"
             )
 
-            if stage3_rerun_observer is not None:
+            if stage3_rerun_observer is not None and config.save_optimization_trace:
                 stage3_rerun_observer.write_trace_csv(
                     ensure_internals_dir(config.output_dir) / "trace_stage3_rerun.csv"
                 )
@@ -1041,13 +1096,14 @@ def run_calibration_from_config(
 
     # --- Stage 4: Optional Joint Refinement ---
     refine_intrinsics = config.refine_intrinsics
+    stage4_observer = None
 
     if refine_intrinsics:
         print("\n[Stage 4] Joint refinement with intrinsics...")
         stage3_result = (stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms)
         stage4_observer = (
-            OptimizerObserver(stage="stage4")
-            if config.save_optimization_trace
+            OptimizerObserver(stage="stage4", conditioning=config.save_conditioning)
+            if observe
             else None
         )
         t0 = time.perf_counter()
@@ -1077,7 +1133,7 @@ def run_calibration_from_config(
         timings["stage4_joint_refinement"] = elapsed
         print(f"  Stage 4 RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
 
-        if stage4_observer is not None:
+        if stage4_observer is not None and config.save_optimization_trace:
             stage4_observer.write_trace_csv(
                 ensure_internals_dir(config.output_dir) / "trace_stage4.csv"
             )
@@ -1116,6 +1172,32 @@ def run_calibration_from_config(
         final_poses = stage3_poses
         final_intrinsics = primary_intrinsics
         final_rms = stage3_rms
+
+    # --- Conditioning diagnostics (HOOK-03) ---
+    # Exactly one report is written per run, from whichever stage produced the
+    # final reported result. Not wrapped in try/except: a memory refusal must
+    # fail the run loudly rather than be silently swallowed.
+    if config.save_conditioning:
+        conditioning_stage = (
+            "stage4"
+            if refine_intrinsics
+            else ("stage3_rerun" if stage3_rerun_observer is not None else "stage3")
+        )
+        conditioning_report = _select_conditioning_report(
+            stage4_observer, stage3_rerun_observer, stage3_observer, refine_intrinsics
+        )
+        if conditioning_report is not None:
+            internals_dir = ensure_internals_dir(config.output_dir)
+            save_conditioning_report(
+                conditioning_report,
+                internals_dir / "conditioning.json",
+                internals_dir / "conditioning.npz",
+                stage=conditioning_stage,
+            )
+            print(
+                f"  Saved internals/conditioning.json (+ .npz) "
+                f"[stage: {conditioning_stage}]"
+            )
 
     # Convert poses list to dict
     board_poses_dict = {bp.frame_idx: bp for bp in final_poses}

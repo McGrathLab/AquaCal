@@ -907,6 +907,95 @@ class TestStage3ObserverWiring:
         assert "trace_stage4.csv" in source
 
 
+class TestConditioningWiring:
+    """Wiring + stage-selection tests for HOOK-03 conditioning diagnostics."""
+
+    def test_conditioning_artifact_names(self):
+        """Source-guard: pipeline.py must reference the conditioning artifact
+        names and the writer function (full config pipeline needs videos, so
+        this is a wiring guard rather than an end-to-end run)."""
+        source = Path("src/aquacal/calibration/pipeline.py").read_text()
+        assert "conditioning.json" in source
+        assert "conditioning.npz" in source
+        assert "save_conditioning_report" in source
+
+    def test_conditioning_stage_selection_logic(self):
+        """_select_conditioning_report picks the correct observer's report
+        across all four refine/re-run combinations."""
+        from aquacal.calibration._observability import OptimizerObserver
+        from aquacal.calibration.pipeline import _select_conditioning_report
+
+        def _observer_with_report(stage, marker):
+            obs = OptimizerObserver(stage=stage)
+            obs.conditioning_report = marker
+            return obs
+
+        stage3_obs = _observer_with_report("stage3", "stage3_report")
+        rerun_obs = _observer_with_report("stage3_rerun", "rerun_report")
+        stage4_obs = _observer_with_report("stage4", "stage4_report")
+
+        # refine_intrinsics=True: Stage 4 always wins, regardless of re-run.
+        assert (
+            _select_conditioning_report(stage4_obs, rerun_obs, stage3_obs, True)
+            == "stage4_report"
+        )
+        assert (
+            _select_conditioning_report(stage4_obs, None, stage3_obs, True)
+            == "stage4_report"
+        )
+
+        # refine_intrinsics=False, re-run fired: re-run wins.
+        assert (
+            _select_conditioning_report(None, rerun_obs, stage3_obs, False)
+            == "rerun_report"
+        )
+
+        # refine_intrinsics=False, re-run did not fire: initial Stage 3 wins.
+        assert (
+            _select_conditioning_report(None, None, stage3_obs, False)
+            == "stage3_report"
+        )
+
+    def test_conditioning_stage_selection_returns_none_when_no_observer(self):
+        from aquacal.calibration.pipeline import _select_conditioning_report
+
+        assert _select_conditioning_report(None, None, None, True) is None
+        assert _select_conditioning_report(None, None, None, False) is None
+
+    def test_conditioning_report_json_records_stage(self, tmp_path):
+        from aquacal.validation.conditioning import (
+            ConditioningReport,
+            save_conditioning_report,
+        )
+
+        report = ConditioningReport(
+            singular_values=np.array([2.0, 1.0]),
+            condition_number=2.0,
+            correlation=np.eye(2),
+            rank=2,
+            rank_tolerance=1e-12,
+            n_params=2,
+            n_residuals=4,
+            parameter_names=["water_z", "cam1_tvec_z"],
+        )
+        json_path = tmp_path / "conditioning.json"
+        npz_path = tmp_path / "conditioning.npz"
+        save_conditioning_report(report, json_path, npz_path, stage="stage3")
+
+        import json
+
+        with open(json_path) as f:
+            payload = json.load(f)
+
+        assert payload["stage"] == "stage3"
+
+    def test_observers_created_when_only_conditioning_enabled(self):
+        """The pipeline must gate observer creation on the trace flag OR the
+        conditioning flag, not the trace flag alone."""
+        source = Path("src/aquacal/calibration/pipeline.py").read_text()
+        assert "save_optimization_trace or config.save_conditioning" in source
+
+
 # --- Test _compute_config_hash ---
 
 

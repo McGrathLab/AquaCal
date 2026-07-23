@@ -184,6 +184,7 @@ def save_conditioning_report(
     report: ConditioningReport,
     json_path: Path,
     npz_path: Path,
+    stage: str | None = None,
 ) -> None:
     """Write a conditioning report to disk as a JSON scalars/spectrum file plus NPZ.
 
@@ -199,6 +200,10 @@ def save_conditioning_report(
         report: Report produced by :func:`compute_conditioning`.
         json_path: Destination for the JSON scalars/spectrum payload.
         npz_path: Destination for the NPZ correlation-matrix payload.
+        stage: Optional label naming the bundle-adjustment stage that produced
+            this report (e.g. "stage3", "stage4"), recorded in the JSON payload
+            as ``"stage"`` for unambiguous provenance when a run only reports
+            one conditioning pass.
 
     Raises:
         None directly; overwriting an existing path only logs a warning.
@@ -225,6 +230,7 @@ def save_conditioning_report(
         "n_residuals": report.n_residuals,
         "parameter_names": report.parameter_names,
         "correlation_npz": npz_path.name,
+        "stage": stage,
     }
     with open(json_path, "w") as f:
         json.dump(payload, f, indent=2)
