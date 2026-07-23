@@ -122,7 +122,12 @@ argument needs; this is a prerequisite, not a convenience)
      rather than collapsing them to a mean.
   5. `shared_interface=True` is bit-unchanged from current behavior, and per-camera mode
      with equal initial values recovers the shared solution on shared-interface ground truth.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 17-01-PLAN.md — Optimizer core: per-camera water_z packing, sparsity, bounds, grouping, labels (IFACE-02, IFACE-03)
+- [ ] 17-02-PLAN.md — Config surface: shared_interface field, YAML loader pass-through, init template, docs stub (IFACE-01)
+- [ ] 17-03-PLAN.md — Thread shared_interface through Stage 3/4 optimizers + pipeline wiring + ablation WARNING (IFACE-01, IFACE-02)
+- [ ] 17-04-PLAN.md — Per-camera seed resolution + water_z spread reporting (console mm + internals JSON) (IFACE-04)
+- [ ] 17-05-PLAN.md — Bit-exactness + equal-seed recovery tests (IFACE-05)
 
 ### Phase 18: Documentation Corrections & Stage-Model Reconciliation
 **Goal**: Fix live factual errors in published docs and reconcile the paper's three-stage
