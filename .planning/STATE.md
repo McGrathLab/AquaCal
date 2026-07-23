@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -23,11 +23,10 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 16 (Experiment Observability Hooks) — executing
-Plan: 3/7 plans complete (16-01, 16-02, 16-03); plan-checker PASSED first iteration
+Plan: 4/7 plans complete (16-01, 16-02, 16-03, 16-04); plan-checker PASSED first iteration
 Status: `/gsd:execute-phase 16` in progress
-Last activity: 2026-07-23 — plan 16-03 (observability config foundation + Stage-3/3rerun/4
-  calibration dumps, HOOK-01/02/03/06 config surface) executed; see
-  "Phase 16 Plan Progress" below for details.
+Last activity: 2026-07-23 — plan 16-04 (OptimizerObserver + per-stage optimization trace
+  CSVs, HOOK-02) executed; see "Phase 16 Plan Progress" below for details.
   An earlier planning session crashed the machine mid-research-followup; recovered from
   its transcript, see the HOOK-03 note below.
 
@@ -136,6 +135,22 @@ None.
   intentionally left unchecked in REQUIREMENTS.md pending 16-04, not marked complete.
   No regressions: 679 passed (full unit suite), 684 passed/29 deselected
   (`tests/ -m "not slow"`).
+- Plan 16-04 (Optimizer observability trace, HOOK-02) — COMPLETE 2026-07-23. Commits
+  `048f8ba` (OptimizerObserver + scipy>=1.16 floor), `9928deb` (optional observer param
+  on optimize_interface/joint_refinement), `29201f3` (per-stage trace CSVs wired into
+  pipeline). Summary:
+  `.planning/phases/16-experiment-observability-hooks/16-04-SUMMARY.md`. Added
+  `aquacal.calibration._observability.OptimizerObserver`/`TraceRow`, wrapping
+  scipy's `least_squares(callback=...)` (new in 1.16) to record per-iteration cost,
+  step norm, and an unconstrained `||J^T f||_inf` optimality proxy (documented as
+  NOT matching scipy's bound-scaled final optimality). `optimize_interface` and
+  `joint_refinement` both gained a trailing `observer=None` param with a verified
+  bit-identical-result guarantee when unset. Pipeline writes
+  `internals/trace_stage3.csv`, `trace_stage3_rerun.csv`, `trace_stage4.csv` (one
+  file per stage, never merged) when `config.save_optimization_trace` is true.
+  `on_solution(result)` defined as a no-op extension point for plan 16-05's
+  conditioning work. No regressions: 696 passed (full unit suite, +17 new),
+  701 passed/29 deselected (`tests/ -m "not slow"`).
 
 ### Quick Tasks Completed
 
@@ -168,9 +183,10 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-03 (observability config foundation + stage calibration dumps)
+Stopped at: Plan 16-04 (OptimizerObserver + per-stage optimization trace CSVs, HOOK-02)
   executed and committed; awaiting continued execution of the remaining phase 16 plans
-  (16-04 depends on 16-03 and owns the actual HOOK-02 trace implementation).
+  (16-05/16-06 depend on 16-04's `on_solution` extension point for conditioning
+  diagnostics).
 Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
