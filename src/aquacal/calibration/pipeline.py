@@ -54,8 +54,10 @@ from aquacal.validation.diagnostics import (
     generate_diagnostic_report,
     save_diagnostic_report,
 )
-from aquacal.validation.evaluation import _estimate_validation_poses
-from aquacal.validation.reconstruction import compute_3d_distance_errors
+from aquacal.validation.evaluation import (
+    _estimate_validation_poses,
+    evaluate_calibration,
+)
 from aquacal.validation.reprojection import compute_reprojection_errors
 
 
@@ -1276,33 +1278,13 @@ def run_calibration_from_config(
     # Estimate board poses for validation frames
     print("\n[Validation] Estimating board poses for held-out frames...")
     _validation_t0 = time.perf_counter()
-    val_initial_poses = _compute_initial_board_poses(
-        val_detections,
-        final_intrinsics,
-        final_extrinsics,
-        board,
-        min_corners=config.min_corners_per_frame,
-        n_water=config.n_water,
-    )
 
-    val_refined_poses = _estimate_validation_poses(
-        val_detections,
-        val_initial_poses,
-        final_intrinsics,
-        final_extrinsics,
-        final_distances,
-        board,
-        interface_normal,
-        config.n_air,
-        config.n_water,
-    )
-    board_poses_dict.update(val_refined_poses)
-    print(f"  Estimated {len(val_refined_poses)} validation frame poses")
-
-    # --- Validation ---
-    print("\n[Validation] Computing errors on held-out data...")
-
-    # Build temporary CalibrationResult for validation functions
+    # Build temporary CalibrationResult for validation functions.
+    # Built BEFORE pose estimation (rather than after, as previously) because
+    # evaluate_calibration takes an already-built CalibrationResult. This is a
+    # pure construction reordering: temp_result is assembled from
+    # final_intrinsics/final_extrinsics/final_distances, none of which pose
+    # estimation mutates, so it carries no numerical effect.
     interface_params = InterfaceParams(
         normal=interface_normal,
         n_air=config.n_air,
@@ -1336,18 +1318,24 @@ def run_calibration_from_config(
         auxiliary_cameras=aux_cam_names,
     )
 
+    primary_eval = evaluate_calibration(
+        temp_result,
+        val_detections,
+        board,
+        min_corners=config.min_corners_per_frame,
+        cameras=primary_cam_names,
+    )
+    board_poses_dict.update(primary_eval.board_poses)
+    print(f"  Estimated {len(primary_eval.board_poses)} validation frame poses")
+
+    # --- Validation ---
+    print("\n[Validation] Computing errors on held-out data...")
+
     # --- Primary camera validation ---
     primary_result = _filter_cameras(temp_result, primary_cam_names)
 
-    # Reprojection errors on validation set (primary cameras only)
-    primary_reproj = compute_reprojection_errors(
-        primary_result, val_detections, board_poses_dict
-    )
-
-    # 3D reconstruction errors (primary cameras only)
-    primary_3d = compute_3d_distance_errors(
-        primary_result, val_detections, board, include_spatial=True
-    )
+    primary_reproj = primary_eval.reprojection
+    primary_3d = primary_eval.reconstruction
 
     # Save spatial measurements if available
     if primary_3d.spatial is not None and len(primary_3d.spatial.positions) > 0:
@@ -1384,10 +1372,16 @@ def run_calibration_from_config(
     # --- Auxiliary camera validation (if any) ---
     aux_reproj = None
     if aux_cam_names:
-        aux_result = _filter_cameras(temp_result, aux_cam_names)
-        aux_reproj = compute_reprojection_errors(
-            aux_result, val_detections, board_poses_dict
+        aux_eval = evaluate_calibration(
+            temp_result,
+            val_detections,
+            board,
+            min_corners=config.min_corners_per_frame,
+            cameras=aux_cam_names,
+            board_poses=primary_eval.board_poses,  # reuse, do not re-estimate
+            include_reconstruction=False,
         )
+        aux_reproj = aux_eval.reprojection
 
         print("  Auxiliary cameras:")
         for cam_name in sorted(aux_cam_names):
