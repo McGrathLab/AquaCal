@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: planned
+status: in-progress
 last_updated: "2026-07-23"
 progress:
   total_phases: 7
@@ -18,7 +18,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** v1.9 Publication Prep — Phase 16 planned, ready to execute
+**Current focus:** v1.9 Publication Prep — Phase 16 COMPLETE, ready for Phase 17 planning
 
 ## Current Position
 
