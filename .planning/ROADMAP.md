@@ -94,7 +94,14 @@ experiments can start as early as possible against the 2026-08-21 deadline.
      tank-scale/working-distance, and returns ground-truth board poses and true interface
      height so sweeps can compute absolute error.
   6. Every sweep entry point accepts and threads a seed, so a surprising result reproduces.
-**Plans**: TBD
+**Plans**: 7 plans (5 waves)
+- [ ] 16-01-PLAN.md — Conditioning core: blocked tall-skinny QR + SVD, correlation matrix, JSON/NPZ report
+- [ ] 16-02-PLAN.md — Synthetic generator: refractive index plumbed through, WP5 sweep-axis audit
+- [ ] 16-03-PLAN.md — Config keys, internals/ artifact dir, per-stage calibration dumps
+- [ ] 16-04-PLAN.md — Per-iteration optimization trace via scipy callback, one CSV per BA stage
+- [ ] 16-05-PLAN.md — Conditioning wired to the final reported stage, labelled parameters
+- [ ] 16-06-PLAN.md — Pipeline holdout seed threading and seed recording in outputs
+- [ ] 16-07-PLAN.md — Standalone evaluate_calibration, pipeline refactor, equivalence regression test
 
 ### Phase 17: Per-Camera Interface Ablation Mode
 **Goal**: A per-camera `water_z` ablation is available for the WP6 experiment and is provably
