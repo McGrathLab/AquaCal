@@ -766,10 +766,11 @@ def run_calibration_from_config(
     4. Split underwater detections into calibration/validation sets
     5. Run Stage 2: Extrinsic initialization
     6. Run Stage 3: Interface and pose optimization
-    7. Optionally run Stage 4: Joint refinement
-    8. Run validation on held-out data
-    9. Generate and save diagnostics
-    10. Save final calibration result
+       6a. Optionally run Stage 3's second pass (the intrinsic pass), with
+           intrinsics unlocked
+    7. Run validation on held-out data
+    8. Generate and save diagnostics
+    9. Save final calibration result
 
     Args:
         config: Complete calibration configuration
@@ -1234,12 +1235,12 @@ def run_calibration_from_config(
     heights = np.array(heights)
     print(f"  Camera height spread: {np.ptp(heights):.4f} m")
 
-    # --- Stage 4: Optional Joint Refinement ---
+    # --- Stage 3's second pass: intrinsics unlocked (optional) ---
     refine_intrinsics = config.refine_intrinsics
     stage3_intrinsic_pass_observer = None
 
     if refine_intrinsics:
-        print("\n[Stage 4] Joint refinement with intrinsics...")
+        print("\n[Stage 3: intrinsic pass] Second pass, with intrinsics unlocked...")
         stage3_result = (stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms)
         stage3_intrinsic_pass_observer = (
             OptimizerObserver(
@@ -1274,7 +1275,7 @@ def run_calibration_from_config(
         )
         elapsed = time.perf_counter() - t0
         timings["stage3_intrinsic_pass"] = elapsed
-        print(f"  Stage 4 RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
+        print(f"  Stage 3 intrinsic pass RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
 
         if (
             stage3_intrinsic_pass_observer is not None
@@ -1313,7 +1314,7 @@ def run_calibration_from_config(
             )
             print("  Saved internals/calibration_stage3_intrinsic_pass.json")
     else:
-        print("\n[Stage 4] Skipped (refine_intrinsics=False)")
+        print("\n[Stage 3: intrinsic pass] Skipped (refine_intrinsics=False)")
         final_extrinsics = stage3_extrinsics
         final_distances = stage3_distances
         final_poses = stage3_poses
@@ -1377,13 +1378,18 @@ def run_calibration_from_config(
     # Convert poses list to dict
     board_poses_dict = {bp.frame_idx: bp for bp in final_poses}
 
-    # --- Stage 3b/4b: Register Auxiliary Cameras ---
+    # --- Auxiliary camera registration (post-hoc, after Stage 3) ---
     aux_extrinsics = {}
     aux_distances = {}
     if config.auxiliary_cameras:
-        stage_label = "Stage 4b" if config.refine_auxiliary_intrinsics else "Stage 3b"
+        dof_description = (
+            "10-DOF refinement (extrinsics plus focal length and principal point)"
+            if config.refine_auxiliary_intrinsics
+            else "6-DOF refinement (extrinsics only)"
+        )
         print(
-            f"\n[{stage_label}] Registering {len(config.auxiliary_cameras)} auxiliary camera(s)..."
+            f"\n[Auxiliary camera registration] Registering "
+            f"{len(config.auxiliary_cameras)} auxiliary camera(s) via {dof_description}..."
         )
 
         # Derive water_z from Stage 3 output (reference camera has C_z = 0)
