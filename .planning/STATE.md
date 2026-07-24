@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 18 context gathered (`--auto`) — `18-CONTEXT.md` + `18-DISCUSSION-LOG.md`
-last_updated: "2026-07-24T15:09:47.551Z"
-last_activity: 2026-07-24 -- Phase 18 execution started
+stopped_at: Phase 18 waves 1-2 complete and merged (18-01..18-07); paused before wave 3 (18-08)
+last_updated: "2026-07-24T16:05:00.000Z"
+last_activity: 2026-07-24 -- Phase 18 waves 1-2 executed, merged, and verified
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 20
-  completed_plans: 12
-  percent: 29
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -26,18 +26,18 @@ chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconc
 
 ## Current Position
 
-Phase: 18 (documentation-corrections-stage-model-reconciliation) — EXECUTING
-  execute. Phases 16 and 17 COMPLETE, verification PASSED.
-Plan: 1 of 8
-  (17-01..17-05); Phase 16 7/7 complete.
-Status: Executing Phase 18
-  Wave 1 = 18-01 (DOCS-01 numbers), 18-02 (human-verify checkpoint), 18-03 (DOCS-04
-  config reference). Wave 2 = 18-04..18-07. Wave 3 = 18-08.
-  **Plan 18-02 is a blocking `checkpoint:human-verify`** — it gates 18-05/06/07/08 on the
-  user confirming the revised manuscript's stage/traversal vocabulary. 18-01, 18-03, and
-  18-04 proceed regardless.
-Last activity: 2026-07-24 -- Phase 18 execution started
-  re-enabled in config and a quick research pass run.
+Phase: 18 (documentation-corrections-stage-model-reconciliation) — EXECUTING, PAUSED
+  Phases 16 and 17 COMPLETE, verification PASSED.
+Plan: 7 of 8 complete
+Status: Phase 18 waves 1 and 2 COMPLETE, merged to main, gates green.
+  Wave 1 = 18-01 (DOCS-01 numbers), 18-02 (vocabulary contract), 18-03 (DOCS-04
+  config reference) — all complete. Wave 2 = 18-04..18-07 — all complete.
+  **Wave 3 = 18-08 is the only remaining plan.** It is autonomous (no checkpoint) and
+  depends on all seven predecessors, which are now satisfied.
+  Note: 18-02 was NOT a checkpoint at execution time — the plan file records that its
+  gate was removed once the live manuscript confirmed the vocabulary. The phase's only
+  human-verify gate was 18-04 Task 3 (pose-graph figure), APPROVED 2026-07-24.
+Last activity: 2026-07-24 -- Phase 18 waves 1-2 executed and merged.
   Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`);
   full suite 799 passed. See "Phase 17 Plan Progress" below.
 Unreleased on main: everything from Phases 16-17 plus quick task 3's `perf:` commit.

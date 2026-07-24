@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-07-24T15:58:55.744Z",
+  "phase": "18",
+  "phase_name": "documentation-corrections-stage-model-reconciliation",
+  "phase_dir": ".planning/phases/18-documentation-corrections-stage-model-reconciliation",
+  "plan": 8,
+  "task": 1,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "18-01", "name": "Sparse-Jacobian numbers correction (DOCS-01)", "status": "done", "commit": "1445cb9"},
+    {"id": "18-02", "name": "Stage/traversal vocabulary contract", "status": "done", "commit": "6155e40"},
+    {"id": "18-03", "name": "docs/guide/configuration.md reference page (DOCS-04)", "status": "done", "commit": "b3918eb"},
+    {"id": "18-04", "name": "Heap-replaying pose-graph figure (DOCS-03)", "status": "done", "commit": "af1f152"},
+    {"id": "18-05", "name": "BFS to best-first in extrinsics.py (DOCS-02 code side)", "status": "done", "commit": "16d2c9d"},
+    {"id": "18-06", "name": "pipeline.py machine-surface renames (DOCS-06 code side)", "status": "done", "commit": "4fb22bb"},
+    {"id": "18-07", "name": "Docstrings, CLI template, example config (DOCS-06 code side pt2)", "status": "done", "commit": "408e5df"}
+  ],
+  "remaining_tasks": [
+    {"id": "18-08", "name": "Documentation-side DOCS-02 and DOCS-06 reconciliation", "status": "not_started", "wave": 3, "autonomous": true}
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {
+      "action": "Decide scope for stale Stage-4 strings in shipped tutorial notebooks",
+      "context": "docs/tutorials/01_full_pipeline.ipynb (lines 256, 276) and 02_synthetic_validation.ipynb (lines 239, 249) contain captured OUTPUT cells showing '[Stage 4] Joint refinement with intrinsics...' and 'Stage 4 RMS: 0.807 pixels (518.6s)'. Plan 18-06 renamed those console strings, so the published tutorials now display vocabulary the code no longer emits. These files are in NO plan's files_modified, including 18-08's. Regenerating them requires re-running a real calibration (48-87 min on the 13-camera rig).",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {"decision": "Did not auto-approve the 18-04 human-verify checkpoint despite workflow.auto_advance=true", "rationale": "The checkpoint required visual inspection of a PNG. Auto-approving would have recorded a sign-off nobody performed. The gate then caught a real bug.", "phase": "18"},
+    {"decision": "Will not auto-advance into Phase 19 planning at phase end", "rationale": "User invoked /gsd-execute-phase 18 manually without --auto. Advancing to the next phase is beyond the requested scope even though config permits it.", "phase": "18"},
+    {"decision": "Committed the pre-existing uncommitted REQUIREMENTS.md edit (BENCH-06) before dispatch", "rationale": "Executors commit REQUIREMENTS.md from inside worktrees; a dirty copy on that file would have collided at merge-back.", "phase": "18"},
+    {"decision": "Kept the single-panel pose-graph layout rather than porting the paper supplement's six-panel version", "rationale": "Executor invoked plan 18-04's discretion clause to avoid LaTeX-mathtext rendering and legend-cropping risk. User approved the result.", "phase": "18"},
+    {"decision": "Left the red 'reference (R=I, t=0)' annotation without a legend key", "rationale": "Raised explicitly at the checkpoint; user did not request a change. Condition 4 only forbids legend entries with nothing drawn.", "phase": "18"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run /gsd:execute-phase 18 --wave 3 to execute plan 18-08, the only remaining plan. All seven of its depends_on predecessors are complete and merged.",
+  "context_notes": "Waves 1 and 2 are complete, merged to main, and green on all gates: 775 tests pass (31 deselected), sphinx-build -W --keep-going exits 0, ruff clean, no worktrees remain, working tree clean. src/ is now completely free of Stage-4 vocabulary. The four remaining BFS/Stage-4 documentation sites (docs/guide/optimizer.md lines 15/57/71, README.md line 10, docs/api/*.rst, docs/guide/index.md line 9) are all inside 18-08's declared files_modified, so wave 3 is exactly the right and only remaining work. Note that 18-08 also edits CLAUDE.md, which is gitignored at .gitignore:216 — decision D-19 requires correcting it locally but never staging or reporting it as committed."
+}
