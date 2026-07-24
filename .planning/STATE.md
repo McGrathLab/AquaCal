@@ -26,7 +26,7 @@ chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconc
 Phase: 17 (Per-Camera Interface Ablation Mode) — COMPLETE, verification PASSED
 Plan: 5/5 plans complete (17-01..17-05). Phase 16 also 7/7 complete.
 Status: The experiment-blocking chain (16 → 17) is finished, so WP5/WP6 experiment
-  execution is no longer gated on library work. Ready for `/gsd:discuss-phase 18 --auto`.
+  execution is no longer gated on library work. Ready for `/gsd-discuss-phase 18 --auto`.
 Last activity: 2026-07-23 — Phase 17 executed and verified (roadmap commit `b2aea44`);
   full suite 799 passed. See "Phase 17 Plan Progress" below.
 Unreleased on main: everything from Phases 16-17 plus quick task 3's `perf:` commit.
@@ -107,7 +107,7 @@ Key v1.9 Phase 17 decisions:
 
 ### Pending Todos
 
-Tracked as files in `.planning/todos/pending/` — see `/gsd:check-todos`. Do not
+Tracked as files in `.planning/todos/pending/` — see `/gsd-capture --list`. Do not
 duplicate the list here; the two copies drifted apart between v1.6 and v1.8.
 
 Open as of 2026-07-23:
@@ -306,7 +306,7 @@ Stopped at: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   plans done, all five IFACE-01..05 requirements satisfied, 799 tests passing. With
   Phase 16 already complete, the milestone's experiment-blocking chain is finished and
   WP5/WP6 execution is unblocked.
-  Next step is `/gsd:discuss-phase 18 --auto` (Documentation Corrections & Stage-Model
+  Next step is `/gsd-discuss-phase 18 --auto` (Documentation Corrections & Stage-Model
   Reconciliation). Phase 18 depends on nothing and contains DOCS-01, a live factual error
   in currently published docs (the ~12x column-grouping claim; the real figure is 43-52x).
   Phase 19 (Benchmark Instrumentation) is gated behind it because DOCS-06 must settle the
@@ -334,4 +334,4 @@ Previously: Plan 16-07 (standalone held-out evaluation, HOOK-04) executed and co
   look largely satisfied already, so both are audits rather than assumed work.
 
 Resume file: .planning/phases/17-per-camera-interface-ablation-mode/17-VERIFICATION.md
-  (Phase 18 has no CONTEXT.md yet — `/gsd:discuss-phase 18 --auto` creates it.)
+  (Phase 18 has no CONTEXT.md yet — `/gsd-discuss-phase 18 --auto` creates it.)
