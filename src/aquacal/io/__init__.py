@@ -18,9 +18,13 @@ __all__ = [
     "INTERNALS_DIRNAME",
     "ensure_internals_dir",
     "warn_if_overwriting",
+    # From benchmark.py (Phase 19 benchmark instrumentation):
+    "capture_environment",
+    "capture_peak_memory",
 ]
 
 # Imports will be added as modules are implemented:
+from aquacal.io.benchmark import capture_environment, capture_peak_memory
 from aquacal.io.detection import detect_all_frames, detect_charuco
 from aquacal.io.frameset import FrameSet
 from aquacal.io.images import ImageSet

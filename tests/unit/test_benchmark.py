@@ -7,6 +7,7 @@ import sys
 import tracemalloc
 
 import pytest
+
 from aquacal.io.benchmark import capture_environment, capture_peak_memory
 
 
