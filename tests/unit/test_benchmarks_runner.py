@@ -181,6 +181,37 @@ class TestWriteLatexFragment:
                 df, tmp_path / "table.tex", ["problem_shape.n_cameras"]
             )
 
+    def test_latex_special_characters_are_escaped(self, tmp_path):
+        """WR-02 regression: values from benchmark.json (SciPy termination
+        messages, CPU model strings) routinely contain `_`, `%`, `&`. Emitted
+        raw they break or corrupt LaTeX compilation. They must be escaped, and a
+        column header carrying an underscore must be escaped too."""
+        df = pd.DataFrame(
+            {
+                "stages.stage3.message": ["`gtol` termination: cost 50% & rising"],
+                "environment.cpu_model": ["Intel_Core i7 @ 3.6GHz"],
+            }
+        )
+        tex_path = tmp_path / "table.tex"
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # no spurious warnings on this frame
+            write_latex_fragment(
+                df,
+                tex_path,
+                ["stages.stage3.message", "environment.cpu_model"],
+            )
+        content = tex_path.read_text()
+        # Raw specials must NOT survive; escaped forms MUST appear.
+        assert "50%" not in content
+        assert "50\\%" in content
+        assert " & rising" not in content  # the literal '&' escaped
+        assert "\\&" in content
+        assert "Intel_Core" not in content
+        assert "Intel\\_Core" in content
+        # The column header carrying an underscore is escaped as well.
+        assert "environment.cpu_model" not in content
+        assert "environment.cpu\\_model" in content
+
 
 @pytest.fixture
 def base_sweep_config(tmp_path) -> Path:

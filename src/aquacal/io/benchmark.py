@@ -244,8 +244,34 @@ def capture_peak_memory() -> dict:
 
 
 _STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON = (
-    "no least_squares call occurs in this stage; solver diagnostics are not applicable"
+    "no in-scope least_squares solver diagnostics were captured for this stage"
 )
+
+
+def _resolve_stage_seconds(stage_name, timings):
+    """Resolve a stage block's wall time, honestly, when the diagnostics stage
+    key does not have a 1:1 entry in ``timings``.
+
+    Returns ``(seconds, reason)``. ``reason`` is non-None only when ``seconds``
+    is None for a *known* reason (D-15: null-with-reason, never a silent null).
+
+    - Exact match in ``timings`` (the common case): the measured wall time.
+    - ``stage3_rerun``: its wall time is folded into
+      ``stage3_interface_optimization`` in the pipeline, so there is no separate
+      number to report.
+    - ``auxiliary_registration_<cam>``: the pipeline times auxiliary
+      registration in aggregate under ``auxiliary_registration``, not per camera.
+    """
+    if stage_name in timings:
+        return timings[stage_name], None
+    if stage_name == "stage3_rerun":
+        return None, "wall time is folded into stage3_interface_optimization"
+    if stage_name.startswith("auxiliary_registration_"):
+        return None, (
+            "per-camera wall time is not measured separately; see the "
+            "auxiliary_registration aggregate boundary"
+        )
+    return None, None
 
 
 def _to_native(value):
@@ -337,7 +363,10 @@ def assemble_benchmark_record(
             for field_name, field_value in dataclasses.asdict(diag).items()
         }
         stage_entry = dict(diag_dict)
-        stage_entry["seconds"] = timings.get(stage_name)
+        seconds, seconds_reason = _resolve_stage_seconds(stage_name, timings)
+        stage_entry["seconds"] = seconds
+        if seconds_reason is not None:
+            stage_entry["seconds_reason"] = seconds_reason
 
         n_params = diag_dict.get("n_params")
         n_groups = diag_dict.get("n_groups")
@@ -381,11 +410,27 @@ def assemble_benchmark_record(
             if boundary_name in record["stages"]:
                 record["stages"][boundary_name]["memory"] = memory_block
             else:
+                # No exact stage match. Before declaring "no solver diagnostics",
+                # check whether this is an AGGREGATE boundary whose solver work
+                # was recorded under per-item sub-stage keys — e.g. the single
+                # "auxiliary_registration" memory boundary spanning the per-camera
+                # "auxiliary_registration_<cam>" diagnostics stages. Claiming no
+                # least_squares ran there would be false (D-14/D-15: never invent).
+                sub_stages = sorted(
+                    s for s in record["stages"] if s.startswith(boundary_name + "_")
+                )
+                if sub_stages:
+                    reason = (
+                        f"aggregate boundary spanning {len(sub_stages)} "
+                        f"sub-stage(s) ({', '.join(sub_stages)}); solver "
+                        "diagnostics are recorded per sub-stage, not at this "
+                        "aggregate boundary"
+                    )
+                else:
+                    reason = _STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON
                 record["stages"][boundary_name] = {
                     "seconds": timings.get(boundary_name),
-                    "solver_diagnostics_reason": (
-                        _STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON
-                    ),
+                    "solver_diagnostics_reason": reason,
                     "memory": memory_block,
                 }
 

@@ -564,7 +564,12 @@ class TestBenchmarkJsonIntegration:
             record = json.load(f)
 
         assert record["schema_version"] == 1
-        assert "stage3" in record["stages"]
+        assert "stage3_interface_optimization" in record["stages"]
+        # Regression (verifier gap): the stage key must match the timings key so
+        # wall time is actually recorded, not silently null. A real run spends
+        # measurable time in Stage 3.
+        assert record["stages"]["stage3_interface_optimization"]["seconds"] is not None
+        assert record["stages"]["stage3_interface_optimization"]["seconds"] > 0
         # refine_intrinsics defaults to False -- no intrinsic-pass stage.
         assert "stage3_intrinsic_pass" not in record["stages"]
         assert "memory" not in record
@@ -582,7 +587,7 @@ class TestBenchmarkJsonIntegration:
         with open(tmp_path / "benchmark.json") as f:
             record = json.load(f)
 
-        stage3_memory = record["stages"]["stage3"]["memory"]
+        stage3_memory = record["stages"]["stage3_interface_optimization"]["memory"]
         assert set(stage3_memory.keys()) == {
             "cumulative_peak_bytes_as_of_stage_end",
             "delta_bytes_since_previous_boundary",

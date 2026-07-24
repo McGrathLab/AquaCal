@@ -781,3 +781,58 @@ class TestJointRefinementDiagnostics:
             diagnostics_out=None,
         )
         assert rms >= 0.0
+
+    def test_diagnostics_captured_before_convergence_error_is_raised(
+        self,
+        monkeypatch,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        stage3_result,
+    ):
+        """WR-01 regression: a non-converged solve must still populate
+        diagnostics_out. Capturing after the ConvergenceError raise would drop
+        diagnostics for exactly the failing runs where they matter most, and
+        asymmetrically with optimize_interface (which captures before its raise).
+        """
+        import aquacal.calibration.refinement as refinement_mod
+
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        real_least_squares = refinement_mod.least_squares
+
+        def failing_least_squares(*args, **kwargs):
+            result = real_least_squares(*args, **kwargs)
+            # Force the non-convergence branch without perturbing result.x.
+            result.status = -1
+            result.message = "forced non-convergence for test"
+            return result
+
+        monkeypatch.setattr(refinement_mod, "least_squares", failing_least_squares)
+
+        diag = SolverDiagnostics()
+        with pytest.raises(ConvergenceError):
+            joint_refinement(
+                stage3_result=stage3_result,
+                detections=detections,
+                intrinsics=intrinsics,
+                board=board,
+                reference_camera="cam0",
+                verbose=0,
+                diagnostics_out=diag,
+            )
+
+        # Diagnostics must have been captured despite the raise.
+        assert diag.nfev is not None
+        assert diag.status == -1
+        assert diag.message == "forced non-convergence for test"

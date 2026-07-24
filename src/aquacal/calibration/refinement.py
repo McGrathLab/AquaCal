@@ -265,9 +265,10 @@ def joint_refinement(
         **ls_kwargs,
     )
 
-    if result.status <= 0:
-        raise ConvergenceError(f"Optimization failed: {result.message}")
-
+    # Capture diagnostics BEFORE the convergence check so a failed solve still
+    # records nfev/cost/status/message — matching optimize_interface's ordering.
+    # Capturing after the raise would silently drop diagnostics for exactly the
+    # runs (non-convergence) where they are most diagnostic.
     capture_solver_diagnostics(
         result,
         diagnostics_out,
@@ -289,6 +290,9 @@ def joint_refinement(
             else "use_sparse_jacobian=False; no column-grouping structure was built"
         ),
     )
+
+    if result.status <= 0:
+        raise ConvergenceError(f"Optimization failed: {result.message}")
 
     if observer is not None:
         observer.on_solution(result)

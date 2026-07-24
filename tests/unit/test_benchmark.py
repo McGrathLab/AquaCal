@@ -431,7 +431,7 @@ class TestAssembleBenchmarkRecord:
         assert validation_memory["delta_bytes_since_previous_boundary"] == 300
         assert (
             record["stages"]["validation"]["solver_diagnostics_reason"]
-            == "no least_squares call occurs in this stage; solver diagnostics are not applicable"
+            == "no in-scope least_squares solver diagnostics were captured for this stage"
         )
 
         assert record["memory"]["whole_run_peak_bytes"] == 1800
@@ -456,6 +456,78 @@ class TestAssembleBenchmarkRecord:
             memory_readings=memory_readings,
         )
         assert "memory" not in record["stages"]["stage3"]
+
+    def test_stage3_interface_optimization_seconds_resolves_from_timings(
+        self, real_solver_diagnostics
+    ):
+        """Regression: the diagnostics key and the timings key must agree so
+        `seconds` is populated. Before the fix the pipeline recorded diagnostics
+        under `stage3` while timing lived under `stage3_interface_optimization`,
+        leaving `stages.stage3.seconds` null in every real run."""
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3_interface_optimization": 7.0},
+            diagnostics={"stage3_interface_optimization": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        assert record["stages"]["stage3_interface_optimization"]["seconds"] == 7.0
+
+    def test_aux_aggregate_memory_boundary_is_not_falsely_labelled_no_solver(
+        self, real_solver_diagnostics
+    ):
+        """CR-01 regression: the single `auxiliary_registration` memory boundary
+        spans per-camera `auxiliary_registration_<cam>` diagnostics stages. It
+        must NOT synthesize a block claiming no least_squares ran — that stage
+        genuinely calls the solver once per auxiliary camera."""
+        memory_readings = {
+            "_baseline": {"peak_bytes": 1000, "mode": "psutil_peak_wset"},
+            "auxiliary_registration": {"peak_bytes": 2200, "mode": "psutil_peak_wset"},
+        }
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"auxiliary_registration": 3.0},
+            diagnostics={"auxiliary_registration_cam5": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            memory_readings=memory_readings,
+        )
+        aux = record["stages"]["auxiliary_registration"]
+        reason = aux["solver_diagnostics_reason"]
+        assert "no in-scope least_squares" not in reason
+        assert "aggregate boundary" in reason
+        assert "auxiliary_registration_cam5" in reason
+        # The aggregate boundary carries the aggregate wall time...
+        assert aux["seconds"] == 3.0
+        # ...and the per-camera diagnostics stage still exists with real solver data.
+        assert "auxiliary_registration_cam5" in record["stages"]
+        assert record["stages"]["auxiliary_registration_cam5"]["nfev"] is not None
+
+    def test_null_seconds_carry_a_reason_never_a_silent_null(
+        self, real_solver_diagnostics
+    ):
+        """D-15: a stage whose wall time cannot be resolved gets an explicit
+        `seconds_reason`, not a bare null. Covers the folded `stage3_rerun` and
+        the per-camera `auxiliary_registration_<cam>` cases."""
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3_interface_optimization": 7.0},
+            diagnostics={
+                "stage3_rerun": real_solver_diagnostics,
+                "auxiliary_registration_cam5": real_solver_diagnostics,
+            },
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        rerun = record["stages"]["stage3_rerun"]
+        assert rerun["seconds"] is None
+        assert "folded into stage3_interface_optimization" in rerun["seconds_reason"]
+        aux = record["stages"]["auxiliary_registration_cam5"]
+        assert aux["seconds"] is None
+        assert "per-camera wall time" in aux["seconds_reason"]
 
 
 class TestWriteBenchmarkJson:

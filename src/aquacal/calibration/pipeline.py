@@ -1090,14 +1090,16 @@ def run_calibration_from_config(
     stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
         optim_detections,
         observer=stage3_observer,
-        diagnostics_out=solver_diagnostics.setdefault("stage3", SolverDiagnostics()),
+        diagnostics_out=solver_diagnostics.setdefault(
+            "stage3_interface_optimization", SolverDiagnostics()
+        ),
     )
     elapsed = time.perf_counter() - t0
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
 
     if config.benchmark_memory:
-        memory_readings["stage3"] = capture_peak_memory()
+        memory_readings["stage3_interface_optimization"] = capture_peak_memory()
 
     if stage3_observer is not None and config.save_optimization_trace:
         stage3_observer.write_trace_csv(

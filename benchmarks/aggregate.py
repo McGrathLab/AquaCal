@@ -145,6 +145,38 @@ def _mixed_memory_mode_values(df: pd.DataFrame) -> set:
     return distinct_values
 
 
+# LaTeX special characters that must be escaped in tabular cell/header text.
+# Values in benchmark.json (SciPy termination messages, CPU model strings,
+# environment fields) routinely contain '_', '%', '&', etc.; emitted raw they
+# corrupt or break compilation of the fragment.
+_LATEX_SPECIALS = {
+    "\\": r"\textbackslash{}",
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "{": r"\{",
+    "}": r"\}",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+}
+
+
+def _latex_escape(text: str) -> str:
+    """Escape LaTeX special characters in a header or cell string.
+
+    Backslash is handled first (its replacement introduces braces the other
+    substitutions must not re-escape).
+    """
+    out = text.replace("\\", _LATEX_SPECIALS["\\"])
+    for char, repl in _LATEX_SPECIALS.items():
+        if char == "\\":
+            continue
+        out = out.replace(char, repl)
+    return out
+
+
 def write_latex_fragment(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
     """Write a minimal LaTeX `tabular` fragment for `columns` of `df`.
 
@@ -178,13 +210,15 @@ def write_latex_fragment(df: pd.DataFrame, path: Path, columns: list[str]) -> No
 
     column_spec = "|" + "l|" * len(columns)
     lines = [f"\\begin{{tabular}}{{{column_spec}}}", "\\hline"]
-    lines.append(" & ".join(columns) + " \\\\")
+    lines.append(" & ".join(_latex_escape(c) for c in columns) + " \\\\")
     lines.append("\\hline")
     for _, row in df.iterrows():
         cells = []
         for column in columns:
             value = row[column] if column in row.index else None
-            cells.append("" if value is None or pd.isna(value) else str(value))
+            cells.append(
+                "" if value is None or pd.isna(value) else _latex_escape(str(value))
+            )
         lines.append(" & ".join(cells) + " \\\\")
     lines.append("\\hline")
     lines.append("\\end{tabular}")
