@@ -8,7 +8,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
-from aquacal.calibration._observability import OptimizerObserver, build_parameter_labels
+from aquacal.calibration._observability import (
+    OptimizerObserver,
+    SolverDiagnostics,
+    build_parameter_labels,
+    capture_solver_diagnostics,
+)
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -139,6 +144,7 @@ def optimize_interface(
     normal_fixed: bool = True,
     observer: OptimizerObserver | None = None,
     shared_interface: bool = True,
+    diagnostics_out: SolverDiagnostics | None = None,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -182,6 +188,9 @@ def optimize_interface(
             water_z. If False (analysis/ablation only), each camera solves its
             own water_z, seeded individually from initial_water_zs; the returned
             distances dict then holds each camera's independently-solved value.
+        diagnostics_out: Optional `SolverDiagnostics` instance to populate in
+            place with terminal solver diagnostics (BENCH-01/BENCH-03/BENCH-06).
+            Has no effect on the returned values.
 
     Returns:
         Tuple of:
@@ -288,6 +297,8 @@ def optimize_interface(
 
     # Build sparse Jacobian if enabled
     jac = "2-point"
+    jac_sparsity = None
+    groups = None
     if use_sparse_jacobian:
         jac_sparsity = build_jacobian_sparsity(
             detections,
@@ -298,19 +309,20 @@ def optimize_interface(
             normal_fixed=normal_fixed,
             shared_interface=shared_interface,
         )
+        groups = build_structural_column_groups(
+            jac_sparsity,
+            len(camera_order),
+            len(frame_order),
+            refine_intrinsics=False,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
         jac = make_sparse_jacobian_func(
             compute_residuals,
             cost_args,
             jac_sparsity,
             (lower, upper),
-            groups=build_structural_column_groups(
-                jac_sparsity,
-                len(camera_order),
-                len(frame_order),
-                refine_intrinsics=False,
-                normal_fixed=normal_fixed,
-                shared_interface=shared_interface,
-            ),
+            groups=groups,
         )
 
     # Run optimization
@@ -344,7 +356,32 @@ def optimize_interface(
         bounds=(lower, upper),
         jac=jac,
         verbose=verbose,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
         **ls_kwargs,
+    )
+
+    capture_solver_diagnostics(
+        result,
+        diagnostics_out,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
+        max_nfev_effective=len(initial_params) * 100,
+        max_nfev_source="scipy_auto",
+        n_params=jac_sparsity.shape[1] if use_sparse_jacobian else None,
+        n_groups=(int(groups.max()) + 1) if use_sparse_jacobian else None,
+        n_params_reason=(
+            None
+            if use_sparse_jacobian
+            else "use_sparse_jacobian=False; no column-grouping structure was built"
+        ),
+        n_groups_reason=(
+            None
+            if use_sparse_jacobian
+            else "use_sparse_jacobian=False; no column-grouping structure was built"
+        ),
     )
 
     if result.status <= 0:
@@ -499,6 +536,7 @@ def register_auxiliary_camera(
     min_corners: int = 4,
     refine_intrinsics: bool = False,
     verbose: int = 0,
+    diagnostics_out: SolverDiagnostics | None = None,
 ) -> (
     tuple[CameraExtrinsics, float, float]
     | tuple[CameraExtrinsics, float, float, CameraIntrinsics]
@@ -526,6 +564,11 @@ def register_auxiliary_camera(
         refine_intrinsics: If True, also optimize fx, fy, cx, cy (10 params total).
             Distortion coefficients are kept fixed.
         verbose: Verbosity level
+        diagnostics_out: Optional `SolverDiagnostics` instance to populate in
+            place with terminal solver diagnostics (BENCH-01). This site does
+            not set explicit tolerances (not a BENCH-06 target, D-11); `n_params`
+            and `n_groups` stay `None` with a stated reason since this site uses
+            no column-grouping structure. Has no effect on the returned values.
 
     Returns:
         When refine_intrinsics=False: Tuple of (extrinsics, water_z, rms_error)
@@ -677,6 +720,26 @@ def register_auxiliary_camera(
         f_scale=1.0,
         bounds=(lower, upper),
         verbose=verbose,
+    )
+
+    capture_solver_diagnostics(
+        result,
+        diagnostics_out,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
+        max_nfev_effective=len(x0) * 100,
+        max_nfev_source="scipy_auto",
+        n_params=None,
+        n_groups=None,
+        n_params_reason=(
+            "register_auxiliary_camera uses dense 2-point FD; no "
+            "column-grouping structure exists at this site"
+        ),
+        n_groups_reason=(
+            "register_auxiliary_camera uses dense 2-point FD; no "
+            "column-grouping structure exists at this site"
+        ),
     )
 
     # --- Step 7: Extract results ---
