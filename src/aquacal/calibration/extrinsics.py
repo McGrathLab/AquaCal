@@ -520,6 +520,13 @@ def estimate_extrinsics(
     camera node from a known frame, it computes the camera pose via PnP
     and inversion.
 
+    Each node popped from the heap is finalised on first discovery: every one of
+    its unvisited neighbours is resolved in that single pass and marked visited
+    immediately, so a node is never re-prioritised or recomputed even if an edge
+    carrying more corners is discovered later. This distinguishes the traversal
+    from Prim's algorithm, which would keep updating a frontier node's best edge
+    until the node is extracted.
+
     Args:
         pose_graph: Pose graph from build_pose_graph
         intrinsics: Dict mapping camera names to intrinsics
@@ -599,7 +606,10 @@ def estimate_extrinsics(
                 continue
             cam_R, cam_t = camera_poses[cam_name]
 
-            # Score each neighboring frame by corner count, pick best first
+            # Collect unvisited neighboring frames with a usable observation, in
+            # adjacency order. No scoring or sorting happens here: each is pushed
+            # onto the shared heap with priority -len(obs.corner_ids), and the
+            # corner-count prioritisation happens globally via that heap.
             frame_neighbors = []
             for neighbor in pose_graph.adjacency.get(cam_name, []):
                 frame_idx = int(neighbor[1:])  # "f42" -> 42
@@ -652,7 +662,10 @@ def estimate_extrinsics(
 
             R_bw, t_bw = board_poses[frame_idx]
 
-            # Score each neighboring camera by corner count
+            # Collect unvisited neighboring cameras with a usable observation, in
+            # sorted() order. No scoring or sorting by corner count happens here:
+            # each is pushed onto the shared heap with priority -len(obs.corner_ids),
+            # and the corner-count prioritisation happens globally via that heap.
             cam_neighbors = []
             for neighbor in sorted(pose_graph.adjacency.get(node, [])):
                 cam_name = neighbor
