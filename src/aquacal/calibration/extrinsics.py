@@ -510,12 +510,13 @@ def estimate_extrinsics(
     """
     Estimate camera extrinsics by chaining poses through the graph.
 
-    Uses BFS traversal from reference camera, computing each camera's
-    pose relative to world frame (centered at reference camera).
+    Uses a best-first traversal from reference camera, ordered by observation
+    corner count (highest first), computing each camera's pose relative to
+    world frame (centered at reference camera).
 
     The algorithm fixes the reference camera at world origin (R=I, t=0),
-    then runs BFS through the pose graph. When visiting a frame node from
-    a known camera, it computes the board pose via PnP. When visiting a
+    then runs a best-first traversal through the pose graph. When visiting a
+    frame node from a known camera, it computes the board pose via PnP. When visiting a
     camera node from a known frame, it computes the camera pose via PnP
     and inversion.
 
@@ -532,7 +533,7 @@ def estimate_extrinsics(
         n_air: Refractive index of air (default 1.0)
         n_water: Refractive index of water (default 1.333)
         progress_callback: Optional callback(camera_name, cameras_located, total_cameras)
-            called after each camera is located during BFS traversal
+            called after each camera is located during the best-first traversal
 
     Returns:
         Dict mapping camera names to CameraExtrinsics.
@@ -580,7 +581,7 @@ def estimate_extrinsics(
     if progress_callback is not None:
         progress_callback(reference_camera, 1, total_cameras)
 
-    # Priority BFS to propagate poses, ordered by corner count (highest first)
+    # Best-first traversal to propagate poses, ordered by corner count (highest first)
     # Heap entries: (-num_corners, node_name) — negative for max-heap behavior
     visited_cameras: set[str] = {reference_camera}
     visited_frames: set[int] = set()
