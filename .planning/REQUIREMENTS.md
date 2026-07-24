@@ -30,6 +30,7 @@ it from scratch.
 - [ ] **BENCH-03**: Each run records parameter count *P*, column-group count, and the implied FD evaluation reduction, measured from the live run rather than a separate script
 - [ ] **BENCH-04**: Every calibration run writes a machine-readable `benchmark.json` into `output_dir` carrying problem shape, per-stage metrics, solver configuration in force (tolerances, `max_nfev`, robust loss and scale, `refine_intrinsics`, `interface_normal_fixed`), accuracy, and environment (CPU, RAM, OS, Python/NumPy/SciPy versions, AquaCal version and git SHA) — for real-rig runs as well as synthetic
 - [ ] **BENCH-05**: A `benchmarks/` runner sweeps the cameras × frames grid, collects each `benchmark.json`, and emits a tidy CSV plus a LaTeX table fragment, computing nothing the pipeline did not record
+- [ ] **BENCH-06**: Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` to `least_squares` explicitly at their current effective values, and `max_nfev` is recorded with its effective value including the unset/auto case — so the termination criteria the paper supplement states, and that R3.2 asks for by name, are set and reported by AquaCal rather than inherited from SciPy; behavior must be bit-unchanged, asserted by regression test
 
 ### Experiment Hooks
 
@@ -102,7 +103,14 @@ Not requirements, but binding on the roadmap:
    the paper supplement.
 4. **DATA-* runs after all code work and after DOCS-06**, and **before DOCS-07**, so the
    release named in the manuscript is the one whose behavior the published artifacts reflect.
-5. **HOOK-03 (conditioning diagnostics) precedes IFACE.** The Hooks → Per-Camera Interface
+5. **BENCH-06 must precede BENCH-04.** `OptimizeResult` does not report the termination
+   tolerances back, so `benchmark.json` can only record values the caller passed. Until
+   Stage 3 and Stage 4 set them explicitly, the "solver configuration in force" block is
+   inferred from SciPy's defaults rather than observed. Verified 2026-07-24: neither stage
+   sets them — `interface_estimation.py:337-348` and `refinement.py:237-248` pass only
+   `method`, `loss`, `f_scale`, `bounds`, `jac`, `verbose`, and `**ls_kwargs`, and
+   `ls_kwargs` carries only `callback`.
+6. **HOOK-03 (conditioning diagnostics) precedes IFACE.** The Hooks → Per-Camera Interface
    chain is the milestone's longest pole and only true experiment blocker, so it is
    sequenced first in the roadmap — ahead of the documentation and benchmark phases,
    which are otherwise independent of it.
@@ -158,6 +166,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BENCH-03 | Phase 19 | Pending |
 | BENCH-04 | Phase 19 | Pending |
 | BENCH-05 | Phase 19 | Pending |
+| BENCH-06 | Phase 19 | Pending |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
