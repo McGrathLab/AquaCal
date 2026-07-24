@@ -159,9 +159,9 @@ out as a quick task.
      present the same three-stage model, and the documented loss default reads `huber`.
 **Plans**: 8 plans in 3 waves
 - Wave 1 (parallel, not gated on the manuscript checkpoint):
-  - [ ] 18-01-PLAN.md — DOCS-01: pin 673/675/727 + 13/13/17 + 43-52x with a live test, then correct optimizer.md's four numeric errors (DOCS-01)
-  - [ ] 18-02-PLAN.md — Record the confirmed manuscript vocabulary contract; autonomous, no longer a blocking checkpoint (DOCS-02, DOCS-06)
-  - [ ] 18-03-PLAN.md — DOCS-04: new docs/guide/configuration.md, guide-index registration, troubleshooting cross-links (DOCS-04)
+  - [x] 18-01-PLAN.md — DOCS-01: pin 673/675/727 + 13/13/17 + 43-52x with a live test, then correct optimizer.md's four numeric errors (DOCS-01)
+  - [x] 18-02-PLAN.md — Record the confirmed manuscript vocabulary contract; autonomous, no longer a blocking checkpoint (DOCS-02, DOCS-06)
+  - [x] 18-03-PLAN.md — DOCS-04: new docs/guide/configuration.md, guide-index registration, troubleshooting cross-links (DOCS-04)
 - Wave 2:
   - [ ] 18-04-PLAN.md — DOCS-03: heap-replaying pose_graph.py generator, figure rename, bipartite glossary definition (DOCS-03)
   - [ ] 18-05-PLAN.md — DOCS-02 code side: extrinsics.py terminology, scoring comments, first-discovery invariant (DOCS-02)
@@ -261,7 +261,7 @@ behavior the published artifacts actually reflect.
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
-| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
+| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 3/8 | In Progress|  |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
