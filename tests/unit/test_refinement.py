@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from aquacal.calibration._observability import OptimizerObserver
+from aquacal.calibration._observability import OptimizerObserver, SolverDiagnostics
 from aquacal.calibration._optim_common import pack_params, unpack_params
 from aquacal.calibration.refinement import joint_refinement
 from aquacal.config.schema import (
@@ -665,3 +665,119 @@ class TestJointRefinementObserver:
         assert len(observer.rows) > 0
         # Reference camera has C_z=0, so its distance equals water_z exactly.
         assert observer.rows[-1].water_z == dist_opt["cam0"]
+
+
+class TestJointRefinementDiagnostics:
+    """Tests for diagnostics_out wiring and explicit ftol/xtol/gtol on joint_refinement."""
+
+    @pytest.mark.parametrize("use_sparse_jacobian", [True, False])
+    def test_joint_refinement_diagnostics_out_populated_and_bit_exact(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        stage3_result,
+        use_sparse_jacobian,
+    ):
+        """diagnostics_out is populated correctly and never changes the result."""
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        ext_no_diag, dist_no_diag, poses_no_diag, intr_no_diag, rms_no_diag = (
+            joint_refinement(
+                stage3_result=stage3_result,
+                detections=detections,
+                intrinsics=intrinsics,
+                board=board,
+                reference_camera="cam0",
+                verbose=0,
+                use_sparse_jacobian=use_sparse_jacobian,
+            )
+        )
+
+        diag = SolverDiagnostics()
+        ext_diag, dist_diag, poses_diag, intr_diag, rms_diag = joint_refinement(
+            stage3_result=stage3_result,
+            detections=detections,
+            intrinsics=intrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            use_sparse_jacobian=use_sparse_jacobian,
+            diagnostics_out=diag,
+        )
+
+        # Bit-exact regression: diagnostics_out + explicit tolerances must not
+        # change any returned value.
+        for cam in intrinsics:
+            np.testing.assert_array_equal(ext_diag[cam].R, ext_no_diag[cam].R)
+            np.testing.assert_array_equal(ext_diag[cam].t, ext_no_diag[cam].t)
+            assert dist_diag[cam] == dist_no_diag[cam]
+            np.testing.assert_array_equal(intr_diag[cam].K, intr_no_diag[cam].K)
+        assert rms_diag == rms_no_diag
+        for bp_diag, bp_no_diag in zip(poses_diag, poses_no_diag):
+            np.testing.assert_array_equal(bp_diag.rvec, bp_no_diag.rvec)
+            np.testing.assert_array_equal(bp_diag.tvec, bp_no_diag.tvec)
+
+        # Diagnostics population.
+        assert diag.nfev is not None and isinstance(diag.nfev, int)
+        assert diag.njev is not None and isinstance(diag.njev, int)
+        assert diag.cost is not None
+        assert diag.optimality is not None
+        assert diag.status is not None
+        assert diag.message is not None
+        assert diag.ftol == 1e-8
+        assert diag.xtol == 1e-8
+        assert diag.gtol == 1e-8
+        assert diag.max_nfev_source == "scipy_auto"
+
+        if use_sparse_jacobian:
+            assert diag.n_params is not None
+            assert diag.n_groups is not None
+            assert diag.n_params_reason is None
+            assert diag.n_groups_reason is None
+        else:
+            assert diag.n_params is None
+            assert diag.n_groups is None
+            assert diag.n_params_reason is not None
+            assert diag.n_groups_reason is not None
+
+    def test_joint_refinement_diagnostics_out_none_is_safe(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        stage3_result,
+    ):
+        """diagnostics_out=None (the default) must not raise or change behavior."""
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        ext, dist, poses, intr, rms = joint_refinement(
+            stage3_result=stage3_result,
+            detections=detections,
+            intrinsics=intrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            diagnostics_out=None,
+        )
+        assert rms >= 0.0
