@@ -149,6 +149,8 @@ detection:
   start_frame: 600   # Skip the first N frames (board entering / ripples settling)
   stop_frame: 5400   # Stop at frame N, exclusive (board being lifted out)
 ```
+Full key reference: {ref}`Manual frame trimming <configuration-frame-trimming>` in the
+[Configuration Reference](configuration.md).
 
 ### 2. Keep automatic outlier-frame rejection on
 By default (`reject_outlier_frames: true`), after Stage 3 the pipeline scores each frame by its reprojection RMS against **independently estimated** per-frame board poses, drops catastrophic outliers, and re-optimizes once. This is a no-op on clean data. It reliably catches *discrete* bad frames anywhere in the capture; a guardrail suppresses rejection (and warns) if more than `frame_rejection_max_fraction` of frames would be dropped, so a broadly-contaminated dataset surfaces loudly instead of being silently gutted. Tune with:
@@ -159,6 +161,8 @@ optimization:
   frame_rejection_floor_px: 5.0      # ... and above this absolute pixel floor
   frame_rejection_max_fraction: 0.25 # Guardrail
 ```
+Full key reference: {ref}`Automatic outlier-frame rejection <configuration-frame-rejection>` in
+the [Configuration Reference](configuration.md).
 
 > **Note:** Automatic rejection catches *discrete catastrophic* frames well, but a *contiguous segment of mildly* contaminated frames (each only a few pixels off) may not exceed any safe threshold. For those, prefer trimming by `start_frame` / `stop_frame` — position in the capture is the meaningful signal. The best fix is a clean capture: keep the board fully submerged and the surface calm while collecting extrinsic frames.
 
@@ -306,4 +310,5 @@ Reducing to 100-150 frames typically has minimal impact on calibration quality w
 
 - [CLI Reference](cli.md) — Command-line usage and options
 - [Optimizer Pipeline](optimizer.md) — Understanding the calibration stages
+- [Configuration Reference](configuration.md) — Every config key, its default, and what it controls
 - [Glossary](glossary.md) — Definitions of key terms
