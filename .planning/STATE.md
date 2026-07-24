@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: ready_to_plan
-stopped_at: Phase 18 complete (8/8) — ready to discuss Phase 19
-last_updated: 2026-07-24T16:51:09.236Z
-last_activity: 2026-07-24 -- Phase 18 complete (8/8), verification passed 5/5
+status: executing
+stopped_at: Phase 19 executing — plans checked and PASSED, wave 1 dispatched
+last_updated: "2026-07-24T17:58:28.618Z"
+last_activity: 2026-07-24 -- Phase 19 execution started
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 20
+  total_plans: 26
   completed_plans: 20
   percent: 43
 ---
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19 — benchmark instrumentation (not yet discussed or planned)
+**Current focus:** Phase 19 — benchmark-instrumentation
 
 ## Current Position
 
-Phase: 19 (benchmark-instrumentation) — NOT STARTED
+Phase: 19 (benchmark-instrumentation) — EXECUTING
   Phases 16, 17, and 18 COMPLETE, verification PASSED for all three.
-Plan: Not started — Phase 19 has no directory, no CONTEXT.md, no plans. ROADMAP says "Plans: TBD".
-Status: Ready to discuss/plan Phase 19.
+Plan: 1 of 6
+Status: Executing Phase 19
   Phase 18 closed 2026-07-24: 8/8 plans across 3 waves, verifier scored 5/5 must-haves
   against the live codebase. Its only human-verify gate (18-04 Task 3, pose-graph figure)
   was APPROVED after catching a real arrow-direction bug on the first round.
-Last activity: 2026-07-24 -- Phase 18 complete.
+Last activity: 2026-07-24 -- Phase 19 execution started
   Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`).
 Unreleased on main: everything from Phases 16-18 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
