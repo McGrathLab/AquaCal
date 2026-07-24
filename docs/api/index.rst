@@ -6,7 +6,7 @@ Complete reference for all public modules, classes, and functions.
 AquaCal's API is organized into seven main subpackages:
 
 - **core**: Refractive geometry, camera models, and board/interface models
-- **calibration**: Four-stage calibration pipeline (intrinsics, extrinsics, interface estimation, refinement)
+- **calibration**: Three-stage calibration pipeline (intrinsics, extrinsics, interface estimation, refinement)
 - **config**: Configuration schema and calibration result types
 - **io**: Serialization, detection loading, and video processing
 - **validation**: Reprojection error analysis, diagnostics, and reconstruction validation

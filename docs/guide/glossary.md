@@ -5,7 +5,7 @@ Quick reference for domain-specific terms used in AquaCal.
 ---
 
 **Auxiliary camera**
-: Camera excluded from joint optimization (Stages 2-4) and registered post-hoc against fixed board poses and water_z. Used for cameras with poor intrinsic calibration or different viewing geometry that would degrade the primary solution.
+: Camera excluded from joint optimization (Stages 2-3) and registered post-hoc against fixed board poses and water_z. Used for cameras with poor intrinsic calibration or different viewing geometry that would degrade the primary solution.
 
 **Board pose**
 : Rigid transformation (rotation + translation) defining the position and orientation of the calibration board in world coordinates for a single frame. Optimized in Stage 3.
@@ -32,7 +32,7 @@ Quick reference for domain-specific terms used in AquaCal.
 : Camera-specific parameters independent of pose: intrinsic matrix **K** (focal lengths and principal point) and distortion coefficients. Calibrated in Stage 1.
 
 **Pose graph**
-: Bipartite graph with two node types — camera nodes and frame (board-pose) nodes — where an edge connects a camera to each frame it observes. Two cameras that never share a field of view can still be linked through a frame they both observed. Used in Stage 2 for extrinsic initialization.
+: Bipartite graph with two node types — camera nodes and frame (board-pose) nodes — where an edge connects a camera to each frame it observes. Two cameras that never share a field of view can still be linked through a frame they both observed. Used in Stage 2 for extrinsic initialization via best-first traversal.
 
 **Reference camera**
 : The first camera in your configuration, which defines the world coordinate origin (R = I, t = 0). All other camera poses are expressed relative to this camera.
@@ -67,4 +67,4 @@ Quick reference for domain-specific terms used in AquaCal.
 
 - [Coordinate Conventions](coordinates.md) — Detailed explanation of coordinate frames and transforms
 - [Refractive Geometry](refractive_geometry.md) — How refraction and ray tracing work
-- [Optimizer Pipeline](optimizer.md) — The four calibration stages
+- [Optimizer Pipeline](optimizer.md) — The three calibration stages

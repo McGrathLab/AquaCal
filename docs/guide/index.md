@@ -6,7 +6,7 @@ This section explains the theory behind AquaCal's calibration approach and provi
 
 - [Refractive Geometry](refractive_geometry.md) — How light rays refract at the air-water interface, refractive projection, and ray tracing
 - [Coordinate Conventions](coordinates.md) — World frame, camera frame, pixel coordinates, and transformations
-- [Optimizer Pipeline](optimizer.md) — Four-stage calibration pipeline, bundle adjustment structure, and camera models
+- [Optimizer Pipeline](optimizer.md) — Three-stage calibration pipeline, bundle adjustment structure, and camera models
 
 ## Practical Guides
 

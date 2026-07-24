@@ -5,7 +5,7 @@ Calibration Pipeline
 
    For optimizer implementation details, see :doc:`/guide/optimizer`.
 
-The calibration package implements a four-stage pipeline for refractive multi-camera calibration.
+The calibration package implements a three-stage pipeline for refractive multi-camera calibration.
 
 Pipeline
 --------
@@ -35,8 +35,8 @@ Stage 3: Interface Estimation
    :members:
    :show-inheritance:
 
-Stage 4: Refinement
--------------------
+Stage 3's Second Pass: Refinement
+---------------------------------
 
 .. automodule:: aquacal.calibration.refinement
    :members:

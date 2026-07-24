@@ -7,7 +7,7 @@ Refractive multi-camera calibration for underwater arrays. AquaCal calibrates ca
 ## Features
 
 - **Snell's law refractive projection** — Accurate ray-tracing through air-water interfaces
-- **Multi-camera pose graph** — BFS-based extrinsic initialization for camera arrays
+- **Multi-camera pose graph** — Best-first extrinsic initialization for camera arrays
 - **Joint bundle adjustment** — Simultaneous optimization of extrinsics, interface distances, and board poses
 - **Sparse Jacobian optimization** — Scalable to 10+ cameras with column grouping
 - **ChArUco board detection** — Robust corner detection for calibration targets
