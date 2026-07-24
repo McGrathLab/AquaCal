@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: executing
-stopped_at: Phase 19 executing — plans checked and PASSED, wave 1 dispatched
-last_updated: "2026-07-24T17:58:28.618Z"
-last_activity: 2026-07-24 -- Phase 19 execution started
+status: ready_to_plan
+stopped_at: Phase 19 complete (6/6) — ready to discuss Phase 20
+last_updated: 2026-07-24T22:41:00.000Z
+last_activity: 2026-07-24 -- Phase 19 complete (6/6), verification passed 6/6
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 26
-  completed_plans: 20
-  percent: 43
+  completed_plans: 26
+  percent: 57
 ---
 
 # Project State
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19 — benchmark-instrumentation
+**Current focus:** Phase 20 — refractive index helper
 
 ## Current Position
 
-Phase: 19 (benchmark-instrumentation) — EXECUTING
-  Phases 16, 17, and 18 COMPLETE, verification PASSED for all three.
-Plan: 1 of 6
-Status: Executing Phase 19
-  Phase 18 closed 2026-07-24: 8/8 plans across 3 waves, verifier scored 5/5 must-haves
-  against the live codebase. Its only human-verify gate (18-04 Task 3, pose-graph figure)
-  was APPROVED after catching a real arrow-direction bug on the first round.
-Last activity: 2026-07-24 -- Phase 19 execution started
-  Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`).
-Unreleased on main: everything from Phases 16-18 plus quick task 3's `perf:` commit.
+Phase: 20 (refractive-index-helper) — NOT STARTED (no CONTEXT.md, no plans)
+  Phases 16, 17, 18, and 19 COMPLETE, verification PASSED for all four.
+Plan: Not started
+Status: Ready to discuss/plan Phase 20 (INDEX-01/02/03, fully standalone).
+  Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
+  gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
+  (stage3.seconds always null) and code review caught a false "no least_squares" label
+  (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
+Last activity: 2026-07-24 -- Phase 19 complete.
+  Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
+Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
   and cut a version. 22 `feat:` commits are present, so expect a minor bump to v1.9.0.
   Note: `34497f9 fix(18):` is a mistyped docstring-only repair that should have been

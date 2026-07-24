@@ -25,12 +25,12 @@ Answers R1.5, R3.2, and the cost half of R1.2. Per-stage wall-clock timing alrea
 (`_time_stage`, `pipeline.py:582`); this group extends and exposes it rather than building
 it from scratch.
 
-- [ ] **BENCH-01**: Solver diagnostics (`nfev`, `njev`, final `cost`, `optimality`, `status`, termination message) are captured from every `least_squares` call — Stage 3, the intrinsic pass, interface estimation, and point refinement — instead of only `result.status`
-- [ ] **BENCH-02**: Peak memory per stage is captured behind an opt-in flag, with the measurement mode recorded alongside the number; never enabled by default, because `tracemalloc` distorts the timings being measured
-- [ ] **BENCH-03**: Each run records parameter count *P*, column-group count, and the implied FD evaluation reduction, measured from the live run rather than a separate script
-- [ ] **BENCH-04**: Every calibration run writes a machine-readable `benchmark.json` into `output_dir` carrying problem shape, per-stage metrics, solver configuration in force (tolerances, `max_nfev`, robust loss and scale, `refine_intrinsics`, `interface_normal_fixed`), accuracy, and environment (CPU, RAM, OS, Python/NumPy/SciPy versions, AquaCal version and git SHA) — for real-rig runs as well as synthetic
-- [ ] **BENCH-05**: A `benchmarks/` runner sweeps the cameras × frames grid, collects each `benchmark.json`, and emits a tidy CSV plus a LaTeX table fragment, computing nothing the pipeline did not record
-- [ ] **BENCH-06**: Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` to `least_squares` explicitly at their current effective values, and `max_nfev` is recorded with its effective value including the unset/auto case — so the termination criteria the paper supplement states, and that R3.2 asks for by name, are set and reported by AquaCal rather than inherited from SciPy; behavior must be bit-unchanged, asserted by regression test
+- [x] **BENCH-01**: Solver diagnostics (`nfev`, `njev`, final `cost`, `optimality`, `status`, termination message) are captured from every `least_squares` call — Stage 3, the intrinsic pass, interface estimation, and point refinement — instead of only `result.status`
+- [x] **BENCH-02**: Peak memory per stage is captured behind an opt-in flag, with the measurement mode recorded alongside the number; never enabled by default, because `tracemalloc` distorts the timings being measured
+- [x] **BENCH-03**: Each run records parameter count *P*, column-group count, and the implied FD evaluation reduction, measured from the live run rather than a separate script
+- [x] **BENCH-04**: Every calibration run writes a machine-readable `benchmark.json` into `output_dir` carrying problem shape, per-stage metrics, solver configuration in force (tolerances, `max_nfev`, robust loss and scale, `refine_intrinsics`, `interface_normal_fixed`), accuracy, and environment (CPU, RAM, OS, Python/NumPy/SciPy versions, AquaCal version and git SHA) — for real-rig runs as well as synthetic
+- [x] **BENCH-05**: A `benchmarks/` runner sweeps the cameras × frames grid, collects each `benchmark.json`, and emits a tidy CSV plus a LaTeX table fragment, computing nothing the pipeline did not record
+- [x] **BENCH-06**: Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` to `least_squares` explicitly at their current effective values, and `max_nfev` is recorded with its effective value including the unset/auto case — so the termination criteria the paper supplement states, and that R3.2 asks for by name, are set and reported by AquaCal rather than inherited from SciPy; behavior must be bit-unchanged, asserted by regression test
 
 ### Experiment Hooks
 
@@ -161,12 +161,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOCS-03 | Phase 18 | Complete |
 | DOCS-04 | Phase 18 | Complete |
 | DOCS-06 | Phase 18 | Complete |
-| BENCH-01 | Phase 19 | Pending |
-| BENCH-02 | Phase 19 | Pending |
-| BENCH-03 | Phase 19 | Pending |
-| BENCH-04 | Phase 19 | Pending |
-| BENCH-05 | Phase 19 | Pending |
-| BENCH-06 | Phase 19 | Pending |
+| BENCH-01 | Phase 19 | Complete |
+| BENCH-02 | Phase 19 | Complete |
+| BENCH-03 | Phase 19 | Complete |
+| BENCH-04 | Phase 19 | Complete |
+| BENCH-05 | Phase 19 | Complete |
+| BENCH-06 | Phase 19 | Complete |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |

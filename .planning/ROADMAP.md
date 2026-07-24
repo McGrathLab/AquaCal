@@ -273,7 +273,7 @@ behavior the published artifacts actually reflect.
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
-| 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete   | 2026-07-24 |
+| 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
