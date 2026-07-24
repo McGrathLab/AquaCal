@@ -16,7 +16,9 @@ Run manually, e.g.:
 
 from __future__ import annotations
 
+import argparse
 import json
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -116,3 +118,109 @@ def write_csv(df: pd.DataFrame, path: Path) -> None:
         path: Destination `.csv` file path.
     """
     df.to_csv(Path(path), index=False)
+
+
+def _mixed_memory_mode_values(df: pd.DataFrame) -> set:
+    """Collect every distinct non-null `memory.mode` value across `df`.
+
+    Looks at any column named exactly `"memory.mode"` or ending in
+    `".memory.mode"` -- the top-level and per-stage flattened columns
+    `aggregate()` produces.
+
+    Args:
+        df: The `DataFrame` to inspect.
+
+    Returns:
+        The set of distinct non-null values found across all matching
+        columns. Empty if no such column exists or all values are null.
+    """
+    mode_columns = [
+        column
+        for column in df.columns
+        if column == "memory.mode" or column.endswith(".memory.mode")
+    ]
+    distinct_values: set = set()
+    for column in mode_columns:
+        distinct_values.update(df[column].dropna().unique().tolist())
+    return distinct_values
+
+
+def write_latex_fragment(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
+    """Write a minimal LaTeX `tabular` fragment for `columns` of `df`.
+
+    Pure formatting: one row per DataFrame row, one column per the
+    caller-specified `columns` list, values taken directly from the
+    already-aggregated `df` (no new computation, D-13).
+
+    Warns (`UserWarning`) when `df` mixes more than one distinct non-null
+    `memory.mode` value across rows -- e.g. `psutil_peak_wset` (a true OS
+    high-water mark) alongside `psutil_rss_sampled` (an instantaneous
+    reading). Tabulating those side by side (e.g. averaging) would silently
+    understate the reported peak in a paper table. Does not warn when the
+    value is uniform across rows or the column is entirely absent.
+
+    Args:
+        df: The DataFrame to tabulate (typically `aggregate()`'s output).
+        path: Destination `.tex` file path.
+        columns: Ordered list of column names to include, one LaTeX table
+            column each.
+    """
+    distinct_modes = _mixed_memory_mode_values(df)
+    if len(distinct_modes) > 1:
+        warnings.warn(
+            "write_latex_fragment: DataFrame mixes multiple memory.mode "
+            f"values: {sorted(distinct_modes)}. Tabulating these together "
+            "(e.g. averaging) would silently blend a true high-water-mark "
+            "reading with a weaker instantaneous sample.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    column_spec = "|" + "l|" * len(columns)
+    lines = [f"\\begin{{tabular}}{{{column_spec}}}", "\\hline"]
+    lines.append(" & ".join(columns) + " \\\\")
+    lines.append("\\hline")
+    for _, row in df.iterrows():
+        cells = []
+        for column in columns:
+            value = row[column] if column in row.index else None
+            cells.append("" if value is None or pd.isna(value) else str(value))
+        lines.append(" & ".join(cells) + " \\\\")
+    lines.append("\\hline")
+    lines.append("\\end{tabular}")
+
+    Path(path).write_text("\n".join(lines) + "\n")
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser for `python benchmarks/aggregate.py`.
+
+    Returns:
+        A configured `argparse.ArgumentParser`.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--root", type=Path, required=True, help="Directory tree to search."
+    )
+    parser.add_argument("--csv", type=Path, default=None, help="Output CSV path.")
+    parser.add_argument(
+        "--latex", type=Path, default=None, help="Output LaTeX fragment path."
+    )
+    parser.add_argument(
+        "--latex-columns",
+        nargs="*",
+        default=None,
+        help="Columns to include in the LaTeX fragment (required with --latex).",
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_arg_parser().parse_args()
+    aggregated = aggregate(args.root)
+    if args.csv is not None:
+        write_csv(aggregated, args.csv)
+    if args.latex is not None:
+        if not args.latex_columns:
+            raise SystemExit("--latex requires --latex-columns")
+        write_latex_fragment(aggregated, args.latex, args.latex_columns)
