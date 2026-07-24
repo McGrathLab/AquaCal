@@ -1,10 +1,10 @@
 # Optimizer Pipeline
 
-AquaCal's calibration pipeline runs four sequential stages to produce a complete multi-camera calibration. This page explains how the pipeline works, what each stage optimizes, and the sparse Jacobian strategy used for efficient bundle adjustment.
+AquaCal's calibration pipeline runs three sequential stages to produce a complete multi-camera calibration. This page explains how the pipeline works, what each stage optimizes, and the sparse Jacobian strategy used for efficient bundle adjustment.
 
 ## Pipeline Overview
 
-The calibration proceeds through four stages:
+The calibration proceeds through three stages:
 
 ```{mermaid}
 flowchart LR
@@ -12,22 +12,20 @@ flowchart LR
     I2["Underwater videos<br/>Board params"] --> S2
 
     S1["**Stage 1**<br/>In-air Intrinsics<br/><small>(OpenCV)</small>"]
-    S2["**Stage 2**<br/>Extrinsic Init<br/><small>(BFS/PnP)</small>"]
-    S3["**Stage 3**<br/>Joint Refractive BA<br/><small>(nonlinear)</small>"]
-    S4["**Stage 4**<br/>Intrinsic Refinement<br/><small>(optional)</small>"]
+    S2["**Stage 2**<br/>Extrinsic Init<br/><small>(best-first/PnP)</small>"]
+    S3["**Stage 3**<br/>Joint Refractive BA<br/><small>(+ optional second pass, intrinsics unlocked)</small>"]
 
     S1 --> S2
     S2 --> S3
-    S3 --> S4
-    S4 --> O["Refined K, R, t<br/>water_z, boards"]
+    S3 --> O["Refined K, R, t<br/>water_z, boards"]
 
     classDef stage fill:#00897B,stroke:#004D40,color:#fff
     classDef data fill:#E0F7FA,stroke:#4DD0E1,color:#263238
-    class S1,S2,S3,S4 stage
+    class S1,S2,S3 stage
     class I1,I2,O data
 ```
 
-Each stage builds on the previous one, progressively refining the calibration. Stages 3 and 4 use the same optimization infrastructure ({mod}`aquacal.calibration._optim_common`), just with different parameter sets.
+Each stage builds on the previous one, progressively refining the calibration. Stage 3 and its optional second pass (intrinsics unlocked) share the same optimization infrastructure ({mod}`aquacal.calibration._optim_common`), just with different parameter sets.
 
 ## Stage 1: Intrinsic Calibration
 
@@ -54,7 +52,7 @@ See {func}`aquacal.calibration.intrinsics.calibrate_intrinsics_all` for implemen
 **Method:**
 1. Detect ChArUco corners in all cameras across all underwater frames
 2. Build a **pose graph**: each camera-frame pair with detections is a node, edges connect nodes that observe the same board
-3. **BFS traversal**: Starting from the reference camera (R=I, t=0), chain refractive PnP solutions through the graph to locate other cameras
+3. **Best-first traversal**: Starting from the reference camera (R=I, t=0), chain refractive PnP solutions through the graph to locate other cameras, expanding next whichever node was reached by the highest-corner-count observation
 4. Multi-frame averaging to reduce noise in extrinsic estimates
 5. Compute initial water_z from the reference camera's average interface distance
 
@@ -68,7 +66,7 @@ See {func}`aquacal.calibration.intrinsics.calibrate_intrinsics_all` for implemen
 - Initial water_z (global water surface Z-coordinate)
 - Initial board poses (rvec, tvec) for each frame
 
-**Why BFS?** Cameras in an AquaCal rig typically have **non-overlapping fields of view**. Direct pairwise camera-to-camera pose estimation isn't possible. Instead, we use the calibration board as a "connector": if cam0 and cam1 both observe the same board pose, we can chain their board-to-camera transforms to get a cam0-to-cam1 transform.
+**Why best-first?** Cameras in an AquaCal rig typically have **non-overlapping fields of view**. Direct pairwise camera-to-camera pose estimation isn't possible. Instead, we use the calibration board as a "connector": if cam0 and cam1 both observe the same board pose, we can chain their board-to-camera transforms to get a cam0-to-cam1 transform.
 
 ![Bipartite camera/frame pose graph with directed discovery edges](../_static/diagrams/pose_graph.png)
 
@@ -93,7 +91,7 @@ where:
 - **extrinsics (6 per camera)**: Rodrigues vector (3) + translation vector (3) for each **non-reference** camera. Reference camera (cam0) is fixed at R=I, t=0.
 - **water_z (1)**: Global water surface Z-coordinate. Same value for all cameras.
 - **board_poses (6 per frame)**: Rodrigues vector (3) + translation vector (3) for each frame's board pose.
-- **intrinsics (0)**: Not optimized in Stage 3 (deferred to Stage 4 if requested).
+- **intrinsics (0)**: Not optimized in Stage 3's first pass (deferred to Stage 3's second pass if requested).
 
 **Example:** For a 3-camera rig with 50 frames:
 - Extrinsics: 6 × (3 - 1) = 12 parameters
@@ -117,13 +115,16 @@ where:
 
 The refractive projection uses the Newton-Raphson solver (see [Refractive Geometry](refractive_geometry.md)) to account for light bending at the water surface.
 
-**Loss function:** Soft-L1 (Huber-like) loss for robustness to outliers:
+**Loss function:** Huber loss for robustness to outliers (the default `optimization.robust_loss: "huber"`, with `loss_scale = 1.0` pixels as the transition point):
 
 $$
-\rho(r) = 2 \left( \sqrt{1 + r^2} - 1 \right)
+\rho(r) = \begin{cases}
+\left( \dfrac{r}{\text{loss\_scale}} \right)^2 & |r| \le \text{loss\_scale} \\[6pt]
+\dfrac{2 |r|}{\text{loss\_scale}} - 1 & |r| > \text{loss\_scale}
+\end{cases}
 $$
 
-This down-weights large residuals (e.g., detection errors, board motion blur) while preserving gradient information.
+Below `loss_scale` (1.0 px) the loss is quadratic; above it, the loss grows only linearly with the residual. This down-weights large residuals (e.g., detection errors, board motion blur) while preserving gradient information. `soft_l1` and `linear` remain selectable via the `optimization.robust_loss` config key — see [Configuration Reference](configuration.md) for the full option list.
 
 ### Bounds
 
@@ -148,11 +149,11 @@ The final water_z value in non-refractive mode is arbitrary and meaningless. All
 Use refractive mode (default n_water = 1.333) for actual calibration. Non-refractive mode is useful only for controlled comparisons.
 :::
 
-## Stage 4: Intrinsic Refinement (Optional)
+### Stage 3's Second Pass, with Intrinsics Unlocked (Optional)
 
-**What it does:** Re-optimize all parameters from Stage 3 **plus** per-camera focal length and principal point.
+**What it does:** Re-optimize all parameters from Stage 3's first pass **plus** per-camera focal length and principal point.
 
-**Method:** Same as Stage 3, but the parameter vector includes:
+**Method:** Same as Stage 3's first pass, but the parameter vector includes:
 
 ```
 intrinsics(4*N): [fx_0, fy_0, cx_0, cy_0, fx_1, fy_1, cx_1, cy_1, ...]
@@ -161,8 +162,8 @@ intrinsics(4*N): [fx_0, fy_0, cx_0, cy_0, fx_1, fy_1, cx_1, cy_1, ...]
 appended to the end (after board poses).
 
 **When to use:**
-- **Use Stage 4** if initial intrinsic calibration was noisy (few in-air frames, poor coverage)
-- **Skip Stage 4** if intrinsics are well-determined from Stage 1 (typical case)
+- **Enable the second pass** if initial intrinsic calibration was noisy (few in-air frames, poor coverage)
+- **Skip the second pass** if intrinsics are well-determined from Stage 1 (typical case)
 
 Refining intrinsics increases parameter count by 4N and can slow convergence. It's most useful when intrinsic estimates are suspect.
 
@@ -236,10 +237,10 @@ Some cameras (e.g., wide-angle overview cameras) may degrade the joint optimizat
 - Poor intrinsic calibration (fisheye lenses are harder to calibrate)
 - Different viewing geometry (viewing at steep angles increases refractive effects)
 
-AquaCal supports **auxiliary cameras** that are excluded from Stages 2-4 and registered post-hoc against fixed board poses and water_z.
+AquaCal supports **auxiliary cameras** that are excluded from Stages 2 and 3 and registered post-hoc against fixed board poses and water_z.
 
 **Method:**
-1. Run Stages 1-4 with primary cameras only
+1. Run Stages 1-3 with primary cameras only
 2. For each auxiliary camera: 6-parameter (extrinsics-only) or 10-parameter (extrinsics + intrinsics) optimization against fixed board poses
 
 This prevents auxiliary cameras from poisoning the primary solution while still providing calibrated extrinsics for all cameras.
@@ -370,7 +371,7 @@ fisheye_cameras: [cam1]         # ERROR: rational and fisheye are mutually exclu
 If your Stage 1 RMS is very low (< 0.2 pixels) but you see any of these symptoms, you may have an overfitted distortion model:
 
 - High round-trip undistortion errors (warnings printed during Stage 1)
-- Validation errors in Stage 3/4 much higher than training errors
+- Validation errors in Stage 3 much higher than training errors
 - Distortion correction produces visible artifacts at image edges
 - Distortion polynomial "blows up" outside the calibrated image region
 
