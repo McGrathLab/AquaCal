@@ -32,7 +32,7 @@ Quick reference for domain-specific terms used in AquaCal.
 : Camera-specific parameters independent of pose: intrinsic matrix **K** (focal lengths and principal point) and distortion coefficients. Calibrated in Stage 1.
 
 **Pose graph**
-: Graph structure where nodes represent camera-frame observations and edges connect observations of the same board pose. Used in Stage 2 for extrinsic initialization via BFS traversal.
+: Bipartite graph with two node types — camera nodes and frame (board-pose) nodes — where an edge connects a camera to each frame it observes. Two cameras that never share a field of view can still be linked through a frame they both observed. Used in Stage 2 for extrinsic initialization.
 
 **Reference camera**
 : The first camera in your configuration, which defines the world coordinate origin (R = I, t = 0). All other camera poses are expressed relative to this camera.
