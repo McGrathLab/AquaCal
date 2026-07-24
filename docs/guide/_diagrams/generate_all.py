@@ -22,9 +22,9 @@ def generate_all_diagrams():
     """Generate all documentation diagrams."""
     # Import diagram generators (from docs/guide/_diagrams/)
     # Import new diagram generators (from docs/_static/scripts/)
-    from bfs_pose_graph import generate as generate_bfs_pose_graph
     from coordinate_frames import generate as generate_coordinate_frames
     from hero_image import generate as generate_hero_image
+    from pose_graph import generate as generate_pose_graph
     from ray_trace import generate as generate_ray_trace
     from sparsity_pattern import generate as generate_sparsity_pattern
 
@@ -46,8 +46,8 @@ def generate_all_diagrams():
     print("Generating sparsity pattern diagram...")
     generate_sparsity_pattern(diagrams_dir)
 
-    print("Generating BFS pose graph diagram...")
-    generate_bfs_pose_graph(diagrams_dir)
+    print("Generating pose graph diagram...")
+    generate_pose_graph(diagrams_dir)
 
     print("Generating hero image...")
     generate_hero_image(static_dir)
