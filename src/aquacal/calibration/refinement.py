@@ -1,4 +1,4 @@
-"""Stage 3's second pass, with intrinsics unlocked, with optional intrinsics optimization.
+"""Stage 3's second pass, with intrinsics unlocked.
 
 This module implements the final optional refinement pass that re-optimizes
 all parameters from Stage 3, with the option to also refine camera intrinsics

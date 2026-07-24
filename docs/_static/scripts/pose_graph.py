@@ -17,8 +17,15 @@ own adjacency, and then replays the same priority-heap loop
 ``estimate_extrinsics`` runs (seed the reference camera, pop the highest
 corner-count entry, resolve every unvisited neighbour, push new entries)
 to classify each edge as a directed discovery edge or an undirected
-redundant observation edge. The figure therefore cannot drift from the
-library's actual traversal.
+redundant observation edge.
+
+Known limitation: the adjacency comes from the library, but the heap loop
+below is a *replay* of ``estimate_extrinsics``'s policy, not a call into it --
+``estimate_extrinsics`` needs full intrinsics and detections and returns poses
+rather than the traversal order this figure needs. Nothing currently ties the
+two together, so a change to the real prioritisation (the ``(-num_corners,
+node)`` key, or the finalise-on-first-discovery rule) must be mirrored here or
+the figure will quietly misrepresent the algorithm.
 """
 
 import heapq

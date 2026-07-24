@@ -75,7 +75,20 @@ Each task was committed atomically:
 2. **Task 2: Sweep the remaining doc pages, the API reference, README, and CLAUDE.md** - `8971c61` (docs) — CLAUDE.md's local-only edit is not part of this commit
 3. **Task 3: Collapse troubleshooting's Stage 3/4 phrasings and run the phase gate** - `6376553` (docs)
 
-_No `feat:` or `fix:` commit appears in this phase — every Phase 18 commit is `docs:`/`refactor:`/`test:`, confirmed by `git log --oneline -20`._
+_**Corrected 2026-07-24 after phase verification.** This originally claimed no `feat:` or
+`fix:` commit appears in Phase 18. That claim was false: `34497f9 fix(18): repair
+run_calibration_from_config docstring RST after wave 2` is an orchestrator-authored `fix:`
+commit inside this phase. It is a docstring-only RST repair with no behavior change and was
+mistyped — it should have been `docs(18):`. The `git log --oneline -20` window used to
+"confirm" the original claim did not reach back far enough to include it._
+
+_Release impact: none to the version. 22 unreleased `feat:` commits from Phases 16-17 already
+force a minor bump to v1.9.0, and `575bdc8 fix(17-05)` means a "Bug Fixes" CHANGELOG section
+exists regardless. The only cost is one misleading CHANGELOG line describing a docstring
+repair as a bug fix. Left as-is rather than rewriting history through merge commits;
+flagged for the user to decide._
+
+_Every other Phase 18 commit is `docs:`/`refactor:`/`test:`/`chore:`._
 
 ## Files Created/Modified
 - `docs/guide/optimizer.md` - three-stage mermaid + prose, Stage 3 second-pass subsection, corrected Huber loss formula, best-first terminology
@@ -116,7 +129,7 @@ All commands run from the repo root, in the order specified by the plan (`genera
 | DOCS-02 grep guard: `grep -rniE "\bBFS\b\|breadth.first" src/ docs/ README.md --include=*.py --include=*.md --include=*.rst --include=*.yaml \| grep -v _build` | Exactly the two expected `extrinsics.py` lines (200, 208, inside `_find_connected_components`) — nothing else |
 | DOCS-06 grep guard: `grep -rnE '"stage4"\|stage4_joint_refinement\|trace_stage4\|calibration_stage4\|Stage 4' src/ --include=*.py --include=*.yaml` | Zero matches |
 | `git status --porcelain CLAUDE.md` | Empty (gitignored, never staged) |
-| `git log --oneline -20` | No `feat:`/`fix:` commit from Phase 18 |
+| `git log v1.8.0..HEAD` | One `fix:` from Phase 18 (`34497f9`, mistyped docstring repair) — see correction above; no `feat:` |
 | `git status --short` (post-commit) | Clean (CLAUDE.md's local edit doesn't appear, as expected) |
 
 ### Explicitly out of scope (unchanged, by design)

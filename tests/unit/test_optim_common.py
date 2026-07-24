@@ -248,12 +248,31 @@ class TestDocumentedGroupingNumbers:
         `docs/guide/optimizer.md` quotes for the sparse-Jacobian column
         grouping (measured 51.8x / 51.9x / 42.8x for the three configurations).
 
+        The ratio is computed from the live `build_structural_column_groups`
+        path, not from the parametrized constants -- otherwise this assertion
+        would be arithmetic on literals and could not fail on a real
+        regression.
+
         The raw ratio for the intrinsic-refinement case is 727/17 = 42.76..,
         which rounds to the documented 42.8/43 but is not literally >= 43, so
         this asserts on the rounded value (matching how the docs quote it) to
         avoid a boundary-precision false negative.
         """
-        reduction = expected_P / expected_groups
+        S = _make_pattern(13, 100, 1.0, refine_intrinsics, normal_fixed)
+        groups = build_structural_column_groups(
+            S,
+            13,
+            100,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+
+        live_P = S.shape[1]
+        live_groups = groups.max() + 1
+        assert live_P == expected_P
+        assert live_groups == expected_groups
+
+        reduction = live_P / live_groups
         assert 43 <= round(reduction) <= 52
 
     def test_group_count_is_invariant_to_rig_size(self):
