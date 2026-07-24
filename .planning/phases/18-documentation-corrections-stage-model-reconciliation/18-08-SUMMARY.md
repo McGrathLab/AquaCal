@@ -129,6 +129,10 @@ All commands run from the repo root, in the order specified by the plan (`genera
 
 Phase 18 (Documentation Corrections & Stage-Model Reconciliation) is fully executed: every wave complete, the phase gate green, and both grep-guard requirements (DOCS-02, DOCS-06) satisfied exactly as specified. No blockers for phase completion. The known tutorial-notebook output drift is the only open scope item, and it is explicitly deferred (not a blocker) per this plan's own instructions.
 
+## Self-Check: PASSED
+
+All task commit hashes (`55d07fd`, `8971c61`, `6376553`) and the plan-metadata commit (`16468b1`) verified present in `git log`. `docs/guide/optimizer.md` and this SUMMARY.md verified present on disk.
+
 ---
 *Phase: 18-documentation-corrections-stage-model-reconciliation*
 *Completed: 2026-07-24*
