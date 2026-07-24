@@ -71,6 +71,79 @@ class TraceRow:
     tilt_ry: float
 
 
+@dataclass
+class SolverDiagnostics:
+    """Terminal `least_squares` diagnostics for one solver call, filled in place.
+
+    A mutable out-parameter: construct with all defaults (`SolverDiagnostics()`),
+    pass it to a `least_squares`-wrapping function, and read the fields back after
+    that function returns. `capture_solver_diagnostics` is the sole intended writer
+    of these fields -- populate via that helper immediately after `least_squares`
+    returns, never by reading `result.jac`/`result.fun`/`result.x` directly (see
+    `capture_solver_diagnostics`'s docstring for why).
+
+    Absent-metric convention (D-15): a metric a given call site cannot produce
+    (e.g. `n_params`/`n_groups` for a site with no column-grouping structure) is
+    recorded as `None` together with a `*_reason` string explaining why -- never
+    silently omitted. This lets a downstream aggregator (BENCH-05) distinguish
+    "not applicable here" from "failed to measure".
+
+    Attributes:
+        nfev: Residual-function evaluation count (BENCH-01). Always populated as
+            an int by `capture_solver_diagnostics` at a real call site.
+        njev: Jacobian evaluation count (BENCH-01). Always a populated int at this
+            codebase's four in-scope call sites -- all four use `method='trf'`,
+            for which SciPy populates `njev` regardless of whether `jac` is a
+            callable or the string `'2-point'`. `None` occurs only for SciPy's
+            `'lm'` method, which no in-scope site uses (see 19-RESEARCH.md
+            Pitfall 5, corrected 2026-07-24). Do NOT document or assume `None`
+            means `jac='2-point'` -- that claim was independently reproduced as
+            false.
+        cost: `0.5 * sum(fun**2)` at the returned solution (BENCH-01).
+        optimality: SciPy's own first-order optimality measure on the final
+            `OptimizeResult` (BENCH-01) -- Coleman-Li bound-scaled, distinct from
+            `TraceRow.optimality`'s per-iteration unconstrained proxy.
+        status: SciPy's termination status code (BENCH-01).
+        message: SciPy's human-readable termination message (BENCH-01).
+        ftol: Explicit function-tolerance passed to `least_squares` (BENCH-06).
+        xtol: Explicit parameter-tolerance passed to `least_squares` (BENCH-06).
+        gtol: Explicit gradient-tolerance passed to `least_squares` (BENCH-06).
+        max_nfev_effective: The effective `max_nfev` value in force for this call,
+            including SciPy's computed auto value when the caller left `max_nfev`
+            unset (BENCH-06).
+        max_nfev_source: One of `"explicit"`, `"scipy_auto"`, or a call-site
+            specific label (e.g. `"point_refinement_200x_auto"`) describing where
+            `max_nfev_effective` came from (BENCH-06). Not validated against a
+            fixed enum -- any caller-supplied string is accepted.
+        n_params: Packed parameter-vector length `P` for this solve, when the
+            call site's structure makes it meaningful (BENCH-03). `None` with
+            `n_params_reason` set when not applicable.
+        n_params_reason: Explanation for why `n_params` is `None`. Populated only
+            when `n_params` is `None`.
+        n_groups: Number of finite-difference column groups used for this solve's
+            sparse Jacobian, when applicable (BENCH-03). `None` with
+            `n_groups_reason` set when not applicable.
+        n_groups_reason: Explanation for why `n_groups` is `None`. Populated only
+            when `n_groups` is `None`.
+    """
+
+    nfev: int | None = None
+    njev: int | None = None
+    cost: float | None = None
+    optimality: float | None = None
+    status: int | None = None
+    message: str | None = None
+    ftol: float | None = None
+    xtol: float | None = None
+    gtol: float | None = None
+    max_nfev_effective: int | None = None
+    max_nfev_source: str | None = None
+    n_params: int | None = None
+    n_params_reason: str | None = None
+    n_groups: int | None = None
+    n_groups_reason: str | None = None
+
+
 def build_parameter_labels(
     camera_order: list[str],
     frame_order: list[int],
@@ -153,6 +226,76 @@ def build_parameter_labels(
             )
 
     return labels
+
+
+def capture_solver_diagnostics(
+    result,
+    diagnostics_out: SolverDiagnostics | None,
+    *,
+    ftol: float,
+    xtol: float,
+    gtol: float,
+    max_nfev_effective: int | None,
+    max_nfev_source: str,
+    n_params: int | None = None,
+    n_groups: int | None = None,
+    n_params_reason: str | None = None,
+    n_groups_reason: str | None = None,
+) -> None:
+    """Populate a `SolverDiagnostics` in place from a returned `OptimizeResult`.
+
+    Must be called only after `least_squares` returns; never read `result.jac`,
+    `result.fun`, or `result.x` here (Research Pitfall 4 -- doing so risks
+    retaining large arrays and inflating the very peak-memory measurement
+    BENCH-02 depends on being honest). Only the small scalar fields SciPy
+    already reports on `OptimizeResult` are read.
+
+    `njev` is read defensively via `getattr` for reuse-safety, but at every one
+    of this codebase's four in-scope call sites (all `method='trf'`) it is
+    always populated as an int -- the `None` branch is not expected there; see
+    19-RESEARCH.md Pitfall 5, corrected.
+
+    No-op when `diagnostics_out is None`, so every call site can call this
+    unconditionally regardless of whether the caller opted into diagnostics
+    capture.
+
+    Args:
+        result: The final `scipy.optimize.OptimizeResult` from `least_squares`.
+        diagnostics_out: The `SolverDiagnostics` instance to mutate in place, or
+            `None` to skip capture entirely.
+        ftol: Explicit function-tolerance passed to `least_squares` (BENCH-06).
+        xtol: Explicit parameter-tolerance passed to `least_squares` (BENCH-06).
+        gtol: Explicit gradient-tolerance passed to `least_squares` (BENCH-06).
+        max_nfev_effective: The effective `max_nfev` in force for this call,
+            including SciPy's computed auto value when left unset (BENCH-06).
+        max_nfev_source: Provenance label for `max_nfev_effective`, e.g.
+            `"explicit"` or `"scipy_auto"` (BENCH-06).
+        n_params: Packed parameter-vector length `P`, when applicable (BENCH-03).
+        n_groups: Finite-difference column-group count, when applicable
+            (BENCH-03).
+        n_params_reason: Explanation recorded when `n_params` is `None` (D-15).
+        n_groups_reason: Explanation recorded when `n_groups` is `None` (D-15).
+    """
+    if diagnostics_out is None:
+        return
+
+    diagnostics_out.nfev = int(result.nfev)
+    njev = getattr(result, "njev", None)
+    diagnostics_out.njev = int(njev) if njev is not None else None
+    diagnostics_out.cost = float(result.cost)
+    diagnostics_out.optimality = float(result.optimality)
+    diagnostics_out.status = int(result.status)
+    diagnostics_out.message = str(result.message)
+
+    diagnostics_out.ftol = ftol
+    diagnostics_out.xtol = xtol
+    diagnostics_out.gtol = gtol
+    diagnostics_out.max_nfev_effective = max_nfev_effective
+    diagnostics_out.max_nfev_source = max_nfev_source
+    diagnostics_out.n_params = n_params
+    diagnostics_out.n_groups = n_groups
+    diagnostics_out.n_params_reason = n_params_reason
+    diagnostics_out.n_groups_reason = n_groups_reason
 
 
 class OptimizerObserver:
