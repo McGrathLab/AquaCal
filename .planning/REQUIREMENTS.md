@@ -70,12 +70,12 @@ change — the geometry code learns nothing new.
 A correction pass bringing the docs in line with the paper's formulation, not an expansion.
 DOCS-04 and DOCS-05 are the exception — they cover features with no existing text.
 
-- [ ] **DOCS-01**: `docs/guide/optimizer.md` column-grouping numbers are corrected — group count is 13 (17 with intrinsic refinement) and constant in rig size, *P* is 673/675/727 not "~630", and the reduction is 43–52× not "~12×"
-- [ ] **DOCS-02**: BFS → best-first terminology is corrected across five doc sites and four `extrinsics.py` docstring sites, leaving `_find_connected_components` (genuinely BFS) untouched, and the two comments describing unimplemented scoring are fixed
-- [ ] **DOCS-03**: The glossary's pose-graph definition is corrected to a bipartite camera/frame graph, and `bfs_pose_graph.png` is replaced with the corrected figure whose generator replays the library's own heap logic
-- [ ] **DOCS-04**: v1.7–v1.8 features (`reject_outlier_frames`, `detection.start_frame`/`stop_frame`, intrinsics seeding, fronto-parallel warning) are documented in the configuration reference and relevant guide pages, not only in troubleshooting
+- [x] **DOCS-01**: `docs/guide/optimizer.md` column-grouping numbers are corrected — group count is 13 (17 with intrinsic refinement) and constant in rig size, *P* is 673/675/727 not "~630", and the reduction is 43–52× not "~12×"
+- [x] **DOCS-02**: BFS → best-first terminology is corrected across five doc sites and four `extrinsics.py` docstring sites, leaving `_find_connected_components` (genuinely BFS) untouched, and the two comments describing unimplemented scoring are fixed
+- [x] **DOCS-03**: The glossary's pose-graph definition is corrected to a bipartite camera/frame graph, and `bfs_pose_graph.png` is replaced with the corrected figure whose generator replays the library's own heap logic
+- [x] **DOCS-04**: v1.7–v1.8 features (`reject_outlier_frames`, `detection.start_frame`/`stop_frame`, intrinsics seeding, fronto-parallel warning) are documented in the configuration reference and relevant guide pages, not only in troubleshooting
 - [ ] **DOCS-05**: Everything this milestone adds is documented — `calc-index`, the `benchmark.json` schema, the trace and conditioning flags, and `shared_interface` framed as an ablation option
-- [ ] **DOCS-06**: Docs **and code surfaces** present the paper's three-stage model — console output, timing keys, `benchmark.json` keys, module and schema docstrings, and CLI config comments — and the documented loss default is corrected from soft-L1 to `huber`
+- [x] **DOCS-06**: Docs **and code surfaces** present the paper's three-stage model — console output, timing keys, `benchmark.json` keys, module and schema docstrings, and CLI config comments — and the documented loss default is corrected from soft-L1 to `huber`
 - [ ] **DOCS-07**: A release is cut and the manuscript's C1 metadata cell and the Zenodo archive reference are updated to the version the published artifacts actually reflect
 
 ### Dataset and Tutorial Refresh
@@ -156,11 +156,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | IFACE-03 | Phase 17 | Complete |
 | IFACE-04 | Phase 17 | Complete |
 | IFACE-05 | Phase 17 | Complete |
-| DOCS-01 | Phase 18 | Pending |
-| DOCS-02 | Phase 18 | Pending |
-| DOCS-03 | Phase 18 | Pending |
-| DOCS-04 | Phase 18 | Pending |
-| DOCS-06 | Phase 18 | Pending |
+| DOCS-01 | Phase 18 | Complete |
+| DOCS-02 | Phase 18 | Complete |
+| DOCS-03 | Phase 18 | Complete |
+| DOCS-04 | Phase 18 | Complete |
+| DOCS-06 | Phase 18 | Complete |
 | BENCH-01 | Phase 19 | Pending |
 | BENCH-02 | Phase 19 | Pending |
 | BENCH-03 | Phase 19 | Pending |

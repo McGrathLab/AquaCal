@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: executing
-stopped_at: Phase 18 waves 1-2 complete and merged (18-01..18-07); paused before wave 3 (18-08)
-last_updated: "2026-07-24T16:05:00.000Z"
-last_activity: 2026-07-24 -- Phase 18 waves 1-2 executed, merged, and verified
+status: ready_to_plan
+stopped_at: Phase 18 complete (8/8) — ready to discuss Phase 19
+last_updated: 2026-07-24T16:51:09.236Z
+last_activity: 2026-07-24 -- Phase 18 complete (8/8), verification passed 5/5
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 43
 ---
 
 # Project State
@@ -21,28 +21,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 18 — documentation-corrections-stage-model-reconciliation
-chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconciliation)
+**Current focus:** Phase 19 — benchmark instrumentation (not yet discussed or planned)
 
 ## Current Position
 
-Phase: 18 (documentation-corrections-stage-model-reconciliation) — EXECUTING, PAUSED
-  Phases 16 and 17 COMPLETE, verification PASSED.
-Plan: 7 of 8 complete
-Status: Phase 18 waves 1 and 2 COMPLETE, merged to main, gates green.
-  Wave 1 = 18-01 (DOCS-01 numbers), 18-02 (vocabulary contract), 18-03 (DOCS-04
-  config reference) — all complete. Wave 2 = 18-04..18-07 — all complete.
-  **Wave 3 = 18-08 is the only remaining plan.** It is autonomous (no checkpoint) and
-  depends on all seven predecessors, which are now satisfied.
-  Note: 18-02 was NOT a checkpoint at execution time — the plan file records that its
-  gate was removed once the live manuscript confirmed the vocabulary. The phase's only
-  human-verify gate was 18-04 Task 3 (pose-graph figure), APPROVED 2026-07-24.
-Last activity: 2026-07-24 -- Phase 18 waves 1-2 executed and merged.
-  Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`);
-  full suite 799 passed. See "Phase 17 Plan Progress" below.
-Unreleased on main: everything from Phases 16-17 plus quick task 3's `perf:` commit.
+Phase: 19 (benchmark-instrumentation) — NOT STARTED
+  Phases 16, 17, and 18 COMPLETE, verification PASSED for all three.
+Plan: Not started — Phase 19 has no directory, no CONTEXT.md, no plans. ROADMAP says "Plans: TBD".
+Status: Ready to discuss/plan Phase 19.
+  Phase 18 closed 2026-07-24: 8/8 plans across 3 waves, verifier scored 5/5 must-haves
+  against the live codebase. Its only human-verify gate (18-04 Task 3, pose-graph figure)
+  was APPROVED after catching a real arrow-direction bug on the first round.
+Last activity: 2026-07-24 -- Phase 18 complete.
+  Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`).
+Unreleased on main: everything from Phases 16-18 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
-  and cut a version (a `feat:` is present, so a minor bump to v1.9.0).
+  and cut a version. 22 `feat:` commits are present, so expect a minor bump to v1.9.0.
+  Note: `34497f9 fix(18):` is a mistyped docstring-only repair that should have been
+  `docs(18):`. It does NOT change the version (feat: already forces minor) but will add a
+  misleading line to the CHANGELOG's Bug Fixes section. Left unrewritten pending user
+  decision — rewriting it means rebasing through merge commits.
 
 Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09), phases 13-15.
 v1.7–v1.8 shipped outside the milestone framework (see MILESTONES.md).
