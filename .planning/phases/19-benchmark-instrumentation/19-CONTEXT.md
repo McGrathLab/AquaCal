@@ -54,12 +54,21 @@ Requirements: BENCH-01 through BENCH-06.
   Note: `psutil` 7.2.2 is already present in the dev environment but is **not** declared in
   `pyproject.toml` — the planner must add the extra, not assume availability.
 
-- **D-02 — Peak RSS requires sampling, and sampling is opt-in with the flag.** RSS is an
-  instantaneous reading, so a true per-stage peak needs polling rather than a before/after
-  pair. The planner should treat the sampling mechanism (background thread vs. coarse
-  in-loop sampling) as an implementation choice, but the sampler must exist **only** when
-  the flag is on — BENCH-02 says "never enabled by default, because `tracemalloc` distorts
-  the timings being measured", and a polling thread carries the same hazard.
+- **D-02 — REVISED 2026-07-24 after research: no sampling is needed on either supported
+  platform.** The original decision assumed RSS is an instantaneous reading requiring a
+  polling thread. Research (`19-RESEARCH.md` Q3, verified live) found OS-maintained
+  high-water marks on both CI platforms:
+  - **Windows:** `psutil.Process().memory_full_info().peak_wset` — a true peak, verified live.
+  - **Linux:** psutil has no equivalent (upstream issues #1096, #1540), but the kernel
+    exposes the identical concept as `VmHWM` in `/proc/<pid>/status`.
+
+  Both are zero-polling reads. This is strictly better than the sampling design: it removes
+  the timing-distortion hazard BENCH-02 explicitly warns about, and it cannot miss the
+  short-lived ~3.6 GB spike from the dense `.toarray()` Jacobian the way a coarse poll could.
+
+  Polling remains documented only as a fallback for a platform exposing neither. The
+  `memory.mode` label (D-01) must distinguish these: `"psutil_peak_wset"`,
+  `"proc_status_vmhwm"`, `"tracemalloc_python_heap"`, or a polled fallback.
 
 ### `benchmark.json` shape (BENCH-04)
 
@@ -139,6 +148,37 @@ Requirements: BENCH-01 through BENCH-06.
   nothing.** It is an aggregator: read every `benchmark.json`, concatenate, emit. Any
   derived quantity it appears to need (e.g. FD reduction) must instead be recorded by the
   pipeline under BENCH-03.
+
+### Resolved after research (added 2026-07-24)
+
+These three were raised as open questions by `19-RESEARCH.md`. Resolving them here so the
+planner is not blocked.
+
+- **D-14 — Capturing diagnostics is not the same as recording them.** `point_refinement.py`
+  is never called from `run_calibration_from_config`, so its diagnostics cannot appear in a
+  calibration run's `benchmark.json`. BENCH-01 still names it, so **capture** diagnostics at
+  all four sites per D-07, but surface point-refinement's on its own result object
+  (`RefinementResult`) rather than forcing an empty stage block into `benchmark.json`.
+  `benchmark.json` records only stages a run actually executed.
+
+- **D-15 — Absent metrics are explicitly `null`, never silently omitted.**
+  `register_auxiliary_camera` uses no column grouping at all, so it has no P or group count.
+  Write `null` with a reason rather than dropping the key: a missing key in an aggregated CSV
+  is indistinguishable from a failed measurement. Applies generally to any stage-metric a
+  given stage cannot produce.
+
+- **D-16 — Two independent opt-in flags, not one.** Writing `benchmark.json` is cheap and
+  should be broadly enabled; memory measurement is the thing BENCH-02 requires be off by
+  default. Collapsing them into one flag would either force memory measurement on everyone or
+  make the benchmark record opt-in for no reason. Follow the existing config `internals`
+  block convention (`data.get("internals", {})`).
+
+- **D-17 — `max_nfev`'s "effective auto value" is `x0.size * 100`.** Research confirmed this
+  in `scipy/optimize/_lsq/trf.py` (both TRF branches) for SciPy 1.17. `benchmark.json` must
+  report that computed value alongside the fact that it was unset, satisfying BENCH-06's
+  "recorded with its effective value including the unset/auto case". **Trap:**
+  `point_refinement.py` already sets `max_nfev` with a *different* multiplier (200×, not
+  100×). It is not a BENCH-06 target site — do not unify the two or assume one multiplier.
 
 ### Claude's Discretion
 
