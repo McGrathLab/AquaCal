@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "problem_shape": {
+    "n_cameras": 3,
+    "n_frames_calibration": 40,
+    "n_frames_holdout": 10
+  },
+  "stages": {
+    "stage3": {
+      "nfev": 45,
+      "njev": 12,
+      "cost": 0.5,
+      "optimality": 1e-06,
+      "status": 2,
+      "message": "`gtol` termination condition is satisfied.",
+      "ftol": 1e-08,
+      "xtol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 6700,
+      "max_nfev_source": "scipy_auto",
+      "n_params": 67,
+      "n_params_reason": null,
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "seconds": 12.3,
+      "fd_reduction": 5.153846153846154,
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 360000000,
+        "delta_bytes_since_previous_boundary": 340000000,
+        "mode": "psutil_peak_wset"
+      }
+    },
+    "validation": {
+      "seconds": 0.4,
+      "solver_diagnostics_reason": "no least_squares call occurs in this stage; solver diagnostics are not applicable",
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 360000000,
+        "delta_bytes_since_previous_boundary": 0,
+        "mode": "psutil_peak_wset"
+      }
+    }
+  },
+  "solver_config": {
+    "robust_loss": "huber",
+    "loss_scale": 1.0,
+    "refine_intrinsics": false,
+    "interface_normal_fixed": true
+  },
+  "accuracy": {
+    "reprojection_rms": 0.42,
+    "validation_3d_error_mean": 0.0012,
+    "validation_3d_error_std": 0.0004
+  },
+  "environment": {
+    "aquacal_version": "1.9.0",
+    "python_version": "3.12.12",
+    "numpy_version": "2.1.0",
+    "scipy_version": "1.17.0",
+    "opencv_version": "4.10.0",
+    "os": "Windows 11",
+    "cpu_model": "Intel64 Family 6",
+    "cpu_count_logical": 16,
+    "ram_total_bytes": 34359738368,
+    "git_sha": "0000000000000000000000000000000000000a",
+    "git_sha_source": "git_rev_parse"
+  },
+  "memory": {
+    "whole_run_peak_bytes": 360000000,
+    "mode": "psutil_peak_wset"
+  }
+}

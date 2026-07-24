@@ -1,0 +1,12 @@
+{
+  "schema_version": 999,
+  "problem_shape": {
+    "n_cameras": 3,
+    "n_frames_calibration": 40,
+    "n_frames_holdout": 10
+  },
+  "stages": {},
+  "solver_config": {},
+  "accuracy": {},
+  "environment": {}
+}
