@@ -117,21 +117,50 @@ written for features that have no proper home today.
   `sparsity_pattern.py` + `palette.py` convention, and regenerate the figure from it.
   Its generator replays the library's own heap logic, so the figure cannot drift from the
   code — that property is the reason to reuse rather than redraw.
-  **Status 2026-07-24:** the supplement's **figure** exists —
-  `…/papers/aquacal/figures/aquacal_bfs_pose_graph.pdf` and `.png` (2026-07-23), a
-  six-panel A–F figure described at `supplement.tex:499-510`. Its **generator script has
-  not been located**; only the rendered outputs are in the paper tree. So the figure is a
-  concrete visual target but not yet a reusable generator.
-  **Therefore: build the in-repo generator (the D-09 fallback), matching the supplement
-  figure's semantics.** Replay `estimate_extrinsics`'s heap directly so it cannot drift.
-  The supplement caption specifies exactly what to reproduce: panel A = the bipartite
-  graph with edge width proportional to corner count; panels B–E = "the four productive
-  pops of the priority queue", where "arrows run from the pose already known to the pose
-  it determines"; the edge the traversal never needed drawn distinctly (coral in the
-  paper); three further unproductive pops omitted. A single-panel reduction is acceptable
-  for the docs page (see Claude's Discretion) provided both edge types and the direction
-  semantics survive. Do not hand-patch the existing PNG. If the supplement's generator
-  later surfaces, porting it supersedes this.
+  **Status 2026-07-24 (generator LOCATED):**
+  `C:\Users\tucke\PycharmProjects\DissertationFigures\src\dissertationfigures\figures\aquacal\static.py`
+  — `plot_bfs_pose_graph()` (line 390) is the generator that produced the supplement's
+  six-panel figure (`save_figure(fig, "aquacal_bfs_pose_graph", …)`, matching
+  `…/papers/aquacal/figures/aquacal_bfs_pose_graph.pdf`/`.png`).
+
+  ⚠ **It does not do what its docstring claims.** Lines 13-15 assert the panels are
+  "produced by replaying the same priority-queue logic as
+  `aquacal.calibration.extrinsics.estimate_extrinsics` … so the diagram cannot drift from
+  the library", and the fixes doc §2.6 repeats that claim. **`static.py` never imports
+  aquacal.** `_simulate_traversal()` (line 103) reimplements the heap locally — its own
+  `heapq`, its own `_ADJ` dict, its own `(-corners, node)` entries. It is a faithful
+  *mirror*, not a replay, and it has already drifted slightly: it uses `sorted(_ADJ[node])`
+  for both node types, while the library iterates `pose_graph.adjacency` **unsorted** in
+  the camera branch (`extrinsics.py:601`) and `sorted(...)` in the frame branch (`:654`).
+  Harmless for this figure's output (the heap tie-breaks by name) but it proves the gap is
+  real. **Porting `static.py` verbatim would therefore NOT satisfy DOCS-03's "replays the
+  library's own heap logic".**
+
+  **Decision: port the rendering, replace the simulation.** The six-panel rendering is the
+  expensive, good part and should be reused — panel A (observation graph, edge width ∝
+  corners), panels B–E (the four productive pops, with solved / not-yet-solved /
+  solved-in-this-panel node states and the per-panel queue caption), panel F (consensus
+  pass, badges = estimates entering each average, the never-used edge in coral), and the
+  seven-entry figure legend. Replace `_simulate_traversal()` with a real traversal driven
+  through `aquacal.calibration.extrinsics` so the non-drift property becomes true rather
+  than aspirational — that substitution is the entire reason this file is being rewritten
+  rather than copied.
+
+  Three external dependencies must be swapped on the way in:
+  1. `dissertationfigures.core.style.COLORS` → `docs/_static/scripts/palette.py`:
+     `blue`→`CAMERA_COLOR`, `gold`→`BOARD_COLOR`, `teal`→`WATER_SURFACE`,
+     `gray`→`GRID_COLOR`, `coral`→`RAY_AIR`. `olive` (board-patch edge) has no equivalent —
+     use `LABEL_COLOR` or a darkened `BOARD_COLOR`.
+  2. `dissertation_style()` / `DOUBLE_COL` → AquaCal's `figsize`/`dpi` conventions.
+  3. `save_figure(..., extra_artists=[leg])` → the `generate(output_dir) -> None` contract.
+     ⚠ The legend is a **figure**-level legend; `static.py:436-438` carries an explicit
+     comment that a tight bbox crops it unless the legend artist is named. AquaCal's
+     generators use `bbox_inches="tight"`, so the port must pass
+     `bbox_extra_artists=[leg]` to `savefig` or the legend silently disappears.
+
+  A single-panel reduction remains acceptable for the docs page (see Claude's Discretion)
+  provided both edge types and the direction semantics survive. Do not hand-patch the
+  existing PNG.
 - **D-10: Rename the figure to `pose_graph.png`** (the filename itself carries the wrong
   "bfs" term) and update every reference including alt text. Delete the old file rather
   than leaving both.
