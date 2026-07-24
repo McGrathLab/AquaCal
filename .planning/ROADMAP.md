@@ -164,9 +164,9 @@ out as a quick task.
   - [x] 18-03-PLAN.md — DOCS-04: new docs/guide/configuration.md, guide-index registration, troubleshooting cross-links (DOCS-04)
 - Wave 2:
   - [ ] 18-04-PLAN.md — DOCS-03: heap-replaying pose_graph.py generator, figure rename, bipartite glossary definition (DOCS-03)
-  - [ ] 18-05-PLAN.md — DOCS-02 code side: extrinsics.py terminology, scoring comments, first-discovery invariant (DOCS-02)
-  - [ ] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + auxiliary label loses its stage number (DOCS-06)
-  - [ ] 18-07-PLAN.md — DOCS-06 code side: schema/CLI/example-config/module docstrings (DOCS-06)
+  - [x] 18-05-PLAN.md — DOCS-02 code side: extrinsics.py terminology, scoring comments, first-discovery invariant (DOCS-02)
+  - [x] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + auxiliary label loses its stage number (DOCS-06)
+  - [x] 18-07-PLAN.md — DOCS-06 code side: schema/CLI/example-config/module docstrings (DOCS-06)
 - Wave 3:
   - [ ] 18-08-PLAN.md — DOCS-02/DOCS-06 docs side: three-stage sweep, huber loss formula, phase gate (DOCS-02, DOCS-06)
 
@@ -261,7 +261,7 @@ behavior the published artifacts actually reflect.
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
-| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 3/8 | In Progress|  |
+| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 6/8 | In Progress|  |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
