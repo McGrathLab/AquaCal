@@ -63,8 +63,10 @@ first so WP5/WP6 experiments can start as early as possible against the deadline
 reconciliation and benchmarking follow, independent of that chain except where DOCS-06
 must settle the stage-key schema before benchmark.json locks it in.
 
-- [x] **Phase 16: Experiment Observability Hooks** - Researchers can inspect and reproduce optimizer internals needed for WP5/WP6 without changing numeric behavior (completed 2026-07-23)
-- [x] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior (completed 2026-07-23)
+- [x] **Phase 16: Experiment Observability Hooks** - Researchers can inspect and reproduce optimizer internals needed for WP5/WP6 without changing numeric behavior
+ (completed 2026-07-23)
+- [x] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior
+ (completed 2026-07-23)
 - [ ] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
 - [ ] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
@@ -155,7 +157,18 @@ out as a quick task.
      not only in troubleshooting.
   5. Console output, timing keys, module/schema docstrings, and CLI config comments all
      present the same three-stage model, and the documented loss default reads `huber`.
-**Plans**: TBD
+**Plans**: 8 plans in 3 waves
+- Wave 1 (parallel, not gated on the manuscript checkpoint):
+  - [ ] 18-01-PLAN.md — DOCS-01: pin 673/675/727 + 13/13/17 + 43-52x with a live test, then correct optimizer.md's four numeric errors (DOCS-01)
+  - [ ] 18-02-PLAN.md — Blocking checkpoint: confirm the revised manuscript's stage and traversal vocabulary before any rename lands (DOCS-02, DOCS-06)
+  - [ ] 18-03-PLAN.md — DOCS-04: new docs/guide/configuration.md, guide-index registration, troubleshooting cross-links (DOCS-04)
+- Wave 2:
+  - [ ] 18-04-PLAN.md — DOCS-03: heap-replaying pose_graph.py generator, figure rename, bipartite glossary definition (DOCS-03)
+  - [ ] 18-05-PLAN.md — DOCS-02 code side: extrinsics.py terminology, scoring comments, first-discovery invariant (DOCS-02)
+  - [ ] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + Stage 3b collapse (DOCS-06)
+  - [ ] 18-07-PLAN.md — DOCS-06 code side: schema/CLI/example-config/module docstrings (DOCS-06)
+- Wave 3:
+  - [ ] 18-08-PLAN.md — DOCS-02/DOCS-06 docs side: three-stage sweep, huber loss formula, phase gate (DOCS-02, DOCS-06)
 
 ### Phase 19: Benchmark Instrumentation
 **Goal**: Every calibration run produces a trustworthy, machine-readable performance record
