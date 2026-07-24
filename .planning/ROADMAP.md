@@ -67,7 +67,7 @@ must settle the stage-key schema before benchmark.json locks it in.
  (completed 2026-07-23)
 - [x] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior
  (completed 2026-07-23)
-- [ ] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
+- [x] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema (completed 2026-07-24)
 - [ ] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
 - [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
@@ -168,7 +168,7 @@ out as a quick task.
   - [x] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + auxiliary label loses its stage number (DOCS-06)
   - [x] 18-07-PLAN.md — DOCS-06 code side: schema/CLI/example-config/module docstrings (DOCS-06)
 - Wave 3:
-  - [ ] 18-08-PLAN.md — DOCS-02/DOCS-06 docs side: three-stage sweep, huber loss formula, phase gate (DOCS-02, DOCS-06)
+  - [x] 18-08-PLAN.md — DOCS-02/DOCS-06 docs side: three-stage sweep, huber loss formula, phase gate (DOCS-02, DOCS-06)
 
 ### Phase 19: Benchmark Instrumentation
 **Goal**: Every calibration run produces a trustworthy, machine-readable performance record
@@ -261,7 +261,7 @@ behavior the published artifacts actually reflect.
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
-| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 7/8 | In Progress|  |
+| 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete   | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
