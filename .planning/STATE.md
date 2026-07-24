@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: in-progress
-stopped_at: Phase 18 planned — 8 plans in 3 waves, plan-checker PASSED
-last_updated: "2026-07-24"
+status: executing
+stopped_at: Phase 18 context gathered (`--auto`) — `18-CONTEXT.md` + `18-DISCUSSION-LOG.md`
+last_updated: "2026-07-24T15:09:47.551Z"
+last_activity: 2026-07-24 -- Phase 18 execution started
 progress:
   total_phases: 7
   completed_phases: 2
@@ -20,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** v1.9 Publication Prep — Phases 16 and 17 COMPLETE (the experiment-blocker
+**Current focus:** Phase 18 — documentation-corrections-stage-model-reconciliation
 chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconciliation)
 
 ## Current Position
 
-Phase: 18 (Documentation Corrections & Stage-Model Reconciliation) — PLANNED, ready to
+Phase: 18 (documentation-corrections-stage-model-reconciliation) — EXECUTING
   execute. Phases 16 and 17 COMPLETE, verification PASSED.
-Plan: 0/8 plans complete for Phase 18 (18-01..18-08, 3 waves). Phase 17 5/5 complete
+Plan: 1 of 8
   (17-01..17-05); Phase 16 7/7 complete.
-Status: Ready to execute. Plan-checker returned VERIFICATION PASSED with 0 blockers.
+Status: Executing Phase 18
   Wave 1 = 18-01 (DOCS-01 numbers), 18-02 (human-verify checkpoint), 18-03 (DOCS-04
   config reference). Wave 2 = 18-04..18-07. Wave 3 = 18-08.
   **Plan 18-02 is a blocking `checkpoint:human-verify`** — it gates 18-05/06/07/08 on the
   user confirming the revised manuscript's stage/traversal vocabulary. 18-01, 18-03, and
   18-04 proceed regardless.
-Last activity: 2026-07-24 — Phase 18 planned (8 plans, commit `3296cd3`); research
+Last activity: 2026-07-24 -- Phase 18 execution started
   re-enabled in config and a quick research pass run.
   Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`);
   full suite 799 passed. See "Phase 17 Plan Progress" below.
