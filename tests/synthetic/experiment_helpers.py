@@ -44,12 +44,12 @@ def calibrate_synthetic(
     refine_intrinsics: bool = True,
 ) -> tuple[CalibrationResult, DetectionResult]:
     """
-    Run full calibration pipeline (Stages 2-4) on synthetic data.
+    Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
     Args:
         scenario: Synthetic scenario with ground truth
         n_water: Target refractive index for water (1.0 for non-refractive, 1.333 for refractive)
-        refine_intrinsics: If True, run Stage 4 with intrinsic refinement
+        refine_intrinsics: If True, run Stage 3's second pass, with intrinsics unlocked
 
     Returns:
         Tuple of (CalibrationResult, DetectionResult). The detections are needed
@@ -112,9 +112,9 @@ def calibrate_synthetic(
         min_corners=4,
     )
 
-    # Stage 4: Intrinsic refinement (if requested)
+    # Stage 3's second pass: intrinsic refinement (if requested)
     if refine_intrinsics:
-        print("Stage 4: Intrinsic refinement...")
+        print("Stage 3's second pass: Intrinsic refinement...")
         stage3_result = (opt_extrinsics, opt_distances, opt_poses, rms)
         opt_extrinsics, opt_distances, opt_poses, opt_intrinsics, rms = (
             joint_refinement(

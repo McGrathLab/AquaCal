@@ -343,7 +343,7 @@ def _plot_distortion_error(
         ax.text(
             0.5,
             0.95,
-            "Note: Distortion not refined in Stage 4 (all errors zero)",
+            "Note: Distortion not refined in Stage 3's second pass (all errors zero)",
             transform=ax.transAxes,
             ha="center",
             va="top",

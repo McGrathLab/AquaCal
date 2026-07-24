@@ -175,8 +175,8 @@ class OptimizerObserver:
         """Create an observer for one bundle-adjustment stage.
 
         Args:
-            stage: Human-readable stage name (e.g. "stage3", "stage3_rerun", "stage4"),
-                used only for logging/debugging context.
+            stage: Human-readable stage name (e.g. "stage3", "stage3_rerun",
+                "stage3_intrinsic_pass"), used only for logging/debugging context.
             water_z_index: Index of `water_z` within the packed parameter vector `x`.
                 If `None`, `water_z`/`tilt_rx`/`tilt_ry` are recorded as `nan`. Set via
                 `configure_layout` if not known at construction time.
