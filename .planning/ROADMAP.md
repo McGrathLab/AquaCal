@@ -160,12 +160,12 @@ out as a quick task.
 **Plans**: 8 plans in 3 waves
 - Wave 1 (parallel, not gated on the manuscript checkpoint):
   - [ ] 18-01-PLAN.md — DOCS-01: pin 673/675/727 + 13/13/17 + 43-52x with a live test, then correct optimizer.md's four numeric errors (DOCS-01)
-  - [ ] 18-02-PLAN.md — Blocking checkpoint: confirm the revised manuscript's stage and traversal vocabulary before any rename lands (DOCS-02, DOCS-06)
+  - [ ] 18-02-PLAN.md — Record the confirmed manuscript vocabulary contract; autonomous, no longer a blocking checkpoint (DOCS-02, DOCS-06)
   - [ ] 18-03-PLAN.md — DOCS-04: new docs/guide/configuration.md, guide-index registration, troubleshooting cross-links (DOCS-04)
 - Wave 2:
   - [ ] 18-04-PLAN.md — DOCS-03: heap-replaying pose_graph.py generator, figure rename, bipartite glossary definition (DOCS-03)
   - [ ] 18-05-PLAN.md — DOCS-02 code side: extrinsics.py terminology, scoring comments, first-discovery invariant (DOCS-02)
-  - [ ] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + Stage 3b collapse (DOCS-06)
+  - [ ] 18-06-PLAN.md — DOCS-06 code side: pipeline.py stage keys/tags/filenames + lockstep tests + auxiliary label loses its stage number (DOCS-06)
   - [ ] 18-07-PLAN.md — DOCS-06 code side: schema/CLI/example-config/module docstrings (DOCS-06)
 - Wave 3:
   - [ ] 18-08-PLAN.md — DOCS-02/DOCS-06 docs side: three-stage sweep, huber loss formula, phase gate (DOCS-02, DOCS-06)
@@ -176,7 +176,7 @@ that a sweep can aggregate without hand computation.
 **Depends on**: Phase 18 (stage-model rename must settle before benchmark.json keys are
 written — this constraint is preserved and still binding; settling the schema after the
 experiment grid runs would force a re-run)
-**Requirements**: BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05
+**Requirements**: BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05, BENCH-06
 **Success Criteria** (what must be TRUE):
   1. Solver diagnostics (`nfev`, `njev`, `cost`, `optimality`, `status`, termination message)
      are captured for Stage 3, the intrinsic pass, interface estimation, and point refinement.
@@ -189,6 +189,10 @@ experiment grid runs would force a re-run)
      and environment (hardware, OS, package versions, AquaCal version/git SHA).
   5. A `benchmarks/` runner sweeps the cameras x frames grid, collects each `benchmark.json`,
      and emits a tidy CSV plus a LaTeX table fragment without recomputing anything.
+  6. Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` explicitly rather than inheriting
+     SciPy's defaults, `max_nfev`'s effective value is recorded including the unset/auto case,
+     and a regression test asserts the change is bit-unchanged — so the tolerances the paper
+     supplement states are a property AquaCal sets, not one it happens to inherit.
 **Plans**: TBD
 
 ### Phase 20: Refractive Index Helper

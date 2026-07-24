@@ -300,7 +300,7 @@ _dump_stage_calibration(
 | `pipeline.py:1299,1306` | `_dump_stage_calibration("stage4", ...)` / `print("  Saved internals/calibration_stage4.json")` | **stage tag + filename — rename to `"stage3_intrinsic_pass"` / `calibration_stage3_intrinsic_pass.json`** |
 | `pipeline.py:1308` | `print("\n[Stage 4] Skipped (refine_intrinsics=False)")` | **console output** |
 | `pipeline.py:1321,1347` | `"stage4" if refine_intrinsics else (...)` (×2, conditioning + spread report stage selection) | **stage tag string, both occurrences** |
-| `pipeline.py:1373` | `stage_label = "Stage 4b" if config.refine_auxiliary_intrinsics else "Stage 3b"` | **ambiguous — see Open Question below** |
+| `pipeline.py:1373` | `stage_label = "Stage 4b" if config.refine_auxiliary_intrinsics else "Stage 3b"` | **RESOLVED by D-23 — see note below** |
 | `pipeline.py:1774` | `stage: Stage label used in the output filename, e.g. "stage3",\n            "stage3_rerun", "stage4".` (docstring of `_dump_stage_calibration`) | docstring |
 | `src/aquacal/calibration/_observability.py:178` | `stage: Human-readable stage name (e.g. "stage3", "stage3_rerun", "stage4"),` | docstring (`OptimizerObserver`) |
 | `src/aquacal/validation/conditioning.py:204` | `this report (e.g. "stage3", "stage4"), recorded in the JSON payload` | docstring (`save_conditioning_report`) |
@@ -311,7 +311,7 @@ _dump_stage_calibration(
 | `src/aquacal/cli.py:602-603` | `"  # refine_intrinsics: false  # Stage 4: refine focal lengths and principal points",`<br>`"  # refine_auxiliary_intrinsics: false  # Stage 4b: refine auxiliary camera intrinsics",` | generated-config comment strings (emitted by `aquacal init`) |
 | `src/aquacal/config/example_config.yaml:78,80` | `# refine_intrinsics: false  # Stage 4: also optimize focal lengths and principal points`<br>`# refine_auxiliary_intrinsics: false  # Stage 4b: also optimize auxiliary camera` | shipped example config comments |
 
-**Open question for the planner (not resolved by CONTEXT.md):** `"Stage 4b"` / `"Stage 3b"` (`pipeline.py:1373`, `refine_auxiliary_intrinsics` docstrings) refers to **auxiliary-camera** registration/intrinsics refinement — a different concept from the ex-Stage-4 *primary-camera* intrinsic pass that D-06 renames. CONTEXT.md's D-06/D-22 vocabulary (`stage3_intrinsic_pass`) is defined only for the primary pass. The `4b`/`3b` suffix pattern likely wants to become `3b`/`3c` or similar once "Stage 4" no longer exists as a numeral to suffix off of — but this is not spelled out in the decisions and should be confirmed against the manuscript alongside D-07, not silently inferred.
+**RESOLVED 2026-07-24 by D-23 (was an open question):** `"Stage 4b"` / `"Stage 3b"` (`pipeline.py:1373`, `refine_auxiliary_intrinsics` docstrings) refers to **auxiliary-camera** registration — a different concept from the ex-Stage-4 *primary-camera* intrinsic pass that D-06 renames to `stage3_intrinsic_pass`. This note previously speculated the suffix should become `3b`/`3c`. **That speculation is wrong — do not follow it.** The live manuscript (`main.tex:222-224`) excludes auxiliary cameras from Stages 2 and 3 and gives the step no stage number at all, describing it as a post-hoc registration with either a 6-DOF or a 10-DOF refinement. Per D-23 the label becomes **"Auxiliary camera registration"** with no numeral, and the existing stage-agnostic timing key `auxiliary_registration` is retained. See plan 18-06 (pipeline console) and 18-07 (schema/config comments).
 
 **Test files that consume these strings and must move in lockstep (D-03: no compat shim, so tests break otherwise):**
 
@@ -376,7 +376,7 @@ This down-weights large residuals (e.g., detection errors, board motion blur) wh
 ```
 Replace with Huber ρ and `loss_scale` (1.0 px) as the transition point — code ground truth: `config/schema.py:314` (`robust_loss: str = "huber"`) and `interface_estimation.py:134` (per CONTEXT, not yet read but cited as second confirmation site).
 
-**Stage 4 section to fold into Stage 3 (`:151-171`)** — heading `## Stage 4: Intrinsic Refinement (Optional)` and its body become a subsection of Stage 3 (D-04/D-05 wording: "Stage 3's optional intrinsic pass").
+**Stage 4 section to fold into Stage 3 (`:151-171`)** — heading `## Stage 4: Intrinsic Refinement (Optional)` and its body become a subsection of Stage 3 (D-04/D-05 revised wording: "Stage 3's second pass, with intrinsics unlocked").
 
 **Sparse Jacobian numbers, current (wrong) text (`:185-206`, D-22 targets)**:
 ```markdown
@@ -421,7 +421,7 @@ Full file already read (28 lines). Target line (`:9`):
 
 ### 9. `docs/guide/troubleshooting.md` — "Stage 3/4" phrasings + v1.7-v1.8 feature cross-links
 
-Full file already read (309 lines). All "Stage 3/4" or "Stage 3 or 4" occurrences found at: `:7` ("Stage 3/4 optimization converges..."), `:61` ("Stage 1 is good but Stage 3/4 are slow"), `:64` (`max_calibration_frames: 150  # Use subset for faster Stage 3/4`), `:72` ("Stage 3 or 4 fails to converge"), `:106` ("Stage 3/4 reprojection RMS is low"), `:117` ("Stage 3/4 RMS is low"), `:154` (not a stage mention — frame rejection description, skip), `:172` ("Stage 3/4 validation errors are high"), `:202` ("Validation RMS >> training RMS in Stage 3/4"), `:263` ("Limit the number of frames used in Stage 3/4"), `:271` ("**Stage 3/4** can be limited to a random subset"). Given D-04 (intrinsic refinement is a *mode* of Stage 3, not a numbered stage), these collapse to "Stage 3" throughout (dropping "/4"), since the optional intrinsic pass is still Stage 3.
+Full file already read (309 lines). All "Stage 3/4" or "Stage 3 or 4" occurrences found at: `:7` ("Stage 3/4 optimization converges..."), `:61` ("Stage 1 is good but Stage 3/4 are slow"), `:64` (`max_calibration_frames: 150  # Use subset for faster Stage 3/4`), `:72` ("Stage 3 or 4 fails to converge"), `:106` ("Stage 3/4 reprojection RMS is low"), `:117` ("Stage 3/4 RMS is low"), `:154` (not a stage mention — frame rejection description, skip), `:172` ("Stage 3/4 validation errors are high"), `:202` ("Validation RMS >> training RMS in Stage 3/4"), `:263` ("Limit the number of frames used in Stage 3/4"), `:271` ("**Stage 3/4** can be limited to a random subset"). Given D-04 (intrinsic refinement is a *mode* of Stage 3, not a numbered stage), these collapse to "Stage 3" throughout (dropping "/4"), since the optional second pass is still Stage 3.
 
 **D-15 (feature home migration)** — the `reject_outlier_frames`/`start_frame`/`stop_frame` material (headed `## Contaminated Frames (Board Near the Surface, Ripples)`, `:136-165`) **stays in place** but should gain a forward link to the new `configuration.md` reference page — follow the existing cross-link idiom used in this same file's `## See Also` footer (`:305-309`) and inline `{ref}` pattern (`:124`, `:132`):
 ```markdown

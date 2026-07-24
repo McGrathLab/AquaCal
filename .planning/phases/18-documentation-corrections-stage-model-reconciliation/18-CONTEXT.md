@@ -293,8 +293,9 @@ phase's research pass.
   `group_columns` directly — but *before* quick task 3 (see D-21).
 - `C:\Users\tucke\Desktop\aquacal-post-review-milestone.md` §Task Group E (lines ~260–310)
   — E2 (BFS→best-first sites), E3 (pose-graph figure), E4 (v1.7–v1.8 feature homes),
-  E6 (loss default + three-stage reconciliation). Line 52 is the source of the
-  "optional intrinsic pass" wording locked in D-05.
+  E6 (loss default + three-stage reconciliation). Line 52 was the source of the original
+  "optional intrinsic pass" wording — **superseded by revised D-05**, which follows
+  `main.tex:215,218` ("Stage 3 runs a second time" / "the second pass") instead.
 
 ### Phase and milestone planning
 - `.planning/REQUIREMENTS.md` §Documentation Reconciliation (lines 70–78) — DOCS-01..07
