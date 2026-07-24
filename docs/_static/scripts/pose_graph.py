@@ -242,7 +242,14 @@ def generate(output_dir: Path) -> None:
     reference_camera = pose_graph.camera_names[0]
 
     discovery_edges = _replay_traversal(pose_graph, reference_camera)
-    discovery_set = {frozenset((_display(a), _display(b))) for a, b in discovery_edges}
+    # Keep the ordered (from_node, to_node) pair alongside the unordered lookup key —
+    # the frozenset is needed for membership testing against `all_edges` (which is
+    # always stored as (cam, frame)), but only the ordered tuple preserves which
+    # endpoint the traversal actually discovered *from*.
+    discovery_direction = {
+        frozenset((_display(a), _display(b))): (_display(a), _display(b))
+        for a, b in discovery_edges
+    }
     badge_lookup = {
         frozenset((_display(a), _display(b))): str(i + 1)
         for i, (a, b) in enumerate(discovery_edges)
@@ -278,12 +285,17 @@ def generate(output_dir: Path) -> None:
 
     for cam, frame in all_edges:
         key = frozenset((cam, frame))
-        directed = key in discovery_set
+        directed = key in discovery_direction
+        if directed:
+            src, dst = discovery_direction[key]
+            src_pos, dst_pos = node_pos[src], node_pos[dst]
+        else:
+            src_pos, dst_pos = node_pos[cam], node_pos[frame]
         badge = badge_lookup.get(key) if directed else None
         _draw_edge(
             ax,
-            node_pos[cam],
-            node_pos[frame],
+            src_pos,
+            dst_pos,
             directed=directed,
             badge=badge,
             node_size=node_size,
