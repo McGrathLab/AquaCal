@@ -67,7 +67,8 @@ must settle the stage-key schema before benchmark.json locks it in.
  (completed 2026-07-23)
 - [x] **Phase 17: Per-Camera Interface Ablation Mode** - A per-camera `water_z` ablation is available and trustworthy without disturbing the default shared-interface behavior
  (completed 2026-07-23)
-- [x] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema (completed 2026-07-24)
+- [x] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
+ (completed 2026-07-24)
 - [ ] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
 - [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
@@ -193,7 +194,17 @@ experiment grid runs would force a re-run)
      SciPy's defaults, `max_nfev`'s effective value is recorded including the unset/auto case,
      and a regression test asserts the change is bit-unchanged — so the tolerances the paper
      supplement states are a property AquaCal sets, not one it happens to inherit.
-**Plans**: TBD
+**Plans**: 6 plans in 4 waves
+- Wave 1 (parallel):
+  - [ ] 19-01-PLAN.md — SolverDiagnostics dataclass + capture_solver_diagnostics() contract (BENCH-01)
+  - [ ] 19-04-PLAN.md — capture_environment() + capture_peak_memory() + [bench] extra (BENCH-02)
+- Wave 2 (parallel, depends on 19-01):
+  - [ ] 19-02-PLAN.md — optimize_interface + register_auxiliary_camera: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
+  - [ ] 19-03-PLAN.md — joint_refinement + refine_calibration: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
+- Wave 3 (depends on 19-02, 19-03, 19-04):
+  - [ ] 19-05-PLAN.md — Pipeline integration: config flags, diagnostics wiring, benchmark.json assembly and write (BENCH-03, BENCH-04)
+- Wave 4 (depends on 19-05):
+  - [ ] 19-06-PLAN.md — benchmarks/ runner: CSV + LaTeX aggregator with schema_version refusal, sweep_runner skeleton (BENCH-05)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
@@ -262,7 +273,7 @@ behavior the published artifacts actually reflect.
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
-| 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
+| 19. Benchmark Instrumentation | v1.9 | 0/6 | Planned | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
