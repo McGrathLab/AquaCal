@@ -1,9 +1,9 @@
 ---
 phase: 18
 slug: documentation-corrections-stage-model-reconciliation
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-24
 ---
 
@@ -51,7 +51,7 @@ Task IDs are filled in after planning completes. Requirement-level coverage is f
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | DOCS-01 | — | N/A (docs-only, no attack surface) | unit | `pytest tests/unit/test_optim_common.py -v -k grouping_numbers` | ❌ W0 | ⬜ pending |
+| TBD | TBD | TBD | DOCS-01 | — | N/A (docs-only, no attack surface) | unit | `pytest tests/unit/test_optim_common.py -v -k grouping_numbers` | ✅ existing (new class added, not a new file) | ⬜ pending |
 | TBD | TBD | TBD | DOCS-02 | — | N/A | grep guard | `grep -rn "BFS\|breadth.first" src/ docs/ README.md \| grep -v "_find_connected_components"` (expect only the two legitimate `extrinsics.py` sites) | N/A shell | ⬜ pending |
 | TBD | TBD | TBD | DOCS-03 | — | N/A | smoke | `python docs/guide/_diagrams/generate_all.py && test -f docs/_static/diagrams/pose_graph.png && test ! -f docs/_static/diagrams/bfs_pose_graph.png` | ❌ W0 | ⬜ pending |
 | TBD | TBD | TBD | DOCS-04 | — | N/A | build check | `sphinx-build -W --keep-going -b html docs docs/_build/html` (new `configuration.md` must be in the toctree or `-W` fails) | ✅ existing | ⬜ pending |
@@ -65,7 +65,12 @@ Task IDs are filled in after planning completes. Requirement-level coverage is f
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/test_optim_common.py` — new file covering DOCS-01. Asserts, against the
+- [ ] `tests/unit/test_optim_common.py` — **CORRECTION (2026-07-24): this file already
+      exists** (738 lines, already carrying 13/17 group-count assertions at 4x5 scale).
+      Research and the table above wrongly listed it as a Wave 0 gap. Plan 18-01 Task 1
+      therefore *adds a test class* to the existing file rather than creating it, and the
+      13-camera / 100-frame numbers run in ~1.2 s with no `slow` marker needed. Asserts,
+      against the
       **shipped** `build_jacobian_sparsity` + `build_structural_column_groups` path (not
       `scipy.optimize._numdiff.group_columns`), for a 13-camera / 100-frame configuration:
       P = 673 (base) / 675 (tilt) / 727 (tilt + intrinsics); group count = 13 / 13 / 17;
@@ -94,11 +99,12 @@ Task IDs are filled in after planning completes. Requirement-level coverage is f
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (`tests/unit/test_optim_common.py`)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90 s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or are checkpoints
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references — none remain; `tests/unit/test_optim_common.py`
+      already exists and plan 18-01 adds a class to it
+- [x] No watch-mode flags
+- [x] Feedback latency < 90 s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-24 (gsd-plan-checker: VERIFICATION PASSED, 0 blockers)

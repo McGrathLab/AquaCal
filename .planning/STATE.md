@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: in-progress
-stopped_at: Phase 18 context gathered
+stopped_at: Phase 18 planned — 8 plans in 3 waves, plan-checker PASSED
 last_updated: "2026-07-24"
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 12
+  total_plans: 20
   completed_plans: 12
   percent: 29
 ---
@@ -25,12 +25,18 @@ chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconc
 
 ## Current Position
 
-Phase: 18 (Documentation Corrections & Stage-Model Reconciliation) — context gathered,
-  ready for planning. Phases 16 and 17 COMPLETE, verification PASSED.
-Plan: 0 plans for Phase 18. Phase 17 5/5 complete (17-01..17-05); Phase 16 7/7 complete.
-Status: The experiment-blocking chain (16 → 17) is finished, so WP5/WP6 experiment
-  execution is no longer gated on library work. Next: `/gsd-plan-phase 18`.
-Last activity: 2026-07-24 — Phase 18 context gathered via `--auto` (commit `102acad`).
+Phase: 18 (Documentation Corrections & Stage-Model Reconciliation) — PLANNED, ready to
+  execute. Phases 16 and 17 COMPLETE, verification PASSED.
+Plan: 0/8 plans complete for Phase 18 (18-01..18-08, 3 waves). Phase 17 5/5 complete
+  (17-01..17-05); Phase 16 7/7 complete.
+Status: Ready to execute. Plan-checker returned VERIFICATION PASSED with 0 blockers.
+  Wave 1 = 18-01 (DOCS-01 numbers), 18-02 (human-verify checkpoint), 18-03 (DOCS-04
+  config reference). Wave 2 = 18-04..18-07. Wave 3 = 18-08.
+  **Plan 18-02 is a blocking `checkpoint:human-verify`** — it gates 18-05/06/07/08 on the
+  user confirming the revised manuscript's stage/traversal vocabulary. 18-01, 18-03, and
+  18-04 proceed regardless.
+Last activity: 2026-07-24 — Phase 18 planned (8 plans, commit `3296cd3`); research
+  re-enabled in config and a quick research pass run.
   Before that, 2026-07-23: Phase 17 executed and verified (roadmap commit `b2aea44`);
   full suite 799 passed. See "Phase 17 Plan Progress" below.
 Unreleased on main: everything from Phases 16-17 plus quick task 3's `perf:` commit.
