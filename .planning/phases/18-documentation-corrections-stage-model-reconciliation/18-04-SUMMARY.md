@@ -46,10 +46,10 @@ completed: null
 
 # Phase 18 Plan 04: Pose Graph Regeneration (Tasks 1-2 of 3) Summary
 
-**PARTIAL — CHECKPOINT PENDING.** Tasks 1 and 2 are complete and committed; Task 3 is a
-blocking `checkpoint:human-verify` that requires a human to visually inspect the regenerated
-figure. This summary will be completed/replaced by a continuation agent after the human
-responds.
+**PARTIAL — CHECKPOINT PENDING (round 2).** Tasks 1 and 2 are complete and committed. Task 3
+is a blocking `checkpoint:human-verify`; round 1 found a backwards-arrow bug (fixed in
+`0be6b78`), and the corrected figure now awaits a second human review. This summary will be
+completed/replaced by a continuation agent once approved.
 
 **New `pose_graph.py` generator classifies discovery vs. redundant edges by replaying
 `estimate_extrinsics`'s real priority-heap loop against a live `build_pose_graph` call — no
@@ -91,8 +91,10 @@ nodes, 6 numbered directed discovery edges, and 1 undirected redundant edge.**
    `f93e0e8` (docs)
 2. **Task 2: Regenerate the figure, delete the old PNG, and update its references** -
    `9ae1f55` (docs)
+3. **Checkpoint round 1 fix: correct discovery-edge arrow direction** - `0be6b78` (docs)
+   — see "Checkpoint Round 1" below.
 
-_Task 3 (checkpoint:human-verify) not yet executed — pending human response._
+_Task 3 (checkpoint:human-verify) not yet approved — awaiting a second human response._
 
 ## Files Created/Modified
 
@@ -161,19 +163,51 @@ before commit). No scope creep.
 
 ## Issues Encountered
 
-None beyond the two auto-fixed items above.
+None beyond the two auto-fixed items above and the Checkpoint Round 1 finding below.
+
+## Checkpoint Round 1 (FAILED, then fixed)
+
+The human reviewed the first-round figure and reported **condition 2 fails**: three
+discovery edges (F2→cam1, F3→cam2, F3→cam3) rendered backwards — every arrowhead pointed
+rightward camera→frame regardless of which endpoint the traversal actually discovered from.
+
+**Root cause:** `generate()` built `discovery_set` as a `frozenset` of each discovery pair
+for membership testing, which is unordered — it preserved *that* an edge was a discovery
+edge but not *which direction* it was discovered in. The draw loop then always called
+`_draw_edge(ax, node_pos[cam], node_pos[frame], ...)`, i.e. always camera→frame, for every
+edge in `all_edges` (which is always stored as `(cam, frame)` regardless of discovery
+direction).
+
+**Fix (commit `0be6b78`):** Added `discovery_direction`, a lookup from the same frozenset
+key to the ordered `(from_node, to_node)` tuple `_replay_traversal` already produced
+correctly. The draw loop now looks up `discovery_direction[key]` for directed edges and
+draws `src_pos -> dst_pos` from that ordered pair, falling back to `(cam, frame)` only for
+undirected redundant edges (which have no arrowhead and so no direction to get wrong).
+
+**Verification after the fix:**
+- Regenerated via `python docs/guide/_diagrams/generate_all.py`; visually re-inspected
+  (Read tool + pixel crops) and confirmed all three previously-backwards edges now point
+  F2→cam1, F3→cam2, F3→cam3, while cam0→F1, cam0→F2, cam1→F3 are unchanged and still
+  correct.
+- The redundant cam2–F1 edge remains grey/undirected with no arrowhead.
+- Legend, title ("Stage 2: Pose Graph"), and absence of "BFS" text are unaffected by this
+  fix (confirmed by re-running the same grep guards).
+- `ruff check docs/_static/scripts/pose_graph.py` passes.
+- `sphinx-build -W --keep-going -b html docs docs/_build/html` exits 0.
+- `python -m pytest tests/ -m "not slow"` — 775 passed, 31 deselected (unchanged).
+
+**Cosmetic note flagged for the human (not a failing condition):** the figure carries a red
+inline annotation "reference (R=I, t=0)" pointing at cam0, with no corresponding legend
+entry. Condition 4 only forbids orphan legend *entries* (a legend key with nothing drawn),
+not annotations without a legend key, so this does not fail the check. The executor's own
+view: this is acceptable as a self-labelled annotation — it names itself inline ("reference")
+rather than relying on a legend lookup, matching the style of the retired
+`bfs_pose_graph.py`'s equivalent annotation, and adding a fifth legend entry for one
+non-recurring annotation would arguably clutter the legend more than it clarifies.
 
 ## Next Steps
 
-**BLOCKED on Task 3** — a human must visually inspect
-`docs/_static/diagrams/pose_graph.png` and confirm the five conditions in the plan's
-`<how-to-verify>` (4 camera nodes / 3 frame nodes in two columns; exactly 6 directed
-discovery edges with correct direction; exactly 1 undirected redundant edge with no
-arrowhead; no orphan legend keys; title reads "Stage 2: Pose Graph" with no "BFS" text
-anywhere in the image). The generated figure and the manual heap-replay trace above both
-indicate these conditions hold, but per the plan's explicit instruction this is a human-only
-check that the executor must not self-approve.
-
-A continuation agent will resume at Task 3 once the human responds, and will replace this
-partial summary with the final one (updating `requirements-completed: [DOCS-03]`, `duration`,
-and `completed`).
+**BLOCKED on Task 3, round 2** — the human has not yet approved this revised figure. A
+continuation agent should present the corrected `docs/_static/diagrams/pose_graph.png`
+(commit `0be6b78`) for a second review and, once approved, replace this partial summary with
+the final one (updating `requirements-completed: [DOCS-03]`, `duration`, and `completed`).
