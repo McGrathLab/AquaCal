@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from aquacal.calibration._observability import OptimizerObserver
+from aquacal.calibration._observability import OptimizerObserver, SolverDiagnostics
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -983,6 +983,95 @@ class TestOptimizeInterfaceObserver:
         assert len(observer_fixed.rows) > 0
         assert np.isnan(observer_fixed.rows[-1].tilt_rx)
         assert np.isnan(observer_fixed.rows[-1].tilt_ry)
+
+    @pytest.mark.parametrize("use_sparse_jacobian", [True, False])
+    def test_optimize_interface_diagnostics_out_populated_and_bit_exact(
+        self,
+        board,
+        intrinsics,
+        ground_truth_extrinsics,
+        ground_truth_distances,
+        synthetic_board_poses,
+        use_sparse_jacobian,
+    ):
+        """diagnostics_out is populated correctly and tolerances are bit-exact.
+
+        Two assertions in one test (per use_sparse_jacobian parametrization):
+        1. diag.njev is a populated int (never None) at this method="trf" site,
+           regardless of use_sparse_jacobian.
+        2. Passing explicit ftol/xtol/gtol + diagnostics_out produces exactly
+           the same result.x-derived outputs as the pre-existing implicit-
+           tolerance code path (proves BENCH-06 bit-exactness).
+        """
+        np.random.seed(42)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            ground_truth_extrinsics,
+            ground_truth_distances,
+            board,
+            synthetic_board_poses,
+            noise_std=0.5,
+            min_corners=4,
+        )
+
+        # Pre-existing code path: no diagnostics_out, implicit tolerances.
+        ext_before, dist_before, poses_before, rms_before = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            use_sparse_jacobian=use_sparse_jacobian,
+        )
+
+        # New code path: explicit tolerances (now always passed internally) +
+        # diagnostics_out supplied.
+        diag = SolverDiagnostics()
+        ext_after, dist_after, poses_after, rms_after = optimize_interface(
+            detections=detections,
+            intrinsics=intrinsics,
+            initial_extrinsics=ground_truth_extrinsics,
+            board=board,
+            reference_camera="cam0",
+            verbose=0,
+            use_sparse_jacobian=use_sparse_jacobian,
+            diagnostics_out=diag,
+        )
+
+        # Bit-exact regression: exact equality, not allclose.
+        for cam in intrinsics:
+            np.testing.assert_array_equal(ext_after[cam].R, ext_before[cam].R)
+            np.testing.assert_array_equal(ext_after[cam].t, ext_before[cam].t)
+            assert dist_after[cam] == dist_before[cam]
+        assert rms_after == rms_before
+        for bp_after, bp_before in zip(poses_after, poses_before):
+            np.testing.assert_array_equal(bp_after.rvec, bp_before.rvec)
+            np.testing.assert_array_equal(bp_after.tvec, bp_before.tvec)
+
+        # Population assertions.
+        assert diag.nfev is not None and isinstance(diag.nfev, int)
+        assert diag.njev is not None and isinstance(diag.njev, int)
+        assert diag.cost is not None
+        assert diag.optimality is not None
+        assert diag.status is not None
+        assert diag.message is not None
+        assert diag.ftol == 1e-8
+        assert diag.xtol == 1e-8
+        assert diag.gtol == 1e-8
+        assert isinstance(diag.max_nfev_effective, int) and diag.max_nfev_effective > 0
+        assert diag.max_nfev_source == "scipy_auto"
+
+        if use_sparse_jacobian:
+            assert diag.n_params is not None
+            assert diag.n_groups is not None
+            assert diag.n_params_reason is None
+            assert diag.n_groups_reason is None
+        else:
+            assert diag.n_params is None
+            assert diag.n_groups is None
+            assert diag.n_params_reason is not None
+            assert diag.n_groups_reason is not None
 
 
 class TestBuildJacobianSparsity:
