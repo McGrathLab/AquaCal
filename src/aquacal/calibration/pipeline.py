@@ -620,25 +620,26 @@ def _time_stage(timings: dict[str, float], key: str) -> Iterator[None]:
 
 
 def _select_conditioning_report(
-    stage4_obs: OptimizerObserver | None,
+    stage3_intrinsic_pass_obs: OptimizerObserver | None,
     rerun_obs: OptimizerObserver | None,
     stage3_obs: OptimizerObserver | None,
     refine_intrinsics: bool,
 ):
     """Pick the conditioning report from whichever stage produced the final result.
 
-    Exactly one report is selected per run: Stage 4's when intrinsics are
-    refined (Stage 4 is the final reported result), else the Stage-3
-    outlier-rejection re-run's if it fired, else the initial Stage-3 solve's.
+    Exactly one report is selected per run: Stage 3's second pass (intrinsics
+    unlocked) when it ran (that pass is the final reported result), else the
+    Stage-3 outlier-rejection re-run's if it fired, else the initial Stage-3
+    solve's.
 
     Args:
-        stage4_obs: Observer for Stage 4, or `None` if Stage 4 was skipped or
-            not observed.
+        stage3_intrinsic_pass_obs: Observer for Stage 3's second pass, or
+            `None` if that pass was skipped or not observed.
         rerun_obs: Observer for the Stage-3 outlier-rejection re-run, or `None`
             if the re-run did not fire or was not observed.
         stage3_obs: Observer for the initial Stage-3 solve, or `None` if not
             observed.
-        refine_intrinsics: Whether Stage 4 ran.
+        refine_intrinsics: Whether Stage 3's second pass ran.
 
     Returns:
         The winning observer's `ConditioningReport`, or `None` if the winning
@@ -646,7 +647,7 @@ def _select_conditioning_report(
         off for that observer).
     """
     if refine_intrinsics:
-        obs = stage4_obs
+        obs = stage3_intrinsic_pass_obs
     elif rerun_obs is not None:
         obs = rerun_obs
     else:
@@ -726,7 +727,8 @@ def _build_interface_spread_report(
     Args:
         distances: Final per-camera water_z values (meters), one per optimized
             camera.
-        stage: Producing-stage tag ("stage3", "stage3_rerun", or "stage4"),
+        stage: Producing-stage tag ("stage3", "stage3_rerun", or
+            "stage3_intrinsic_pass"),
             matching the conditioning-report stage tag.
 
     Returns:
@@ -1234,13 +1236,15 @@ def run_calibration_from_config(
 
     # --- Stage 4: Optional Joint Refinement ---
     refine_intrinsics = config.refine_intrinsics
-    stage4_observer = None
+    stage3_intrinsic_pass_observer = None
 
     if refine_intrinsics:
         print("\n[Stage 4] Joint refinement with intrinsics...")
         stage3_result = (stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms)
-        stage4_observer = (
-            OptimizerObserver(stage="stage4", conditioning=config.save_conditioning)
+        stage3_intrinsic_pass_observer = (
+            OptimizerObserver(
+                stage="stage3_intrinsic_pass", conditioning=config.save_conditioning
+            )
             if observe
             else None
         )
@@ -1265,18 +1269,22 @@ def run_calibration_from_config(
             loss_scale=config.loss_scale,
             verbose=2 if verbose else 1,
             normal_fixed=config.interface_normal_fixed,
-            observer=stage4_observer,
+            observer=stage3_intrinsic_pass_observer,
             shared_interface=config.shared_interface,
         )
         elapsed = time.perf_counter() - t0
-        timings["stage4_joint_refinement"] = elapsed
+        timings["stage3_intrinsic_pass"] = elapsed
         print(f"  Stage 4 RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
 
-        if stage4_observer is not None and config.save_optimization_trace:
-            stage4_observer.write_trace_csv(
-                ensure_internals_dir(config.output_dir) / "trace_stage4.csv"
+        if (
+            stage3_intrinsic_pass_observer is not None
+            and config.save_optimization_trace
+        ):
+            stage3_intrinsic_pass_observer.write_trace_csv(
+                ensure_internals_dir(config.output_dir)
+                / "trace_stage3_intrinsic_pass.csv"
             )
-            print("  Saved internals/trace_stage4.csv")
+            print("  Saved internals/trace_stage3_intrinsic_pass.csv")
 
         # Water surface and camera heights after refinement
         water_z_final = list(final_distances.values())[0]
@@ -1296,14 +1304,14 @@ def run_calibration_from_config(
 
         if config.save_stage_calibrations:
             _dump_stage_calibration(
-                "stage4",
+                "stage3_intrinsic_pass",
                 config,
                 final_intrinsics,
                 final_extrinsics,
                 final_distances,
                 interface_normal,
             )
-            print("  Saved internals/calibration_stage4.json")
+            print("  Saved internals/calibration_stage3_intrinsic_pass.json")
     else:
         print("\n[Stage 4] Skipped (refine_intrinsics=False)")
         final_extrinsics = stage3_extrinsics
@@ -1318,12 +1326,15 @@ def run_calibration_from_config(
     # fail the run loudly rather than be silently swallowed.
     if config.save_conditioning:
         conditioning_stage = (
-            "stage4"
+            "stage3_intrinsic_pass"
             if refine_intrinsics
             else ("stage3_rerun" if stage3_rerun_observer is not None else "stage3")
         )
         conditioning_report = _select_conditioning_report(
-            stage4_observer, stage3_rerun_observer, stage3_observer, refine_intrinsics
+            stage3_intrinsic_pass_observer,
+            stage3_rerun_observer,
+            stage3_observer,
+            refine_intrinsics,
         )
         if conditioning_report is not None:
             internals_dir = ensure_internals_dir(config.output_dir)
@@ -1344,7 +1355,7 @@ def run_calibration_from_config(
     # the JSON file is meters (machine-readable). Shared mode writes nothing.
     if not config.shared_interface:
         spread_stage = (
-            "stage4"
+            "stage3_intrinsic_pass"
             if refine_intrinsics
             else ("stage3_rerun" if stage3_rerun_observer is not None else "stage3")
         )
@@ -1771,7 +1782,7 @@ def _dump_stage_calibration(
 
     Args:
         stage: Stage label used in the output filename, e.g. "stage3",
-            "stage3_rerun", "stage4".
+            "stage3_rerun", "stage3_intrinsic_pass".
         config: Calibration configuration (used for output_dir, board, n_air,
             n_water, and config_hash).
         intrinsics: Per-camera intrinsic parameters at this stage.
