@@ -196,11 +196,11 @@ experiment grid runs would force a re-run)
      supplement states are a property AquaCal sets, not one it happens to inherit.
 **Plans**: 6 plans in 4 waves
 - Wave 1 (parallel):
-  - [ ] 19-01-PLAN.md — SolverDiagnostics dataclass + capture_solver_diagnostics() contract (BENCH-01)
-  - [ ] 19-04-PLAN.md — capture_environment() + capture_peak_memory() + [bench] extra (BENCH-02)
+  - [x] 19-01-PLAN.md — SolverDiagnostics dataclass + capture_solver_diagnostics() contract (BENCH-01)
+  - [x] 19-04-PLAN.md — capture_environment() + capture_peak_memory() + [bench] extra (BENCH-02)
 - Wave 2 (parallel, depends on 19-01):
-  - [ ] 19-02-PLAN.md — optimize_interface + register_auxiliary_camera: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
-  - [ ] 19-03-PLAN.md — joint_refinement + refine_calibration: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
+  - [x] 19-02-PLAN.md — optimize_interface + register_auxiliary_camera: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
+  - [x] 19-03-PLAN.md — joint_refinement + refine_calibration: explicit tolerances + diagnostics capture (BENCH-01, BENCH-03, BENCH-06)
 - Wave 3 (depends on 19-02, 19-03, 19-04):
   - [ ] 19-05-PLAN.md — Pipeline integration: config flags, diagnostics wiring, benchmark.json assembly and write (BENCH-03, BENCH-04)
 - Wave 4 (depends on 19-05):
@@ -273,7 +273,7 @@ behavior the published artifacts actually reflect.
 | 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
-| 19. Benchmark Instrumentation | v1.9 | 0/6 | Planned | - |
+| 19. Benchmark Instrumentation | v1.9 | 4/6 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
