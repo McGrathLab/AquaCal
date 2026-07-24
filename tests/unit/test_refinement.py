@@ -1,4 +1,4 @@
-"""Unit tests for Stage 4 joint refinement."""
+"""Unit tests for joint refinement (Stage 3's second pass, with intrinsics unlocked)."""
 
 import sys
 
@@ -609,7 +609,7 @@ class TestJointRefinementObserver:
             )
         )
 
-        observer = OptimizerObserver(stage="stage4")
+        observer = OptimizerObserver(stage="stage3_intrinsic_pass")
         ext_obs, dist_obs, poses_obs, intr_obs, rms_obs = joint_refinement(
             stage3_result=stage3_result,
             detections=detections,
@@ -651,7 +651,7 @@ class TestJointRefinementObserver:
             min_corners=4,
         )
 
-        observer = OptimizerObserver(stage="stage4")
+        observer = OptimizerObserver(stage="stage3_intrinsic_pass")
         _, dist_opt, _, _, _ = joint_refinement(
             stage3_result=stage3_result,
             detections=detections,

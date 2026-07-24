@@ -913,8 +913,8 @@ class TestDumpStageCalibration:
             scenario.water_zs,
             interface_normal,
         )
-        stage4_path = _dump_stage_calibration(
-            "stage4",
+        stage3_intrinsic_pass_path = _dump_stage_calibration(
+            "stage3_intrinsic_pass",
             dump_config,
             scenario.intrinsics,
             scenario.extrinsics,
@@ -923,7 +923,9 @@ class TestDumpStageCalibration:
         )
 
         assert rerun_path.name == "calibration_stage3_rerun.json"
-        assert stage4_path.name == "calibration_stage4.json"
+        assert (
+            stage3_intrinsic_pass_path.name == "calibration_stage3_intrinsic_pass.json"
+        )
 
 
 class TestStage3ObserverWiring:
@@ -980,7 +982,7 @@ class TestStage3ObserverWiring:
         source = Path("src/aquacal/calibration/pipeline.py").read_text()
         assert "trace_stage3.csv" in source
         assert "trace_stage3_rerun.csv" in source
-        assert "trace_stage4.csv" in source
+        assert "trace_stage3_intrinsic_pass.csv" in source
 
 
 class TestConditioningWiring:
@@ -1008,16 +1010,23 @@ class TestConditioningWiring:
 
         stage3_obs = _observer_with_report("stage3", "stage3_report")
         rerun_obs = _observer_with_report("stage3_rerun", "rerun_report")
-        stage4_obs = _observer_with_report("stage4", "stage4_report")
+        stage3_intrinsic_pass_obs = _observer_with_report(
+            "stage3_intrinsic_pass", "stage3_intrinsic_pass_report"
+        )
 
-        # refine_intrinsics=True: Stage 4 always wins, regardless of re-run.
+        # refine_intrinsics=True: Stage 3's second pass always wins, regardless
+        # of re-run.
         assert (
-            _select_conditioning_report(stage4_obs, rerun_obs, stage3_obs, True)
-            == "stage4_report"
+            _select_conditioning_report(
+                stage3_intrinsic_pass_obs, rerun_obs, stage3_obs, True
+            )
+            == "stage3_intrinsic_pass_report"
         )
         assert (
-            _select_conditioning_report(stage4_obs, None, stage3_obs, True)
-            == "stage4_report"
+            _select_conditioning_report(
+                stage3_intrinsic_pass_obs, None, stage3_obs, True
+            )
+            == "stage3_intrinsic_pass_report"
         )
 
         # refine_intrinsics=False, re-run fired: re-run wins.
@@ -2052,5 +2061,7 @@ class TestBuildInterfaceSpreadReport:
         assert stats["range"] == pytest.approx(np.ptp(values))
 
     def test_report_json_round_trips(self):
-        report = _build_interface_spread_report({"cam0": 0.12, "cam1": 0.18}, "stage4")
+        report = _build_interface_spread_report(
+            {"cam0": 0.12, "cam1": 0.18}, "stage3_intrinsic_pass"
+        )
         assert json.loads(json.dumps(report)) == report
