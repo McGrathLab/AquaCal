@@ -57,22 +57,49 @@ written for features that have no proper home today.
 - **D-04: Three stages — (1) in-air intrinsics, (2) extrinsic initialization,
   (3) joint refractive bundle adjustment.** Intrinsic refinement is a **mode/pass of
   Stage 3**, not a fourth stage.
-- **D-05: The ex-Stage-4 is called "Stage 3's optional intrinsic pass"** in prose and
-  console output. This is the worklist's own wording
-  (`aquacal-post-review-milestone.md:52` — "Stage 3, the optional intrinsic pass"), so it
-  is already the vocabulary the paper-side work uses.
+- **D-05 (REVISED 2026-07-24): The ex-Stage-4 is described as "Stage 3's second pass, with
+  intrinsics unlocked"** in prose and console output. Superseding the earlier inferred
+  "optional intrinsic pass" wording: the live manuscript's own words are
+  "**Stage~3 runs a second time**, warm-started with each camera's focal length and
+  principal point unlocked" and "**The second pass is optional**"
+  (`main.tex:215,218`). Match the paper's framing — a *second run of Stage 3*, not a
+  differently-named stage.
 - **D-06: Machine key form is `stage3_intrinsic_pass`.** Concretely:
   `timings["stage4_joint_refinement"]` → `timings["stage3_intrinsic_pass"]`;
   `internals/calibration_stage4.json` → `internals/calibration_stage3_intrinsic_pass.json`;
   `internals/trace_stage4.csv` → `internals/trace_stage3_intrinsic_pass.csv`;
   conditioning/dump `stage` tag `"stage4"` → `"stage3_intrinsic_pass"`.
   `"stage3_rerun"` (the post-outlier-rejection re-solve) is unaffected and keeps its name.
-- **D-07: ⚠ The exact stage names must be confirmed against the manuscript before the
-  rename lands.** The paper is not in this repo, and the worklist describes the model
-  without quoting the paper's stage labels verbatim. Naming that diverges from the paper
-  recreates the divergence this phase exists to close. **Researcher/planner: surface this
-  as an explicit confirmation item; do not silently proceed on the inferred wording if
-  the manuscript is reachable.**
+- **D-07 (RESOLVED 2026-07-24): the vocabulary is confirmed against the live manuscript.**
+  The paper source lives outside this repo at
+  `C:\Users\tucke\OneDrive - Georgia Institute of Technology\Thesis\Spinoffs\papers\aquacal\`
+  — `main.tex` (2026-06-29) and `supplement.tex` (2026-07-23). Both confirm the locked
+  decisions:
+  - **Three stages.** `main.tex:208` — `\textbf{Three-stage calibration.}` Stage 1 = in-air
+    intrinsics, Stage 2 = extrinsic initialization (seeds the joint solve), Stage 3 = joint
+    estimation of extrinsics + `water_z` + board placements.
+  - **Best-first.** `main.tex` contains **zero** occurrences of BFS/breadth-first.
+    `supplement.tex:483-486` — "a **best-first traversal** alternates between camera and
+    frame nodes, expanding next whichever node was reached by the highest-corner-count
+    observation (rather than whichever lies fewest hops from the reference, **as a
+    breadth-first order would**)".
+  - **Bipartite graph.** `supplement.tex:470-473` defines it exactly as DOCS-03 requires —
+    "two node types are cameras and board frames, with an edge wherever a camera detects
+    the board in a given frame".
+
+  ⚠ **Do not use `C:\Users\tucke\Desktop\main.pdf`.** That is a stale 2026-06-15 export
+  which says *four* stages and uses BFS throughout. It was the source of a false alarm
+  during this phase's research pass. The OneDrive `.tex` files are authoritative.
+
+- **D-23 (NEW 2026-07-24): auxiliary-camera registration loses its stage number entirely.**
+  Superseding the research recommendation to collapse `pipeline.py`'s "Stage 4b"/"Stage 3b"
+  to an unconditional "Stage 3b". The paper does not number it: auxiliary cameras are
+  "excluded from **Stages~2 and~3**", then "registered post-hoc against the frozen board
+  placements and `water_z` via refractive PnP initialization, followed by either a
+  **6-DOF refinement** … or a **10-DOF refinement** that adds focal length and principal
+  point" (`main.tex:222-224`). Label it **"Auxiliary camera registration"** with the
+  DOF distinction in the message body, and keep the existing stage-agnostic timing key
+  `auxiliary_registration`.
 
 ### Loss-function correction (DOCS-06)
 
@@ -90,10 +117,21 @@ written for features that have no proper home today.
   `sparsity_pattern.py` + `palette.py` convention, and regenerate the figure from it.
   Its generator replays the library's own heap logic, so the figure cannot drift from the
   code — that property is the reason to reuse rather than redraw.
-  **Input dependency:** the supplement generator has to come from the user.
-  **Fallback if unavailable:** write the generator in-repo, replaying
-  `estimate_extrinsics`'s heap directly, to the same non-drift standard. Do not hand-patch
-  the existing PNG.
+  **Status 2026-07-24:** the supplement's **figure** exists —
+  `…/papers/aquacal/figures/aquacal_bfs_pose_graph.pdf` and `.png` (2026-07-23), a
+  six-panel A–F figure described at `supplement.tex:499-510`. Its **generator script has
+  not been located**; only the rendered outputs are in the paper tree. So the figure is a
+  concrete visual target but not yet a reusable generator.
+  **Therefore: build the in-repo generator (the D-09 fallback), matching the supplement
+  figure's semantics.** Replay `estimate_extrinsics`'s heap directly so it cannot drift.
+  The supplement caption specifies exactly what to reproduce: panel A = the bipartite
+  graph with edge width proportional to corner count; panels B–E = "the four productive
+  pops of the priority queue", where "arrows run from the pose already known to the pose
+  it determines"; the edge the traversal never needed drawn distinctly (coral in the
+  paper); three further unproductive pops omitted. A single-panel reduction is acceptable
+  for the docs page (see Claude's Discretion) provided both edge types and the direction
+  semantics survive. Do not hand-patch the existing PNG. If the supplement's generator
+  later surfaces, porting it supersedes this.
 - **D-10: Rename the figure to `pose_graph.png`** (the filename itself carries the wrong
   "bfs" term) and update every reference including alt text. Delete the old file rather
   than leaving both.
@@ -148,18 +186,31 @@ written for features that have no proper home today.
   configurations and asserts the values the docs quote. The wrong "~12×" claim survived
   because nothing tied the prose to the code; the same silence will rot the corrected
   numbers too.
-- **D-21: ⚠ Re-derive the numbers against the *shipped structural grouping path*, not
-  `scipy.optimize._numdiff.group_columns`.** The fixes doc's measurements predate quick
-  task 3 (`3c8685c`), which replaced `group_columns` with
-  `build_structural_column_groups`. Phase 17's notes confirm the counts still land at
-  13 / 17-with-intrinsics, but the planner must verify rather than inherit — including
-  P = 673 (base) / 675 (tilt) / 727 (tilt + intrinsics) and the 43–52× reduction.
+- **D-21 (VERIFIED 2026-07-24): the numbers were re-derived against the *shipped*
+  `build_structural_column_groups` path** (not `scipy.optimize._numdiff.group_columns`,
+  which quick task 3 `3c8685c` replaced) on a real 13-camera / 100-frame synthetic
+  scenario. **CONFIRMED:** P = 673 (base) / 675 (tilt) / 727 (tilt + intrinsics);
+  groups = 13 / 13 / 17; reduction = 51.8× / 51.9× / 42.8×. Write these verbatim; no
+  further derivation needed.
 - **D-22: Fix all four `optimizer.md` numeric errors together**, not just the headline:
   the `~12×` claim (`:202-205`), "at most 14-17 columns" → **13–17** (`:186`),
   "~630 parameters" → 673/675/727 (`:190-192`), and keep the adjacent "98% sparse" claim
   (it is correct: 13/673 = 1.9% nonzero). Also state that the group count is **fixed by
   the structure of a single observation and does not grow with the rig** — that invariant
   is the actual point, and its absence is what let "~50 groups" look plausible.
+- **D-24 (NEW 2026-07-24): keep the docs' 13-camera / 100-frame framing; cite the
+  supplement's *invariant*, not one of its table rows.** The success criterion says the
+  numbers must "match the paper supplement", but `supplement.tex`'s table `tab:cpr` does
+  **not** contain 673/675/727 or 43–52×. It tabulates 3×3 (P=33, 2.5×), 16×200 tilt-only
+  (P=1293, 99×), 8×100 (P=677, 40×), **12×100 (P=717, 42×)**, 13×200 (P=1327, 78×), and
+  16×200 (P=1357, 80×) — all at 13 or 17 groups. Our 727 / 17 / 42.8× is the 13-camera row
+  the supplement simply does not print; it is arithmetically consistent with the same
+  formula (`6(N-1) + 1 + 6F + 4N + 2`). Keep 13 cameras — that is the real rig the docs,
+  tutorials, and example dataset all describe — and satisfy "matching the supplement" by
+  reproducing its **invariant** ("13 with reference tilt alone, and 17 once intrinsic
+  refinement adds four columns per camera … a property of one observation rather than of
+  the rig", `supplement.tex:408-413`) rather than by copying a row. Optionally cite the
+  supplement's range (2.5× → 99×) to show the reduction grows with problem size.
 
 ### Claude's Discretion
 
@@ -180,6 +231,30 @@ written for features that have no proper home today.
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
+
+### The manuscript itself (outside the repo — READ-ONLY, never edit)
+
+**Home of the in-progress paper:**
+`C:\Users\tucke\OneDrive - Georgia Institute of Technology\Thesis\Spinoffs\papers\aquacal\`
+
+- `…\papers\aquacal\main.tex` — **authoritative for the stage model.** `:208`
+  "Three-stage calibration"; `:214-218` Stage 3 and its optional second pass;
+  `:222-224` auxiliary-camera registration as a post-hoc 6-DOF/10-DOF step. Contains no
+  BFS/breadth-first anywhere.
+- `…\papers\aquacal\supplement.tex` — **authoritative for traversal terminology and the
+  grouping numbers.** `:470-486` bipartite pose graph + best-first traversal;
+  `:396-424` § Column grouping; `:441-458` table `tab:cpr`; `:499-510` the six-panel
+  pose-graph figure caption.
+- `…\papers\aquacal\figures\aquacal_bfs_pose_graph.pdf` / `.png` — the corrected figure to
+  match (generator not located).
+- `…\papers\aquacal\reviewer_response_plan.md`, `reviewer_responses.md` — the reviewer
+  responses this milestone serves. Not read during this phase; relevant to Phases 19-22.
+
+⚠ **Editing the manuscript is out of scope for this phase and this repo.** These files are
+read-only inputs; the phase makes AquaCal match what they say.
+⚠ **`C:\Users\tucke\Desktop\main.pdf` is a stale 2026-06-15 export — do not use it.** It
+says four stages and BFS, contradicting the live source. It caused a false alarm in this
+phase's research pass.
 
 ### Source worklists (outside the repo — read from disk)
 - `C:\Users\tucke\Desktop\aquacal-docs-accuracy-fixes.md` — **the primary spec for this
@@ -299,6 +374,14 @@ written for features that have no proper home today.
 - **Notebook re-execution and the stale "Stage 4 RMS" narration** → **Phase 21 (DATA-03)**.
 - **The dissertation's `appendix-a.tex` carrying the same wrong grouping claim** — outside
   this repo entirely; flagged for the user, not actionable here.
+- **`main.tex` understates its own supplement by ~4×** — found 2026-07-24. Under "Bundle
+  adjustment internals" it says column grouping reduces finite-difference evaluations "by
+  **roughly an order of magnitude** for a typical **12-camera, 100-frame** problem", but
+  `supplement.tex`'s own table `tab:cpr` gives that exact configuration as **42×**. This is
+  the same error class as the docs' "~12×" claim that DOCS-01 fixes, sitting in the main
+  manuscript text — and no worklist flagged it. **Manuscript-side, explicitly out of scope
+  for this repo and this phase.** Recorded here so it is not lost; raise it when the
+  manuscript is next edited.
 
 ### Reviewed Todos (not folded)
 

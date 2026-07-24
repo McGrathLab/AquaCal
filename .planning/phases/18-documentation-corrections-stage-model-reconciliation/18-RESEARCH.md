@@ -136,6 +136,37 @@ a concrete conflicting source).
 
 ## Answers
 
+> ## ⚠ SUPERSEDED — Q2 and Q4 (corrected 2026-07-24)
+>
+> This research pass read `C:\Users\tucke\Desktop\main.pdf` and concluded the manuscript
+> describes a **four**-stage pipeline and uses **BFS**. **That conclusion is wrong.** The
+> Desktop PDF is a stale 2026-06-15 export. The live paper source is at
+> `C:\Users\tucke\OneDrive - Georgia Institute of Technology\Thesis\Spinoffs\papers\aquacal\`
+> and confirms the originally locked vocabulary:
+>
+> - `main.tex:208` — `\textbf{Three-stage calibration.}`; `:215` "Stage~3 runs a second
+>   time"; `:218` "The second pass is optional". **Three stages, confirmed.**
+> - `main.tex` contains **zero** occurrences of BFS/breadth-first.
+>   `supplement.tex:483-486` — "a **best-first traversal** … (rather than whichever lies
+>   fewest hops from the reference, as a breadth-first order would)". **Best-first,
+>   confirmed.**
+>
+> **Q4 is also superseded:** the supplement's pose-graph *figure* does exist
+> (`…/papers/aquacal/figures/aquacal_bfs_pose_graph.pdf`, six panels A–F, described at
+> `supplement.tex:499-510`). Its generator script was still not located, so the in-repo
+> fallback stands — but the figure is a concrete visual target, not a blank slate.
+>
+> **Q3 is partially superseded:** the recommendation to relabel auxiliary registration as
+> an unconditional "Stage 3b" is overturned by D-23. `main.tex:222-224` excludes auxiliary
+> cameras "from Stages~2 and~3" and gives the step no stage number at all.
+>
+> Also corrected: the claim elsewhere in this document that the paper's supplement inherited
+> the wrong grouping figure. `supplement.tex` § Column grouping is **correct**. The wrong
+> claim lives in the dissertation's `appendix-a.tex` and in `main.tex`'s "roughly an order
+> of magnitude" sentence — both manuscript-side and out of scope for this repo.
+>
+> Q1 and Q5 below are unaffected and stand as written.
+
 **Q1 — CONFIRMED, no changes needed to the D-20/D-22 numbers.** Ran
 `build_jacobian_sparsity` + `build_structural_column_groups` directly (the shipped
 post-quick-task-3 path) against a real synthetic 13-camera/100-frame scenario generated
