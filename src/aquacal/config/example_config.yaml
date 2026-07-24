@@ -73,13 +73,14 @@ interface:
 optimization:
   robust_loss: "huber"   # Options: "huber", "soft_l1", "linear"
   loss_scale: 1.0        # Residual scale for robust loss (pixels)
-  # max_calibration_frames: 150  # Max frames for Stage 3/4 optimization (null = no limit)
+  # max_calibration_frames: 150  # Max frames for Stage 3 optimization (null = no limit)
                                   # Stages 1-2 still use all frames. Reduces memory and runtime.
-  # refine_intrinsics: false  # Stage 4: also optimize focal lengths and principal points
+  # refine_intrinsics: false  # Stage 3's second pass, with intrinsics unlocked: also
+                                # optimize focal lengths and principal points.
                                 # Only enable after Stage 3 converges reliably
-  # refine_auxiliary_intrinsics: false  # Stage 4b: also optimize auxiliary camera
-                                         # focal lengths and principal points.
-                                         # Requires auxiliary_cameras to be set.
+  # refine_auxiliary_intrinsics: false  # Auxiliary camera registration: also optimize
+                                         # auxiliary camera focal lengths and principal
+                                         # points. Requires auxiliary_cameras to be set.
   reject_outlier_frames: true  # After Stage 3, auto-drop frames whose per-frame
                                  # reprojection RMS is a catastrophic outlier, then
                                  # re-run Stage 3 on the cleaned set. No-op on clean

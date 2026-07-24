@@ -100,7 +100,7 @@ class CameraCalibration:
         water_z: Z-coordinate of the water surface in world frame (meters).
             Same for all cameras after optimization.
         is_auxiliary: If True, this camera was registered post-hoc against
-            fixed board poses (excluded from joint Stage 3/4 optimization).
+            fixed board poses (excluded from joint Stage 3 optimization).
     """
 
     name: str
@@ -236,13 +236,14 @@ class CalibrationConfig:
             of the extrinsic capture (e.g. the board leaving the water). Does NOT
             affect intrinsic calibration videos. Default None (process to the end).
         holdout_fraction: Fraction of frames to hold out for validation
-        max_calibration_frames: Maximum number of frames for Stages 3-4 optimization.
+        max_calibration_frames: Maximum number of frames for Stage 3 optimization.
             None (default) = use all calibration frames. When set, calibration frames
             are uniformly subsampled to this limit before optimization.
-        refine_intrinsics: If True, Stage 4 jointly refines per-camera focal lengths
-            (fx, fy) and principal points (cx, cy) alongside extrinsics and interface
+        refine_intrinsics: If True, runs Stage 3's second pass, with intrinsics
+            unlocked: jointly refines per-camera focal lengths (fx, fy) and
+            principal points (cx, cy) alongside extrinsics and interface
             distances. Distortion coefficients are NOT refined. Only enable after
-            Stage 3 converges reliably. Default False (Stage 4 skipped).
+            Stage 3 converges reliably. Default False (Stage 3's second pass skipped).
         save_detailed_residuals: Whether to save per-corner residuals
         initial_water_z: Optional dict mapping camera names to approximate
             camera-to-water-surface distances in meters. When None, all cameras default
@@ -253,22 +254,22 @@ class CalibrationConfig:
             Use for wide-angle lenses where 5 coefficients are insufficient.
         auxiliary_cameras: List of auxiliary camera names registered post-hoc against
             fixed board poses. These cameras are calibrated for intrinsics and
-            detected, but excluded from joint Stage 3/4 optimization. Must not
+            detected, but excluded from joint Stage 3 optimization. Must not
             overlap with camera_names.
         fisheye_cameras: List of camera names that should use the equidistant
             fisheye projection model. Must be a subset of auxiliary_cameras
             and must not overlap with rational_model_cameras.
-        refine_auxiliary_intrinsics: If True, Stage 4b refines auxiliary camera
-            intrinsics (fx, fy, cx, cy) alongside extrinsics. Requires
+        refine_auxiliary_intrinsics: If True, Auxiliary camera registration refines
+            auxiliary camera intrinsics (fx, fy, cx, cy) alongside extrinsics. Requires
             auxiliary_cameras to be set. Independent of refine_intrinsics (which
-            controls primary camera refinement in Stage 4). Distortion coefficients
-            are NOT refined.
+            controls primary camera refinement in Stage 3's second pass). Distortion
+            coefficients are NOT refined.
         reject_outlier_frames: If True (default), after Stage 3 the pipeline
             computes per-frame reprojection RMS and drops frames whose RMS is a
             catastrophic outlier, then re-runs Stage 3 on the cleaned set before
-            Stage 4. This is a no-op on already-clean data (see thresholds below),
-            so the default only affects datasets with genuinely bad frames (e.g.
-            board out of water / surface ripples / mis-detections).
+            Stage 3's second pass. This is a no-op on already-clean data (see
+            thresholds below), so the default only affects datasets with genuinely
+            bad frames (e.g. board out of water / surface ripples / mis-detections).
         frame_rejection_k: Relative multiplier on the median per-frame RMS used to
             flag outliers; a frame is rejected if RMS > k * median (and also above
             the absolute floor). Default 5.0.
@@ -280,10 +281,10 @@ class CalibrationConfig:
             warning is emitted, so a broadly-broken dataset surfaces loudly rather
             than being silently gutted. Default 0.25.
         save_stage_calibrations: If True (default), dump each bundle-adjustment
-            stage's intermediate calibration (Stage 3, the post-outlier-rejection
-            re-run, and Stage 4 when enabled) as loadable calibration JSON files
-            under output_dir/internals/. Extends the existing unconditional
-            calibration_initial.json (post-Stage-2) dump.
+            stage's intermediate calibration (stage3, the post-outlier-rejection
+            re-run stage3_rerun, and stage3_intrinsic_pass when enabled) as
+            loadable calibration JSON files under output_dir/internals/. Extends
+            the existing unconditional calibration_initial.json (post-Stage-2) dump.
         save_optimization_trace: Opt-in. If True, records a per-iteration CSV
             trace (iteration index, cost, step norm, optimality, interface
             parameters) for each bundle-adjustment stage under
@@ -325,7 +326,7 @@ class CalibrationConfig:
     )
     max_calibration_frames: int | None = None  # None = no limit, use all frames
     refine_intrinsics: bool = False
-    refine_auxiliary_intrinsics: bool = False  # If True, Stage 4b refines auxiliary camera intrinsics (fx, fy, cx, cy) alongside extrinsics. Requires auxiliary_cameras to be set. Independent of refine_intrinsics (which controls primary camera refinement in Stage 4). Distortion coefficients are NOT refined.
+    refine_auxiliary_intrinsics: bool = False  # If True, Auxiliary camera registration refines auxiliary camera intrinsics (fx, fy, cx, cy) alongside extrinsics. Requires auxiliary_cameras to be set. Independent of refine_intrinsics (which controls primary camera refinement in Stage 3's second pass). Distortion coefficients are NOT refined.
     reject_outlier_frames: bool = True  # After Stage 3, drop catastrophic-outlier frames and re-optimize. No-op on clean data (see thresholds). Guards against board-out-of-water/rippled/mis-detected frames biasing extrinsics.
     frame_rejection_k: float = (
         5.0  # Reject frames with per-frame RMS > k * median per-frame RMS.
