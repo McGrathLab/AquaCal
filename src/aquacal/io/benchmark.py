@@ -1,28 +1,40 @@
-"""Environment and peak-memory capture for benchmark.json (BENCH-02, BENCH-04).
+"""Environment/peak-memory capture and benchmark.json assembly (BENCH-01..04).
 
-Both public functions in this module are pure, side-effect-free capture
+`capture_environment`/`capture_peak_memory` are pure, side-effect-free capture
 primitives: they read process/OS/dependency state and return a plain dict of
-natively-typed values. Neither function writes a file or touches the
-calibration pipeline or config -- that wiring belongs to a later plan.
+natively-typed values. `assemble_benchmark_record`/`write_benchmark_json`
+build and persist the machine-readable `benchmark.json` record BENCH-04
+requires from values the pipeline already computed -- neither function
+recomputes anything (D-06) or invents metrics a run did not produce (D-14,
+D-15).
 
-Both functions are designed to never raise, regardless of platform or which
-optional dependencies are installed, because a benchmark measurement must
-never be the reason a calibration run fails (D-05).
+`capture_environment`/`capture_peak_memory` are designed to never raise,
+regardless of platform or which optional dependencies are installed, because
+a benchmark measurement must never be the reason a calibration run fails
+(D-05).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import importlib.metadata
+import json
 import logging
 import os
 import platform
 import subprocess
 import tracemalloc
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 import scipy
+
+from aquacal.io.internals import warn_if_overwriting
+
+if TYPE_CHECKING:
+    from aquacal.calibration._observability import SolverDiagnostics
 
 logger = logging.getLogger(__name__)
 
@@ -229,3 +241,184 @@ def capture_peak_memory() -> dict:
             "capture_peak_memory() failed unexpectedly; degrading to unavailable."
         )
         return {"peak_bytes": None, "mode": "unavailable"}
+
+
+_STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON = (
+    "no least_squares call occurs in this stage; solver diagnostics are not applicable"
+)
+
+
+def _to_native(value):
+    """Recursively cast `numpy` scalars/arrays to native JSON-safe Python types.
+
+    The JSON-serialization boundary of last resort (Research Pitfall 3):
+    `capture_solver_diagnostics` already casts every `SolverDiagnostics` field
+    at capture time, and pipeline call sites are expected to pass already-cast
+    values into `problem_shape`/`solver_config`/`accuracy`, but this function
+    must not assume every value arrived pre-cast -- any `np.generic` scalar
+    (`np.float64`, `np.int64`, ...) or `np.ndarray` reaching here, at any
+    nesting depth inside a dict/list/tuple, is coerced before `json.dump`
+    ever sees it.
+
+    Args:
+        value: Any value, possibly a numpy scalar/array or a container
+            (dict/list/tuple) nesting one.
+
+    Returns:
+        A JSON-safe equivalent: `numpy` scalars become Python `int`/`float`/
+        `bool` via `.item()`, `numpy` arrays become nested lists via
+        `.tolist()`, dicts/lists/tuples are recursed into, everything else is
+        returned unchanged.
+    """
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, dict):
+        return {k: _to_native(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_native(v) for v in value]
+    return value
+
+
+def assemble_benchmark_record(
+    *,
+    schema_version: int = 1,
+    problem_shape: dict,
+    timings: dict,
+    diagnostics: dict[str, "SolverDiagnostics"],
+    solver_config: dict,
+    accuracy: dict,
+    environment: dict,
+    memory_readings: dict | None = None,
+) -> dict:
+    """Assemble the full `benchmark.json` record (BENCH-01, BENCH-03, BENCH-04).
+
+    Pure function -- no I/O. Returns a dict in which every value is already a
+    native Python type, verified by `json.dumps` round-tripping cleanly.
+
+    Args:
+        schema_version: Integer schema version (D-04), default `1`.
+        problem_shape: Caller-supplied dict describing the run's problem size
+            (e.g. `n_cameras`, `n_frames_calibration`, `n_frames_holdout`).
+            Passed through unmodified.
+        timings: The pipeline's `timings` dict (wall-clock seconds per stage,
+            keyed by the settled stage vocabulary -- D-03). Used to attach a
+            `"seconds"` field to each stage block.
+        diagnostics: Dict keyed by stage name, mapping to the
+            `SolverDiagnostics` instance captured for that stage's
+            `least_squares` call. A stage this run did not execute is simply
+            absent from this dict (D-14) -- `assemble_benchmark_record` never
+            invents an empty block for it.
+        solver_config: Caller-supplied dict describing the solver
+            configuration in force (e.g. `robust_loss`, `loss_scale`,
+            `refine_intrinsics`). Passed through unmodified.
+        accuracy: Caller-supplied dict of accuracy metrics already computed by
+            the pipeline (D-06: copied, never recomputed). Passed through
+            unmodified.
+        environment: The `capture_environment()` output. Passed through
+            unmodified.
+        memory_readings: `None` (default) when `benchmark_memory` was off for
+            this run -- no `"memory"` key appears anywhere in the returned
+            record, at the top level or inside any stage block. Otherwise, an
+            ordered dict keyed by boundary name in temporal order (starting
+            with `"_baseline"`), each value the `capture_peak_memory()`
+            reading taken at that boundary (D-18).
+
+    Returns:
+        A fully JSON-serializable dict with top-level keys `schema_version`,
+        `problem_shape`, `stages`, `solver_config`, `accuracy`, `environment`,
+        and (only when `memory_readings` is not `None`) `memory`.
+    """
+    stages: dict[str, dict] = {}
+    for stage_name, diag in diagnostics.items():
+        diag_dict = {
+            field_name: _to_native(field_value)
+            for field_name, field_value in dataclasses.asdict(diag).items()
+        }
+        stage_entry = dict(diag_dict)
+        stage_entry["seconds"] = timings.get(stage_name)
+
+        n_params = diag_dict.get("n_params")
+        n_groups = diag_dict.get("n_groups")
+        stage_entry["fd_reduction"] = (
+            n_params / n_groups
+            if n_params is not None and n_groups is not None and n_groups != 0
+            else None
+        )
+
+        stages[stage_name] = stage_entry
+
+    record: dict = {
+        "schema_version": schema_version,
+        "problem_shape": _to_native(problem_shape),
+        "stages": stages,
+        "solver_config": _to_native(solver_config),
+        "accuracy": _to_native(accuracy),
+        "environment": _to_native(environment),
+    }
+
+    if memory_readings is not None:
+        previous_reading = memory_readings.get("_baseline")
+        for boundary_name, reading in memory_readings.items():
+            if boundary_name == "_baseline":
+                continue
+
+            delta_bytes = None
+            if (
+                reading.get("peak_bytes") is not None
+                and previous_reading is not None
+                and previous_reading.get("peak_bytes") is not None
+            ):
+                delta_bytes = reading["peak_bytes"] - previous_reading["peak_bytes"]
+
+            memory_block = {
+                "cumulative_peak_bytes_as_of_stage_end": reading.get("peak_bytes"),
+                "delta_bytes_since_previous_boundary": delta_bytes,
+                "mode": reading.get("mode"),
+            }
+
+            if boundary_name in record["stages"]:
+                record["stages"][boundary_name]["memory"] = memory_block
+            else:
+                record["stages"][boundary_name] = {
+                    "seconds": timings.get(boundary_name),
+                    "solver_diagnostics_reason": (
+                        _STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON
+                    ),
+                    "memory": memory_block,
+                }
+
+            previous_reading = reading
+
+        record["memory"] = {
+            "whole_run_peak_bytes": (
+                previous_reading.get("peak_bytes")
+                if previous_reading is not None
+                else None
+            ),
+            "mode": previous_reading.get("mode")
+            if previous_reading is not None
+            else None,
+        }
+
+    return record
+
+
+def write_benchmark_json(record: dict, path: Path) -> None:
+    """Write an `assemble_benchmark_record()` result to disk as JSON.
+
+    Mirrors `aquacal.validation.conditioning`'s existing `json.dump(...,
+    indent=2)` writer style, and reuses the overwrite-warning discipline
+    already established for `internals/` artifacts (`warn_if_overwriting`),
+    even though `benchmark.json` itself lives directly under `output_dir`.
+
+    Args:
+        record: The dict returned by `assemble_benchmark_record()`.
+        path: Destination file path (typically `output_dir / "benchmark.json"`).
+    """
+    path = Path(path)
+    warn_if_overwriting(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(record, f, indent=2, sort_keys=True)

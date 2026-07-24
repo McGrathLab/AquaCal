@@ -21,10 +21,17 @@ __all__ = [
     # From benchmark.py (Phase 19 benchmark instrumentation):
     "capture_environment",
     "capture_peak_memory",
+    "assemble_benchmark_record",
+    "write_benchmark_json",
 ]
 
 # Imports will be added as modules are implemented:
-from aquacal.io.benchmark import capture_environment, capture_peak_memory
+from aquacal.io.benchmark import (
+    assemble_benchmark_record,
+    capture_environment,
+    capture_peak_memory,
+    write_benchmark_json,
+)
 from aquacal.io.detection import detect_all_frames, detect_charuco
 from aquacal.io.frameset import FrameSet
 from aquacal.io.images import ImageSet

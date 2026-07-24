@@ -1,14 +1,34 @@
-"""Unit tests for aquacal.io.benchmark (BENCH-02, BENCH-04 capture primitives)."""
+"""Unit tests for aquacal.io.benchmark (BENCH-01..04)."""
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import subprocess
 import sys
 import tracemalloc
 
+import numpy as np
 import pytest
 
-from aquacal.io.benchmark import capture_environment, capture_peak_memory
+from aquacal.calibration._observability import SolverDiagnostics
+from aquacal.calibration.interface_estimation import optimize_interface
+from aquacal.config.schema import (
+    BoardConfig,
+    BoardPose,
+    CameraExtrinsics,
+    CameraIntrinsics,
+)
+from aquacal.core.board import BoardGeometry
+from aquacal.io.benchmark import (
+    assemble_benchmark_record,
+    capture_environment,
+    capture_peak_memory,
+    write_benchmark_json,
+)
+
+sys.path.insert(0, ".")
+from tests.synthetic.ground_truth import generate_synthetic_detections
 
 
 class TestCaptureEnvironment:
@@ -176,3 +196,300 @@ class TestCapturePeakMemory:
         monkeypatch.setattr(platform, "system", _raise)
         reading = capture_peak_memory()
         assert reading == {"peak_bytes": None, "mode": "unavailable"}
+
+
+# --- Fixtures for real, NumPy-typed SolverDiagnostics (Task 2) ---
+#
+# Mirrors tests/unit/test_interface_estimation.py's fixture pattern: a tiny
+# 3-camera synthetic problem, real enough that optimize_interface's
+# `least_squares` call and `capture_solver_diagnostics` produce genuine
+# solver-reported values (nfev, cost, optimality, ...), not hand-built
+# Python floats. This is the "real path" the round-trip test below exercises
+# (a hand-built dict of Python floats would not catch a defensive-cast bug).
+
+
+@pytest.fixture
+def _bench_board_config() -> BoardConfig:
+    return BoardConfig(
+        squares_x=6,
+        squares_y=5,
+        square_size=0.04,
+        marker_size=0.03,
+        dictionary="DICT_4X4_50",
+    )
+
+
+@pytest.fixture
+def _bench_board(_bench_board_config) -> BoardGeometry:
+    return BoardGeometry(_bench_board_config)
+
+
+@pytest.fixture
+def _bench_intrinsics() -> dict[str, CameraIntrinsics]:
+    K = np.array([[500, 0, 320], [0, 500, 240], [0, 0, 1]], dtype=np.float64)
+    dist = np.zeros(5, dtype=np.float64)
+    return {
+        cam: CameraIntrinsics(
+            K=K.copy(), dist_coeffs=dist.copy(), image_size=(640, 480)
+        )
+        for cam in ("cam0", "cam1", "cam2")
+    }
+
+
+@pytest.fixture
+def _bench_extrinsics() -> dict[str, CameraExtrinsics]:
+    return {
+        "cam0": CameraExtrinsics(
+            R=np.eye(3, dtype=np.float64), t=np.zeros(3, dtype=np.float64)
+        ),
+        "cam1": CameraExtrinsics(
+            R=np.eye(3, dtype=np.float64),
+            t=np.array([0.1, 0.0, 0.0], dtype=np.float64),
+        ),
+        "cam2": CameraExtrinsics(
+            R=np.eye(3, dtype=np.float64),
+            t=np.array([0.0, 0.1, 0.0], dtype=np.float64),
+        ),
+    }
+
+
+@pytest.fixture
+def _bench_distances() -> dict[str, float]:
+    return {"cam0": 0.15, "cam1": 0.15, "cam2": 0.15}
+
+
+@pytest.fixture
+def _bench_board_poses(_bench_board) -> list[BoardPose]:
+    poses = []
+    for i in range(3):
+        x_offset = 0.05 * (i - 1)
+        y_offset = 0.02 * i
+        poses.append(
+            BoardPose(
+                frame_idx=i,
+                rvec=np.array([0.1 * (i % 3), 0.1 * (i % 2), 0.0], dtype=np.float64),
+                tvec=np.array([x_offset, y_offset, 0.4], dtype=np.float64),
+            )
+        )
+    return poses
+
+
+@pytest.fixture
+def real_solver_diagnostics(
+    _bench_board,
+    _bench_intrinsics,
+    _bench_extrinsics,
+    _bench_distances,
+    _bench_board_poses,
+) -> SolverDiagnostics:
+    """A `SolverDiagnostics` populated from a real `optimize_interface()` call."""
+    np.random.seed(42)
+    detections = generate_synthetic_detections(
+        _bench_intrinsics,
+        _bench_extrinsics,
+        _bench_distances,
+        _bench_board,
+        _bench_board_poses,
+        noise_std=0.5,
+        min_corners=4,
+    )
+    diag = SolverDiagnostics()
+    optimize_interface(
+        detections=detections,
+        intrinsics=_bench_intrinsics,
+        initial_extrinsics=_bench_extrinsics,
+        board=_bench_board,
+        reference_camera="cam0",
+        verbose=0,
+        use_sparse_jacobian=True,
+        diagnostics_out=diag,
+    )
+    return diag
+
+
+class TestAssembleBenchmarkRecord:
+    def test_json_round_trip_with_real_numpy_typed_diagnostics(
+        self, real_solver_diagnostics
+    ):
+        """The full round-trip must succeed with a REAL, solver-produced
+        SolverDiagnostics (not a hand-built dict of plain Python floats) --
+        this is the test that would catch a numpy-scalar-leakage regression.
+        """
+        record = assemble_benchmark_record(
+            problem_shape={"n_cameras": np.int64(3), "n_frames_calibration": 3},
+            timings={"stage3": 1.23},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={"robust_loss": "huber", "loss_scale": 1.0},
+            accuracy={"reprojection_rms": np.float64(0.42)},
+            environment=capture_environment(),
+        )
+        # Must not raise TypeError from a leaked numpy scalar.
+        dumped = json.dumps(record)
+        reloaded = json.loads(dumped)
+        assert reloaded["schema_version"] == 1
+        assert "stage3" in reloaded["stages"]
+
+    def test_schema_version_defaults_to_one(self, real_solver_diagnostics):
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        assert record["schema_version"] == 1
+
+    def test_skipped_stage_absent_from_stages(self, real_solver_diagnostics):
+        """D-14: a stage not present in `diagnostics` is absent from `stages`,
+        never present as a null/empty block."""
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3": 1.0},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        assert "stage3_intrinsic_pass" not in record["stages"]
+        assert set(record["stages"].keys()) == {"stage3"}
+
+    def test_every_solver_diagnostics_field_appears_in_stage_dict(
+        self, real_solver_diagnostics
+    ):
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        stage3 = record["stages"]["stage3"]
+        for field in dataclasses.fields(SolverDiagnostics):
+            assert field.name in stage3
+
+    def test_fd_reduction_derived_when_n_params_and_n_groups_present(
+        self, real_solver_diagnostics
+    ):
+        assert real_solver_diagnostics.n_params is not None
+        assert real_solver_diagnostics.n_groups is not None
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        expected = real_solver_diagnostics.n_params / real_solver_diagnostics.n_groups
+        assert record["stages"]["stage3"]["fd_reduction"] == expected
+
+    def test_no_memory_key_anywhere_when_memory_readings_none(
+        self, real_solver_diagnostics
+    ):
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            memory_readings=None,
+        )
+        assert "memory" not in record
+        assert all("memory" not in v for v in record["stages"].values())
+
+    def test_memory_attribution_exact_field_names_and_deltas(
+        self, real_solver_diagnostics
+    ):
+        memory_readings = {
+            "_baseline": {"peak_bytes": 1000, "mode": "psutil_peak_wset"},
+            "stage3": {"peak_bytes": 1500, "mode": "psutil_peak_wset"},
+            "validation": {"peak_bytes": 1800, "mode": "psutil_peak_wset"},
+        }
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3": 1.0, "validation": 0.5},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            memory_readings=memory_readings,
+        )
+
+        stage3_memory = record["stages"]["stage3"]["memory"]
+        assert set(stage3_memory.keys()) == {
+            "cumulative_peak_bytes_as_of_stage_end",
+            "delta_bytes_since_previous_boundary",
+            "mode",
+        }
+        assert "peak_bytes" not in stage3_memory
+        assert stage3_memory["delta_bytes_since_previous_boundary"] == 500
+
+        validation_memory = record["stages"]["validation"]["memory"]
+        assert validation_memory["delta_bytes_since_previous_boundary"] == 300
+        assert (
+            record["stages"]["validation"]["solver_diagnostics_reason"]
+            == "no least_squares call occurs in this stage; solver diagnostics are not applicable"
+        )
+
+        assert record["memory"]["whole_run_peak_bytes"] == 1800
+        assert record["memory"]["mode"] == "psutil_peak_wset"
+
+        assert "_baseline" not in record["stages"]
+
+    def test_stage_present_in_diagnostics_but_absent_from_memory_readings_has_no_memory_key(
+        self, real_solver_diagnostics
+    ):
+        memory_readings = {
+            "_baseline": {"peak_bytes": 1000, "mode": "psutil_peak_wset"},
+            "validation": {"peak_bytes": 1800, "mode": "psutil_peak_wset"},
+        }
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3": 1.0, "validation": 0.5},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            memory_readings=memory_readings,
+        )
+        assert "memory" not in record["stages"]["stage3"]
+
+
+class TestWriteBenchmarkJson:
+    def test_writes_json_that_round_trips(self, tmp_path, real_solver_diagnostics):
+        record = assemble_benchmark_record(
+            problem_shape={"n_cameras": 3},
+            timings={"stage3": 1.0},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment=capture_environment(),
+        )
+        path = tmp_path / "benchmark.json"
+        write_benchmark_json(record, path)
+        assert path.exists()
+        with open(path) as f:
+            reloaded = json.load(f)
+        assert reloaded["schema_version"] == 1
+        assert reloaded["problem_shape"]["n_cameras"] == 3
+
+    def test_warns_on_overwrite(self, tmp_path, real_solver_diagnostics, caplog):
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        path = tmp_path / "benchmark.json"
+        write_benchmark_json(record, path)
+        with caplog.at_level("WARNING"):
+            write_benchmark_json(record, path)
+        assert any(
+            "Overwriting existing internals artifact" in message
+            for message in caplog.messages
+        )
