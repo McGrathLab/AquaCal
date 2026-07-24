@@ -70,7 +70,7 @@ See {func}`aquacal.calibration.intrinsics.calibrate_intrinsics_all` for implemen
 
 **Why BFS?** Cameras in an AquaCal rig typically have **non-overlapping fields of view**. Direct pairwise camera-to-camera pose estimation isn't possible. Instead, we use the calibration board as a "connector": if cam0 and cam1 both observe the same board pose, we can chain their board-to-camera transforms to get a cam0-to-cam1 transform.
 
-![BFS pose graph](../_static/diagrams/bfs_pose_graph.png)
+![Bipartite camera/frame pose graph with directed discovery edges](../_static/diagrams/pose_graph.png)
 
 See {func}`aquacal.calibration.extrinsics.estimate_extrinsics` for implementation.
 
