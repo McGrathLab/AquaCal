@@ -8,7 +8,12 @@ all parameters from Stage 3, with the option to also refine camera intrinsics
 import numpy as np
 from scipy.optimize import least_squares
 
-from aquacal.calibration._observability import OptimizerObserver, build_parameter_labels
+from aquacal.calibration._observability import (
+    OptimizerObserver,
+    SolverDiagnostics,
+    build_parameter_labels,
+    capture_solver_diagnostics,
+)
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
@@ -52,6 +57,7 @@ def joint_refinement(
     normal_fixed: bool = True,
     observer: OptimizerObserver | None = None,
     shared_interface: bool = True,
+    diagnostics_out: SolverDiagnostics | None = None,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -92,6 +98,12 @@ def joint_refinement(
             water_z. If False (analysis/ablation only), each camera refines its
             own water_z, seeded individually from the Stage-3 per-camera
             distances (never collapsed to the reference camera's value).
+        diagnostics_out: Optional `SolverDiagnostics` out-parameter. If provided,
+            populated in place after `least_squares` returns with terminal
+            solver diagnostics (nfev, njev, cost, optimality, status, message,
+            the explicit ftol/xtol/gtol, max_nfev's effective value, and
+            P/n_groups when `use_sparse_jacobian=True`). Has no effect on the
+            returned values. Default None (no capture).
 
     Returns:
         Tuple of:
@@ -187,6 +199,8 @@ def joint_refinement(
 
     # Build sparse Jacobian if enabled
     jac = "2-point"
+    jac_sparsity = None
+    groups = None
     if use_sparse_jacobian:
         jac_sparsity = build_jacobian_sparsity(
             detections,
@@ -198,19 +212,20 @@ def joint_refinement(
             normal_fixed=normal_fixed,
             shared_interface=shared_interface,
         )
+        groups = build_structural_column_groups(
+            jac_sparsity,
+            len(camera_order),
+            len(frame_order),
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
         jac = make_sparse_jacobian_func(
             compute_residuals,
             cost_args,
             jac_sparsity,
             (lower, upper),
-            groups=build_structural_column_groups(
-                jac_sparsity,
-                len(camera_order),
-                len(frame_order),
-                refine_intrinsics=refine_intrinsics,
-                normal_fixed=normal_fixed,
-                shared_interface=shared_interface,
-            ),
+            groups=groups,
         )
 
     # Run optimization
@@ -244,11 +259,36 @@ def joint_refinement(
         bounds=(lower, upper),
         jac=jac,
         verbose=verbose,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
         **ls_kwargs,
     )
 
     if result.status <= 0:
         raise ConvergenceError(f"Optimization failed: {result.message}")
+
+    capture_solver_diagnostics(
+        result,
+        diagnostics_out,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
+        max_nfev_effective=len(initial_params) * 100,
+        max_nfev_source="scipy_auto",
+        n_params=jac_sparsity.shape[1] if use_sparse_jacobian else None,
+        n_groups=(int(groups.max()) + 1) if use_sparse_jacobian else None,
+        n_params_reason=(
+            None
+            if use_sparse_jacobian
+            else "use_sparse_jacobian=False; no column-grouping structure was built"
+        ),
+        n_groups_reason=(
+            None
+            if use_sparse_jacobian
+            else "use_sparse_jacobian=False; no column-grouping structure was built"
+        ),
+    )
 
     if observer is not None:
         observer.on_solution(result)
