@@ -760,14 +760,14 @@ def run_calibration_from_config(
     Run complete calibration pipeline from configuration object.
 
     Pipeline stages:
+
     1. Detect ChArUco in intrinsic (in-air) videos
     2. Run Stage 1: Intrinsic calibration
     3. Detect ChArUco in extrinsic (underwater) videos
     4. Split underwater detections into calibration/validation sets
     5. Run Stage 2: Extrinsic initialization
-    6. Run Stage 3: Interface and pose optimization
-       6a. Optionally run Stage 3's second pass (the intrinsic pass), with
-           intrinsics unlocked
+    6. Run Stage 3: Interface and pose optimization, optionally followed by
+       Stage 3's second pass (the intrinsic pass) with intrinsics unlocked
     7. Run validation on held-out data
     8. Generate and save diagnostics
     9. Save final calibration result
