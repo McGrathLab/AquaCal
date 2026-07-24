@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 import yaml
 
-from aquacal.calibration._observability import OptimizerObserver
+from aquacal.calibration._observability import OptimizerObserver, SolverDiagnostics
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
 from aquacal.calibration.frame_rejection import (
     compute_per_frame_rms,
@@ -47,6 +47,7 @@ from aquacal.config.schema import (
     Vec3,
 )
 from aquacal.core.board import BoardGeometry
+from aquacal.io.benchmark import capture_peak_memory
 from aquacal.io.detection import detect_all_frames
 from aquacal.io.internals import ensure_internals_dir, warn_if_overwriting
 from aquacal.io.serialization import save_calibration
@@ -428,6 +429,8 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     save_stage_calibrations = bool(internals.get("save_stage_calibrations", True))
     save_optimization_trace = bool(internals.get("save_optimization_trace", False))
     save_conditioning = bool(internals.get("save_conditioning", False))
+    save_benchmark = bool(internals.get("save_benchmark", True))
+    benchmark_memory = bool(internals.get("benchmark_memory", False))
 
     # Reproducibility
     seed = int(data.get("seed", 42))
@@ -461,6 +464,8 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         save_stage_calibrations=save_stage_calibrations,
         save_optimization_trace=save_optimization_trace,
         save_conditioning=save_conditioning,
+        save_benchmark=save_benchmark,
+        benchmark_memory=benchmark_memory,
         seed=seed,
         shared_interface=shared_interface,
         initial_water_z=initial_water_z,
@@ -798,6 +803,19 @@ def run_calibration_from_config(
     # are simply absent from this dict.
     timings: dict[str, float] = {}
 
+    # Accumulator for per-stage solver diagnostics (BENCH-01/BENCH-04), keyed
+    # by benchmark.json stage name. Populated unconditionally (cheap; no
+    # extra least_squares calls), consumed only if config.save_benchmark.
+    # NOTE: named solver_diagnostics (not `diagnostics`) to avoid colliding
+    # with the pre-existing local `diagnostics: DiagnosticsData` variable
+    # built later in this function.
+    solver_diagnostics: dict[str, SolverDiagnostics] = {}
+
+    # Accumulator for per-stage-boundary peak-memory readings (BENCH-02,
+    # D-18), keyed by boundary name in temporal order. Left empty (and never
+    # populated) when config.benchmark_memory is False.
+    memory_readings: dict[str, dict] = {}
+
     # Save board reference images for visual verification
     _save_board_reference_images(board, intrinsic_board, config.output_dir)
 
@@ -1026,7 +1044,7 @@ def run_calibration_from_config(
             config.auxiliary_cameras,
         )
 
-    def _run_stage3(dets, observer=None):
+    def _run_stage3(dets, observer=None, diagnostics_out=None):
         """Run Stage 3 interface optimization on the given detection set."""
         return optimize_interface(
             detections=dets,
@@ -1045,6 +1063,7 @@ def run_calibration_from_config(
             normal_fixed=config.interface_normal_fixed,
             observer=observer,
             shared_interface=config.shared_interface,
+            diagnostics_out=diagnostics_out,
         )
 
     # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
@@ -1059,13 +1078,21 @@ def run_calibration_from_config(
         if observe
         else None
     )
+    if config.benchmark_memory:
+        memory_readings["_baseline"] = capture_peak_memory()
+
     t0 = time.perf_counter()
     stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
-        optim_detections, observer=stage3_observer
+        optim_detections,
+        observer=stage3_observer,
+        diagnostics_out=solver_diagnostics.setdefault("stage3", SolverDiagnostics()),
     )
     elapsed = time.perf_counter() - t0
     timings["stage3_interface_optimization"] = elapsed
     print(f"  Stage 3 RMS: {stage3_rms:.3f} pixels ({elapsed:.1f}s)")
+
+    if config.benchmark_memory:
+        memory_readings["stage3"] = capture_peak_memory()
 
     if stage3_observer is not None and config.save_optimization_trace:
         stage3_observer.write_trace_csv(
@@ -1180,7 +1207,11 @@ def run_calibration_from_config(
             )
             t0 = time.perf_counter()
             stage3_extrinsics, stage3_distances, stage3_poses, stage3_rms = _run_stage3(
-                optim_detections, observer=stage3_rerun_observer
+                optim_detections,
+                observer=stage3_rerun_observer,
+                diagnostics_out=solver_diagnostics.setdefault(
+                    "stage3_rerun", SolverDiagnostics()
+                ),
             )
             elapsed = time.perf_counter() - t0
             timings["stage3_interface_optimization"] += elapsed
@@ -1188,6 +1219,9 @@ def run_calibration_from_config(
                 f"  Stage 3 RMS (after rejection): {stage3_rms:.3f} pixels "
                 f"({elapsed:.1f}s)"
             )
+
+            if config.benchmark_memory:
+                memory_readings["stage3_rerun"] = capture_peak_memory()
 
             if stage3_rerun_observer is not None and config.save_optimization_trace:
                 stage3_rerun_observer.write_trace_csv(
@@ -1272,10 +1306,16 @@ def run_calibration_from_config(
             normal_fixed=config.interface_normal_fixed,
             observer=stage3_intrinsic_pass_observer,
             shared_interface=config.shared_interface,
+            diagnostics_out=solver_diagnostics.setdefault(
+                "stage3_intrinsic_pass", SolverDiagnostics()
+            ),
         )
         elapsed = time.perf_counter() - t0
         timings["stage3_intrinsic_pass"] = elapsed
         print(f"  Stage 3 intrinsic pass RMS: {final_rms:.3f} pixels ({elapsed:.1f}s)")
+
+        if config.benchmark_memory:
+            memory_readings["stage3_intrinsic_pass"] = capture_peak_memory()
 
         if (
             stage3_intrinsic_pass_observer is not None
@@ -1424,6 +1464,9 @@ def run_calibration_from_config(
                         n_water=config.n_water,
                         refine_intrinsics=config.refine_auxiliary_intrinsics,
                         verbose=2 if verbose else 1,
+                        diagnostics_out=solver_diagnostics.setdefault(
+                            f"auxiliary_registration_{aux_cam}", SolverDiagnostics()
+                        ),
                     )
 
                     # Handle variable-length return
@@ -1443,6 +1486,9 @@ def run_calibration_from_config(
                     aux_distances[aux_cam] = aux_dist
                 except Exception as e:
                     print(f"  {aux_cam}: FAILED - {e}")
+
+        if config.benchmark_memory:
+            memory_readings["auxiliary_registration"] = capture_peak_memory()
 
         # Merge auxiliary cameras into working dicts so validation includes them
         if aux_extrinsics:
@@ -1570,6 +1616,9 @@ def run_calibration_from_config(
     reproj_errors = primary_reproj
     reconstruction_errors = primary_3d
     timings["validation"] = time.perf_counter() - _validation_t0
+
+    if config.benchmark_memory:
+        memory_readings["validation"] = capture_peak_memory()
 
     # --- Generate Diagnostics ---
     print("\n[Diagnostics] Generating report...")

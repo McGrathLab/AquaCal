@@ -302,6 +302,16 @@ class CalibrationConfig:
             singular-value spectrum and the full parameter correlation matrix at
             the solution under output_dir/internals/. Expensive (SVD + dense
             correlation matrix over hundreds of parameters) — off by default.
+        save_benchmark: If True (default), writes a machine-readable
+            benchmark.json to output_dir on every run — problem shape,
+            per-stage solver diagnostics, solver configuration, accuracy, and
+            environment (BENCH-04). Cheap; on by default, unlike
+            benchmark_memory.
+        benchmark_memory: Opt-in. If True, benchmark.json records a peak-RSS
+            reading at every stage boundary (BENCH-02), each labelled with its
+            measurement mode, plus a whole-run top-level reading. Off by
+            default per BENCH-02's requirement that memory measurement never
+            run unless explicitly requested.
         seed: Master seed controlling the calibration/validation frame holdout
             split, for reproducibility across repeated runs. Default 42.
         shared_interface: Analysis/ablation option, NOT a recommended setting.
@@ -350,6 +360,8 @@ class CalibrationConfig:
         False  # Opt-in: per-iteration CSV trace for each bundle-adjustment stage
     )
     save_conditioning: bool = False  # Opt-in: Jacobian singular-value spectrum + parameter correlation matrix at the solution
+    save_benchmark: bool = True  # Write output_dir/benchmark.json every run (BENCH-04); cheap, on by default
+    benchmark_memory: bool = False  # Opt-in: per-stage-boundary peak-RSS reading in benchmark.json (BENCH-02)
     seed: int = 42  # Master seed for the pipeline's holdout split (reproducibility)
     shared_interface: bool = True  # Analysis/ablation only: False gives each camera its own water_z (not recommended for production; the shared-interface assumption underlies the paper's central claim)
     initial_water_z: dict[str, float] | None = None
