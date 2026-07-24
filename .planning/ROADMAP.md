@@ -94,14 +94,14 @@ experiments can start as early as possible against the 2026-08-21 deadline.
      tank-scale/working-distance, and returns ground-truth board poses and true interface
      height so sweeps can compute absolute error.
   6. Every sweep entry point accepts and threads a seed, so a surprising result reproduces.
-**Plans**: 7 plans (5 waves)
-- [ ] 16-01-PLAN.md — Conditioning core: blocked tall-skinny QR + SVD, correlation matrix, JSON/NPZ report
-- [ ] 16-02-PLAN.md — Synthetic generator: refractive index plumbed through, WP5 sweep-axis audit
-- [ ] 16-03-PLAN.md — Config keys, internals/ artifact dir, per-stage calibration dumps
-- [ ] 16-04-PLAN.md — Per-iteration optimization trace via scipy callback, one CSV per BA stage
-- [ ] 16-05-PLAN.md — Conditioning wired to the final reported stage, labelled parameters
-- [ ] 16-06-PLAN.md — Pipeline holdout seed threading and seed recording in outputs
-- [ ] 16-07-PLAN.md — Standalone evaluate_calibration, pipeline refactor, equivalence regression test
+**Plans**: 7 plans (5 waves) — all complete 2026-07-23
+- [x] 16-01-PLAN.md — Conditioning core: blocked tall-skinny QR + SVD, correlation matrix, JSON/NPZ report
+- [x] 16-02-PLAN.md — Synthetic generator: refractive index plumbed through, WP5 sweep-axis audit
+- [x] 16-03-PLAN.md — Config keys, internals/ artifact dir, per-stage calibration dumps
+- [x] 16-04-PLAN.md — Per-iteration optimization trace via scipy callback, one CSV per BA stage
+- [x] 16-05-PLAN.md — Conditioning wired to the final reported stage, labelled parameters
+- [x] 16-06-PLAN.md — Pipeline holdout seed threading and seed recording in outputs
+- [x] 16-07-PLAN.md — Standalone evaluate_calibration, pipeline refactor, equivalence regression test
 
 ### Phase 17: Per-Camera Interface Ablation Mode
 **Goal**: A per-camera `water_z` ablation is available for the WP6 experiment and is provably
@@ -122,12 +122,16 @@ argument needs; this is a prerequisite, not a convenience)
      rather than collapsing them to a mean.
   5. `shared_interface=True` is bit-unchanged from current behavior, and per-camera mode
      with equal initial values recovers the shared solution on shared-interface ground truth.
-**Plans**: 5 plans
-- [ ] 17-01-PLAN.md — Optimizer core: per-camera water_z packing, sparsity, bounds, grouping, labels (IFACE-02, IFACE-03)
-- [ ] 17-02-PLAN.md — Config surface: shared_interface field, YAML loader pass-through, init template, docs stub (IFACE-01)
-- [ ] 17-03-PLAN.md — Thread shared_interface through Stage 3/4 optimizers + pipeline wiring + ablation WARNING (IFACE-01, IFACE-02)
-- [ ] 17-04-PLAN.md — Per-camera seed resolution + water_z spread reporting (console mm + internals JSON) (IFACE-04)
-- [ ] 17-05-PLAN.md — Bit-exactness + equal-seed recovery tests (IFACE-05)
+**Plans**: 5 plans — all complete 2026-07-23
+- [x] 17-01-PLAN.md — Optimizer core: per-camera water_z packing, sparsity, bounds, grouping, labels (IFACE-02, IFACE-03)
+- [x] 17-02-PLAN.md — Config surface: shared_interface field, YAML loader pass-through, init template, docs stub (IFACE-01)
+- [x] 17-03-PLAN.md — Thread shared_interface through Stage 3/4 optimizers + pipeline wiring + ablation WARNING (IFACE-01, IFACE-02)
+- [x] 17-04-PLAN.md — Per-camera seed resolution + water_z spread reporting (console mm + internals JSON) (IFACE-04)
+- [x] 17-05-PLAN.md — Bit-exactness + equal-seed recovery tests (IFACE-05)
+
+**Verification**: PASSED 2026-07-23 (`17-VERIFICATION.md`) — all five IFACE requirements traced;
+full suite 799 passed. Execution caught and fixed a real bug: `compute_residuals` unpacked
+without `shared_interface`, misaligning every per-camera parameter block (fix `575bdc8`).
 
 ### Phase 18: Documentation Corrections & Stage-Model Reconciliation
 **Goal**: Fix live factual errors in published docs and reconcile the paper's three-stage
@@ -238,8 +242,8 @@ behavior the published artifacts actually reflect.
 | 13. Core Refinement | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 14. Optimization Extensions | v1.6 | 2/2 | Complete | 2026-02-28 |
 | 15. Validation and Result Contract | v1.6 | 2/2 | Complete | 2026-02-28 |
-| 16. Experiment Observability Hooks | 7/7 | Complete    | 2026-07-23 | - |
-| 17. Per-Camera Interface Ablation Mode | 5/5 | Complete    | 2026-07-23 | - |
+| 16. Experiment Observability Hooks | v1.9 | 7/7 | Complete | 2026-07-23 |
+| 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 0/TBD | Not started | - |
 | 19. Benchmark Instrumentation | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |

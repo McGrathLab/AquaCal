@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
+milestone: v1.9
 milestone_name: Publication Prep
-status: unknown
-last_updated: "2026-07-23T20:58:13.882Z"
+status: in-progress
+last_updated: "2026-07-24"
 progress:
-  total_phases: 14
-  completed_phases: 12
-  total_plans: 42
-  completed_plans: 41
+  total_phases: 7
+  completed_phases: 2
+  total_plans: 12
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,29 +18,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** v1.9 Publication Prep — Phase 16 COMPLETE, ready for Phase 17 planning
+**Current focus:** v1.9 Publication Prep — Phases 16 and 17 COMPLETE (the experiment-blocker
+chain is done); next is Phase 18 (Documentation Corrections & Stage-Model Reconciliation)
 
 ## Current Position
 
-Phase: 16 (Experiment Observability Hooks) — COMPLETE
-Plan: 7/7 plans complete (16-01, 16-02, 16-03, 16-04, 16-05, 16-06, 16-07); plan-checker
-  PASSED first iteration
-Status: Phase 16 complete. Ready for `/gsd:plan-phase 17`.
-Last activity: 2026-07-23 — plan 16-07 (standalone held-out evaluation, HOOK-04) executed;
-  see "Phase 16 Plan Progress" below for details.
-  An earlier planning session crashed the machine mid-research-followup; recovered from
-  its transcript, see the HOOK-03 note below.
+Phase: 17 (Per-Camera Interface Ablation Mode) — COMPLETE, verification PASSED
+Plan: 5/5 plans complete (17-01..17-05). Phase 16 also 7/7 complete.
+Status: The experiment-blocking chain (16 → 17) is finished, so WP5/WP6 experiment
+  execution is no longer gated on library work. Ready for `/gsd:discuss-phase 18 --auto`.
+Last activity: 2026-07-23 — Phase 17 executed and verified (roadmap commit `b2aea44`);
+  full suite 799 passed. See "Phase 17 Plan Progress" below.
+Unreleased on main: everything from Phases 16-17 plus quick task 3's `perf:` commit.
+  Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
+  and cut a version (a `feat:` is present, so a minor bump to v1.9.0).
 
 Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09), phases 13-15.
 v1.7–v1.8 shipped outside the milestone framework (see MILESTONES.md).
 v1.9 phase numbering continues from **16** and spans **16-22** (7 phases).
 
 v1.9 phase structure (revised order — experiment blocker first):
-- Phase 16: Experiment Observability Hooks (HOOK-01..06) — no dependency, first phase
-- Phase 17: Per-Camera Interface Ablation Mode (IFACE-01..05) — depends on Phase 16
-  (needs HOOK-03 conditioning diagnostics as the WP6 metric). Phases 16-17 together are
-  the milestone's longest pole and only true experiment blocker; sequenced first so
-  WP5/WP6 experiments can start as early as possible against the deadline.
+- ✅ Phase 16: Experiment Observability Hooks (HOOK-01..06) — COMPLETE 2026-07-23
+- ✅ Phase 17: Per-Camera Interface Ablation Mode (IFACE-01..05) — COMPLETE 2026-07-23.
+  Depended on Phase 16 (HOOK-03 conditioning diagnostics as the WP6 metric). Phases 16-17
+  together were the milestone's longest pole and only true experiment blocker; sequenced
+  first so WP5/WP6 experiments could start as early as possible against the deadline.
+  **That chain is now closed — experiment execution is no longer gated on library work.**
 - Phase 18: Documentation Corrections & Stage-Model Reconciliation (DOCS-01,02,03,04,06)
   — no dependency, independent of 16-17, may run in parallel. DOCS-01 (live ~12x vs
   43-52x error) can and should be fixed at any point regardless of scheduling.
@@ -85,6 +88,22 @@ Key v1.9 roadmap decisions:
 - DOCS-07 (release cut) kept as its own single-requirement final phase — it's a capstone
   step, not incoherent with anything else
 - [Phase 16]: HOOK-06 gap closure: config.seed now threaded into split_detections and recorded in CalibrationMetadata (backward-compatible via .get); config_hash distinguishes seed-only differences
+
+Key v1.9 Phase 17 decisions:
+- Every packing/structure function takes a trailing `shared_interface: bool = True` kwarg;
+  the `True` branch is the untouched historical path, locked by exact-equality tests
+- N per-camera `water_z` columns collapse into the *single* `water_z` FD group slot (two
+  cameras' water_z columns never share a residual row), so the structural group count stays
+  13 / 17-with-intrinsics — unchanged from shared mode
+- The `initial_water_z` "must cover all cameras" hard-fail is gated on `shared_interface`
+  in both dict branches, so a partial dict survives to the per-camera seed resolver
+- Per-camera seeding is always individual (`water_z_per_camera`), never collapsed to a mean
+  or to the reference camera (IFACE-04)
+- The ablation headline number (per-camera water_z spread) is unconditional in per-camera
+  mode: mm to console, meters to `internals/interface_spread.json`, no gating flag
+- Per-camera tilt / interface normal explicitly out of scope — only `water_z` goes per-camera
+- Full new-feature documentation for `shared_interface` (worked example, WP6 interpretation)
+  deferred to Phase 21; Phase 17 shipped only an ablation-framed stub
 
 ### Pending Todos
 
@@ -207,6 +226,51 @@ None.
   All six HOOK-01..06 requirements for Phase 16 are now complete. No regressions: 763
   passed (full unit suite, +45 net), 734 passed/29 deselected (`tests/ -m "not slow"`).
 
+### Phase 17 Plan Progress
+
+Phase 17 (Per-Camera Interface Ablation Mode) — COMPLETE 2026-07-23, all 5 plans, all of
+IFACE-01..05. Verification PASSED (`17-VERIFICATION.md`): full suite **799 passed / 0 failed**
+(40 min, slow tests included); fast suite 768 passed / 31 deselected. Roadmap commit `b2aea44`.
+
+- Plan 17-01 (Per-camera water_z packing/structure layer, IFACE-02/IFACE-03) — COMPLETE.
+  Threaded `shared_interface` through `pack_params`, `unpack_params`, `build_bounds`,
+  `build_jacobian_sparsity`, `build_structural_column_groups`, and `build_parameter_labels`.
+  `pack_params` also gained an optional `water_z_per_camera` dict; when it is None, per-camera
+  mode seeds every camera from the scalar `water_z` (the trivial equal-seed case IFACE-05's
+  recovery test needs). Sparsity emits N per-camera columns, each nonzero only in its own
+  camera's residual rows; grouping collapses them into one slot so the count stays 13/17.
+  IFACE-03 safety net parametrizes all 8 mode combinations.
+- Plan 17-02 (`shared_interface` config surface, IFACE-01) — COMPLETE.
+  `CalibrationConfig.shared_interface: bool = True` with an ablation-framed docstring;
+  `load_config` parses `interface.shared_interface` early (right after `normal_fixed`, so it
+  is in scope for the coverage gate) and passes it through with no cross-field validation;
+  `aquacal init` emits a commented template line; `docs/guide/refractive_geometry.md` carries
+  an ablation-only stub. Ablation framing deliberately repeated in three places.
+- Plan 17-03 (Optimizer + pipeline integration, IFACE-01/IFACE-02) — COMPLETE.
+  `optimize_interface` (Stage 3) and `joint_refinement` (Stage 4) both accept
+  `shared_interface` and seed each camera from its own value (`initial_water_zs` /
+  `distances_in`). `run_calibration_from_config` wires `config.shared_interface` into both
+  stages and prints exactly one reason-bearing WARNING at pipeline start in per-camera mode.
+  The observer's `water_z_index` formula (`0/2 + 6*(n_cams-1)`) is valid in both modes — it
+  points at `camera_order[0]`'s water_z.
+- Plan 17-04 (Per-camera seed resolver + spread report, IFACE-04) — COMPLETE.
+  `_resolve_per_camera_water_z_seeds`: None fills 0.15 silently; a partial dict fills the
+  missing cameras and warns naming them; an unknown key warns as a likely typo; an
+  auxiliary-camera key is silently ignored. Uses `warnings.warn(UserWarning)` rather than
+  `print` so each case is assertable. `_build_interface_spread_report` writes
+  `internals/interface_spread.json` (meters, `std` = population/ddof=0) plus an mm console
+  summary, tagged with the producing stage using the same selection logic as the
+  conditioning report. Both guarded by `if not config.shared_interface`.
+- Plan 17-05 (IFACE-05 correctness safety net) — COMPLETE, and it earned its keep.
+  Added `tests/synthetic/test_per_camera_interface.py`: packing-layer bit-identity
+  (rtol=0/atol=0), end-to-end shared-mode Stage-3 determinism, and equal-seed per-camera
+  recovery to ~1e-15 on shared-interface ground truth. **The recovery test exposed a Rule-1
+  bug plans 17-01/17-03 both missed**: `compute_residuals` called `unpack_params` without
+  `shared_interface`, so per-camera mode read a single water_z and misaligned every later
+  parameter block — Stage 3 diverged to RMS ~148 even starting from the noiseless optimum.
+  Fixed (`575bdc8`) by threading `shared_interface` into `compute_residuals` and both
+  optimizers' `cost_args`. See the `shared_interface`-unpack lesson in `knowledge-base.md`.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -238,10 +302,20 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-23
-Stopped at: Plan 16-07 (standalone held-out evaluation, HOOK-04) executed and committed.
-  Phase 16 (Experiment Observability Hooks) is now COMPLETE — all 7 plans done, all six
-  HOOK-01..06 requirements satisfied. Next step is `/gsd:plan-phase 17`.
-Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
+Stopped at: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified — all 5
+  plans done, all five IFACE-01..05 requirements satisfied, 799 tests passing. With
+  Phase 16 already complete, the milestone's experiment-blocking chain is finished and
+  WP5/WP6 execution is unblocked.
+  Next step is `/gsd:discuss-phase 18 --auto` (Documentation Corrections & Stage-Model
+  Reconciliation). Phase 18 depends on nothing and contains DOCS-01, a live factual error
+  in currently published docs (the ~12x column-grouping claim; the real figure is 43-52x).
+  Phase 19 (Benchmark Instrumentation) is gated behind it because DOCS-06 must settle the
+  stage-key schema before `benchmark.json` locks it in.
+  Nothing has been pushed: Phases 16-17 and quick task 3 sit unreleased on local `main`.
+Previously: Plan 16-07 (standalone held-out evaluation, HOOK-04) executed and committed,
+  completing Phase 16 (Experiment Observability Hooks) — all 7 plans, all six HOOK-01..06
+  requirements.
+  Before that: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
   run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
   order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
   Benchmark Instrumentation (19) -> Index Helper (20) -> Docs/Dataset Refresh (21) ->
@@ -259,5 +333,5 @@ Previously: Phase 16 context gathered. Roadmap for v1.9 was created and then rev
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-  Next step is `/gsd:plan-phase 16`.
-Resume file: .planning/phases/16-experiment-observability-hooks/16-CONTEXT.md
+Resume file: .planning/phases/17-per-camera-interface-ablation-mode/17-VERIFICATION.md
+  (Phase 18 has no CONTEXT.md yet — `/gsd:discuss-phase 18 --auto` creates it.)
