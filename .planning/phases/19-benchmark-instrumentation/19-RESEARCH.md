@@ -606,21 +606,39 @@ covers this for the numerical-result side; extend it (or add a sibling test) ass
 wrapping could change iteration counts even if the final `x` converges to the same point by
 luck.
 
-### Pitfall 5: `njev` is not always present
+### Pitfall 5: `njev` is not always present — **CORRECTED 2026-07-24, ORIGINAL CLAIM WAS WRONG**
 
-**What goes wrong:** `OptimizeResult.njev` is only populated when `jac` is a callable (not the
-string `"2-point"`). All four in-scope call sites use `use_sparse_jacobian=True` by default,
-which supplies a callable `jac` (via `make_sparse_jacobian_func`), so `njev` should be present
-in the common case — but any call with `use_sparse_jacobian=False` (a real, user-facing
-parameter on `optimize_interface`/`joint_refinement`) falls back to `jac="2-point"`, and
-`result.njev` may then be `None` or absent depending on the TRF/dogbox code path.
-**Why it happens:** SciPy's own docs describe `njev` as conditionally present ("Number of
-Jacobian evaluations done. If None (default), it is set to 0.0 for '2-point'.").
-**How to avoid:** Use `getattr(result, "njev", None)` defensively rather than `result.njev`
-directly, and document the `None` case in `SolverDiagnostics`'s docstring as "not available
-when `jac` is `'2-point'`" rather than treating it as a bug.
-**Warning signs:** A test that asserts `njev is not None` unconditionally will intermittently
-fail depending on `use_sparse_jacobian`.
+> **This pitfall was originally written as MEDIUM confidence and not executed against a live
+> `"2-point"` call. It was wrong.** The plan-checker caught it and it was then independently
+> reproduced twice. The corrected finding is below. Any plan or test written against the
+> original claim will fail on first run.
+
+**Verified live against the installed SciPy 1.17.0:**
+
+```
+least_squares(f, x0, method='trf', loss='huber', f_scale=1.0)   -> njev = 7    (an int)
+least_squares(f, x0, method='lm')                               -> njev = None
+```
+
+`njev` is populated with a real integer for `method='trf'` **even when `jac='2-point'`**.
+SciPy's docstring restricts the `None` case to the `'lm'` method: *"...if numerical Jacobian
+approximation is used in the `'lm'` method."*
+
+**Why the original claim was wrong:** it generalized the `'lm'`-only `None` behavior to all
+methods. All four in-scope call sites use `method='trf'`
+(`interface_estimation.py:337`, `interface_estimation.py:672`, `refinement.py:237`,
+`point_refinement.py:674`) and none use `'lm'`, so **`njev` is always an int at every
+in-scope site**, regardless of `use_sparse_jacobian`.
+
+**How to apply:** Assert `njev` is a populated `int` at all four sites, in both the
+`use_sparse_jacobian=True` (callable `jac`) and `False` (`'2-point'`) branches. Do **not**
+assert `njev is None` anywhere. `getattr(result, "njev", None)` remains harmless as defensive
+coding, but the `None` branch is unreachable for these sites and must not be baked into an
+acceptance criterion.
+
+**Note:** the two OUT-of-scope sites (`extrinsics.py:189`, `validation/evaluation.py:302`) DO
+use `method='lm'` and would genuinely return `njev=None` — which is likely where the original
+confusion came from. They are excluded by D-07 and are not instrumented.
 
 ## Code Examples
 

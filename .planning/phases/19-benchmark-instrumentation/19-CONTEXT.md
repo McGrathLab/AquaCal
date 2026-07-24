@@ -149,6 +149,29 @@ Requirements: BENCH-01 through BENCH-06.
   derived quantity it appears to need (e.g. FD reduction) must instead be recorded by the
   pipeline under BENCH-03.
 
+### Resolved after plan-check (added 2026-07-24)
+
+- **D-18 — Peak memory is recorded PER STAGE, not once per run.** The plan-checker caught
+  that the first plan set narrowed BENCH-02's *"Peak memory **per stage** is captured"* to a
+  single whole-run reading taken at the end of `run_calibration_from_config`. That is a scope
+  reduction against the requirement text, and it was not flagged the way D-11 flagged the
+  BENCH-06 wording mismatch. It is being fixed rather than negotiated down.
+
+  `peak_wset` / `VmHWM` are **monotonic, non-resettable** high-water marks, which makes
+  per-stage attribution nearly free — no polling, no sampler thread:
+
+  - Read the high-water mark at every stage boundary, alongside the existing `_time_block`
+    calls, and attach it to that stage's block in `stages`.
+  - Because the mark is monotonic, each reading is *"cumulative peak as of the end of this
+    stage"* — **not** that stage's independent peak. Label the field to say exactly that.
+    Anything else would be a lie: a stage whose own peak is below an earlier stage's is
+    indistinguishable from one that allocated nothing.
+  - Also record the per-stage **delta** (increase over the previous boundary). The delta is
+    what actually answers "which stage drove the peak", which is the question the paper needs.
+  - Keep a top-level whole-run peak as well — it is the number quoted in prose.
+
+  This costs one extra zero-poll read per stage and delivers BENCH-02 as written.
+
 ### Resolved after research (added 2026-07-24)
 
 These three were raised as open questions by `19-RESEARCH.md`. Resolving them here so the
