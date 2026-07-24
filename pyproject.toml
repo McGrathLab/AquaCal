@@ -57,6 +57,9 @@ docs = [
     "sphinxcontrib-mermaid",
     "ipython",
 ]
+bench = [
+    "psutil>=5.9",
+]
 
 [project.urls]
 Homepage = "https://github.com/McGrathLab/AquaCal"
