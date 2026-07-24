@@ -1,6 +1,6 @@
-"""Stage 4 joint refinement with optional intrinsics optimization.
+"""Stage 3's second pass, with intrinsics unlocked, with optional intrinsics optimization.
 
-This module implements the final optional refinement stage that re-optimizes
+This module implements the final optional refinement pass that re-optimizes
 all parameters from Stage 3, with the option to also refine camera intrinsics
 (focal length and principal point).
 """
@@ -62,9 +62,9 @@ def joint_refinement(
     """
     Jointly refine all calibration parameters, optionally including intrinsics.
 
-    This is Stage 4 of the calibration pipeline. It takes the output of Stage 3
-    and performs additional optimization. When refine_intrinsics=True, it also
-    optimizes focal lengths and principal points.
+    This is Stage 3's second pass, with intrinsics unlocked. It takes the output
+    of Stage 3's first pass and performs additional optimization. When
+    refine_intrinsics=True, it also optimizes focal lengths and principal points.
 
     Args:
         stage3_result: Output tuple from optimize_interface:

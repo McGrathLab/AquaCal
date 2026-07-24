@@ -407,7 +407,7 @@ def calibrate_intrinsics_single(
     # implausible distortion coefficients) even though the same detections and
     # a sane initial guess converge cleanly. This has been observed to poison
     # downstream extrinsic initialization (Stage 2) and persist through the
-    # joint bundle adjustment (Stage 3/4). The generic guess below has been
+    # joint bundle adjustment (Stage 3). The generic guess below has been
     # verified to reproduce the unguided result (to 6+ significant figures)
     # for well-behaved cameras, so it is a safe default for all cameras.
     w_img, h_img = image_size

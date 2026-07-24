@@ -201,9 +201,9 @@ def save_conditioning_report(
         json_path: Destination for the JSON scalars/spectrum payload.
         npz_path: Destination for the NPZ correlation-matrix payload.
         stage: Optional label naming the bundle-adjustment stage that produced
-            this report (e.g. "stage3", "stage4"), recorded in the JSON payload
-            as ``"stage"`` for unambiguous provenance when a run only reports
-            one conditioning pass.
+            this report (e.g. "stage3", "stage3_intrinsic_pass"), recorded in
+            the JSON payload as ``"stage"`` for unambiguous provenance when a
+            run only reports one conditioning pass.
 
     Raises:
         None directly; overwriting an existing path only logs a warning.

@@ -1,8 +1,9 @@
-"""Shared optimization utilities for calibration stages 3 and 4.
+"""Shared optimization utilities for Stage 3's two passes.
 
 Provides parameter packing/unpacking, Jacobian sparsity construction,
 bounds building, residual computation, and sparse Jacobian helpers
-used by both interface_estimation (Stage 3) and refinement (Stage 4).
+used by both interface_estimation (Stage 3's first pass, extrinsics + water_z)
+and refinement (Stage 3's second pass, with intrinsics unlocked).
 """
 
 import numpy as np
