@@ -2,6 +2,7 @@
 
 import csv
 import math
+import types
 
 import numpy as np
 import pytest
@@ -10,8 +11,10 @@ from scipy.optimize import least_squares
 from aquacal.calibration._observability import (
     TRACE_CSV_HEADER,
     OptimizerObserver,
+    SolverDiagnostics,
     TraceRow,
     build_parameter_labels,
+    capture_solver_diagnostics,
 )
 from aquacal.calibration._optim_common import pack_params
 from aquacal.config.schema import BoardPose, CameraExtrinsics, CameraIntrinsics
@@ -391,3 +394,162 @@ class TestOnSolutionConditioning:
 
         assert "stage3" in str(excinfo.value)
         assert "boom" in str(excinfo.value)
+
+
+# --- capture_solver_diagnostics -------------------------------------------------
+
+
+def _mock_result_with_njev(**overrides):
+    """A mock OptimizeResult-like object with njev populated (the realistic case
+    for every in-scope site, since all four use method='trf')."""
+    defaults = dict(
+        nfev=np.int64(10),
+        njev=np.int64(3),
+        cost=np.float64(0.1),
+        optimality=np.float64(1e-7),
+        status=2,
+        message="converged",
+    )
+    defaults.update(overrides)
+    return types.SimpleNamespace(**defaults)
+
+
+class TestCaptureSolverDiagnostics:
+    def test_noop_when_diagnostics_out_is_none(self):
+        """diagnostics_out=None must not raise -- every call site can call this
+        helper unconditionally."""
+        result = _mock_result_with_njev()
+        capture_solver_diagnostics(
+            result,
+            None,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+        )
+
+    def test_populated_call_casts_to_native_python_types(self):
+        """Primary, expected case: njev is populated as an int, matching every
+        real in-scope call site (all method='trf')."""
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+        )
+
+        assert type(diag.nfev) is int
+        assert type(diag.njev) is int
+        assert type(diag.cost) is float
+        assert type(diag.optimality) is float
+        assert type(diag.status) is int
+        assert diag.nfev == 10
+        assert diag.njev == 3
+        assert diag.cost == pytest.approx(0.1)
+        assert diag.optimality == pytest.approx(1e-7)
+        assert diag.status == 2
+        assert diag.message == "converged"
+
+    def test_njev_none_only_for_defensive_missing_attribute_case(self):
+        """Generic-robustness check only: proves the getattr(..., None) defensive
+        read degrades gracefully rather than raising AttributeError. This does
+        NOT occur at any of this codebase's four in-scope call sites -- all four
+        use method='trf', which always populates njev. It is not a claim about
+        jac='2-point' behavior (that claim was independently reproduced false;
+        see 19-RESEARCH.md Pitfall 5, corrected)."""
+        result = types.SimpleNamespace(
+            nfev=np.int64(10),
+            cost=np.float64(0.1),
+            optimality=np.float64(1e-7),
+            status=2,
+            message="converged",
+            # deliberately no njev attribute at all
+        )
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+        )
+
+        assert diag.njev is None
+        assert diag.nfev == 10
+
+    def test_tolerances_and_max_nfev_recorded_verbatim(self):
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-9,
+            xtol=1e-10,
+            gtol=1e-11,
+            max_nfev_effective=6730,
+            max_nfev_source="point_refinement_200x_auto",
+        )
+
+        assert diag.ftol == 1e-9
+        assert diag.xtol == 1e-10
+        assert diag.gtol == 1e-11
+        assert diag.max_nfev_effective == 6730
+        assert diag.max_nfev_source == "point_refinement_200x_auto"
+
+    def test_n_params_and_n_groups_none_with_reason(self):
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            n_params=None,
+            n_groups=None,
+            n_params_reason=(
+                "register_auxiliary_camera uses dense 2-point FD, no "
+                "column-grouping structure exists"
+            ),
+            n_groups_reason="no column-grouping structure exists",
+        )
+
+        assert diag.n_params is None
+        assert diag.n_groups is None
+        assert diag.n_params_reason == (
+            "register_auxiliary_camera uses dense 2-point FD, no "
+            "column-grouping structure exists"
+        )
+        assert diag.n_groups_reason == "no column-grouping structure exists"
+
+    def test_n_params_and_n_groups_populated_as_native_int(self):
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            n_params=673,
+            n_groups=13,
+        )
+
+        assert diag.n_params == 673
+        assert diag.n_groups == 13
+        assert type(diag.n_params) is int
+        assert type(diag.n_groups) is int
+        assert diag.n_params_reason is None
+        assert diag.n_groups_reason is None

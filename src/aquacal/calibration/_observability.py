@@ -228,6 +228,76 @@ def build_parameter_labels(
     return labels
 
 
+def capture_solver_diagnostics(
+    result,
+    diagnostics_out: SolverDiagnostics | None,
+    *,
+    ftol: float,
+    xtol: float,
+    gtol: float,
+    max_nfev_effective: int | None,
+    max_nfev_source: str,
+    n_params: int | None = None,
+    n_groups: int | None = None,
+    n_params_reason: str | None = None,
+    n_groups_reason: str | None = None,
+) -> None:
+    """Populate a `SolverDiagnostics` in place from a returned `OptimizeResult`.
+
+    Must be called only after `least_squares` returns; never read `result.jac`,
+    `result.fun`, or `result.x` here (Research Pitfall 4 -- doing so risks
+    retaining large arrays and inflating the very peak-memory measurement
+    BENCH-02 depends on being honest). Only the small scalar fields SciPy
+    already reports on `OptimizeResult` are read.
+
+    `njev` is read defensively via `getattr` for reuse-safety, but at every one
+    of this codebase's four in-scope call sites (all `method='trf'`) it is
+    always populated as an int -- the `None` branch is not expected there; see
+    19-RESEARCH.md Pitfall 5, corrected.
+
+    No-op when `diagnostics_out is None`, so every call site can call this
+    unconditionally regardless of whether the caller opted into diagnostics
+    capture.
+
+    Args:
+        result: The final `scipy.optimize.OptimizeResult` from `least_squares`.
+        diagnostics_out: The `SolverDiagnostics` instance to mutate in place, or
+            `None` to skip capture entirely.
+        ftol: Explicit function-tolerance passed to `least_squares` (BENCH-06).
+        xtol: Explicit parameter-tolerance passed to `least_squares` (BENCH-06).
+        gtol: Explicit gradient-tolerance passed to `least_squares` (BENCH-06).
+        max_nfev_effective: The effective `max_nfev` in force for this call,
+            including SciPy's computed auto value when left unset (BENCH-06).
+        max_nfev_source: Provenance label for `max_nfev_effective`, e.g.
+            `"explicit"` or `"scipy_auto"` (BENCH-06).
+        n_params: Packed parameter-vector length `P`, when applicable (BENCH-03).
+        n_groups: Finite-difference column-group count, when applicable
+            (BENCH-03).
+        n_params_reason: Explanation recorded when `n_params` is `None` (D-15).
+        n_groups_reason: Explanation recorded when `n_groups` is `None` (D-15).
+    """
+    if diagnostics_out is None:
+        return
+
+    diagnostics_out.nfev = int(result.nfev)
+    njev = getattr(result, "njev", None)
+    diagnostics_out.njev = int(njev) if njev is not None else None
+    diagnostics_out.cost = float(result.cost)
+    diagnostics_out.optimality = float(result.optimality)
+    diagnostics_out.status = int(result.status)
+    diagnostics_out.message = str(result.message)
+
+    diagnostics_out.ftol = ftol
+    diagnostics_out.xtol = xtol
+    diagnostics_out.gtol = gtol
+    diagnostics_out.max_nfev_effective = max_nfev_effective
+    diagnostics_out.max_nfev_source = max_nfev_source
+    diagnostics_out.n_params = n_params
+    diagnostics_out.n_groups = n_groups
+    diagnostics_out.n_params_reason = n_params_reason
+    diagnostics_out.n_groups_reason = n_groups_reason
+
+
 class OptimizerObserver:
     """Read-only observer for a single `least_squares` bundle-adjustment call.
 
