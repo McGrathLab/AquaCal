@@ -11,6 +11,7 @@ This section explains the theory behind AquaCal's calibration approach and provi
 ## Practical Guides
 
 - [CLI Reference](cli.md) — Command-line interface documentation for `calibrate`, `init`, and `compare`
+- [Configuration Reference](configuration.md) — Every YAML config section, including frame-trimming (`start_frame`/`stop_frame`) and outlier-rejection (`reject_outlier_frames`) options
 - [Troubleshooting](troubleshooting.md) — Common issues and solutions
 - [Glossary](glossary.md) — Definitions of key terms
 
@@ -22,6 +23,7 @@ refractive_geometry
 coordinates
 optimizer
 cli
+configuration
 troubleshooting
 glossary
 :::

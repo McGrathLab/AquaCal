@@ -52,7 +52,8 @@ cameras:
 Camera names are arbitrary strings matched against your video filenames (or the `--pattern`
 regex passed to `aquacal init`; see the [CLI Reference](cli.md)).
 
-Related optional lists (documented fully in [Optimizer Pipeline](optimizer.md#camera-models)):
+Related optional lists (documented fully in the {ref}`Camera Models <camera-models>` section of
+the Optimizer Pipeline guide):
 
 - `rational_model_cameras` — cameras using the 8-coefficient rational distortion model
 - `auxiliary_cameras` — cameras registered post-hoc, excluded from joint optimization
