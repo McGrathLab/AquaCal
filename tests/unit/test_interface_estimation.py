@@ -2234,3 +2234,71 @@ class TestRegisterAuxiliaryCamera:
         assert 0.0 <= refined_cy <= float(h), (
             f"cy should be in [0, {h}], got {refined_cy}"
         )
+
+    def test_register_auxiliary_camera_diagnostics_out_populated_with_njev_and_null_grouping_reasons(
+        self, board, intrinsics, ground_truth_distances, synthetic_board_poses
+    ):
+        """diagnostics_out is populated with a populated njev and null-with-reason grouping.
+
+        register_auxiliary_camera always uses method="trf" (confirmed at the
+        least_squares call site), so njev is a populated int here per the
+        corrected 19-RESEARCH.md Pitfall 5 finding -- this is NOT a
+        `jac='2-point'` implies `njev=None` case. n_params/n_groups stay None
+        with a stated reason since this site has no column-grouping structure
+        (D-15); this is a distinct null case from njev's availability.
+        """
+        np.random.seed(42)
+
+        aux_extrinsics = CameraExtrinsics(
+            R=np.eye(3, dtype=np.float64),
+            t=np.array([0.15, 0.0, 0.0], dtype=np.float64),
+        )
+        aux_intrinsics = intrinsics["cam0"]
+        aux_name = "aux_cam"
+
+        detections = generate_synthetic_detections(
+            {aux_name: aux_intrinsics},
+            {aux_name: aux_extrinsics},
+            {aux_name: ground_truth_distances["cam0"]},
+            board,
+            synthetic_board_poses,
+            noise_std=0.3,
+            min_corners=6,
+        )
+
+        board_poses_dict = {bp.frame_idx: bp for bp in synthetic_board_poses}
+        water_z = ground_truth_distances["cam0"]
+
+        diag = SolverDiagnostics()
+        register_auxiliary_camera(
+            camera_name=aux_name,
+            intrinsics=aux_intrinsics,
+            detections=detections,
+            board_poses=board_poses_dict,
+            board=board,
+            water_z=water_z,
+            verbose=0,
+            diagnostics_out=diag,
+        )
+
+        # njev must be a populated int -- NOT None -- since method="trf" is used.
+        assert diag.njev is not None
+        assert isinstance(diag.njev, int)
+
+        assert diag.nfev is not None and isinstance(diag.nfev, int)
+        assert diag.cost is not None
+        assert diag.optimality is not None
+        assert diag.status is not None
+        assert diag.message is not None
+
+        # No column-grouping structure exists at this site (D-15 null-with-reason).
+        assert diag.n_params is None
+        assert isinstance(diag.n_params_reason, str) and diag.n_params_reason
+        assert diag.n_groups is None
+        assert isinstance(diag.n_groups_reason, str) and diag.n_groups_reason
+
+        # This site does not set explicit ftol/xtol/gtol kwargs (D-11), but
+        # capture_solver_diagnostics still records the values in force.
+        assert diag.ftol == 1e-8
+        assert diag.xtol == 1e-8
+        assert diag.gtol == 1e-8

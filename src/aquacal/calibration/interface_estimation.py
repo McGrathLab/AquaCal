@@ -536,6 +536,7 @@ def register_auxiliary_camera(
     min_corners: int = 4,
     refine_intrinsics: bool = False,
     verbose: int = 0,
+    diagnostics_out: SolverDiagnostics | None = None,
 ) -> (
     tuple[CameraExtrinsics, float, float]
     | tuple[CameraExtrinsics, float, float, CameraIntrinsics]
@@ -563,6 +564,11 @@ def register_auxiliary_camera(
         refine_intrinsics: If True, also optimize fx, fy, cx, cy (10 params total).
             Distortion coefficients are kept fixed.
         verbose: Verbosity level
+        diagnostics_out: Optional `SolverDiagnostics` instance to populate in
+            place with terminal solver diagnostics (BENCH-01). This site does
+            not set explicit tolerances (not a BENCH-06 target, D-11); `n_params`
+            and `n_groups` stay `None` with a stated reason since this site uses
+            no column-grouping structure. Has no effect on the returned values.
 
     Returns:
         When refine_intrinsics=False: Tuple of (extrinsics, water_z, rms_error)
@@ -714,6 +720,26 @@ def register_auxiliary_camera(
         f_scale=1.0,
         bounds=(lower, upper),
         verbose=verbose,
+    )
+
+    capture_solver_diagnostics(
+        result,
+        diagnostics_out,
+        ftol=1e-8,
+        xtol=1e-8,
+        gtol=1e-8,
+        max_nfev_effective=len(x0) * 100,
+        max_nfev_source="scipy_auto",
+        n_params=None,
+        n_groups=None,
+        n_params_reason=(
+            "register_auxiliary_camera uses dense 2-point FD; no "
+            "column-grouping structure exists at this site"
+        ),
+        n_groups_reason=(
+            "register_auxiliary_camera uses dense 2-point FD; no "
+            "column-grouping structure exists at this site"
+        ),
     )
 
     # --- Step 7: Extract results ---
