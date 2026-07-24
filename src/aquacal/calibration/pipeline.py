@@ -47,7 +47,12 @@ from aquacal.config.schema import (
     Vec3,
 )
 from aquacal.core.board import BoardGeometry
-from aquacal.io.benchmark import capture_peak_memory
+from aquacal.io.benchmark import (
+    assemble_benchmark_record,
+    capture_environment,
+    capture_peak_memory,
+    write_benchmark_json,
+)
 from aquacal.io.detection import detect_all_frames
 from aquacal.io.internals import ensure_internals_dir, warn_if_overwriting
 from aquacal.io.serialization import save_calibration
@@ -1718,6 +1723,41 @@ def run_calibration_from_config(
     output_path = config.output_dir / "calibration.json"
     save_calibration(result, output_path)
     print(f"  Saved to {output_path}")
+
+    # --- Save benchmark.json (BENCH-04) ---
+    if config.save_benchmark:
+        problem_shape = {
+            "n_cameras": len(final_intrinsics),
+            "n_frames_calibration": len(optim_detections.frames),
+            "n_frames_holdout": len(val_detections.frames),
+        }
+        solver_config = {
+            "robust_loss": config.robust_loss,
+            "loss_scale": config.loss_scale,
+            "refine_intrinsics": config.refine_intrinsics,
+            "interface_normal_fixed": config.interface_normal_fixed,
+        }
+        accuracy = {
+            # Copied verbatim from the already-computed DiagnosticsData-feeding
+            # variables (D-06) -- never recomputed here.
+            "reprojection_rms": float(reproj_errors.rms),
+            "validation_3d_error_mean": float(reconstruction_errors.mean),
+            "validation_3d_error_std": float(reconstruction_errors.std),
+        }
+        benchmark_record = assemble_benchmark_record(
+            problem_shape=problem_shape,
+            timings=timings,
+            diagnostics=solver_diagnostics,
+            solver_config=solver_config,
+            accuracy=accuracy,
+            environment=capture_environment(),
+            # Explicit None (not just an empty dict) so the all-memory-keys-
+            # absent behavior is unambiguous even if the collector happened
+            # to end up empty for an unrelated reason.
+            memory_readings=memory_readings if config.benchmark_memory else None,
+        )
+        write_benchmark_json(benchmark_record, config.output_dir / "benchmark.json")
+        print("  Saved benchmark.json")
 
     print("\n" + "=" * 60)
     print("Calibration complete!")

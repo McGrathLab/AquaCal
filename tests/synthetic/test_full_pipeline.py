@@ -1,11 +1,17 @@
 """Full pipeline integration tests using synthetic data with known ground truth."""
 
+import json
+from pathlib import Path
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
 from aquacal.calibration.interface_estimation import optimize_interface
+from aquacal.calibration.pipeline import run_calibration_from_config
 from aquacal.config.schema import (
+    CalibrationConfig,
     CalibrationMetadata,
     CalibrationResult,
     CameraCalibration,
@@ -489,3 +495,113 @@ class TestComputeCalibrationErrors:
         np.testing.assert_allclose(errors["rotation_error_deg"], 0.0, atol=1e-10)
         np.testing.assert_allclose(errors["translation_error_mm"], 0.0, atol=1e-10)
         np.testing.assert_allclose(errors["water_z_error_mm"], 0.0, atol=1e-10)
+
+
+def _run_full_pipeline_with_mocked_video_io(
+    scenario: SyntheticScenario, output_dir: Path, **config_overrides
+) -> CalibrationResult:
+    """Run `run_calibration_from_config` end-to-end, with only the video-decode
+    boundary mocked out.
+
+    `calibrate_intrinsics_all`/`detect_all_frames` are the only two functions
+    replaced (with the scenario's ground-truth intrinsics and pre-generated
+    synthetic detections, respectively) -- every downstream stage (Stage 2/3
+    extrinsics + interface optimization, validation, benchmark.json assembly)
+    runs for real, so this exercises genuine `SolverDiagnostics`/memory
+    readings rather than mocked stand-ins (BENCH-04 integration test, plan
+    19-05 Task 3).
+    """
+    board = BoardGeometry(scenario.board_config)
+    detections = generate_synthetic_detections(
+        intrinsics=scenario.intrinsics,
+        extrinsics=scenario.extrinsics,
+        water_zs=scenario.water_zs,
+        board=board,
+        board_poses=scenario.board_poses,
+        noise_std=scenario.noise_std,
+        n_air=scenario.n_air,
+        n_water=scenario.n_water,
+        seed=scenario.seed,
+    )
+
+    config = CalibrationConfig(
+        board=scenario.board_config,
+        camera_names=list(scenario.intrinsics.keys()),
+        intrinsic_video_paths={
+            cam: Path(f"/fake/{cam}_intrinsic.mp4") for cam in scenario.intrinsics
+        },
+        extrinsic_video_paths={
+            cam: Path(f"/fake/{cam}_extrinsic.mp4") for cam in scenario.intrinsics
+        },
+        output_dir=output_dir,
+        save_stage_calibrations=False,
+        **config_overrides,
+    )
+
+    with (
+        patch("aquacal.calibration.pipeline.calibrate_intrinsics_all") as mock_intr,
+        patch("aquacal.calibration.pipeline.detect_all_frames") as mock_detect,
+    ):
+        mock_intr.return_value = {
+            cam: (intr, 0.1) for cam, intr in scenario.intrinsics.items()
+        }
+        mock_detect.return_value = detections
+        return run_calibration_from_config(config)
+
+
+class TestBenchmarkJsonIntegration:
+    """BENCH-04 end-to-end integration tests (plan 19-05 Task 3)."""
+
+    def test_default_run_writes_benchmark_json(self, scenario_ideal, tmp_path):
+        """save_benchmark defaults to True; the record round-trips and
+        contains stage3 diagnostics but no memory key (benchmark_memory
+        defaults to False)."""
+        _run_full_pipeline_with_mocked_video_io(scenario_ideal, tmp_path)
+
+        benchmark_path = tmp_path / "benchmark.json"
+        assert benchmark_path.exists()
+        with open(benchmark_path) as f:
+            record = json.load(f)
+
+        assert record["schema_version"] == 1
+        assert "stage3" in record["stages"]
+        # refine_intrinsics defaults to False -- no intrinsic-pass stage.
+        assert "stage3_intrinsic_pass" not in record["stages"]
+        assert "memory" not in record
+        assert all("memory" not in v for v in record["stages"].values())
+
+    def test_benchmark_memory_true_records_per_stage_memory(
+        self, scenario_ideal, tmp_path
+    ):
+        """benchmark_memory=True adds an explicitly-labelled memory sub-block
+        to every stage boundary plus a top-level whole-run peak (D-18)."""
+        _run_full_pipeline_with_mocked_video_io(
+            scenario_ideal, tmp_path, benchmark_memory=True
+        )
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        stage3_memory = record["stages"]["stage3"]["memory"]
+        assert set(stage3_memory.keys()) == {
+            "cumulative_peak_bytes_as_of_stage_end",
+            "delta_bytes_since_previous_boundary",
+            "mode",
+        }
+        assert record["memory"]["whole_run_peak_bytes"] > 0
+        assert "memory" in record["stages"]["validation"]
+
+    def test_benchmark_memory_false_has_no_memory_key_anywhere(
+        self, scenario_ideal, tmp_path
+    ):
+        """Default benchmark_memory=False: no "memory" key at the top level
+        or inside any stage block."""
+        _run_full_pipeline_with_mocked_video_io(
+            scenario_ideal, tmp_path, benchmark_memory=False
+        )
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        assert "memory" not in record
+        assert all("memory" not in v for v in record["stages"].values())
