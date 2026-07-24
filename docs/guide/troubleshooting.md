@@ -4,7 +4,7 @@ This page provides practical solutions to common calibration issues.
 
 ## Reference Camera Choice
 
-**Problem:** Stage 3/4 optimization converges but produces poor extrinsic estimates or high validation errors.
+**Problem:** Stage 3 optimization converges but produces poor extrinsic estimates or high validation errors.
 
 **Why it happens:** The reference camera (first camera in your config's `cameras` list) defines the world coordinate origin. If the reference camera has poor intrinsic calibration, all other cameras inherit these errors during extrinsic initialization.
 
@@ -58,10 +58,10 @@ Even 1mm error can degrade calibration.
 - Avoid motion blur (hold board steady or use faster shutter speed)
 
 ### 4. Use `max_calibration_frames` to speed up iterations
-If Stage 1 is good but Stage 3/4 are slow, limit optimization frames:
+If Stage 1 is good but Stage 3 is slow, limit optimization frames:
 ```yaml
 optimization:
-  max_calibration_frames: 150  # Use subset for faster Stage 3/4
+  max_calibration_frames: 150  # Use subset for faster Stage 3
 ```
 This speeds up iteration time while you debug other issues.
 
@@ -69,7 +69,7 @@ This speeds up iteration time while you debug other issues.
 
 ## Bad Round-Trip Errors or Diverging Optimization
 
-**Problem:** Stage 3 or 4 fails to converge, or validation errors are much higher than training errors.
+**Problem:** Stage 3 fails to converge, or validation errors are much higher than training errors.
 
 **Possible causes:**
 - Disconnected pose graph (no overlapping camera views)
@@ -103,7 +103,7 @@ Ensure the final water_z value is within the optimization bounds `[0.01, 2.0]` m
 (camera-layout-looks-wrong)=
 ## Camera Layout Looks Wrong Despite Low Errors
 
-**Problem:** The recovered camera positions look physically implausible — most often the cameras appear *out of plane* (their heights/depths scatter by centimeters, or the whole rig looks tilted) by much more than your real mounting could account for — yet Stage 3/4 reprojection RMS is low **and** 3D validation error is small.
+**Problem:** The recovered camera positions look physically implausible — most often the cameras appear *out of plane* (their heights/depths scatter by centimeters, or the whole rig looks tilted) by much more than your real mounting could account for — yet Stage 3 reprojection RMS is low **and** 3D validation error is small.
 
 **Why it happens:** Low reprojection error only certifies that your parameters are self-consistent in the directions the data actually *constrains*. It does **not** certify that every camera parameter was independently measured. In a downward-looking refractive array, the **out-of-plane arrangement of the cameras (their depth/height along the viewing axis) is only weakly observable**, so large deviations there cost almost nothing in residual. The optimizer isn't wrong; it is sliding freely along a "soft" direction the geometry barely pins down. Concretely, that direction is soft because:
 
@@ -114,7 +114,7 @@ Ensure the final water_z value is within the optimization bounds `[0.01, 2.0]` m
 Because these modes are so soft, ordinary sub-pixel detection noise and small unmodeled effects get *amplified* into centimeter-scale scatter in the recovered layout. **Low error ≠ faithful metric camera layout.**
 
 **When NOT to worry (the common case):**
-- Stage 3/4 RMS is low **and** the holdout 3D validation error is small, **and**
+- Stage 3 RMS is low **and** the holdout 3D validation error is small, **and**
 - you use the calibration for **triangulation/reconstruction within the captured volume**.
 
 The soft-mode deformation is self-consistent, so it preserves ray geometry — including for held-out points — which is exactly why 3D validation stays accurate even when the drawn camera positions look off. For reconstruction, this calibration is fine.
@@ -173,7 +173,7 @@ Check the `frame_rejection` block in `diagnostics.json` to see what was flagged 
 (camera-models-and-overfitting)=
 ## Camera Models and Overfitting
 
-**Problem:** Stage 1 RMS is very low (< 0.2 pixels), but Stage 3/4 validation errors are high or undistortion produces artifacts.
+**Problem:** Stage 1 RMS is very low (< 0.2 pixels), but Stage 3 validation errors are high or undistortion produces artifacts.
 
 **Possible cause:** Overfitted distortion model. With few calibration frames, higher-order distortion coefficients can fit noise rather than true lens distortion, causing the model to "blow up" outside the calibrated image region.
 
@@ -203,7 +203,7 @@ These models do NOT auto-simplify. If you suspect overfitting:
 ### Signs of overfitting:
 - Stage 1 RMS < 0.2 pixels but high round-trip error warnings in console
 - Distortion correction produces visible artifacts at image edges
-- Validation RMS >> training RMS in Stage 3/4
+- Validation RMS >> training RMS in Stage 3
 
 ### When to use each model:
 - **Standard**: Default for most lenses (up to moderate wide-angle)
@@ -264,7 +264,7 @@ fisheye_cameras:
 
 **Problem:** Calibration consumes too much RAM or takes too long.
 
-**Solution:** Limit the number of frames used in Stage 3/4 optimization:
+**Solution:** Limit the number of frames used in Stage 3 optimization:
 ```yaml
 optimization:
   max_calibration_frames: 100  # Reduce from default (null = no limit)
@@ -272,7 +272,7 @@ optimization:
 
 - Stage 1 (intrinsics) always uses all detected frames (controlled by `frame_step`)
 - Stage 2 (extrinsic init) uses all frames for pose graph construction
-- **Stage 3/4** can be limited to a random subset for faster optimization
+- **Stage 3** can be limited to a random subset for faster optimization
 
 Reducing to 100-150 frames typically has minimal impact on calibration quality while significantly reducing memory usage and runtime.
 
