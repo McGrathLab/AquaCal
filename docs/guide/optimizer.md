@@ -182,13 +182,16 @@ Each residual (2D reprojection error of one corner) depends on:
 - **6 board pose params** (for the frame containing it)
 - **4 intrinsic params** (for the camera, if refining intrinsics)
 
-Total: at most **14-17 columns** touched per residual row.
+Total: at most **13-17 columns** touched per residual row.
 
 ![Jacobian sparsity pattern](../_static/diagrams/sparsity_pattern.png)
 
-For a 13-camera, 100-frame rig:
-- Parameters: ~630 (extrinsics + water_z + board poses)
-- Each row touches ~13 columns → **98% sparse**
+For a 13-camera, 100-frame rig, the parameter count depends on which options
+are enabled:
+- **673** parameters with the interface normal fixed (the default)
+- **675** parameters with interface tilt enabled (`normal_fixed: false`, +2)
+- **727** parameters with tilt plus intrinsic refinement (+4 per camera)
+- Each row touches at most 13-17 columns → **98% sparse** (13/673 ≈ 1.9% nonzero)
 
 ### Sparse Finite Differences with Dense Solver
 
@@ -199,9 +202,21 @@ AquaCal uses a **custom Jacobian callable** that:
 2. Returns a **dense** matrix (`.toarray()`)
 3. Allows the **exact (QR) trust-region solver** to be used (stable, better convergence)
 
-**Column grouping** reduces the number of function evaluations: independent columns can be finite-differenced simultaneously. For the 630-parameter rig:
-- Without grouping: 630 evaluations
-- With grouping: ~50 groups → **~12× fewer evaluations**
+**Column grouping** reduces the number of function evaluations: independent columns can be finite-differenced simultaneously. For the 673-parameter rig (interface normal fixed):
+- Without grouping: 673 evaluations
+- With grouping: 13 groups → **52× fewer evaluations**
+
+Across all three configurations of the 13-camera, 100-frame rig, the reduction
+ranges from **43-52×**: 52× with the interface normal fixed, 52× with tilt
+enabled, and 43× with tilt plus intrinsic refinement (727 parameters / 17 groups).
+
+A single residual row involves exactly one camera and one frame, so the number
+of column groups is fixed by the structure of a single observation and does
+**not grow with the rig**: the parameter count P grows as cameras and frames
+are added, but the group count stays at 13 (17 with intrinsic refinement) —
+so the FD-evaluation advantage widens, not shrinks, as the rig scales up.
+These numbers are asserted live against the shipped code in
+`tests/unit/test_optim_common.py::TestDocumentedGroupingNumbers`.
 
 For very large problems (e.g., 1000+ parameters), a `dense_threshold` parameter automatically switches to sparse (LSMR) mode to avoid memory overflow.
 
