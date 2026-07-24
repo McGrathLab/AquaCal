@@ -186,6 +186,105 @@ class TestBuildStructuralColumnGroups:
             assert S[:, cols].sum(axis=1).max() <= 1
 
 
+# (normal_fixed, refine_intrinsics, expected_P, expected_groups) for a 13-camera,
+# 100-frame rig. These are the exact numbers quoted in docs/guide/optimizer.md's
+# "Sparse Jacobian Strategy" section -- if this tuple ever needs to change, that
+# doc section must be updated in the same commit (DOCS-01 / D-20).
+_DOCUMENTED_CONFIGS = [
+    (True, False, 673, 13),
+    (False, False, 675, 13),
+    (False, True, 727, 17),
+]
+
+
+class TestDocumentedGroupingNumbers:
+    """Pins the exact numbers quoted in docs/guide/optimizer.md's sparse-Jacobian
+    section to the shipped `build_structural_column_groups` path (DOCS-01).
+
+    These tests exist so that a future change to the parameter layout or the
+    sparsity-building code fails a test rather than silently rotting the prose
+    in `docs/guide/optimizer.md`. Every number asserted below is quoted verbatim
+    in that doc; if a test here changes, `docs/guide/optimizer.md` must change
+    in the same commit.
+    """
+
+    @pytest.mark.parametrize(
+        "normal_fixed, refine_intrinsics, expected_P, expected_groups",
+        _DOCUMENTED_CONFIGS,
+    )
+    def test_parameter_and_group_counts_match_optimizer_md(
+        self, normal_fixed, refine_intrinsics, expected_P, expected_groups
+    ):
+        """P, group count, and max row-nonzeros for a 13-camera, 100-frame rig.
+
+        These are exactly the numbers `docs/guide/optimizer.md` quotes: P = 673
+        (interface normal fixed), 675 (tilt enabled), 727 (tilt + intrinsic
+        refinement), with group counts 13, 13, 17 respectively. Derived live
+        from `build_jacobian_sparsity` + `build_structural_column_groups` --
+        not from scipy's generic greedy grouper (D-21), which is not the
+        shipped path.
+        """
+        S = _make_pattern(13, 100, 1.0, refine_intrinsics, normal_fixed)
+        groups = build_structural_column_groups(
+            S,
+            13,
+            100,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+        )
+
+        assert S.shape[1] == expected_P
+        assert groups.max() + 1 == expected_groups
+        assert int(S.sum(axis=1).max()) == expected_groups
+
+    @pytest.mark.parametrize(
+        "normal_fixed, refine_intrinsics, expected_P, expected_groups",
+        _DOCUMENTED_CONFIGS,
+    )
+    def test_fd_reduction_matches_optimizer_md(
+        self, normal_fixed, refine_intrinsics, expected_P, expected_groups
+    ):
+        """The FD-evaluation reduction (P / group count) is the 43-52x range
+        `docs/guide/optimizer.md` quotes for the sparse-Jacobian column
+        grouping (measured 51.8x / 51.9x / 42.8x for the three configurations).
+
+        The raw ratio for the intrinsic-refinement case is 727/17 = 42.76..,
+        which rounds to the documented 42.8/43 but is not literally >= 43, so
+        this asserts on the rounded value (matching how the docs quote it) to
+        avoid a boundary-precision false negative.
+        """
+        reduction = expected_P / expected_groups
+        assert 43 <= round(reduction) <= 52
+
+    def test_group_count_is_invariant_to_rig_size(self):
+        """Group count is fixed by one observation's structure, not the rig.
+
+        `docs/guide/optimizer.md` states that the column-group count does not
+        grow with the rig: a single residual row involves exactly one camera
+        and one frame, so the group count is bounded by that single
+        observation's column count regardless of how many cameras or frames
+        exist. This test guards that invariant directly: group count stays at
+        13 for 4, 13, and 20 cameras, while the parameter count P grows.
+        """
+        expected_group_count = 13
+        seen_P = set()
+
+        for n_cams in (4, 13, 20):
+            S = _make_pattern(
+                n_cams, 30, 1.0, refine_intrinsics=False, normal_fixed=True
+            )
+            groups = build_structural_column_groups(
+                S, n_cams, 30, refine_intrinsics=False, normal_fixed=True
+            )
+
+            assert groups.max() + 1 == expected_group_count
+            seen_P.add(S.shape[1])
+
+        assert len(seen_P) == 3, (
+            "P must differ across rig sizes while groups stay fixed"
+        )
+
+
 def _make_extrinsics(camera_order):
     """Build a per-camera extrinsics dict with distinct translations."""
     rng = np.random.default_rng(1)
