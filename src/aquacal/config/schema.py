@@ -14,10 +14,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    # TYPE_CHECKING-guarded to avoid a config.schema <-> calibration._observability
+    # circular import at module load time: `aquacal.calibration` imports
+    # `aquacal.config.schema` (via pipeline.py) before this module finishes
+    # initializing (T-19-03c). `from __future__ import annotations` (above)
+    # already makes every annotation in this module a lazy string, so this
+    # import is only ever evaluated by static type checkers.
+    from aquacal.calibration._observability import SolverDiagnostics
 
 # Type aliases
 Vec3 = NDArray[np.float64]  # shape (3,)
@@ -455,11 +464,17 @@ class RefinementResult:
         validation_report: Structured validation metrics, or None if
             validate=False was passed.
         accepted: True/False recommendation, or None if validate=False.
+        solver_diagnostics: Terminal `least_squares` diagnostics captured from
+            this call's internal optimizer run (BENCH-01), or None only if this
+            field was never populated by the caller that constructed this
+            result. `refine_calibration` always populates this field
+            unconditionally.
     """
 
     result: CalibrationResult
     validation_report: ValidationReport | None
     accepted: bool | None
+    solver_diagnostics: "SolverDiagnostics | None" = None
 
 
 @dataclass

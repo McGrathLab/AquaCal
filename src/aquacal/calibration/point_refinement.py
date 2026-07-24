@@ -16,6 +16,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
+from aquacal.calibration._observability import (
+    SolverDiagnostics,
+    capture_solver_diagnostics,
+)
 from aquacal.calibration._optim_common import make_sparse_jacobian_func
 from aquacal.calibration.validation import (
     build_validation_report,
@@ -477,6 +481,9 @@ def refine_calibration(
         - ``validation_report``: ValidationReport with holdout metrics and
           accept/reject recommendation, or None if validate=False.
         - ``accepted``: True/False recommendation, or None if validate=False.
+        - ``solver_diagnostics``: Terminal `least_squares` diagnostics for this
+          call's internal optimization (nfev, njev, cost, etc.), always
+          populated.
 
     Raises:
         ValueError: If correspondences is empty, contains negative weights,
@@ -686,6 +693,30 @@ def refine_calibration(
         verbose=verbosity,
     )
 
+    diag = SolverDiagnostics()
+    capture_solver_diagnostics(
+        opt_result,
+        diag,
+        ftol=ftol,
+        xtol=xtol,
+        gtol=1e-8,
+        max_nfev_effective=(
+            effective_max_nfev if effective_max_nfev is not None else n_params * 100
+        ),
+        max_nfev_source=(
+            "explicit"
+            if max_nfev is not None
+            else ("point_refinement_200x_auto" if refine_intrinsics else "scipy_auto")
+        ),
+        n_params=n_params,
+        n_groups=None,
+        n_params_reason=None,
+        n_groups_reason=(
+            "this call site uses SciPy's generic group_columns() colorer, not "
+            "the structural grouping pinned by TestDocumentedGroupingNumbers"
+        ),
+    )
+
     if opt_result.status <= 0:
         logger.warning(
             "refine_calibration: optimization did not converge (status=%d, message=%s). "
@@ -826,10 +857,12 @@ def refine_calibration(
             result=cal_result,
             validation_report=validation_report,
             accepted=validation_report.accepted,
+            solver_diagnostics=diag,
         )
 
     return RefinementResult(
         result=cal_result,
         validation_report=None,
         accepted=None,
+        solver_diagnostics=diag,
     )

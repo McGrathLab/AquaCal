@@ -1072,3 +1072,144 @@ class TestValidationIntegration:
         assert isinstance(result.result, CalibrationResult)
         assert result.validation_report is None
         assert result.accepted is None
+
+
+# ---------------------------------------------------------------------------
+# Tests: Solver Diagnostics (BENCH-01, D-14)
+# ---------------------------------------------------------------------------
+
+
+class TestSolverDiagnostics:
+    """Tests for refine_calibration()'s unconditional solver_diagnostics capture."""
+
+    def test_solver_diagnostics_always_populated(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """solver_diagnostics is never None, with njev a populated int."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            max_nfev=1,  # short-circuit: fast, still exercises least_squares
+            validate=False,
+        )
+
+        diag = result.solver_diagnostics
+        assert diag is not None
+        assert diag.nfev is not None and isinstance(diag.nfev, int)
+        assert diag.njev is not None and isinstance(diag.njev, int)
+        assert diag.cost is not None
+        assert diag.status is not None
+        assert diag.message is not None
+
+    def test_solver_diagnostics_gtol_is_scipy_default_and_not_passed_explicitly(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """gtol is recorded as SciPy's implicit 1e-8 default, never passed explicitly."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            max_nfev=1,
+            validate=False,
+        )
+        assert result.solver_diagnostics.gtol == 1e-8
+
+    def test_solver_diagnostics_n_groups_reason_records_generic_colorer(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """n_groups is None with a reason; n_params is always populated here."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            max_nfev=1,
+            validate=False,
+        )
+        diag = result.solver_diagnostics
+        assert diag.n_params is not None
+        assert diag.n_params_reason is None
+        assert diag.n_groups is None
+        assert diag.n_groups_reason is not None
+        assert "group_columns()" in diag.n_groups_reason
+
+    def test_solver_diagnostics_max_nfev_source_explicit(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """max_nfev_source == 'explicit' when the caller passes max_nfev."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            max_nfev=1,
+            validate=False,
+        )
+        assert result.solver_diagnostics.max_nfev_source == "explicit"
+        assert result.solver_diagnostics.max_nfev_effective == 1
+
+    def test_solver_diagnostics_max_nfev_source_scipy_auto(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """max_nfev_source == 'scipy_auto' when refine_intrinsics=False, max_nfev=None."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            refine_intrinsics=False,
+            max_nfev=None,
+            validate=False,
+        )
+        diag = result.solver_diagnostics
+        assert diag.max_nfev_source == "scipy_auto"
+        # D-17: effective_max_nfev stays None internally (passed straight through
+        # to least_squares), but the recorded value is SciPy's own x0.size * 100
+        # auto-formula, per capture_solver_diagnostics's max_nfev_effective contract.
+        n_params = len(
+            _pack_refine_params_len_helper(calibration_result, refine_intrinsics=False)
+        )
+        assert diag.max_nfev_effective == n_params * 100
+
+    def test_solver_diagnostics_max_nfev_source_point_refinement_200x_auto(
+        self, calibration_result, synthetic_correspondences
+    ):
+        """max_nfev_source is the 200x label when refine_intrinsics=True, max_nfev=None."""
+        result = refine_calibration(
+            calibration_result,
+            synthetic_correspondences,
+            refine_intrinsics=True,
+            max_nfev=None,
+            validate=False,
+        )
+        diag = result.solver_diagnostics
+        assert diag.max_nfev_source == "point_refinement_200x_auto"
+        # D-17: point_refinement's own 200x multiplier, untouched by this plan.
+        n_params = len(
+            _pack_refine_params_len_helper(calibration_result, refine_intrinsics=True)
+        )
+        assert diag.max_nfev_effective == 200 * n_params
+
+
+def _pack_refine_params_len_helper(
+    calibration_result: CalibrationResult, refine_intrinsics: bool
+) -> list[float]:
+    """Rebuild the packed parameter vector length for a max_nfev_effective assertion.
+
+    Mirrors refine_calibration's internal camera_order/reference_camera/x0
+    construction closely enough to independently recompute n_params without
+    importing private helpers across module boundaries in the test.
+    """
+    from aquacal.calibration.point_refinement import _pack_refine_params
+
+    camera_order = sorted(calibration_result.cameras.keys())
+    reference_camera = camera_order[0]
+    extrinsics_init = {
+        name: cam.extrinsics for name, cam in calibration_result.cameras.items()
+    }
+    intrinsics_map = {
+        name: cam.intrinsics for name, cam in calibration_result.cameras.items()
+    }
+    water_z_initial = calibration_result.cameras[reference_camera].water_z
+    return _pack_refine_params(
+        extrinsics_init,
+        water_z_initial,
+        reference_camera,
+        camera_order,
+        intrinsics=intrinsics_map if refine_intrinsics else None,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=True,
+    )
