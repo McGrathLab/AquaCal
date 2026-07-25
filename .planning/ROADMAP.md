@@ -247,7 +247,7 @@ observability hooks and the per-camera interface ablation mode.
   7. The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs, or each
      divergence is explained, and the notebook's gauge-freedom mean-shift correction survives
      the port with an explanation attached.
-**Plans:** 8 plans in 6 waves
+**Plans:** 0/8 plans executed
 
 Plans:
 - Wave 1 (parallel):
@@ -364,7 +364,7 @@ behavior the published artifacts actually reflect.
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
-| 19.1 Experiment Suite Consolidation | v1.9 | 0/TBD | Not started | - |
+| 19.1 Experiment Suite Consolidation | v1.9 | 0/8 | Planned    |  |
 | 19.2 Experiment Execution and Provenance | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |

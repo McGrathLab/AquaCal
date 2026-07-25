@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: Ready to discuss/plan Phase 19.1. Inserted 2026-07-25 from the desktop experiment-suite brief and split into 19.1 (consolidation + E2/E7/E1, EXP-01..06) and 19.2 (E3/E4/E5/E6 + provenance, EXP-07..11). Phase 20 remains queued after both.
+status: executing
 stopped_at: Phase 19.1 context gathered
-last_updated: "2026-07-25T14:25:52.330Z"
-last_activity: 2026-07-24 -- Phase 19 complete.
+last_updated: "2026-07-25T15:16:49.067Z"
+last_activity: 2026-07-25 -- Phase 19.1 planning complete
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 26
+  total_plans: 34
   completed_plans: 26
   percent: 44
 ---
@@ -25,15 +25,20 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 
 ## Current Position
 
-Phase: 19.1 (experiment-suite-consolidation) — NOT STARTED (source brief copied in, no CONTEXT.md, no plans)
+Phase: 19.1 (experiment-suite-consolidation) — PLANNED, not executed. CONTEXT + RESEARCH +
+  VALIDATION + PATTERNS + 8 plans in 6 waves all written and committed 2026-07-25.
   Phases 16, 17, 18, and 19 COMPLETE, verification PASSED for all four.
-Plan: Not started
-Status: Ready to discuss/plan Phase 19.1. Inserted 2026-07-25 from the desktop experiment-suite brief and split into 19.1 (consolidation + E2/E7/E1, EXP-01..06) and 19.2 (E3/E4/E5/E6 + provenance, EXP-07..11). Phase 20 remains queued after both.
+Plan: 0/8 executed. Plan-check passed with 0 blockers, 2 documentation warnings (both closed).
+  **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
+  it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
+  discuss→plan chain stopped before execute at the user's explicit request; restore it with
+  `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
+Status: Ready to execute
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-24 -- Phase 19 complete.
+Last activity: 2026-07-25 -- Phase 19.1 planning complete
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
