@@ -29,7 +29,7 @@ it from scratch.
 - [x] **BENCH-02**: Peak memory per stage is captured behind an opt-in flag, with the measurement mode recorded alongside the number; never enabled by default, because `tracemalloc` distorts the timings being measured
 - [x] **BENCH-03**: Each run records parameter count *P*, column-group count, and the implied FD evaluation reduction, measured from the live run rather than a separate script
 - [x] **BENCH-04**: Every calibration run writes a machine-readable `benchmark.json` into `output_dir` carrying problem shape, per-stage metrics, solver configuration in force (tolerances, `max_nfev`, robust loss and scale, `refine_intrinsics`, `interface_normal_fixed`), accuracy, and environment (CPU, RAM, OS, Python/NumPy/SciPy versions, AquaCal version and git SHA) — for real-rig runs as well as synthetic
-- [x] **BENCH-05**: A `benchmarks/` runner sweeps the cameras × frames grid, collects each `benchmark.json`, and emits a tidy CSV plus a LaTeX table fragment, computing nothing the pipeline did not record
+- [x] **BENCH-05**: A runner sweeps the cameras × frames grid, collects each `benchmark.json`, and emits a tidy CSV plus a LaTeX table fragment, computing nothing the pipeline did not record — delivered 2026-07-24 as `benchmarks/sweep_runner.py` + `benchmarks/aggregate.py`, relocated under `experiments/` by EXP-03 so the suite has one directory and one README (scope transfer, not a correction: the capability shipped and was verified in Phase 19; `sweep_runner.py` was never executed against a real calibration there, which is why the relocation is cheap)
 - [x] **BENCH-06**: Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` to `least_squares` explicitly at their current effective values, and `max_nfev` is recorded with its effective value including the unset/auto case — so the termination criteria the paper supplement states, and that R3.2 asks for by name, are set and reported by AquaCal rather than inherited from SciPy; behavior must be bit-unchanged, asserted by regression test
 
 ### Experiment Hooks
@@ -88,6 +88,37 @@ this cannot be an assumed side effect.
 - [ ] **DATA-02**: A new Zenodo version is published and `manifest.json`'s `zenodo_record_id`, `checksum`, and `size_bytes` are updated together, with `load_example("real-rig")` verified to download, checksum, and extract at the path the notebook resolves
 - [ ] **DATA-03**: Both tutorial notebooks are re-executed with fresh committed outputs, and any narration the outputs contradict is updated — including the three-stage framing and the runtime estimate
 
+### Experiment Suite
+
+Added 2026-07-25 with the insertion of Phases 19.1 and 19.2. Source:
+`aquacal-experiment-suite.md` (copied into both phase directories as `*-SOURCE-BRIEF.md`).
+Every quantitative claim in the manuscript and supplement must trace to one committed
+script, one committed output file, and one figure generator. The paper has already been
+bitten twice by hand-carried numbers — provenance is the deliverable here, not just results.
+
+Phase 19.1 (consolidation + the two risk-carrying runs):
+
+- [ ] **EXP-01**: `calibrate_synthetic`, `compute_per_camera_errors`, and `evaluate_reconstruction` are importable from the installed package as `aquacal.datasets.pipelines` (with `tests/synthetic/experiment_helpers.py` left as a re-export shim), and `aquacal.datasets.__all__` also exports `generate_camera_array`, `generate_real_rig_array`, and `generate_board_trajectory` — so a pip-installed reader can run the tutorial and every script uses the public API a user would write
+- [ ] **EXP-02**: An `experiments/` directory outside `src/` holds `_io.py` (paths, sidecar, CSV writing, CLI parsing — I/O only), `_render.py` (CSV → LaTeX, recomputing nothing), and `results/`, with a README mapping one command to each paper artifact and its expected runtime; every script honours `--seed`, `--out`, `--force`, `--smoke`, `--check`, and `--smoke` runs in CI
+- [ ] **EXP-03**: `tests/synthetic/experiments.py` is deleted with its unique content salvaged, `compare_refractive.py` has moved to `experiments/` as E1's CLI entry point, the Phase 19 `benchmarks/` runner has moved under `experiments/`, stale path references are swept (`.planning/architecture.md`, `.planning/codebase/STRUCTURE.md`, `.planning/codebase/CONCERNS.md:21-34`), and no two implementations of the same experiment remain
+- [ ] **EXP-04**: E2's real-rig re-run against the current library emits `real_rig_metrics.json` and a `benchmark.json`, and every §3 real-rig number is confirmed unchanged or recorded as moved — the committed run predates v1.7 outlier rejection and v1.8 intrinsics seeding entirely
+- [ ] **EXP-05**: E7 reports per-camera surface-height spread, camera-height drift, focal/standoff drift and correlation, and the conditioning report across all four `shared_interface` × `refine_intrinsics` configurations on identical data, with reprojection RMSE explicitly not the headline metric (a degeneracy is a flat valley — RMSE stays low in both arms)
+- [ ] **EXP-06**: The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs or explains each divergence, keeping the notebook's long-format schema, and the gauge-freedom mean-shift correction (mean Z error across free cameras, subtracted before export) survives the port with an explanation attached
+
+Phase 19.2 (the remaining new results and the provenance close-out):
+
+- [ ] **EXP-07**: E3 emits `code_constants.csv` (declared vs source value with pass/fail), `newton_iterations.csv`, and `cpr_grouping.csv` covering the six existing `tab:cpr` rows plus per-camera-mode rows, validating the *P* formula against live `pack_params` length; tier 1's constants are also asserted in the test suite so CI breaks when a default changes
+- [ ] **EXP-08**: E4 runs the cameras {8,12,16} × frames {50,100,200} grid plus E2's real rig as a tenth point, all on one machine, reporting only what `benchmark.json` recorded
+- [ ] **EXP-09**: E5 sweeps `n_assumed` in a fine band around 1.333 on the real rig's geometry and reports depth/scale bias and held-out RMSE against Δn, showing the bias moves while the reprojection residual does not
+- [ ] **EXP-10**: E6 sweeps refractive index (1.33→1.55), layout (grid/ring/line), and scale one axis at a time through a common baseline, emitting tidy long-format rows carrying which axis varied
+- [ ] **EXP-11**: Every committed result across E1–E7 carries its seed, AquaCal version, git SHA, and environment — reusing `benchmark.json` rather than hand-rolling a sidecar, with a minimal sidecar for E3's tiers 1–2 which never run a calibration — and `experiments/README.md`'s provenance table maps every paper artifact to its script, data file, and figure generator
+
+**Deliberately not requirements here.** X4 (demoting notebook 02 to `RIG_SIZE="small"`) is
+Phase 21 work, landing with the tutorial re-execution under DATA-03. X5 (the three new figure
+modules for E5/E6/E7) lives in the separate `DissertationFigures` repository, so no AquaCal
+phase can satisfy it — it is a downstream handoff, tracked in the phase context, not a
+success criterion.
+
 ## Sequencing Constraints
 
 Not requirements, but binding on the roadmap:
@@ -114,6 +145,22 @@ Not requirements, but binding on the roadmap:
    chain is the milestone's longest pole and only true experiment blocker, so it is
    sequenced first in the roadmap — ahead of the documentation and benchmark phases,
    which are otherwise independent of it.
+7. **EXP-01 precedes every other EXP requirement.** Every experiment script imports the
+   promoted verbs and the widened generator surface; nothing in the suite can start first.
+   Verified 2026-07-25: `src/aquacal/datasets/pipelines.py` does not exist and
+   `datasets.__all__` still exports only `create_scenario`,
+   `generate_synthetic_detections`, and `SyntheticScenario`.
+8. **EXP-04 (E2) runs before the rest of the suite.** Two feature releases landed since the
+   committed real-rig run, so §3's real-rig paragraph is the most likely place the revision
+   springs a leak — and fixing it is a prose edit under a word limit already at ~3,916 of
+   4,000. Twenty minutes of compute buys the earliest possible warning.
+9. **EXP-04 precedes EXP-08.** E4's tenth grid point is E2's real rig, and it reuses E2's
+   `benchmark.json` so the wall-clock and hardware spec come from one record.
+10. **The `benchmark.json` schema is settled and must not be revisited.** It locked in
+    Phase 19; changing it after the E4 grid runs means re-running the grid.
+11. **One machine for the whole E4 grid.** A grid split across machines is not a scaling
+    curve. Which machine's spec goes in the paper is an open input, needed by 19.2 and not
+    before.
 
 ## Future Requirements
 
@@ -167,6 +214,17 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BENCH-04 | Phase 19 | Complete |
 | BENCH-05 | Phase 19 | Complete |
 | BENCH-06 | Phase 19 | Complete |
+| EXP-01 | Phase 19.1 | Pending |
+| EXP-02 | Phase 19.1 | Pending |
+| EXP-03 | Phase 19.1 | Pending |
+| EXP-04 | Phase 19.1 | Pending |
+| EXP-05 | Phase 19.1 | Pending |
+| EXP-06 | Phase 19.1 | Pending |
+| EXP-07 | Phase 19.2 | Pending |
+| EXP-08 | Phase 19.2 | Pending |
+| EXP-09 | Phase 19.2 | Pending |
+| EXP-10 | Phase 19.2 | Pending |
+| EXP-11 | Phase 19.2 | Pending |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
@@ -177,12 +235,18 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOCS-07 | Phase 22 | Pending |
 
 **Coverage:**
-- v1 requirements: 29 total
-- Mapped to phases: 29
+- v1 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-23*
-*Last updated: 2026-07-23 after roadmap revision — reordered phases so the Hooks →
-Per-Camera Interface experiment-blocking chain runs first (phases 16-17), ahead of docs
-reconciliation and benchmark instrumentation (phases 18-19); coverage still 29/29*
+*Updated 2026-07-23 after roadmap revision — reordered phases so the Hooks → Per-Camera
+Interface experiment-blocking chain runs first (phases 16-17), ahead of docs reconciliation
+and benchmark instrumentation (phases 18-19); coverage 29/29*
+*Last updated: 2026-07-25 — inserted Phases 19.1 and 19.2 from `aquacal-experiment-suite.md`,
+adding EXP-01..11 (29 → 40) and sequencing constraints 7-11. BENCH-05's wording generalized
+off the `benchmarks/` directory name: the capability shipped and was verified in Phase 19,
+and EXP-03 relocates the runner under `experiments/` as a scope transfer, not a correction.
+X4 (notebook demotion) stays Phase 21 work under DATA-03; X5 (figure modules) is out of
+scope for any AquaCal phase — it lives in the DissertationFigures repository.*

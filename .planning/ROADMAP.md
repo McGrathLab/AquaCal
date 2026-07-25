@@ -188,8 +188,13 @@ experiment grid runs would force a re-run)
   4. Every calibration run (real-rig and synthetic) writes a `benchmark.json` into
      `output_dir` with problem shape, per-stage metrics, solver configuration, accuracy,
      and environment (hardware, OS, package versions, AquaCal version/git SHA).
-  5. A `benchmarks/` runner sweeps the cameras x frames grid, collects each `benchmark.json`,
-     and emits a tidy CSV plus a LaTeX table fragment without recomputing anything.
+  5. A runner sweeps the cameras x frames grid, collects each `benchmark.json`, and emits a
+     tidy CSV plus a LaTeX table fragment without recomputing anything.
+     *(Delivered 2026-07-24 as `benchmarks/sweep_runner.py` + `benchmarks/aggregate.py`.
+     Relocated under `experiments/` by Phase 19.1 so the suite has one directory and one
+     README — a scope transfer, not a correction: the capability shipped and was verified
+     here. `sweep_runner.py` was never executed against a real calibration in this phase,
+     which is why the relocation is cheap.)*
   6. Stage 3 and Stage 4 pass `ftol`, `xtol`, and `gtol` explicitly rather than inheriting
      SciPy's defaults, `max_nfev`'s effective value is recorded including the unset/auto case,
      and a regression test asserts the change is bit-unchanged — so the tolerances the paper
@@ -205,6 +210,77 @@ experiment grid runs would force a re-run)
   - [x] 19-05-PLAN.md — Pipeline integration: config flags, diagnostics wiring, benchmark.json assembly and write (BENCH-03, BENCH-04)
 - Wave 4 (depends on 19-05):
   - [x] 19-06-PLAN.md — benchmarks/ runner: CSV + LaTeX aggregator with schema_version refusal, sweep_runner skeleton (BENCH-05)
+
+### Phase 19.1: Experiment Suite Consolidation (INSERTED)
+
+**Goal**: One experiments directory, one implementation of every experiment, and the shared
+verbs importable from the installed package — with the two experiments that carry revision
+risk (E2, E7) run against the instrumented library as the first real exercise of the scaffold.
+**Depends on**: Phase 18 (DOCS-06 settles the stage keys the scripts read), Phase 19
+(`benchmark.json` is the run record every experiment emits). Phases 16-17 supply the
+observability hooks and the per-camera interface ablation mode.
+**Requirements**: EXP-01, EXP-02, EXP-03, EXP-04, EXP-05, EXP-06
+**Source brief**: `19.1-SOURCE-BRIEF.md` (Parts 0-1, experiments E1/E2/E7, wave 3)
+**Success Criteria** (what must be TRUE):
+  1. The shared experiment verbs (`calibrate_synthetic`, `compute_per_camera_errors`,
+     `evaluate_reconstruction`) are importable from the installed package as
+     `aquacal.datasets.pipelines`, and `aquacal.datasets.__all__` also exports
+     `generate_camera_array`, `generate_real_rig_array`, and `generate_board_trajectory` —
+     so the tutorial and the experiment scripts use the same public API a user would.
+  2. An `experiments/` directory exists outside `src/` with `_io.py` (I/O only), `_render.py`
+     (reads CSV, recomputes nothing), a `results/` directory for committed outputs, and a
+     README mapping one command to each paper artifact with its expected runtime.
+  3. Every experiment script honours the same CLI contract (`--seed`, `--out`, `--force`,
+     `--smoke`, `--check`), and `--smoke` is wired into CI so the suite cannot silently break
+     against the library it measures.
+  4. `tests/synthetic/experiments.py` is gone with its unique content salvaged,
+     `compare_refractive.py` has moved to `experiments/` as E1's CLI entry point, the Phase 19
+     `benchmarks/` runner has moved under `experiments/`, and no two implementations of the
+     same experiment remain in the repo.
+  5. E2's real-rig re-run against the current library (v1.7 outlier rejection + v1.8 intrinsics
+     seeding) emits `real_rig_metrics.json` and a `benchmark.json`, and every §3 real-rig number
+     is either confirmed unchanged or recorded as moved with its new value.
+  6. E7 reports per-camera surface-height spread, camera-height drift, focal/standoff drift and
+     correlation, and the conditioning report across all four shared/per-camera x fixed/refined
+     configurations — with reprojection RMSE explicitly NOT the headline metric.
+  7. The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs, or each
+     divergence is explained, and the notebook's gauge-freedom mean-shift correction survives
+     the port with an explanation attached.
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 19.1 to break down)
+
+### Phase 19.2: Experiment Execution and Provenance (INSERTED)
+
+**Goal**: The remaining new results the reviewer responses depend on exist, are committed, and
+every number in the manuscript and supplement traces to one script, one output file, and one
+figure generator.
+**Depends on**: Phase 19.1 (the scaffold, the CLI contract, and the public verbs every script
+imports; E4's real-rig grid point reuses E2's `benchmark.json`)
+**Requirements**: EXP-07, EXP-08, EXP-09, EXP-10, EXP-11
+**Source brief**: `19.2-SOURCE-BRIEF.md` (experiments E3/E4/E5/E6, Parts 3-4, wave 4)
+**Success Criteria** (what must be TRUE):
+  1. E3 emits `code_constants.csv` (declared vs source value with a pass/fail column),
+     `newton_iterations.csv`, and `cpr_grouping.csv` covering the six existing `tab:cpr` rows
+     plus the per-camera-mode rows, with tier 1's constants also asserted in the test suite so
+     CI breaks when a default changes.
+  2. E4 runs the cameras {8,12,16} x frames {50,100,200} grid plus the E2 real rig as a tenth
+     point, all on one machine, reporting only what `benchmark.json` recorded.
+  3. E5 sweeps `n_assumed` in a fine band around 1.333 on the real rig's geometry and reports
+     depth/scale bias and held-out RMSE against delta-n — showing the bias moves while the
+     reprojection residual does not.
+  4. E6 sweeps refractive index, layout, and scale one axis at a time through a common
+     baseline, emitting tidy long-format rows carrying which axis varied.
+  5. Every committed result across E1-E7 carries its seed, AquaCal version, git SHA, and
+     environment — reusing `benchmark.json` rather than hand-rolling a sidecar, with a minimal
+     sidecar for E3's tiers 1-2 which never run a calibration.
+  6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
+     producing script, its data file, and its figure generator.
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 19.2 to break down)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
@@ -274,6 +350,8 @@ behavior the published artifacts actually reflect.
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
+| 19.1 Experiment Suite Consolidation | v1.9 | 0/TBD | Not started | - |
+| 19.2 Experiment Execution and Provenance | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
