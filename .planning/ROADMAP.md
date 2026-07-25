@@ -69,7 +69,8 @@ must settle the stage-key schema before benchmark.json locks it in.
  (completed 2026-07-23)
 - [x] **Phase 18: Documentation Corrections & Stage-Model Reconciliation** - Fix live doc errors and reconcile the three-stage model across code and docs before instrumentation locks in a schema
  (completed 2026-07-24)
-- [x] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record (completed 2026-07-24)
+- [x] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
+ (completed 2026-07-24)
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
 - [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
 - [ ] **Phase 22: Release Cut** - The version referenced by the manuscript and Zenodo archive is the one whose behavior the published artifacts reflect
@@ -246,10 +247,23 @@ observability hooks and the per-camera interface ablation mode.
   7. The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs, or each
      divergence is explained, and the notebook's gauge-freedom mean-shift correction survives
      the port with an explanation attached.
-**Plans:** 0 plans
+**Plans:** 8 plans in 6 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 19.1 to break down)
+- Wave 1 (parallel):
+  - [ ] 19.1-01-PLAN.md — Promote the experiment verbs to `aquacal.datasets.pipelines`, widen `__all__`, shim `experiment_helpers.py`, promote `build_interface_spread_report` (EXP-01)
+  - [ ] 19.1-02-PLAN.md — Create the `experiments/` package; relocate `benchmarks/aggregate.py` → `_render.py` and `sweep_runner.py` → `e4_benchmark_grid.py`; move the test file (EXP-02, EXP-03)
+- Wave 2 (depends on 19.1-02):
+  - [ ] 19.1-03-PLAN.md — `experiments/_io.py`: five-flag CLI parent, sorted CSV writer, numeric `--check` comparator, resumability, direct-call `benchmark.json` wrapper (EXP-02)
+- Wave 3 (depends on 19.1-01, 19.1-03):
+  - [ ] 19.1-04-PLAN.md — E2 real-rig re-run: resolve A3 by dataset inspection, port notebook 01's export cell, run, write the nine-quantity §3 delta table (EXP-04)
+- Wave 4 (parallel, depends on 19.1-04):
+  - [ ] 19.1-05-PLAN.md — E7 four-arm interface ablation: spread, height drift, focal/standoff, conditioning, traces; RMSE demoted to a control (EXP-05)
+  - [ ] 19.1-06-PLAN.md — E1 port: reproduce the three committed `exp{1,2,3}` CSVs or explain each divergence; gauge correction via the library keyword (EXP-06)
+- Wave 5 (depends on 19.1-04, 19.1-05, 19.1-06):
+  - [ ] 19.1-07-PLAN.md — Delete `experiments.py` (20-def keep/drop table) and `compare_refractive.py`, delete both notebook export cells, X6 stale-path sweep, `experiments/README.md`, `--smoke` CI job (EXP-02, EXP-03, EXP-06)
+- Wave 6 (depends on 19.1-04, 19.1-07):
+  - [ ] 19.1-08-PLAN.md — BLOCKING non-auto-approvable human gate: user adjudicates E2's nine §3 numbers (EXP-04)
 
 ### Phase 19.2: Experiment Execution and Provenance (INSERTED)
 
