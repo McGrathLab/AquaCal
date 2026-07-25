@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: ready_to_plan
-stopped_at: Phase 19 complete (6/6) — ready to discuss Phase 20
-last_updated: 2026-07-24T22:41:00.000Z
-last_activity: 2026-07-24 -- Phase 19 complete (6/6), verification passed 6/6
+status: Ready to discuss/plan Phase 19.1. Inserted 2026-07-25 from the desktop experiment-suite brief and split into 19.1 (consolidation + E2/E7/E1, EXP-01..06) and 19.2 (E3/E4/E5/E6 + provenance, EXP-07..11). Phase 20 remains queued after both.
+stopped_at: Phase 19.1 context gathered
+last_updated: "2026-07-25T14:25:52.330Z"
+last_activity: 2026-07-24 -- Phase 19 complete.
 progress:
-  total_phases: 7
+  total_phases: 9
   completed_phases: 4
   total_plans: 26
   completed_plans: 26
-  percent: 57
+  percent: 44
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 20 — refractive index helper
+**Current focus:** Phase 19.1 — experiment suite consolidation and execution
 
 ## Current Position
 
-Phase: 20 (refractive-index-helper) — NOT STARTED (no CONTEXT.md, no plans)
+Phase: 19.1 (experiment-suite-consolidation) — NOT STARTED (source brief copied in, no CONTEXT.md, no plans)
   Phases 16, 17, 18, and 19 COMPLETE, verification PASSED for all four.
 Plan: Not started
-Status: Ready to discuss/plan Phase 20 (INDEX-01/02/03, fully standalone).
+Status: Ready to discuss/plan Phase 19.1. Inserted 2026-07-25 from the desktop experiment-suite brief and split into 19.1 (consolidation + E2/E7/E1, EXP-01..06) and 19.2 (E3/E4/E5/E6 + provenance, EXP-07..11). Phase 20 remains queued after both.
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
@@ -76,6 +76,11 @@ so the code work must land with room to spare. The Hooks → Per-Camera Interfac
 (phases 16-17) is the true blocker for that experiment execution, hence sequenced first.
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 19.1 inserted after Phase 19: Experiment Suite Consolidation — X1/X2/X3/X6 plus E2, E7, and E1 (EXP-01..06) from the desktop brief; every manuscript number traces to one script/output/figure (URGENT). Rescoped the same day when the phase was split; the execution half became 19.2.
+- Phase 19.2 inserted after Phase 19.1: Experiment Execution and Provenance — E3/E4/E5/E6 + provenance close-out (EXP-07..11), split out of the original 19.1 along the source brief's wave 3/wave 4 boundary so E2's real-rig re-run is a phase gate rather than one item among eleven (URGENT)
 
 ### Decisions
 
@@ -343,8 +348,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-24
-Stopped at: Phase 18 context gathered (`--auto`) — `18-CONTEXT.md` + `18-DISCUSSION-LOG.md`
+Last session: 2026-07-25T14:25:44.699Z
+Stopped at: Phase 19.1 context gathered
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
@@ -385,5 +390,5 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: .planning/phases/18-documentation-corrections-stage-model-reconciliation/18-CONTEXT.md
+Resume file: .planning/phases/19.1-experiment-suite-consolidation/19.1-CONTEXT.md
   (Read alongside `18-DISCUSSION-LOG.md` for the alternatives considered.)
