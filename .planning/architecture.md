@@ -246,18 +246,17 @@ pose optimization, same initialization) -- only the physics model differs
 (n_water = 1.333 vs n_water = 1.0). This isolates the refractive modeling
 contribution from methodology improvements.
 
-Experiment logic lives in reusable functions in `tests/synthetic/`. Two access
+Experiment logic lives in reusable verbs in `aquacal.datasets.pipelines`. Two access
 paths:
 
 - **Tutorial** (`docs/tutorials/02_synthetic_validation.ipynb`): Three
   progressive experiments (parameter fidelity, depth generalization, depth
   scaling) demonstrating why refractive calibration matters. Pre-executed
   with embedded outputs.
-- **Script** (`tests/synthetic/compare_refractive.py`): Run as
-  `python tests/synthetic/compare_refractive.py --output-dir results/`.
-  Calls the same experiment functions and writes the full plot suite and CSV
-  summary to a user-specified directory. For interactive analysis and
-  generating publication-quality figures.
+- **Script** (`experiments/e1_refractive_comparison.py`): Run as
+  `python -m experiments.e1_refractive_comparison`. Calls the same library
+  verbs and writes the pinned CSV suite to `experiments/results/`. For
+  reproducible, provenance-tracked regeneration of the paper's figure inputs.
 
 Key helper: a dense XY grid board pose generator that places the board at a
 regular grid of XY positions at a fixed Z depth with minimal tilt, ensuring
