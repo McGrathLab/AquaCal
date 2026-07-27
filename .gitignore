@@ -221,3 +221,11 @@ CLAUDE.md
 # spread stats) is committed in interface_ablation_conditioning.json. Excluded to respect
 # the repo-wide 1000 KB large-file policy (.pre-commit-config.yaml check-added-large-files).
 experiments/results/interface_ablation_conditioning.npz
+
+# E1's per-point spatial-error CSV (experiments/e1_refractive_comparison.py) is
+# ~11MB -- 8 depths x 2 models x every adjacent-corner-pair in a dense N_GRID=7
+# sweep -- which exceeds this repo's check-added-large-files --maxkb=1000 gate.
+# It has no committed baseline (D-20) and is not compared by --check; it is
+# fully deterministic and reproduced on demand via
+# `python -m experiments.e1_refractive_comparison --out experiments/results --force`.
+experiments/results/exp2_spatial_errors.csv

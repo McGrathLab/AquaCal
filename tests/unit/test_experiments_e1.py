@@ -1,0 +1,252 @@
+"""Unit tests for `experiments/e1_refractive_comparison.py`'s `compute_xyz_errors`.
+
+This covers the one genuinely novel piece of E1's ported logic (see
+`experiments/e1_refractive_comparison.py`'s `compute_xyz_errors`, ported from
+`docs/tutorials/02_synthetic_validation.ipynb` cell `jq300wte3tn`). These are
+fast unit tests -- minimal fixtures constructed directly, no `create_scenario`,
+no calibration, none are marked slow.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from aquacal.config.schema import (
+    BoardConfig,
+    BoardPose,
+    CalibrationMetadata,
+    CalibrationResult,
+    CameraCalibration,
+    CameraExtrinsics,
+    CameraIntrinsics,
+    Detection,
+    DetectionResult,
+    DiagnosticsData,
+    FrameDetections,
+    InterfaceParams,
+)
+from aquacal.core.board import BoardGeometry
+from aquacal.core.camera import Camera
+from aquacal.core.interface_model import Interface
+from aquacal.core.refractive_geometry import refractive_project
+from experiments.e1_refractive_comparison import compute_xyz_errors
+
+
+@pytest.fixture
+def board_config():
+    """Small ChArUco board config, matching E1's test-fixture scale."""
+    return BoardConfig(
+        squares_x=5,
+        squares_y=4,
+        square_size=0.04,
+        marker_size=0.03,
+        dictionary="DICT_4X4_50",
+    )
+
+
+@pytest.fixture
+def board_geometry(board_config):
+    return BoardGeometry(board_config)
+
+
+@pytest.fixture
+def interface_params():
+    return InterfaceParams(
+        normal=np.array([0.0, 0.0, -1.0]),
+        n_air=1.0,
+        n_water=1.333,
+    )
+
+
+@pytest.fixture
+def camera_intrinsics():
+    return CameraIntrinsics(
+        K=np.array([[800.0, 0.0, 320.0], [0.0, 800.0, 240.0], [0.0, 0.0, 1.0]]),
+        dist_coeffs=np.zeros(5),
+        image_size=(640, 480),
+    )
+
+
+def _make_calibration(camera_intrinsics, interface_params, board_config):
+    cam1 = CameraCalibration(
+        name="cam1",
+        intrinsics=camera_intrinsics,
+        extrinsics=CameraExtrinsics(R=np.eye(3), t=np.array([0.0, 0.0, 0.5])),
+        water_z=0.3,
+    )
+    cam2 = CameraCalibration(
+        name="cam2",
+        intrinsics=camera_intrinsics,
+        extrinsics=CameraExtrinsics(
+            R=np.array([[0.866, 0.0, 0.5], [0.0, 1.0, 0.0], [-0.5, 0.0, 0.866]]),
+            t=np.array([0.2, 0.0, 0.5]),
+        ),
+        water_z=0.3,
+    )
+    diagnostics = DiagnosticsData(
+        reprojection_error_rms=0.0,
+        reprojection_error_per_camera={},
+        validation_3d_error_mean=0.0,
+        validation_3d_error_std=0.0,
+    )
+    metadata = CalibrationMetadata(
+        calibration_date="2025-01-01",
+        software_version="0.1.0",
+        config_hash="test",
+        num_frames_used=0,
+        num_frames_holdout=0,
+    )
+    return CalibrationResult(
+        cameras={"cam1": cam1, "cam2": cam2},
+        interface=interface_params,
+        board=board_config,
+        diagnostics=diagnostics,
+        metadata=metadata,
+    )
+
+
+def _make_detections(calibration, corner_ids, corner_positions_3d, frame_idx=0):
+    """Project known 3D corner positions into pixel detections for both cameras."""
+    frame_detections = {}
+    for cam_name, cam_calib in calibration.cameras.items():
+        camera = Camera(cam_name, cam_calib.intrinsics, cam_calib.extrinsics)
+        interface = Interface(
+            normal=calibration.interface.normal,
+            camera_distances={cam_name: cam_calib.water_z},
+            n_air=calibration.interface.n_air,
+            n_water=calibration.interface.n_water,
+        )
+        detected_ids = []
+        detected_pixels = []
+        for corner_id in corner_ids:
+            pixel = refractive_project(
+                camera, interface, corner_positions_3d[corner_id]
+            )
+            if pixel is not None:
+                detected_ids.append(corner_id)
+                detected_pixels.append(pixel)
+        if detected_ids:
+            frame_detections[cam_name] = Detection(
+                corner_ids=np.array(detected_ids, dtype=np.int32),
+                corners_2d=np.array(detected_pixels, dtype=np.float64),
+            )
+    frame_det = FrameDetections(frame_idx=frame_idx, detections=frame_detections)
+    return DetectionResult(
+        frames={frame_idx: frame_det},
+        camera_names=list(calibration.cameras.keys()),
+        total_frames=1,
+    )
+
+
+def _corner_ground_truth_positions(board_geometry, corner_ids, tvec):
+    """GT corner positions at identity rotation (R_board = I), given tvec."""
+    return {cid: board_geometry.corner_positions[cid] + tvec for cid in corner_ids}
+
+
+def test_compute_xyz_errors_decomposes_known_offset(
+    board_config, board_geometry, interface_params, camera_intrinsics
+):
+    """A pure-Z offset between triangulated and GT positions is recovered as z_rmse_mm."""
+    calibration = _make_calibration(camera_intrinsics, interface_params, board_config)
+    corner_ids = [0, 1, 2, 3, 4]
+    tvec = np.array([0.0, 0.0, 0.6])
+    gt_positions = _corner_ground_truth_positions(board_geometry, corner_ids, tvec)
+
+    z_offset = 0.01  # 10 mm known Z offset
+    true_positions = {
+        cid: pos + np.array([0.0, 0.0, z_offset]) for cid, pos in gt_positions.items()
+    }
+    test_detections = _make_detections(calibration, corner_ids, true_positions)
+
+    board_pose = BoardPose(frame_idx=0, rvec=np.zeros(3), tvec=tvec)
+    test_poses = [board_pose]
+
+    result = compute_xyz_errors(
+        calibration, test_poses, test_detections, board_geometry
+    )
+
+    # Triangulation itself carries a small numerical residual (sub-0.1mm, from the
+    # refractive back-projection solve) -- the tolerance below recovers the *known*
+    # offset, not exact zero-noise reproduction.
+    assert result["z_rmse_mm"] == pytest.approx(z_offset * 1000, abs=0.1)
+    assert result["xy_rmse_mm"] == pytest.approx(0.0, abs=0.1)
+
+
+def test_compute_xyz_errors_decomposes_known_xy_offset(
+    board_config, board_geometry, interface_params, camera_intrinsics
+):
+    """The mirror case: a pure-XY offset is recovered as xy_rmse_mm, z_rmse_mm near zero."""
+    calibration = _make_calibration(camera_intrinsics, interface_params, board_config)
+    corner_ids = [0, 1, 2, 3, 4]
+    tvec = np.array([0.0, 0.0, 0.6])
+    gt_positions = _corner_ground_truth_positions(board_geometry, corner_ids, tvec)
+
+    xy_offset = 0.008  # 8 mm known XY offset (along X only)
+    true_positions = {
+        cid: pos + np.array([xy_offset, 0.0, 0.0]) for cid, pos in gt_positions.items()
+    }
+    test_detections = _make_detections(calibration, corner_ids, true_positions)
+
+    board_pose = BoardPose(frame_idx=0, rvec=np.zeros(3), tvec=tvec)
+    test_poses = [board_pose]
+
+    result = compute_xyz_errors(
+        calibration, test_poses, test_detections, board_geometry
+    )
+
+    assert result["xy_rmse_mm"] == pytest.approx(xy_offset * 1000, abs=0.1)
+    assert result["z_rmse_mm"] == pytest.approx(0.0, abs=0.1)
+
+
+def test_compute_xyz_errors_anisotropy_ratio(
+    board_config, board_geometry, interface_params, camera_intrinsics
+):
+    """anisotropy_ratio == z_rmse_mm / xy_rmse_mm; n_points == triangulated corner count."""
+    calibration = _make_calibration(camera_intrinsics, interface_params, board_config)
+    corner_ids = [0, 1, 2, 3, 4]
+    tvec = np.array([0.0, 0.0, 0.6])
+    gt_positions = _corner_ground_truth_positions(board_geometry, corner_ids, tvec)
+
+    offset = np.array([0.006, 0.0, 0.02])
+    true_positions = {cid: pos + offset for cid, pos in gt_positions.items()}
+    test_detections = _make_detections(calibration, corner_ids, true_positions)
+
+    board_pose = BoardPose(frame_idx=0, rvec=np.zeros(3), tvec=tvec)
+    test_poses = [board_pose]
+
+    result = compute_xyz_errors(
+        calibration, test_poses, test_detections, board_geometry
+    )
+
+    assert result["ratio"] == pytest.approx(
+        result["z_rmse_mm"] / result["xy_rmse_mm"], rel=1e-9
+    )
+    assert result["n_points"] == len(corner_ids)
+
+
+def test_compute_xyz_errors_deterministic(
+    board_config, board_geometry, interface_params, camera_intrinsics
+):
+    """Two calls on identical inputs give bit-identical results."""
+    calibration = _make_calibration(camera_intrinsics, interface_params, board_config)
+    corner_ids = [0, 1, 2, 3, 4]
+    tvec = np.array([0.0, 0.0, 0.6])
+    gt_positions = _corner_ground_truth_positions(board_geometry, corner_ids, tvec)
+
+    offset = np.array([0.006, 0.0, 0.02])
+    true_positions = {cid: pos + offset for cid, pos in gt_positions.items()}
+    test_detections = _make_detections(calibration, corner_ids, true_positions)
+
+    board_pose = BoardPose(frame_idx=0, rvec=np.zeros(3), tvec=tvec)
+    test_poses = [board_pose]
+
+    result_1 = compute_xyz_errors(
+        calibration, test_poses, test_detections, board_geometry
+    )
+    result_2 = compute_xyz_errors(
+        calibration, test_poses, test_detections, board_geometry
+    )
+
+    for key in ("xy_rmse_mm", "z_rmse_mm", "ratio", "n_points"):
+        np.testing.assert_array_equal(result_1[key], result_2[key])
