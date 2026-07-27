@@ -532,6 +532,18 @@ def run_all_arms(seed: int, smoke: bool) -> tuple[list[ArmResult], object]:
     return results, scenario
 
 
+def _log_smoke_summary(results: list[ArmResult]) -> None:
+    """Log a one-line-per-arm summary naming all four arms (smoke visibility)."""
+    for arm in results:
+        logger.info(
+            "  arm=%s shared_interface=%s refine_intrinsics=%s rms=%.4f",
+            arm.arm_name,
+            arm.shared_interface,
+            arm.refine_intrinsics,
+            arm.rms,
+        )
+
+
 def _run_check(out_dir: Path) -> int:
     """`--check`: compare a fresh run against the committed `interface_ablation.csv`."""
     committed_path = out_dir / "interface_ablation.csv"
@@ -570,16 +582,20 @@ def main(argv: list[str] | None = None) -> int:
         return _run_check(out_dir)
 
     if args.smoke:
-        with tempfile.TemporaryDirectory(prefix="e7_smoke_") as tmp:
-            out_dir = resolve_out_dir(Path(tmp))
+        # Honor an explicitly-passed --out (e.g. a caller-supplied temp dir
+        # for verification); otherwise fall back to a throwaway temp
+        # directory so a bare `--smoke` never pollutes the real
+        # experiments/results output.
+        if args.out == parser.get_default("out"):
+            with tempfile.TemporaryDirectory(prefix="e7_smoke_") as tmp:
+                out_dir = resolve_out_dir(Path(tmp))
+                results, scenario = run_all_arms(seed=args.seed, smoke=True)
+                _log_smoke_summary(results)
+                _write_ablation_artifacts(results, scenario, out_dir, force=True)
+        else:
+            out_dir = resolve_out_dir(args.out)
             results, scenario = run_all_arms(seed=args.seed, smoke=True)
-            for arm in results:
-                logger.info(
-                    "  arm=%s rms=%.4f arms=%s",
-                    arm.arm_name,
-                    arm.rms,
-                    [a[0] for a in ARMS],
-                )
+            _log_smoke_summary(results)
             _write_ablation_artifacts(results, scenario, out_dir, force=True)
         return 0
 
