@@ -86,6 +86,7 @@ this cannot be an assumed side effect.
 
 - [ ] **DATA-01**: The real-rig dataset config is regenerated through current `aquacal init` (not hand-patched), with every difference from the shipped config confirmed deliberate, settling whether the shipped `initial_distances` was a scalar or carried pre-v1.4 physical-gap semantics
 - [ ] **DATA-01a** *(added 2026-07-27, Phase 19.1 finding — PUBLICATION BLOCKER)*: The regenerated archive contains **the same frameset that produced the manuscript's §3 numbers**, not the ~4.3× subsampled extraction currently published. The shipped archive yields 60 usable frames → 12 validation → 1,817 comparisons; §3 comes from `Desktop\Aqua\AquaCal\release_calibration` at `frame_step: 30` / `max_calibration_frames: 200`, yielding ~260 usable → 52 validation → **7,762 comparisons**. Acceptance: a fresh `load_example("real-rig")` run reproduces `diagnostics.json`'s `reconstruction.num_comparisons = 7762` and the other eight §3 quantities within tolerance. Source videos are on disk at `Desktop\Aqua\AquaCal\raw_videos\{intrinsics,extrinsics}\*.avi` (13 + 13) with the producing config at `release_calibration\config.yaml`. Full analysis: `.planning/phases/19.1-experiment-suite-consolidation/19.1-E2-FRAMESET-PROVENANCE.md`.
+- [ ] **DATA-01b** *(added 2026-07-27, Phase 19.1 finding)*: The regenerated archive carries the run's **reference outputs** alongside its inputs, so it is self-contained: `calibration.json` (2.1 MB), `reprojection_residuals.csv` (1.2 MB), `reconstruction_errors.csv` (0.6 MB), and the regenerable `exp2_spatial_errors.csv` / `interface_ablation_conditioning.npz`. These move OUT of `experiments/results/` in git. Rationale: split artifacts by function, not size — `--check` baselines and offline CI need only ~20 KB of small CSVs (`camera_parameters.csv`, `exp{1,2,3}`, `interface_ablation.csv`), which stay versioned; nothing reads `calibration.json` programmatically, and the figures repo keeps its own copies of the residual/reconstruction CSVs. **Acceptance: after this lands, the `exclude: ^experiments/results/` on `check-added-large-files` in `.pre-commit-config.yaml` is REMOVED and the 1000 KB guard passes repo-wide.** `experiments/results/` should fall from 4.1 MB to ~0.7 MB.
 - [ ] **DATA-02**: A new Zenodo version is published and `manifest.json`'s `zenodo_record_id`, `checksum`, and `size_bytes` are updated together, with `load_example("real-rig")` verified to download, checksum, and extract at the path the notebook resolves
 - [ ] **DATA-03**: Both tutorial notebooks are re-executed with fresh committed outputs, and any narration the outputs contradict is updated — including the three-stage framing and the runtime estimate
 
@@ -232,6 +233,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOCS-05 | Phase 21 | Pending |
 | DATA-01 | Phase 21 | Pending |
 | DATA-01a | Phase 21 | Pending |
+| DATA-01b | Phase 21 | Pending |
 | DATA-02 | Phase 21 | Pending |
 | DATA-03 | Phase 21 | Pending |
 | DOCS-07 | Phase 22 | Pending |
