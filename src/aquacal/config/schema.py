@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -544,6 +544,37 @@ class DetectionResult:
             List of frame indices meeting the criterion
         """
         return [idx for idx, fd in self.frames.items() if fd.num_cameras >= min_cameras]
+
+
+class PerCameraErrors(TypedDict):
+    """Per-camera accuracy metrics returned by ``compute_per_camera_errors``.
+
+    One instance of this mapping is produced per camera when comparing a
+    synthetic calibration result against its known ground truth. Units:
+    ``focal_length_error_pct`` is a percentage; ``z_position_error_mm`` and
+    ``xy_position_error_mm`` are in millimeters; ``k1_error``/``k2_error`` are
+    unitless (raw OpenCV distortion coefficient differences); the six
+    ``gt_*_m``/``est_*_m`` center coordinates are in meters;
+    ``reprojection_rms_px`` is in pixels.
+
+    ``reprojection_rms_px`` is a calibration-level scalar (not a genuinely
+    per-camera quantity) that is deliberately repeated on every camera's row
+    so a single per-camera table carries the whole calibration's headline
+    reprojection error alongside each camera's own position/intrinsic errors.
+    """
+
+    focal_length_error_pct: float
+    z_position_error_mm: float
+    xy_position_error_mm: float
+    k1_error: float
+    k2_error: float
+    gt_x_m: float
+    gt_y_m: float
+    gt_z_m: float
+    est_x_m: float
+    est_y_m: float
+    est_z_m: float
+    reprojection_rms_px: float
 
 
 # --- Custom Exceptions ---

@@ -23,6 +23,7 @@ from aquacal.calibration.intrinsics import (
     validate_view_diversity,
 )
 from aquacal.calibration.pipeline import (
+    build_interface_spread_report,
     calibrate_from_detections,
     load_config,
     run_calibration,
@@ -63,4 +64,5 @@ __all__ = [
     "split_detections",
     "run_calibration",
     "run_calibration_from_config",
+    "build_interface_spread_report",
 ]

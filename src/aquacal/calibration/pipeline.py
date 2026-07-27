@@ -728,7 +728,7 @@ def _resolve_per_camera_water_z_seeds(
     return resolved
 
 
-def _build_interface_spread_report(
+def build_interface_spread_report(
     distances: dict[str, float],
     stage: str,
 ) -> dict:
@@ -1407,7 +1407,7 @@ def run_calibration_from_config(
             if refine_intrinsics
             else ("stage3_rerun" if stage3_rerun_observer is not None else "stage3")
         )
-        spread_report = _build_interface_spread_report(final_distances, spread_stage)
+        spread_report = build_interface_spread_report(final_distances, spread_stage)
         s = spread_report["stats"]
         print(
             "  [Per-Camera Interface] water_z spread (mm): "
