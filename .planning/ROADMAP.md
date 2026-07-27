@@ -247,12 +247,12 @@ observability hooks and the per-camera interface ablation mode.
   7. The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs, or each
      divergence is explained, and the notebook's gauge-freedom mean-shift correction survives
      the port with an explanation attached.
-**Plans:** 0/8 plans executed
+**Plans:** 2/8 plans executed
 
 Plans:
 - Wave 1 (parallel):
-  - [ ] 19.1-01-PLAN.md — Promote the experiment verbs to `aquacal.datasets.pipelines`, widen `__all__`, shim `experiment_helpers.py`, promote `build_interface_spread_report` (EXP-01)
-  - [ ] 19.1-02-PLAN.md — Create the `experiments/` package; relocate `benchmarks/aggregate.py` → `_render.py` and `sweep_runner.py` → `e4_benchmark_grid.py`; move the test file (EXP-02, EXP-03)
+  - [x] 19.1-01-PLAN.md — Promote the experiment verbs to `aquacal.datasets.pipelines`, widen `__all__`, shim `experiment_helpers.py`, promote `build_interface_spread_report` (EXP-01)
+  - [x] 19.1-02-PLAN.md — Create the `experiments/` package; relocate `benchmarks/aggregate.py` → `_render.py` and `sweep_runner.py` → `e4_benchmark_grid.py`; move the test file (EXP-02, EXP-03)
 - Wave 2 (depends on 19.1-02):
   - [ ] 19.1-03-PLAN.md — `experiments/_io.py`: five-flag CLI parent, sorted CSV writer, numeric `--check` comparator, resumability, direct-call `benchmark.json` wrapper (EXP-02)
 - Wave 3 (depends on 19.1-01, 19.1-03):
@@ -364,7 +364,7 @@ behavior the published artifacts actually reflect.
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
-| 19.1 Experiment Suite Consolidation | v1.9 | 0/8 | Planned    |  |
+| 19.1 Experiment Suite Consolidation | v1.9 | 2/8 | In Progress|  |
 | 19.2 Experiment Execution and Provenance | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
