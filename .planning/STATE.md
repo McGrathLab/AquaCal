@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 19.1 flagged decisions reviewed (D-16, D-12 confirmed; D-03, D-06.3, D-19 amended)
-last_updated: "2026-07-27T13:23:48.931Z"
-last_activity: 2026-07-25 -- Phase 19.1 planning complete
+last_updated: "2026-07-27T13:51:00.360Z"
+last_activity: 2026-07-27 -- Phase 19.1 execution started
 progress:
   total_phases: 9
   completed_phases: 4
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.1 — experiment suite consolidation and execution
+**Current focus:** Phase 19.1 — experiment-suite-consolidation
 
 ## Current Position
 
-Phase: 19.1 (experiment-suite-consolidation) — PLANNED, not executed. CONTEXT + RESEARCH +
+Phase: 19.1 (experiment-suite-consolidation) — EXECUTING
   VALIDATION + PATTERNS + 8 plans in 6 waves all written and committed 2026-07-25.
   Phases 16, 17, 18, and 19 COMPLETE, verification PASSED for all four.
-Plan: 0/8 executed. Plan-check passed with 0 blockers, 2 documentation warnings (both closed).
+Plan: 1 of 8
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Ready to execute
+Status: Executing Phase 19.1
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-25 -- Phase 19.1 planning complete
+Last activity: 2026-07-27 -- Phase 19.1 execution started
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
