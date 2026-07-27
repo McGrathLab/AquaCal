@@ -100,12 +100,12 @@ bitten twice by hand-carried numbers — provenance is the deliverable here, not
 
 Phase 19.1 (consolidation + the two risk-carrying runs):
 
-- [ ] **EXP-01**: `calibrate_synthetic`, `compute_per_camera_errors`, and `evaluate_reconstruction` are importable from the installed package as `aquacal.datasets.pipelines` (with `tests/synthetic/experiment_helpers.py` left as a re-export shim), and `aquacal.datasets.__all__` also exports `generate_camera_array`, `generate_real_rig_array`, and `generate_board_trajectory` — so a pip-installed reader can run the tutorial and every script uses the public API a user would write
-- [ ] **EXP-02**: An `experiments/` directory outside `src/` holds `_io.py` (paths, sidecar, CSV writing, CLI parsing — I/O only), `_render.py` (CSV → LaTeX, recomputing nothing), and `results/`, with a README mapping one command to each paper artifact and its expected runtime; every script honours `--seed`, `--out`, `--force`, `--smoke`, `--check`, and `--smoke` runs in CI
-- [ ] **EXP-03**: `tests/synthetic/experiments.py` is deleted with its unique content salvaged, `compare_refractive.py` has moved to `experiments/` as E1's CLI entry point, the Phase 19 `benchmarks/` runner has moved under `experiments/`, stale path references are swept (`.planning/architecture.md`, `.planning/codebase/STRUCTURE.md`, `.planning/codebase/CONCERNS.md:21-34`), and no two implementations of the same experiment remain
-- [ ] **EXP-04**: E2's real-rig re-run against the current library emits `real_rig_metrics.json` and a `benchmark.json`, and every §3 real-rig number is confirmed unchanged or recorded as moved — the committed run predates v1.7 outlier rejection and v1.8 intrinsics seeding entirely
-- [ ] **EXP-05**: E7 reports per-camera surface-height spread, camera-height drift, focal/standoff drift and correlation, and the conditioning report across all four `shared_interface` × `refine_intrinsics` configurations on identical data, with reprojection RMSE explicitly not the headline metric (a degeneracy is a flat valley — RMSE stays low in both arms)
-- [ ] **EXP-06**: The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs or explains each divergence, keeping the notebook's long-format schema, and the gauge-freedom mean-shift correction (mean Z error across free cameras, subtracted before export) survives the port with an explanation attached
+- [x] **EXP-01**: `calibrate_synthetic`, `compute_per_camera_errors`, and `evaluate_reconstruction` are importable from the installed package as `aquacal.datasets.pipelines` (with `tests/synthetic/experiment_helpers.py` left as a re-export shim), and `aquacal.datasets.__all__` also exports `generate_camera_array`, `generate_real_rig_array`, and `generate_board_trajectory` — so a pip-installed reader can run the tutorial and every script uses the public API a user would write
+- [x] **EXP-02**: An `experiments/` directory outside `src/` holds `_io.py` (paths, sidecar, CSV writing, CLI parsing — I/O only), `_render.py` (CSV → LaTeX, recomputing nothing), and `results/`, with a README mapping one command to each paper artifact and its expected runtime; every script honours `--seed`, `--out`, `--force`, `--smoke`, `--check`, and `--smoke` runs in CI
+- [x] **EXP-03**: `tests/synthetic/experiments.py` is deleted with its unique content salvaged, `compare_refractive.py` has moved to `experiments/` as E1's CLI entry point, the Phase 19 `benchmarks/` runner has moved under `experiments/`, stale path references are swept (`.planning/architecture.md`, `.planning/codebase/STRUCTURE.md`, `.planning/codebase/CONCERNS.md:21-34`), and no two implementations of the same experiment remain
+- [x] **EXP-04**: E2's real-rig re-run against the current library emits `real_rig_metrics.json` and a `benchmark.json`, and every §3 real-rig number is confirmed unchanged or recorded as moved — the committed run predates v1.7 outlier rejection and v1.8 intrinsics seeding entirely
+- [x] **EXP-05**: E7 reports per-camera surface-height spread, camera-height drift, focal/standoff drift and correlation, and the conditioning report across all four `shared_interface` × `refine_intrinsics` configurations on identical data, with reprojection RMSE explicitly not the headline metric (a degeneracy is a flat valley — RMSE stays low in both arms)
+- [x] **EXP-06**: The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs or explains each divergence, keeping the notebook's long-format schema, and the gauge-freedom mean-shift correction (mean Z error across free cameras, subtracted before export) survives the port with an explanation attached
 
 Phase 19.2 (the remaining new results and the provenance close-out):
 
@@ -216,12 +216,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BENCH-04 | Phase 19 | Complete |
 | BENCH-05 | Phase 19 | Complete |
 | BENCH-06 | Phase 19 | Complete |
-| EXP-01 | Phase 19.1 | Pending |
-| EXP-02 | Phase 19.1 | Pending |
-| EXP-03 | Phase 19.1 | Pending |
-| EXP-04 | Phase 19.1 | Pending |
-| EXP-05 | Phase 19.1 | Pending |
-| EXP-06 | Phase 19.1 | Pending |
+| EXP-01 | Phase 19.1 | Complete |
+| EXP-02 | Phase 19.1 | Complete |
+| EXP-03 | Phase 19.1 | Complete |
+| EXP-04 | Phase 19.1 | Complete |
+| EXP-05 | Phase 19.1 | Complete |
+| EXP-06 | Phase 19.1 | Complete |
 | EXP-07 | Phase 19.2 | Pending |
 | EXP-08 | Phase 19.2 | Pending |
 | EXP-09 | Phase 19.2 | Pending |
