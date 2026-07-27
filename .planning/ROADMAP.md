@@ -247,7 +247,7 @@ observability hooks and the per-camera interface ablation mode.
   7. The ported E1 reproduces every value in the committed `exp{1,2,3}` CSVs, or each
      divergence is explained, and the notebook's gauge-freedom mean-shift correction survives
      the port with an explanation attached.
-**Plans:** 6/8 plans executed
+**Plans:** 7/8 plans executed
 
 Plans:
 - Wave 1 (parallel):
@@ -261,7 +261,7 @@ Plans:
   - [x] 19.1-05-PLAN.md — E7 four-arm interface ablation: spread, height drift, focal/standoff, conditioning, traces; RMSE demoted to a control (EXP-05)
   - [x] 19.1-06-PLAN.md — E1 port: reproduce the three committed `exp{1,2,3}` CSVs or explain each divergence; gauge correction via the library keyword (EXP-06)
 - Wave 5 (depends on 19.1-04, 19.1-05, 19.1-06):
-  - [ ] 19.1-07-PLAN.md — Delete `experiments.py` (20-def keep/drop table) and `compare_refractive.py`, delete both notebook export cells, X6 stale-path sweep, `experiments/README.md`, `--smoke` CI job (EXP-02, EXP-03, EXP-06)
+  - [x] 19.1-07-PLAN.md — Delete `experiments.py` (20-def keep/drop table) and `compare_refractive.py`, delete both notebook export cells, X6 stale-path sweep, `experiments/README.md`, `--smoke` CI job (EXP-02, EXP-03, EXP-06)
 - Wave 6 (depends on 19.1-04, 19.1-07):
   - [ ] 19.1-08-PLAN.md — BLOCKING non-auto-approvable human gate: user adjudicates E2's nine §3 numbers (EXP-04)
 
@@ -371,7 +371,7 @@ behavior the published artifacts actually reflect.
 | 17. Per-Camera Interface Ablation Mode | v1.9 | 5/5 | Complete | 2026-07-23 |
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
-| 19.1 Experiment Suite Consolidation | v1.9 | 6/8 | In Progress|  |
+| 19.1 Experiment Suite Consolidation | v1.9 | 7/8 | In Progress|  |
 | 19.2 Experiment Execution and Provenance | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
