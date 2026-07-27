@@ -3,18 +3,25 @@
 import numpy as np
 import pytest
 
+import aquacal.datasets as datasets_module
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets import (
     SyntheticScenario,
+    calibrate_synthetic,
     clear_cache,
+    compute_per_camera_errors,
     create_scenario,
+    evaluate_reconstruction,
+    generate_board_trajectory,
+    generate_camera_array,
+    generate_dense_xy_grid,
+    generate_real_rig_array,
     generate_synthetic_detections,
     get_cache_info,
     list_datasets,
     load_example,
 )
 from aquacal.datasets._manifest import get_manifest
-from aquacal.datasets.synthetic import generate_board_trajectory, generate_camera_array
 
 # ============================================================================
 # create_scenario Tests
@@ -354,3 +361,35 @@ def test_scenario_defaults_backward_compatible():
     assert np.isclose(scenario.n_water, 1.333)
     assert np.isclose(scenario.n_air, 1.0)
     assert scenario.seed == 42
+
+
+# ============================================================================
+# Widened Export Surface Tests (Phase 19.1 EXP-01)
+# ============================================================================
+
+
+def test_all_exports():
+    """Every one of the seven widened aquacal.datasets.__all__ names imports and is
+    callable/typed; generate_real_rig_trajectory is deliberately absent."""
+    widened_names = [
+        "calibrate_synthetic",
+        "compute_per_camera_errors",
+        "evaluate_reconstruction",
+        "generate_board_trajectory",
+        "generate_camera_array",
+        "generate_dense_xy_grid",
+        "generate_real_rig_array",
+    ]
+    for name in widened_names:
+        assert name in datasets_module.__all__
+        assert callable(getattr(datasets_module, name))
+
+    assert callable(calibrate_synthetic)
+    assert callable(compute_per_camera_errors)
+    assert callable(evaluate_reconstruction)
+    assert callable(generate_board_trajectory)
+    assert callable(generate_camera_array)
+    assert callable(generate_dense_xy_grid)
+    assert callable(generate_real_rig_array)
+
+    assert "generate_real_rig_trajectory" not in datasets_module.__all__
