@@ -1,12 +1,12 @@
 {
   "accuracy": {
-    "reprojection_rms_px": 0.984708944739999
+    "reprojection_rms_px": 0.9847089447064282
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "ce3ce6c9119694b8ae5b096593a86287e6194342",
+    "git_sha": "f9843972a879d95b87cbff66f06cc37c54e522c3",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -34,7 +34,7 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 3606.6160694517603,
+      "cost": 3606.6160694517894,
       "fd_reduction": 19.846153846153847,
       "ftol": 1e-08,
       "gtol": 1e-08,
@@ -45,30 +45,30 @@
       "n_groups_reason": null,
       "n_params": 258,
       "n_params_reason": null,
-      "nfev": 38,
-      "njev": 30,
-      "optimality": 0.0016527588812493832,
-      "seconds": 161.500976299998,
+      "nfev": 16,
+      "njev": 10,
+      "optimality": 0.007740633912018069,
+      "seconds": 56.73482949999743,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 3602.9775781747294,
+      "cost": 3602.9775769889957,
       "fd_reduction": 18.0,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 30600,
       "max_nfev_source": "scipy_auto",
-      "message": "`ftol` termination condition is satisfied.",
+      "message": "`xtol` termination condition is satisfied.",
       "n_groups": 17,
       "n_groups_reason": null,
       "n_params": 306,
       "n_params_reason": null,
-      "nfev": 21,
-      "njev": 10,
-      "optimality": 7.131802577061165,
-      "seconds": 69.63887019999675,
-      "status": 2,
+      "nfev": 20,
+      "njev": 9,
+      "optimality": 6003510706.02082,
+      "seconds": 62.88857779999671,
+      "status": 3,
       "xtol": 1e-08
     }
   }
