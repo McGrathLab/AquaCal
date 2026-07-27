@@ -1,15 +1,13 @@
-"""Unit tests for `benchmarks/aggregate.py` and `benchmarks/sweep_runner.py` (BENCH-05).
+"""Unit tests for `experiments/_render.py` and `experiments/e4_benchmark_grid.py` (BENCH-05).
 
-`benchmarks/` is a standalone, repo-root harness -- NOT part of the shipped
-`aquacal` package (D-12). These tests import it via `sys.path` manipulation,
-matching the same pattern this test suite already uses for `tests/synthetic`
-helpers (see `test_benchmark.py`).
+`experiments/` is a real top-level Python package (D-01), NOT part of the
+shipped `aquacal` package. These tests import it directly, with no
+`sys.path` manipulation needed.
 """
 
 from __future__ import annotations
 
 import shutil
-import sys
 import warnings
 from pathlib import Path
 from unittest.mock import patch
@@ -18,16 +16,14 @@ import pandas as pd
 import pytest
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from benchmarks.aggregate import (  # noqa: E402
+from experiments._render import (
     SUPPORTED_SCHEMA_VERSION,
     UnsupportedSchemaVersionError,
     aggregate,
     write_csv,
     write_latex_fragment,
 )
-from benchmarks.sweep_runner import run_sweep  # noqa: E402
+from experiments.e4_benchmark_grid import run_sweep
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "benchmark_records"
 
@@ -259,7 +255,7 @@ class TestRunSweep:
     ):
         output_root = tmp_path / "sweep_output"
         with patch(
-            "benchmarks.sweep_runner.run_calibration_from_config",
+            "experiments.e4_benchmark_grid.run_calibration_from_config",
             side_effect=self._fake_run_calibration_from_config,
         ) as mock_run:
             output_dirs = run_sweep([2], [10], base_sweep_config, output_root)
@@ -272,7 +268,7 @@ class TestRunSweep:
     ):
         output_root = tmp_path / "sweep_output"
         with patch(
-            "benchmarks.sweep_runner.run_calibration_from_config",
+            "experiments.e4_benchmark_grid.run_calibration_from_config",
             side_effect=self._fake_run_calibration_from_config,
         ) as mock_run:
             output_dirs = run_sweep([1, 2], [5, 10], base_sweep_config, output_root)
@@ -285,7 +281,9 @@ class TestRunSweep:
     ):
         """No test in this module performs a real, un-mocked calibration."""
         output_root = tmp_path / "sweep_output"
-        with patch("benchmarks.sweep_runner.run_calibration_from_config") as mock_run:
+        with patch(
+            "experiments.e4_benchmark_grid.run_calibration_from_config"
+        ) as mock_run:
             mock_run.side_effect = self._fake_run_calibration_from_config
             run_sweep([2], [10], base_sweep_config, output_root)
             assert mock_run.called
@@ -295,7 +293,7 @@ class TestRunSweep:
     ):
         output_root = tmp_path / "sweep_output"
         with patch(
-            "benchmarks.sweep_runner.run_calibration_from_config",
+            "experiments.e4_benchmark_grid.run_calibration_from_config",
             side_effect=self._fake_run_calibration_from_config,
         ):
             with pytest.raises(ValueError):
