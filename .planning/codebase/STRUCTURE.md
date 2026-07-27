@@ -71,12 +71,21 @@ AquaCal/
 │   ├── synthetic/                 # Integration/synthetic tests
 │   │   ├── __init__.py
 │   │   ├── conftest.py            # Pytest fixtures
-│   │   ├── compare_refractive.py   # Script: run refractive comparison experiments
-│   │   ├── experiment_helpers.py   # Shared experiment logic
-│   │   ├── experiments.py          # Experiment implementations (fidelity, depth, scaling)
+│   │   ├── experiment_helpers.py   # Re-export shim -- verbs promoted to aquacal.datasets.pipelines
 │   │   ├── ground_truth.py         # Synthetic rig generation, test data
-│   │   └── test_full_pipeline.py   # End-to-end pipeline validation
+│   │   ├── test_full_pipeline.py   # End-to-end pipeline validation
+│   │   └── test_per_camera_interface.py  # Per-camera interface ablation coverage
 │   └── integration/                # Placeholder for future integration tests
+├── experiments/                    # Paper experiment scripts (not part of the installed package)
+│   ├── __init__.py
+│   ├── README.md                   # Provenance table, one command per artifact, runtimes
+│   ├── _io.py                      # Paths, run-record write, CSV writer, shared argparse
+│   ├── _render.py                  # CSV -> LaTeX; recomputes nothing
+│   ├── e1_refractive_comparison.py # E1: refractive vs non-refractive synthetic comparison
+│   ├── e2_real_rig.py              # E2: real 13-camera rig re-run
+│   ├── e4_benchmark_grid.py        # E4: relocated benchmark-grid skeleton (run in Phase 19.2)
+│   ├── e7_interface_ablation.py    # E7: shared-vs-per-camera interface ablation
+│   └── results/                    # Committed CSV/JSON -- the figure inputs
 ├── dev/                            # Development and documentation (gitignored)
 │   ├── DESIGN.md                   # Architecture and design decisions
 │   ├── GEOMETRY.md                 # Coordinate systems and transforms
@@ -163,8 +172,9 @@ AquaCal/
 
 **tests/synthetic:**
 - Purpose: Integration tests with ground truth
-- Contains: Synthetic rig generation, full pipeline tests, refractive comparison experiments
-- Run: `pytest tests/synthetic/` or `python tests/synthetic/compare_refractive.py`
+- Contains: Synthetic rig generation, full pipeline tests
+- Run: `pytest tests/synthetic/` or `python -m experiments.e1_refractive_comparison` /
+  `python -m experiments.e2_real_rig` / `python -m experiments.e7_interface_ablation`
 - Marked `@pytest.mark.slow` for experiments (skip with `pytest -m "not slow"`)
 
 **dev:**
@@ -291,7 +301,7 @@ AquaCal/
 **Files:**
 - `snake_case.py`: All module files
 - Test files: `test_<module>.py` (e.g., `test_camera.py` for `camera.py`)
-- Temporary/script files: descriptive snake_case (e.g., `compare_refractive.py`)
+- Temporary/script files: descriptive snake_case (e.g., `e1_refractive_comparison.py`)
 - Config/generated files: descriptive uppercase (e.g., `ARCHITECTURE.md`)
 
 **Directories:**
@@ -353,9 +363,10 @@ AquaCal/
 
 **Integration Test / Synthetic Experiment:**
 - Test file: `tests/synthetic/test_<experiment>.py`
-- Helpers: Add to `tests/synthetic/experiment_helpers.py` or `ground_truth.py` (reusable)
+- Helpers: Add computational verbs to `src/aquacal/datasets/pipelines.py` (P2: library
+  computes); add I/O-only helpers to `experiments/_io.py` (P3: experiment orchestrates)
 - Run: Mark with `@pytest.mark.slow` if long-running
-- Results: Output to `results/` directory via CLI or script
+- Results: Output to `experiments/results/` via `python -m experiments.eN_name`
 
 ## Special Directories
 

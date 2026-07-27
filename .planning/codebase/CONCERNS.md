@@ -18,21 +18,7 @@
 - Fix approach: Task 6.9 (incomplete in TASKS.md) - switch to per-run Z normalization. Each run's Z range computed from its own triangulated data (with outlier trimming), divided into N equal slices. Depth axis becomes relative (shallowest to deepest) instead of absolute, enabling fair cross-model comparison.
 - Status: Open task (6.9)
 
-**Missing import in synthetic experiments:**
-- Issue: `tests/synthetic/experiments.py` imports only `calibrate_synthetic` and `compute_per_camera_errors` from `experiment_helpers` (lines 21-24) but uses `evaluate_reconstruction()` at lines 475 and 981 without importing it.
-- Files: `tests/synthetic/experiments.py` (line 21), `tests/synthetic/experiment_helpers.py` (line 163)
-- Impact: Running `run_experiment_2()` or `run_experiment_3()` crashes with `NameError: name 'evaluate_reconstruction' is not defined`. Task B.2 documents this.
-- Fix approach: Add `evaluate_reconstruction` to the import statement in `experiments.py` lines 21-24.
-- Status: Open bug (B.2)
-
 ## Known Bugs
-
-**B.2 - Missing `evaluate_reconstruction` import in experiments.py**
-- Symptoms: `NameError: name 'evaluate_reconstruction' is not defined` at `experiments.py:475` and `experiments.py:981`
-- Files: `tests/synthetic/experiments.py`, `tests/synthetic/experiment_helpers.py`
-- Trigger: `python tests/synthetic/compare_refractive.py`
-- Workaround: Manually add `evaluate_reconstruction,` to line 23 in `tests/synthetic/experiments.py`
-- Status: Documented in `dev/tasks/b2_report.md`
 
 ## Performance Bottlenecks
 
