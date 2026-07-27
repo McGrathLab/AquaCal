@@ -204,14 +204,26 @@ def _build_shared_data(seed: int, smoke: bool):
         seed=seed,
     )
     pose_graph = build_pose_graph(detections, min_cameras=2)
+    # Refraction-aware Stage 2, mirroring calibrate_synthetic's pattern
+    # (pipelines.py) -- omitting water_zs/interface_normal/n_air/n_water here
+    # would silently degrade the initial extrinsics guess for a refractive
+    # scenario, which is a Stage-2 problem unrelated to the ablation variable
+    # and would confound shared-vs-per-camera convergence comparisons.
     initial_extrinsics = estimate_extrinsics(
-        pose_graph, scenario.intrinsics, board, REFERENCE_CAMERA
+        pose_graph,
+        scenario.intrinsics,
+        board,
+        REFERENCE_CAMERA,
+        water_zs=scenario.water_zs,
+        interface_normal=INTERFACE_NORMAL,
+        n_air=scenario.n_air,
+        n_water=scenario.n_water,
     )
     # A fixed, deterministic seed dict -- not re-drawn per arm (RESEARCH E7
-    # mechanics point 5) -- derived from the ground-truth mean surface height
-    # so all four arms start from the same physically plausible guess.
-    mean_water_z = float(np.mean(list(scenario.water_zs.values())))
-    initial_water_zs = {cam: mean_water_z for cam in scenario.intrinsics}
+    # mechanics point 5) -- the ground-truth surface height, matching
+    # calibrate_synthetic's own initial_water_zs seeding pattern so all four
+    # arms start from the same physically plausible guess.
+    initial_water_zs = dict(scenario.water_zs)
     return scenario, board, detections, initial_extrinsics, initial_water_zs
 
 
