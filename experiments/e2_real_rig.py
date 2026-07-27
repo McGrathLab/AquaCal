@@ -247,6 +247,17 @@ def build_real_rig_metrics(result, spatial, square_size_m: float) -> dict:
 
     return {
         "mean_reprojection_px": float(result.diagnostics.reprojection_error_rms),
+        # NOT the same statistic as the line above, and the manuscript's §3
+        # "mean reprojection error" is THIS one (added 2026-07-27). §3's 0.88 px is
+        # the mean of the per-camera RMS values (release diagnostics.json gives
+        # 0.8786), whereas `mean_reprojection_px` above is the single pooled RMS over
+        # all observations (release gives 1.0191). Comparing one against the other
+        # silently mixes two statistics under one label -- exactly the "one number,
+        # one origin" failure this suite exists to prevent -- so both are emitted
+        # explicitly and the delta table must compare like with like.
+        "mean_per_camera_reprojection_px": float(
+            sum(primary_vals.values()) / len(primary_vals)
+        ),
         "reprojection_range_px": [
             float(min(primary_vals.values())),
             float(max(primary_vals.values())),
@@ -261,7 +272,17 @@ def build_real_rig_metrics(result, spatial, square_size_m: float) -> dict:
         "water_z_m": water_z_m,
         "camera_height_range_m": [float(min(heights)), float(max(heights))],
         "provenance": {
-            "mean_reprojection_px": "result.diagnostics.reprojection_error_rms",
+            "mean_reprojection_px": (
+                "result.diagnostics.reprojection_error_rms -- the POOLED RMS over "
+                "all observations. This is NOT the quantity the manuscript's §3 "
+                "calls 'mean reprojection error'; see "
+                "mean_per_camera_reprojection_px."
+            ),
+            "mean_per_camera_reprojection_px": (
+                "mean of result.diagnostics.reprojection_error_per_camera over "
+                "primary (non-auxiliary) cameras -- this IS the §3 quantity "
+                "(release diagnostics.json: 0.8786 px, quoted as 0.88)"
+            ),
             "reprojection_range_px": (
                 "min/max of result.diagnostics.reprojection_error_per_camera "
                 "over primary (non-auxiliary) cameras"
@@ -526,6 +547,39 @@ def _run_real_calibration(args: argparse.Namespace):
     from aquacal import run_calibration
     from aquacal.datasets import load_example
 
+    if getattr(args, "config", None) is not None:
+        # Explicit-config path (added 2026-07-27). The PUBLISHED Zenodo archive is a
+        # ~4.3x frame-subsampled extraction of the capture that produced the
+        # manuscript's section-3 numbers (60 usable frames -> 12 validation -> 1,817
+        # comparisons, versus ~260 -> 52 -> 7,762). Reproducing section-3 therefore
+        # requires pointing at the full-frameset config; the archive default is kept
+        # so a reader with no local videos still has a working reproducibility path.
+        # See .planning/phases/19.1-experiment-suite-consolidation/
+        # 19.1-E2-FRAMESET-PROVENANCE.md and REQUIREMENTS.md DATA-01a.
+        config_path = Path(args.config).resolve()
+        if not config_path.is_file():
+            raise FileNotFoundError(f"--config path does not exist: {config_path}")
+        run_root = config_path.parent
+        logger.info("E2 real-rig run: using explicit config %s", config_path)
+        original_cwd = os.getcwd()
+        os.chdir(run_root)
+        try:
+            print("Running full calibration pipeline from explicit config...")
+            result = run_calibration(str(config_path), verbose=True)
+        finally:
+            os.chdir(original_cwd)
+
+        from aquacal.config import load_config
+
+        cfg = load_config(str(config_path))
+        output_dir = Path(cfg.output_dir)
+        if not output_dir.is_absolute():
+            output_dir = (run_root / output_dir).resolve()
+        from aquacal.validation.reconstruction import load_spatial_measurements
+
+        spatial = load_spatial_measurements(output_dir / "spatial_measurements.csv")
+        return result, spatial, output_dir
+
     print(f"Loading dataset {DATASET_NAME!r} (cached locally if already downloaded)...")
     dataset = load_example(DATASET_NAME)
     config_path = dataset.cache_path / "config.yaml"
@@ -627,6 +681,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help=(
+            "Run against an explicit config.yaml instead of the published Zenodo "
+            "archive. Required to reproduce the manuscript's section-3 numbers, "
+            "because the published archive is a ~4.3x frame-subsampled extraction "
+            "of the capture that produced them (DATA-01a). Omit to use the "
+            "published archive, which is the path a reader without the raw videos "
+            "follows."
+        ),
     )
     return parser
 
