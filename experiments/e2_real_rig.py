@@ -569,7 +569,7 @@ def _run_real_calibration(args: argparse.Namespace):
         finally:
             os.chdir(original_cwd)
 
-        from aquacal.config import load_config
+        from aquacal import load_config
 
         cfg = load_config(str(config_path))
         output_dir = Path(cfg.output_dir)
