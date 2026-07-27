@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.1 context gathered
-last_updated: "2026-07-25T15:16:49.067Z"
+stopped_at: Phase 19.1 flagged decisions reviewed (D-16, D-12 confirmed; D-03, D-06.3, D-19 amended)
+last_updated: "2026-07-27T13:23:48.931Z"
 last_activity: 2026-07-25 -- Phase 19.1 planning complete
 progress:
   total_phases: 9
@@ -353,8 +353,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-25T14:25:44.699Z
-Stopped at: Phase 19.1 context gathered
+Last session: 2026-07-27T13:23:48.921Z
+Stopped at: Phase 19.1 flagged decisions reviewed (D-16, D-12 confirmed; D-03, D-06.3, D-19 amended)
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
