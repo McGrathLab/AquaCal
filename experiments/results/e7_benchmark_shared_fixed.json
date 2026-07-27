@@ -1,0 +1,56 @@
+{
+  "accuracy": {
+    "reprojection_rms_px": 0.4988206078275051
+  },
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "f9843972a879d95b87cbff66f06cc37c54e522c3",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "problem_shape": {
+    "n_cameras": 12,
+    "n_frames_calibration": 30,
+    "n_frames_holdout": 0
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "ftol": 1e-08,
+    "gtol": 1e-08,
+    "loss_scale": 1.0,
+    "n_air": 1.0,
+    "n_water": 1.333,
+    "refine_intrinsics": false,
+    "robust_loss": "huber",
+    "shared_interface": true,
+    "xtol": 1e-08
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 3410.1731284911993,
+      "fd_reduction": 19.0,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 24700,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 247,
+      "n_params_reason": null,
+      "nfev": 17,
+      "njev": 11,
+      "optimality": 0.0017278061985645055,
+      "seconds": 71.62284040001396,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}
