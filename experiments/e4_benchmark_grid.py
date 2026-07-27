@@ -1,7 +1,7 @@
 """Drive the cameras x frames benchmark sweep grid (BENCH-05).
 
 Standalone script, NOT part of the shipped `aquacal` package (D-12): it lives
-at the repository root under `benchmarks/`, is never imported by
+at the repository root under `experiments/`, is never imported by
 `src/aquacal`, and adds no `aquacal` CLI subcommand. It imports only the
 public `aquacal` package surface (`aquacal.calibration.load_config`,
 `aquacal.calibration.run_calibration_from_config`) -- never a private
@@ -126,7 +126,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == "__main__":
-    from benchmarks.aggregate import aggregate, write_csv, write_latex_fragment
+    from experiments._render import aggregate, write_csv, write_latex_fragment
 
     args = _build_arg_parser().parse_args()
     run_sweep(args.cameras, args.frames, args.config, args.output_root)

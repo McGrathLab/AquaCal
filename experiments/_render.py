@@ -1,7 +1,7 @@
 """Aggregate `benchmark.json` records into a tidy CSV / LaTeX table (BENCH-05).
 
 Standalone script, NOT part of the shipped `aquacal` package: it lives at the
-repository root under `benchmarks/`, is never imported by `src/aquacal`, and
+repository root under `experiments/`, is never imported by `src/aquacal`, and
 adds no `aquacal` CLI subcommand (D-12). It is a pure aggregator -- it reads
 every `benchmark.json` under a directory tree, flattens each into one tidy
 row, and concatenates them. It computes no derived quantity the pipeline did
@@ -11,7 +11,7 @@ upstream in `aquacal.io.benchmark.assemble_benchmark_record`, not here.
 
 Run manually, e.g.:
 
-    python benchmarks/aggregate.py --root output/sweep --csv sweep.csv
+    python experiments/_render.py --root output/sweep --csv sweep.csv
 """
 
 from __future__ import annotations
@@ -227,7 +227,7 @@ def write_latex_fragment(df: pd.DataFrame, path: Path, columns: list[str]) -> No
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    """Build the CLI argument parser for `python benchmarks/aggregate.py`.
+    """Build the CLI argument parser for `python experiments/_render.py`.
 
     Returns:
         A configured `argparse.ArgumentParser`.
