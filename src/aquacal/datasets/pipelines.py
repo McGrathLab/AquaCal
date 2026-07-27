@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 
 from aquacal.calibration._observability import SolverDiagnostics
@@ -28,6 +30,7 @@ def calibrate_synthetic(
     refine_intrinsics: bool = True,
     seed: int = 42,
     diagnostics_out: dict[str, SolverDiagnostics] | None = None,
+    timings_out: dict[str, float] | None = None,
 ) -> tuple[CalibrationResult, DetectionResult]:
     """Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
@@ -47,6 +50,13 @@ def calibrate_synthetic(
             (``"stage3_interface_optimization"``, ``"stage3_intrinsic_pass"``).
             When ``None`` (the default), no diagnostics are captured and behavior is
             byte-identical to omitting this argument entirely.
+        timings_out: Optional mapping populated in place with wall-clock seconds per
+            stage, keyed the same way as ``diagnostics_out``
+            (``"stage3_interface_optimization"``, ``"stage3_intrinsic_pass"``).
+            Mirrors ``run_calibration_from_config``'s internal ``_time_stage``
+            instrumentation for direct-call experiments that bypass the pipeline
+            (D-09). When ``None`` (the default), no timing is captured and behavior
+            is byte-identical to omitting this argument entirely.
 
     Returns:
         Tuple of (CalibrationResult, DetectionResult). The detections are needed
@@ -95,6 +105,7 @@ def calibrate_synthetic(
         if diagnostics_out is not None
         else None
     )
+    _t0 = time.perf_counter()
     opt_extrinsics, opt_distances, opt_poses, rms = optimize_interface(
         detections=detections,
         intrinsics=scenario.intrinsics,
@@ -114,6 +125,8 @@ def calibrate_synthetic(
         min_corners=4,
         diagnostics_out=stage3_diagnostics_out,
     )
+    if timings_out is not None:
+        timings_out["stage3_interface_optimization"] = time.perf_counter() - _t0
 
     # Stage 3's second pass: intrinsic refinement (if requested)
     if refine_intrinsics:
@@ -124,6 +137,7 @@ def calibrate_synthetic(
             if diagnostics_out is not None
             else None
         )
+        _t0 = time.perf_counter()
         opt_extrinsics, opt_distances, opt_poses, opt_intrinsics, rms = (
             joint_refinement(
                 stage3_result=stage3_result,
@@ -141,6 +155,8 @@ def calibrate_synthetic(
                 diagnostics_out=intrinsic_pass_diagnostics_out,
             )
         )
+        if timings_out is not None:
+            timings_out["stage3_intrinsic_pass"] = time.perf_counter() - _t0
     else:
         # Use ground truth intrinsics
         opt_intrinsics = scenario.intrinsics
