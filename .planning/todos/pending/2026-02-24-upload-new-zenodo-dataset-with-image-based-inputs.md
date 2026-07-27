@@ -59,3 +59,39 @@ Folded into the "Post-Review Updates" milestone as **Task Group F** (dataset
 refresh + tutorial re-execution), scheduled after all code work so the published
 artifacts reflect final behavior. Do not action this todo standalone — it now
 carries a sequencing constraint relative to E6 and E7. Close it when F lands.
+
+## Findings (2026-07-27) — SCOPE EXPANDED, now a publication blocker
+
+Phase 19.1's E2 re-run established that **this todo's scope was too narrow**. It was written
+as a config-hygiene item (`initial_distances` → `initial_water_z`). It is now also a
+**frameset** problem, and that part blocks publication.
+
+`Desktop\Aqua\AquaCal\release_calibration\diagnostics.json` is the exact source of every
+manuscript §3 real-rig number — all nine reconcile to 4+ significant figures. The **published
+Zenodo archive is not that run.** It is a ~4.3× frame-subsampled extraction of the same source
+videos:
+
+| Run | Usable frames | Validation frames | Comparisons |
+|---|---|---|---|
+| Release calibration (produces §3) | ~260 | 52 | **7,762** |
+| Published Zenodo archive | 60 | 12 | 1,817 |
+
+Ratio check: 7762/1817 = 4.27, 52/12 = 4.33.
+
+So a reader who follows the published reproducibility path gets materially different numbers
+from the ones in the paper. That is the same class of error as the two hand-carried numbers
+already in publications — the failure "one number, one origin" exists to prevent.
+
+**Consequence for closing this todo:** re-uploading with only the corrected `config.yaml` is
+NO LONGER SUFFICIENT. The new archive must carry the full frameset. Source videos are on disk
+at `Desktop\Aqua\AquaCal\raw_videos\{intrinsics,extrinsics}\*.avi` (13 + 13), with the
+producing config at `release_calibration\config.yaml` (`frame_step: 30`,
+`max_calibration_frames: 200`, `holdout_fraction: 0.2`, `refine_intrinsics` and
+`refine_auxiliary_intrinsics` both true).
+
+Tracked as **DATA-01a** in `REQUIREMENTS.md` and Phase 21 success criterion **2a** in
+`ROADMAP.md`. Full analysis:
+`.planning/phases/19.1-experiment-suite-consolidation/19.1-E2-FRAMESET-PROVENANCE.md`.
+
+Sequencing constraint from the earlier finding still holds — do not action standalone; it
+lands with Phase 21's DATA group.

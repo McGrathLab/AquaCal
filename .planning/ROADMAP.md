@@ -316,13 +316,20 @@ estimate into their config by hand.
 published dataset and tutorial outputs reflect the current library rather than 2026-02.
 **Depends on**: Phase 16, Phase 17, Phase 18, Phase 19, Phase 20 (documents and exercises
 everything built in this milestone; dataset regeneration needs the settled stage model)
-**Requirements**: DOCS-05, DATA-01, DATA-02, DATA-03
+**Requirements**: DOCS-05, DATA-01, DATA-01a, DATA-02, DATA-03
 **Success Criteria** (what must be TRUE):
   1. `calc-index`, the `benchmark.json` schema, the trace and conditioning flags, and
      `shared_interface` (framed as an ablation option) are all documented.
   2. The real-rig dataset config is regenerated through current `aquacal init` (not
      hand-patched), with every difference from the shipped config confirmed deliberate,
      settling whether `initial_distances` was a scalar or carried pre-v1.4 semantics.
+  2a. **PUBLICATION BLOCKER (added 2026-07-27, Phase 19.1 finding).** The regenerated archive
+     carries the frameset that produced the manuscript's §3 numbers — a fresh
+     `load_example("real-rig")` run reproduces `reconstruction.num_comparisons = 7762` and the
+     other eight §3 quantities, not the currently-published ~4.3× subsampled extraction's
+     1,817. Without this the published dataset does not reproduce the published numbers, which
+     is the "one number, one origin" failure the milestone exists to prevent. See
+     `.planning/phases/19.1-experiment-suite-consolidation/19.1-E2-FRAMESET-PROVENANCE.md`.
   3. A new Zenodo version is published; `manifest.json`'s `zenodo_record_id`, `checksum`,
      and `size_bytes` are updated together; `load_example("real-rig")` is verified to
      download, checksum, and extract at the path the notebook resolves.
