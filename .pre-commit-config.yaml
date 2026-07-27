@@ -21,7 +21,13 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: ^docs/tutorials/.*\.ipynb$
+        # Generated artifacts whose provenance fields are high-entropy by design:
+        # notebook outputs, and the committed experiment results under
+        # experiments/results/ (benchmark.json carries `git_sha`, calibration.json
+        # carries `config_hash` -- both are recorded deliberately, and both are
+        # regenerated with new values on every run, so a baseline entry cannot
+        # hold. Neither file type is a place credentials belong.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results/.*)$
 
   - repo: local
     hooks:
