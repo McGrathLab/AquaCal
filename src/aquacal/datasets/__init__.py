@@ -39,9 +39,18 @@ Downloaded datasets are cached in ``./aquacal_data/``::
 from aquacal.datasets._manifest import list_datasets
 from aquacal.datasets.download import clear_cache, get_cache_info
 from aquacal.datasets.loader import ExampleDataset, load_example
+from aquacal.datasets.pipelines import (
+    calibrate_synthetic,
+    compute_per_camera_errors,
+    evaluate_reconstruction,
+)
 from aquacal.datasets.synthetic import (
     SyntheticScenario,
     create_scenario,
+    generate_board_trajectory,
+    generate_camera_array,
+    generate_dense_xy_grid,
+    generate_real_rig_array,
     generate_synthetic_detections,
 )
 
@@ -54,4 +63,12 @@ __all__ = [
     "list_datasets",
     "clear_cache",
     "get_cache_info",
+    "generate_camera_array",
+    "generate_real_rig_array",
+    "generate_board_trajectory",
+    "generate_dense_xy_grid",
+    # From pipelines.py (Phase 19.1 X1 promotion):
+    "calibrate_synthetic",
+    "compute_per_camera_errors",
+    "evaluate_reconstruction",
 ]

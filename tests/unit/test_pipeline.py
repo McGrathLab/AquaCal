@@ -11,11 +11,11 @@ import yaml
 
 from aquacal.calibration.pipeline import (
     _build_calibration_result,
-    _build_interface_spread_report,
     _compute_config_hash,
     _dump_stage_calibration,
     _resolve_per_camera_water_z_seeds,
     _save_board_reference_images,
+    build_interface_spread_report,
     load_config,
     run_calibration,
     run_calibration_from_config,
@@ -2046,7 +2046,7 @@ class TestBuildInterfaceSpreadReport:
 
     def test_report_math_and_schema(self):
         distances = {"cam0": 0.10, "cam1": 0.20, "cam2": 0.30}
-        report = _build_interface_spread_report(distances, "stage3")
+        report = build_interface_spread_report(distances, "stage3")
 
         assert report["stage"] == "stage3"
         assert report["unit"] == "meters"
@@ -2061,7 +2061,7 @@ class TestBuildInterfaceSpreadReport:
         assert stats["range"] == pytest.approx(np.ptp(values))
 
     def test_report_json_round_trips(self):
-        report = _build_interface_spread_report(
+        report = build_interface_spread_report(
             {"cam0": 0.12, "cam1": 0.18}, "stage3_intrinsic_pass"
         )
         assert json.loads(json.dumps(report)) == report
