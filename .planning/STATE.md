@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.2: D-26 recorded -- REPLAN REQUIRED before executing (re-wave + pipeline seed + D-08 gate swap)"
+stopped_at: "Phase 19.2: D-26 replan COMPLETE -- 14 plans in 8 waves, ready to execute"
 last_updated: "2026-07-28T21:26:12.628Z"
 last_activity: 2026-07-28 -- Phase 19.2 planning complete
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 47
+  total_plans: 48
   completed_plans: 34
   percent: 56
 ---
@@ -26,8 +26,14 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 19.2
-  VALIDATION + PATTERNS + 8 plans in 6 waves all written and committed 2026-07-25.
-  Phases 16, 17, 18, and 19 COMPLETE, verification PASSED for all four.
+  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 0/14 executed.**
+  Wave 1 = 19.2-01/02/03/04/14 (every src change, each exact-equality guarded).
+  Plan 19.2-06 (the ~50 min E2 re-run) moved to wave 2; its launch gate is now
+  "every src change passes its bit-identity test", not "git diff -- src/ is empty".
+  New plan 19.2-14 adds seed to pipeline.py solver_config (EXP-11).
+  Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
+  one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
+  Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
 Plan: Not started
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
@@ -354,7 +360,7 @@ the Addendum at the end of `16-RESEARCH.md`.
 ## Session Continuity
 
 Last session: 2026-07-28T21:26:12.621Z
-Stopped at: Phase 19.2: D-26 recorded -- REPLAN REQUIRED before executing (re-wave + pipeline seed + D-08 gate swap)
+Stopped at: Phase 19.2: D-26 replan COMPLETE -- 14 plans in 8 waves, ready to execute
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
