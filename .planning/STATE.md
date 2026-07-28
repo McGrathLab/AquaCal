@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: planning
-stopped_at: Phase 19.2 context gathered
-last_updated: "2026-07-28T16:53:45.501Z"
-last_activity: 2026-07-27
+status: executing
+stopped_at: Phase 19.2 planned -- 12 plans in 5 waves, plan-checker PASSED
+last_updated: "2026-07-28T18:31:23.928Z"
+last_activity: 2026-07-28 -- Phase 19.2 planning complete
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 34
+  total_plans: 46
   completed_plans: 34
   percent: 56
 ---
@@ -33,12 +33,12 @@ Plan: Not started
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Ready to plan
+Status: Ready to execute
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-27
+Last activity: 2026-07-28 -- Phase 19.2 planning complete
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
@@ -353,8 +353,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-28T16:53:45.493Z
-Stopped at: Phase 19.2 context gathered
+Last session: 2026-07-28T18:31:23.919Z
+Stopped at: Phase 19.2 planned -- 12 plans in 5 waves, plan-checker PASSED
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
@@ -395,5 +395,5 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: .planning/phases/19.2-experiment-execution-and-provenance/19.2-CONTEXT.md
+Resume file: .planning/phases/19.2-experiment-execution-and-provenance/19.2-01-PLAN.md
   (Read alongside `18-DISCUSSION-LOG.md` for the alternatives considered.)
