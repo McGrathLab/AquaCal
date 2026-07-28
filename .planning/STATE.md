@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.2 planned -- 12 plans in 5 waves, plan-checker PASSED
-last_updated: "2026-07-28T20:07:25.959Z"
+stopped_at: Phase 19.2 planned -- 13 plans in 7 waves, cross-AI reviewed, 0/13 executed
+last_updated: "2026-07-28T21:14:22.468Z"
 last_activity: 2026-07-28 -- Phase 19.2 planning complete
 progress:
   total_phases: 9
@@ -353,8 +353,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-28T18:31:23.919Z
-Stopped at: Phase 19.2 planned -- 12 plans in 5 waves, plan-checker PASSED
+Last session: 2026-07-28T21:14:22.458Z
+Stopped at: Phase 19.2 planned -- 13 plans in 7 waves, cross-AI reviewed, 0/13 executed
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
@@ -395,5 +395,5 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: .planning/phases/19.2-experiment-execution-and-provenance/19.2-01-PLAN.md
+Resume file: .planning/phases/19.2-experiment-execution-and-provenance/19.2-06-PLAN.md
   (Read alongside `18-DISCUSSION-LOG.md` for the alternatives considered.)
