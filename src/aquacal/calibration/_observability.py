@@ -125,6 +125,15 @@ class SolverDiagnostics:
             `n_groups_reason` set when not applicable.
         n_groups_reason: Explanation for why `n_groups` is `None`. Populated only
             when `n_groups` is `None`.
+        n_residuals: Residual-row count `M` of this solve's Jacobian
+            (`jac_sparsity.shape[0]`), when the call site built a sparsity
+            structure (EXP-08). `M * n_params` is the dense Jacobian element
+            count the supplement's dense/QR-regime claim is about. `None` with
+            `n_residuals_reason` set when the call site has no sparsity
+            structure -- the same absent-metric convention as `n_params`/
+            `n_groups`.
+        n_residuals_reason: Explanation for why `n_residuals` is `None`.
+            Populated only when `n_residuals` is `None`.
     """
 
     nfev: int | None = None
@@ -142,6 +151,8 @@ class SolverDiagnostics:
     n_params_reason: str | None = None
     n_groups: int | None = None
     n_groups_reason: str | None = None
+    n_residuals: int | None = None
+    n_residuals_reason: str | None = None
 
 
 def build_parameter_labels(
@@ -241,6 +252,8 @@ def capture_solver_diagnostics(
     n_groups: int | None = None,
     n_params_reason: str | None = None,
     n_groups_reason: str | None = None,
+    n_residuals: int | None = None,
+    n_residuals_reason: str | None = None,
 ) -> None:
     """Populate a `SolverDiagnostics` in place from a returned `OptimizeResult`.
 
@@ -275,6 +288,10 @@ def capture_solver_diagnostics(
             (BENCH-03).
         n_params_reason: Explanation recorded when `n_params` is `None` (D-15).
         n_groups_reason: Explanation recorded when `n_groups` is `None` (D-15).
+        n_residuals: Residual-row count `M` of this solve's Jacobian, when
+            applicable (EXP-08).
+        n_residuals_reason: Explanation recorded when `n_residuals` is `None`
+            (D-15).
     """
     if diagnostics_out is None:
         return
@@ -296,6 +313,8 @@ def capture_solver_diagnostics(
     diagnostics_out.n_groups = n_groups
     diagnostics_out.n_params_reason = n_params_reason
     diagnostics_out.n_groups_reason = n_groups_reason
+    diagnostics_out.n_residuals = n_residuals
+    diagnostics_out.n_residuals_reason = n_residuals_reason
 
 
 class OptimizerObserver:

@@ -529,6 +529,48 @@ class TestAssembleBenchmarkRecord:
         assert aux["seconds"] is None
         assert "per-camera wall time" in aux["seconds_reason"]
 
+    def test_n_residuals_null_when_default_constructed(self):
+        """A default-constructed SolverDiagnostics (n_residuals unset) emits
+        n_residuals as present-and-null in the stage block, matching how
+        n_params/n_groups already serialize under the absent-metric
+        convention -- not silently omitted."""
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": SolverDiagnostics()},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        stage3 = record["stages"]["stage3"]
+        assert "n_residuals" in stage3
+        assert stage3["n_residuals"] is None
+
+
+class TestCommittedBenchmarkRecordsUnaffectedByNResiduals:
+    """T-19.2-05/EXP-08 inertness: adding n_residuals must not retroactively
+    alter any benchmark.json record already committed to the repository."""
+
+    COMMITTED_BENCHMARK_FILES = [
+        "experiments/results/benchmark.json",
+        "experiments/results/e1_benchmark_refractive.json",
+        "experiments/results/e1_benchmark_nonrefractive.json",
+        "experiments/results/e7_benchmark_percamera_fixed.json",
+        "experiments/results/e7_benchmark_percamera_refined.json",
+        "experiments/results/e7_benchmark_shared_fixed.json",
+        "experiments/results/e7_benchmark_shared_refined.json",
+    ]
+
+    @pytest.mark.parametrize("path", COMMITTED_BENCHMARK_FILES)
+    def test_committed_record_has_no_n_residuals_key(self, path):
+        with open(path) as f:
+            record = json.load(f)
+        for stage_name, stage_block in record["stages"].items():
+            assert "n_residuals" not in stage_block, (
+                f"{path}: stage {stage_name!r} unexpectedly carries n_residuals "
+                "-- this plan must not rewrite committed artifacts"
+            )
+
 
 class TestWriteBenchmarkJson:
     def test_writes_json_that_round_trips(self, tmp_path, real_solver_diagnostics):
