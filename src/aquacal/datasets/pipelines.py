@@ -38,9 +38,13 @@ def calibrate_synthetic(
     """Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
     Args:
-        scenario: Synthetic scenario with ground truth.
+        scenario: Synthetic scenario with ground truth. ``scenario.n_air`` /
+            ``scenario.n_water`` are the indices the ground-truth detections are
+            generated at.
         n_water: Target refractive index for water (1.0 for non-refractive, 1.333 for
-            refractive).
+            refractive). This is the index the calibration assumes, which may
+            deliberately differ from the scenario's own ``n_water`` — that mismatch
+            is the mechanism the index-sensitivity experiment uses.
         refine_intrinsics: If True, run Stage 3's second pass, with intrinsics
             unlocked. If False, intrinsics are held at the scenario's ground-truth
             values (not air-estimated intrinsics) — this branch is a best-case bound,
@@ -95,6 +99,8 @@ def calibrate_synthetic(
         board_poses=scenario.board_poses,
         noise_std=scenario.noise_std,
         seed=seed,
+        n_air=scenario.n_air,
+        n_water=scenario.n_water,
     )
 
     # Stage 2: Extrinsic initialization
