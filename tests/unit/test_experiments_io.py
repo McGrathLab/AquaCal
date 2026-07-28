@@ -317,3 +317,158 @@ class TestRecord:
         record = json.loads(path.read_text())
         expected_keys = set(capture_environment().keys())
         assert expected_keys.issubset(record["environment"].keys())
+
+
+class TestMemoryReadings:
+    def test_no_memory_key_when_memory_readings_omitted(self, tmp_path):
+        """Byte-shape-identical to E1's/E7's committed records: omitting
+        memory_readings must leave the record with no "memory" key at all."""
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config={},
+            accuracy={},
+        )
+        record = json.loads(path.read_text())
+        assert "memory" not in record
+
+    def test_memory_key_present_when_memory_readings_supplied(self, tmp_path):
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config={},
+            accuracy={},
+            memory_readings={
+                "_baseline": {"peak_bytes": 1000, "mode": "psutil_peak_wset"},
+                "stage3_interface_optimization": {
+                    "peak_bytes": 1500,
+                    "mode": "psutil_peak_wset",
+                },
+            },
+        )
+        record = json.loads(path.read_text())
+        assert "memory" in record
+
+    def test_memory_readings_baseline_key_not_subject_to_stage_allowlist(
+        self, tmp_path
+    ):
+        """_baseline is legitimately outside the settled stage vocabulary;
+        passing it via memory_readings must not raise."""
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        wrote = write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config={},
+            accuracy={},
+            memory_readings={"_baseline": {"peak_bytes": 1000, "mode": "m"}},
+        )
+        assert wrote is True
+
+    def test_unsettled_stage_key_in_timings_still_raises(self, tmp_path):
+        """The stage-key allowlist still guards timings/diagnostics even when
+        memory_readings is supplied."""
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        with pytest.raises(ValueError, match="stage4"):
+            write_direct_call_benchmark(
+                path,
+                problem_shape={},
+                timings={"stage4": 1.0},
+                diagnostics={"stage4": SolverDiagnostics()},
+                solver_config={},
+                accuracy={},
+                memory_readings={"_baseline": {"peak_bytes": 1000, "mode": "m"}},
+            )
+
+
+class TestSeed:
+    def test_no_seed_key_when_seed_omitted(self, tmp_path):
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config={"robust_loss": "huber"},
+            accuracy={},
+        )
+        record = json.loads(path.read_text())
+        assert "seed" not in record["solver_config"]
+
+    def test_seed_stamped_into_solver_config_alongside_existing_keys(self, tmp_path):
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config={"robust_loss": "huber", "loss_scale": 1.0},
+            accuracy={},
+            seed=1234,
+        )
+        record = json.loads(path.read_text())
+        assert record["solver_config"]["seed"] == 1234
+        assert record["solver_config"]["robust_loss"] == "huber"
+        assert record["solver_config"]["loss_scale"] == 1.0
+
+    def test_seed_conflict_with_existing_solver_config_key_raises(self, tmp_path):
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        with pytest.raises(ValueError, match="seed"):
+            write_direct_call_benchmark(
+                path,
+                problem_shape={},
+                timings={"stage3_interface_optimization": 1.0},
+                diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+                solver_config={"seed": 42},
+                accuracy={},
+                seed=1234,
+            )
+
+    def test_seed_does_not_mutate_callers_solver_config_dict(self, tmp_path):
+        from aquacal.calibration._observability import SolverDiagnostics
+
+        path = tmp_path / "benchmark.json"
+        solver_config = {"robust_loss": "huber"}
+        original = dict(solver_config)
+        write_direct_call_benchmark(
+            path,
+            problem_shape={},
+            timings={"stage3_interface_optimization": 1.0},
+            diagnostics={"stage3_interface_optimization": SolverDiagnostics()},
+            solver_config=solver_config,
+            accuracy={},
+            seed=1234,
+        )
+        assert solver_config == original
+        assert "seed" not in solver_config
+
+
+class TestCommittedRecordUntouchedBySeed:
+    def test_e1_committed_record_has_no_seed_key(self):
+        import pathlib
+
+        record = json.loads(
+            pathlib.Path("experiments/results/e1_benchmark_refractive.json").read_text()
+        )
+        assert "seed" not in record["solver_config"]

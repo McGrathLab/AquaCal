@@ -363,6 +363,8 @@ def write_direct_call_benchmark(
     diagnostics: dict[str, "SolverDiagnostics"],
     solver_config: dict,
     accuracy: dict,
+    memory_readings: dict | None = None,
+    seed: int | None = None,
     force: bool = False,
 ) -> bool:
     """Write a schema-1 `benchmark.json` for a direct-call experiment (D-09).
@@ -371,10 +373,23 @@ def write_direct_call_benchmark(
     therefore never get a pipeline-written `benchmark.json`. Reuses
     `aquacal.io.assemble_benchmark_record` and `write_benchmark_json`
     unmodified -- one schema suite-wide, no hand-rolled sidecar format.
-    Always passes `memory_readings=None` (D-11): `BENCH-02`'s opt-in memory
-    discipline is pipeline-side, so no `memory` key appears anywhere in the
-    written record, which is the assembler's documented, honest behavior for
-    "not measured" rather than a fabricated null.
+
+    Memory readings are forwarded to `assemble_benchmark_record` when
+    supplied; the default `None` preserves the historical behavior exactly,
+    so E1's and E7's already-committed records are unchanged and no
+    `memory` key appears in them. 19.1's D-11 deferral ("always passes
+    `memory_readings=None`") is superseded by 19.2's D-24 now that
+    `calibrate_synthetic` can supply readings via `memory_out`.
+
+    `solver_config["seed"]` is a deliberate additive extension of the
+    constraint-10 settled schema, not schema drift: it adds a key INSIDE the
+    pass-through `solver_config` dict, which `assemble_benchmark_record`
+    forwards unmodified and whose key set nothing validates, so it changes
+    no top-level key, no stage block, and requires no schema version bump --
+    `_render.aggregate` continues to flatten it without edit. It is required
+    because EXP-11 and ROADMAP SC5 demand a seed on every committed result
+    and, verified against `e1_benchmark_refractive.json`, no benchmark
+    record carries one today.
 
     Args:
         path: Destination `benchmark.json` path.
@@ -384,8 +399,21 @@ def write_direct_call_benchmark(
             `stage3_intrinsic_pass`).
         diagnostics: `SolverDiagnostics` per stage, keyed the same way as
             `timings`.
-        solver_config: Passed through to `assemble_benchmark_record`.
+        solver_config: Passed through to `assemble_benchmark_record`. Must
+            not already contain a `"seed"` key when `seed` is also given.
         accuracy: Passed through to `assemble_benchmark_record`.
+        memory_readings: Optional dict keyed by `"_baseline"` plus the
+            settled stage names, whose values are `capture_peak_memory()`
+            results (D-24). Forwarded to `assemble_benchmark_record`
+            unmodified; not subject to the `_SETTLED_STAGE_KEYS` allowlist
+            below since `"_baseline"` is legitimately not a stage name.
+            Defaults to `None`, which preserves the historical no-`memory`-
+            key shape exactly.
+        seed: Optional run seed (review H5). When given, stamped into a
+            SHALLOW COPY of `solver_config` as `solver_config["seed"]` --
+            the caller's dict is never mutated, since E4 reuses one config
+            dict across cells. Defaults to `None`, which preserves the
+            historical no-`seed`-key shape exactly.
         force: Honor the same resumability discipline as
             `write_experiment_csv` -- skip (returning False) if `path`
             already exists and `force` is False.
@@ -398,7 +426,9 @@ def write_direct_call_benchmark(
         ValueError: If any key in `timings` or `diagnostics` is not one of
             the settled stage keys -- guarding against an experiment-local
             stage vocabulary drifting the same way `stage3.seconds` did in
-            the Phase 19 verifier's finding.
+            the Phase 19 verifier's finding. Also raised if `seed` is given
+            while `solver_config` already contains a `"seed"` key, so one
+            published value never has two origins.
     """
     for label, block in (("timings", timings), ("diagnostics", diagnostics)):
         unsettled = [k for k in block if k not in _SETTLED_STAGE_KEYS]
@@ -407,6 +437,15 @@ def write_direct_call_benchmark(
                 f"{label} contains unsettled stage key(s) {unsettled}; only "
                 f"{sorted(_SETTLED_STAGE_KEYS)} are permitted"
             )
+
+    if seed is not None:
+        if "seed" in solver_config:
+            raise ValueError(
+                f"solver_config already contains seed={solver_config['seed']!r}; "
+                f"refusing to also apply seed={seed!r} via the seed= parameter "
+                "-- one published seed cannot have two origins"
+            )
+        solver_config = {**solver_config, "seed": seed}
 
     path = Path(path)
     if path.exists() and not force:
@@ -424,7 +463,7 @@ def write_direct_call_benchmark(
         solver_config=solver_config,
         accuracy=accuracy,
         environment=capture_environment(),
-        memory_readings=None,
+        memory_readings=memory_readings,
     )
     write_benchmark_json(record, path)
     return True

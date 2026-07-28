@@ -289,6 +289,12 @@ def joint_refinement(
             if use_sparse_jacobian
             else "use_sparse_jacobian=False; no column-grouping structure was built"
         ),
+        n_residuals=jac_sparsity.shape[0] if use_sparse_jacobian else None,
+        n_residuals_reason=(
+            None
+            if use_sparse_jacobian
+            else "use_sparse_jacobian=False; no column-grouping structure was built"
+        ),
     )
 
     if result.status <= 0:

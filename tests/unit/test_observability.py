@@ -1,6 +1,7 @@
 """Tests for OptimizerObserver: scipy least_squares callback/fun/jac wrapping."""
 
 import csv
+import dataclasses
 import math
 import types
 
@@ -553,3 +554,58 @@ class TestCaptureSolverDiagnostics:
         assert type(diag.n_groups) is int
         assert diag.n_params_reason is None
         assert diag.n_groups_reason is None
+
+    def test_n_residuals_default_none(self):
+        """Default-constructed SolverDiagnostics has n_residuals unset,
+        matching n_params/n_groups' absent-metric default."""
+        diag = SolverDiagnostics()
+        assert diag.n_residuals is None
+        assert diag.n_residuals_reason is None
+
+    def test_n_residuals_field_order(self):
+        """n_residuals/n_residuals_reason are declared last, immediately after
+        n_groups_reason, so the existing field order is unperturbed."""
+        field_names = [f.name for f in dataclasses.fields(SolverDiagnostics)]
+        assert field_names[-2:] == ["n_residuals", "n_residuals_reason"]
+
+    def test_n_residuals_none_with_reason(self):
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            n_residuals=None,
+            n_residuals_reason=(
+                "register_auxiliary_camera uses dense 2-point FD; no "
+                "column-grouping structure exists at this site"
+            ),
+        )
+
+        assert diag.n_residuals is None
+        assert diag.n_residuals_reason == (
+            "register_auxiliary_camera uses dense 2-point FD; no "
+            "column-grouping structure exists at this site"
+        )
+
+    def test_n_residuals_populated_as_native_int(self):
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            n_residuals=4096,
+        )
+
+        assert diag.n_residuals == 4096
+        assert type(diag.n_residuals) is int
+        assert diag.n_residuals_reason is None
