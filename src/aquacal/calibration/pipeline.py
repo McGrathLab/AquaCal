@@ -1738,6 +1738,9 @@ def run_calibration_from_config(
             "loss_scale": config.loss_scale,
             "refine_intrinsics": config.refine_intrinsics,
             "interface_normal_fixed": config.interface_normal_fixed,
+            # Provenance only (EXP-11): the master seed that drove the holdout split
+            # (split_detections). Not read by anything that computes.
+            "seed": config.seed,
         }
         accuracy = {
             # Copied verbatim from the already-computed DiagnosticsData-feeding
