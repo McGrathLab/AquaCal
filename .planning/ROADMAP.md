@@ -291,15 +291,15 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 14 plans in 8 waves (re-waved 2026-07-28 per D-26: all `src` changes land and are
-proven inert before any experiment yielding a publishable result)
+**Plans:** 5/14 plans executed — 14 plans in 8 waves (re-waved 2026-07-28 per D-26: all `src`
+changes land and are proven inert before any experiment yielding a publishable result)
 
 Plans:
-- [ ] 19.2-01-PLAN.md — wave 1 — `calibrate_synthetic` gains `memory_out` (D-06), honours the scenario's own `n_air`/`n_water` (D-23), and gains a `normal_fixed` passthrough so the grid can run tilt-enabled (review H1); all three exact-equality guarded
-- [ ] 19.2-02-PLAN.md — wave 1 — `SolverDiagnostics.n_residuals` for the Jacobian element count (D-15), plus `memory_readings` (D-24) and an additive `seed` (review H5) threaded through `write_direct_call_benchmark`
-- [ ] 19.2-03-PLAN.md — wave 1 — public Newton iteration diagnostic sharing the private projector's loop, exported from `aquacal.core` (D-19)
-- [ ] 19.2-04-PLAN.md — wave 1 — the declared-constants table owned by `tests/` (D-18, now 9 rows covering all three Huber `f_scale` sites) and the `P`-formula validation against live `pack_params` (D-22)
-- [ ] 19.2-14-PLAN.md — wave 1 — **NEW (D-26)** — `seed` added to `run_calibration_from_config`'s `solver_config`, so a pipeline-written `benchmark.json` carries its seed; frozen-anchor exact-equality guard proves the addition inert
+- [x] 19.2-01-PLAN.md — wave 1 — `calibrate_synthetic` gains `memory_out` (D-06), honours the scenario's own `n_air`/`n_water` (D-23), and gains a `normal_fixed` passthrough so the grid can run tilt-enabled (review H1); all three exact-equality guarded
+- [x] 19.2-02-PLAN.md — wave 1 — `SolverDiagnostics.n_residuals` for the Jacobian element count (D-15), plus `memory_readings` (D-24) and an additive `seed` (review H5) threaded through `write_direct_call_benchmark`
+- [x] 19.2-03-PLAN.md — wave 1 — public Newton iteration diagnostic sharing the private projector's loop, exported from `aquacal.core` (D-19)
+- [x] 19.2-04-PLAN.md — wave 1 — the declared-constants table owned by `tests/` (D-18, now 9 rows covering all three Huber `f_scale` sites) and the `P`-formula validation against live `pack_params` (D-22)
+- [x] 19.2-14-PLAN.md — wave 1 — **NEW (D-26)** — `seed` added to `run_calibration_from_config`'s `solver_config`, so a pipeline-written `benchmark.json` carries its seed; frozen-anchor exact-equality guard proves the addition inert
 - [ ] 19.2-06-PLAN.md — wave 2 — E2 re-run against the local release frameset with `benchmark_memory: true`; a moved section-3 number is a hard stop (D-07/D-08). **Moved from wave 1 by D-26**: its launch gate is now "every `src` change is covered by a passing exact-equality bit-identity test", replacing the withdrawn `git diff .. -- src/` is-empty check
 - [ ] 19.2-05-PLAN.md — wave 3 — E3 `experiments/e3_derived_quantities.py`: tiers 1-3, all six `tab:cpr` rows in both interface modes (review H1 retires the D-16 split), LaTeX fragments, environment-only sidecar. Now `depends_on` 19.2-06 — its 13/200 row copies from E2's refreshed record
 - [ ] 19.2-07-PLAN.md — wave 3 — E4 rewritten as a direct-call synthetic grid, tilt-enabled and self-describing, one subprocess per cell so peak memory is per-run and an OOM is a recorded exit code (D-01..D-04, D-14, D-15; review H1/H2/H3/H5)
@@ -386,7 +386,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 0/14 | Planned | - |
+| 19.2 Experiment Execution and Provenance | v1.9 | 5/14 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |

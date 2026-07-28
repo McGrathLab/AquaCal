@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.2: D-26 replan COMPLETE -- 14 plans in 8 waves, ready to execute"
+stopped_at: "Phase 19.2: wave 1 COMPLETE (01/02/03/04/14 merged) -- next: wave 2 (plan 06, E2 re-run)"
 last_updated: "2026-07-28T22:08:31.185Z"
 last_activity: 2026-07-28 -- Phase 19.2 execution started
 progress:
