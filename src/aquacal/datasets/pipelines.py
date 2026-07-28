@@ -21,6 +21,7 @@ from aquacal.config.schema import (
 )
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets.synthetic import SyntheticScenario, generate_synthetic_detections
+from aquacal.io import capture_peak_memory
 from aquacal.validation.reconstruction import DistanceErrors, compute_3d_distance_errors
 
 
@@ -31,6 +32,8 @@ def calibrate_synthetic(
     seed: int = 42,
     diagnostics_out: dict[str, SolverDiagnostics] | None = None,
     timings_out: dict[str, float] | None = None,
+    memory_out: dict[str, dict] | None = None,
+    normal_fixed: bool = True,
 ) -> tuple[CalibrationResult, DetectionResult]:
     """Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
@@ -57,6 +60,24 @@ def calibrate_synthetic(
             instrumentation for direct-call experiments that bypass the pipeline
             (D-09). When ``None`` (the default), no timing is captured and behavior
             is byte-identical to omitting this argument entirely.
+        memory_out: Optional mapping populated in place with ``capture_peak_memory``
+            readings, keyed ``"_baseline"`` plus the settled Phase-18 stage names
+            ``"stage3_interface_optimization"`` and ``"stage3_intrinsic_pass"``. The
+            readings are monotonic high-water marks, so consecutive deltas attribute
+            growth to a stage rather than reporting a stage's own allocation.
+            ``"stage3_intrinsic_pass"`` is absent when ``refine_intrinsics=False``.
+            When ``None`` (the default), no memory is captured and behavior is
+            byte-identical to omitting this argument entirely.
+        normal_fixed: Forwarded unchanged to both Stage-3 passes
+            (``optimize_interface`` and ``joint_refinement``). ``True`` (the default)
+            fixes the interface normal to ``[0, 0, -1]`` and matches
+            ``optimize_interface``'s and ``joint_refinement``'s own defaults, so
+            omitting it reproduces the historical behavior exactly. ``False`` adds
+            the two interface-tilt parameters and matches
+            ``CalibrationConfig.interface_normal_fixed``, which is the configuration
+            E2's real-rig run and the manuscript's ``tab:cpr`` rows were produced
+            under. A caller comparing synthetic results against those published
+            numbers must pass ``False``.
 
     Returns:
         Tuple of (CalibrationResult, DetectionResult). The detections are needed
@@ -86,6 +107,8 @@ def calibrate_synthetic(
         key=lambda c: np.linalg.norm(scenario.extrinsics[c].C),
     )
     interface_normal = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+    if memory_out is not None:
+        memory_out["_baseline"] = capture_peak_memory()
     pose_graph = build_pose_graph(detections, min_cameras=2)
     initial_extrinsics = estimate_extrinsics(
         pose_graph,
@@ -124,9 +147,12 @@ def calibrate_synthetic(
         loss_scale=1.0,
         min_corners=4,
         diagnostics_out=stage3_diagnostics_out,
+        normal_fixed=normal_fixed,
     )
     if timings_out is not None:
         timings_out["stage3_interface_optimization"] = time.perf_counter() - _t0
+    if memory_out is not None:
+        memory_out["stage3_interface_optimization"] = capture_peak_memory()
 
     # Stage 3's second pass: intrinsic refinement (if requested)
     if refine_intrinsics:
@@ -153,10 +179,13 @@ def calibrate_synthetic(
                 loss_scale=1.0,
                 min_corners=4,
                 diagnostics_out=intrinsic_pass_diagnostics_out,
+                normal_fixed=normal_fixed,
             )
         )
         if timings_out is not None:
             timings_out["stage3_intrinsic_pass"] = time.perf_counter() - _t0
+        if memory_out is not None:
+            memory_out["stage3_intrinsic_pass"] = capture_peak_memory()
     else:
         # Use ground truth intrinsics
         opt_intrinsics = scenario.intrinsics
