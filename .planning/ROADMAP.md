@@ -291,21 +291,22 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 12 plans in 6 waves
+**Plans:** 13 plans in 7 waves
 
 Plans:
-- [ ] 19.2-01-PLAN.md — `calibrate_synthetic` gains `memory_out` (D-06) and honours the scenario's own `n_air`/`n_water` (D-23), both exact-equality guarded
-- [ ] 19.2-02-PLAN.md — `SolverDiagnostics.n_residuals` for the Jacobian element count (D-15), and `memory_readings` threaded through `write_direct_call_benchmark` (D-24)
-- [ ] 19.2-03-PLAN.md — public Newton iteration diagnostic sharing the private projector's loop, exported from `aquacal.core` (D-19)
-- [ ] 19.2-04-PLAN.md — the declared-constants table owned by `tests/` (D-18) and the `P`-formula validation against live `pack_params` (D-22)
-- [ ] 19.2-05-PLAN.md — E3 `experiments/e3_derived_quantities.py`: tiers 1-3, LaTeX fragments, environment-only sidecar
-- [ ] 19.2-06-PLAN.md — E2 re-run against the local release frameset with `benchmark_memory: true`; a moved section-3 number is a hard stop (D-07/D-08)
-- [ ] 19.2-07-PLAN.md — E4 rewritten as a direct-call synthetic grid with status/scope/accuracy/CPR/element-count columns (D-01..D-04, D-14..D-16)
-- [ ] 19.2-08-PLAN.md — E5 `experiments/e5_index_sensitivity.py`: index band on real-rig geometry, bias vs the live-read E2 noise floor, plus its production run
-- [ ] 19.2-09-PLAN.md — E4 production run: nine cells plus E2's tenth point, `benchmark_grid.csv` + LaTeX
-- [ ] 19.2-10-PLAN.md — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline (D-11, D-12)
-- [ ] 19.2-11-PLAN.md — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep)
-- [ ] 19.2-12-PLAN.md — EXP-11 close-out: provenance key-presence test, README table completion, CI smoke wiring, derived-values regeneration
+- [ ] 19.2-01-PLAN.md — wave 1 — `calibrate_synthetic` gains `memory_out` (D-06), honours the scenario's own `n_air`/`n_water` (D-23), and gains a `normal_fixed` passthrough so the grid can run tilt-enabled (review H1); all three exact-equality guarded
+- [ ] 19.2-02-PLAN.md — wave 1 — `SolverDiagnostics.n_residuals` for the Jacobian element count (D-15), plus `memory_readings` (D-24) and an additive `seed` (review H5) threaded through `write_direct_call_benchmark`
+- [ ] 19.2-03-PLAN.md — wave 1 — public Newton iteration diagnostic sharing the private projector's loop, exported from `aquacal.core` (D-19)
+- [ ] 19.2-04-PLAN.md — wave 1 — the declared-constants table owned by `tests/` (D-18, now 9 rows covering all three Huber `f_scale` sites) and the `P`-formula validation against live `pack_params` (D-22)
+- [ ] 19.2-06-PLAN.md — wave 1 — E2 re-run against the local release frameset with `benchmark_memory: true`; a moved section-3 number is a hard stop (D-07/D-08)
+- [ ] 19.2-05-PLAN.md — wave 2 — E3 `experiments/e3_derived_quantities.py`: tiers 1-3, all six `tab:cpr` rows in both interface modes (review H1 retires the D-16 split), LaTeX fragments, environment-only sidecar
+- [ ] 19.2-07-PLAN.md — wave 2 — E4 rewritten as a direct-call synthetic grid, tilt-enabled and self-describing, one subprocess per cell so peak memory is per-run and an OOM is a recorded exit code (D-01..D-04, D-14, D-15; review H1/H2/H3/H5)
+- [ ] 19.2-08-PLAN.md — wave 3 — E5 `experiments/e5_index_sensitivity.py`: index band on real-rig geometry, bias vs both its own Δn = 0 control and the live-read E2 noise floor (code and tests only)
+- [ ] 19.2-10-PLAN.md — wave 3 — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline at E4's own tilt configuration (D-11, D-12; review M2/M4/M5/M7)
+- [ ] 19.2-09-PLAN.md — wave 4 — E4 production run, **alone on the box**: one measured probe cell, then nine cells plus E2's tenth point, `benchmark_grid.csv` + LaTeX
+- [ ] 19.2-13-PLAN.md — wave 5 — E5 production run and `index_sensitivity.csv` (split out of 19.2-08 so it never shares the machine with E4's grid — review H4)
+- [ ] 19.2-11-PLAN.md — wave 6 — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep), with a baseline cross-check against E4's 12/100 cell
+- [ ] 19.2-12-PLAN.md — wave 7 — EXP-11 close-out: provenance key-presence and seed tests with an explicit legacy carve-out, README table completion, CI smoke wiring, derived-values verification
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
