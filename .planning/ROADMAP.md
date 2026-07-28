@@ -291,10 +291,21 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 0 plans
+**Plans:** 12 plans in 6 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 19.2 to break down)
+- [ ] 19.2-01-PLAN.md — `calibrate_synthetic` gains `memory_out` (D-06) and honours the scenario's own `n_air`/`n_water` (D-23), both exact-equality guarded
+- [ ] 19.2-02-PLAN.md — `SolverDiagnostics.n_residuals` for the Jacobian element count (D-15), and `memory_readings` threaded through `write_direct_call_benchmark` (D-24)
+- [ ] 19.2-03-PLAN.md — public Newton iteration diagnostic sharing the private projector's loop, exported from `aquacal.core` (D-19)
+- [ ] 19.2-04-PLAN.md — the declared-constants table owned by `tests/` (D-18) and the `P`-formula validation against live `pack_params` (D-22)
+- [ ] 19.2-05-PLAN.md — E3 `experiments/e3_derived_quantities.py`: tiers 1-3, LaTeX fragments, environment-only sidecar
+- [ ] 19.2-06-PLAN.md — E2 re-run against the local release frameset with `benchmark_memory: true`; a moved section-3 number is a hard stop (D-07/D-08)
+- [ ] 19.2-07-PLAN.md — E4 rewritten as a direct-call synthetic grid with status/scope/accuracy/CPR/element-count columns (D-01..D-04, D-14..D-16)
+- [ ] 19.2-08-PLAN.md — E5 `experiments/e5_index_sensitivity.py`: index band on real-rig geometry, bias vs the live-read E2 noise floor, plus its production run
+- [ ] 19.2-09-PLAN.md — E4 production run: nine cells plus E2's tenth point, `benchmark_grid.csv` + LaTeX
+- [ ] 19.2-10-PLAN.md — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline (D-11, D-12)
+- [ ] 19.2-11-PLAN.md — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep)
+- [ ] 19.2-12-PLAN.md — EXP-11 close-out: provenance key-presence test, README table completion, CI smoke wiring, derived-values regeneration
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
