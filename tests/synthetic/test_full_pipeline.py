@@ -610,3 +610,35 @@ class TestBenchmarkJsonIntegration:
 
         assert "memory" not in record
         assert all("memory" not in v for v in record["stages"].values())
+
+    def test_default_seed_recorded_in_solver_config(self, scenario_ideal, tmp_path):
+        """A pipeline-written benchmark.json carries solver_config["seed"]
+        equal to CalibrationConfig's declared default (EXP-11, plan 19.2-14),
+        with the four pre-existing solver_config keys still present."""
+        _run_full_pipeline_with_mocked_video_io(scenario_ideal, tmp_path)
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        solver_config = record["solver_config"]
+        default_seed = CalibrationConfig.__dataclass_fields__["seed"].default
+        assert solver_config["seed"] == default_seed
+        for key in (
+            "robust_loss",
+            "loss_scale",
+            "refine_intrinsics",
+            "interface_normal_fixed",
+        ):
+            assert key in solver_config
+
+    def test_non_default_seed_recorded_in_solver_config(self, scenario_ideal, tmp_path):
+        """The recorded seed tracks config.seed rather than being a
+        hardcoded literal -- the test that would have caught the pre-19.2
+        gap where E2's run_calibration_from_config path never threaded
+        seed into solver_config."""
+        _run_full_pipeline_with_mocked_video_io(scenario_ideal, tmp_path, seed=1234)
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        assert record["solver_config"]["seed"] == 1234

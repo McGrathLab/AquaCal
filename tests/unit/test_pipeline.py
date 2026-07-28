@@ -35,7 +35,8 @@ from aquacal.config.schema import (
     FrameDetections,
     InterfaceParams,
 )
-from aquacal.datasets import create_scenario
+from aquacal.core.board import BoardGeometry
+from aquacal.datasets import create_scenario, generate_synthetic_detections
 from aquacal.io.serialization import load_calibration
 
 # --- Fixtures ---
@@ -2065,3 +2066,170 @@ class TestBuildInterfaceSpreadReport:
             {"cam0": 0.12, "cam1": 0.18}, "stage3_intrinsic_pass"
         )
         assert json.loads(json.dumps(report)) == report
+
+
+class TestSolverConfigSeedIsInert:
+    """D-26 zero-numerical-change guard for plan 19.2-14 (EXP-11).
+
+    Proves that adding `solver_config["seed"]` to `run_calibration_from_config`
+    changed no calibration number. The frozen constants below were captured
+    from `src/aquacal/calibration/pipeline.py` as it existed at commit
+    e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477 -- the commit immediately BEFORE
+    the Task 1 edit (`877634a`) that added the `seed` key. Capture procedure:
+    the pre-change file was loaded via `importlib.util.spec_from_file_location`
+    from a `git show <sha>:...` blob and run once through the same
+    `run_calibration_from_config` entry point exercised below, with only the
+    video-decode boundary mocked. These constants must NEVER be regenerated
+    to make a failing test pass -- a mismatch here means the addition was not
+    inert and is a finding to report, not a tolerance to loosen.
+    """
+
+    # Frozen anchor, scenario "ideal" (4 cameras, 20 frames, 0 noise), seed=99,
+    # captured at commit e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477.
+    _ANCHOR_CAMERAS = {
+        "cam0": {
+            "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "t": [0.0, 0.0, 0.0],
+            "water_z": 0.15000000000000047,
+        },
+        "cam1": {
+            "R": [
+                [0.9984993371509613, -0.054763799257274454, -9.217086465271786e-17],
+                [0.054763799257274454, 0.9984993371509613, -2.422545075173034e-16],
+                [1.0529932447921676e-16, 2.3684333844864933e-16, 1.0],
+            ],
+            "t": [
+                -0.09984993371509608,
+                -0.005476379925727421,
+                -1.184025295478873e-17,
+            ],
+            "water_z": 0.15000000000000047,
+        },
+        "cam2": {
+            "R": [
+                [0.9974292528492325, -0.07165811580429554, 2.1964919671058154e-16],
+                [0.07165811580429554, 0.9974292528492325, -2.559759473441722e-16],
+                [-2.0074178008606616e-16, 2.7105754548107973e-16, 1.0],
+            ],
+            "t": [
+                0.007165811580429521,
+                -0.09974292528492322,
+                -2.1668899675048093e-18,
+            ],
+            "water_z": 0.15000000000000047,
+        },
+        "cam3": {
+            "R": [
+                [0.996707967334501, 0.08107544543156972, -6.4662664298548575e-18],
+                [-0.08107544543156972, 0.996707967334501, -2.757665631684116e-16],
+                [-1.5912917674467915e-17, 2.753829860654885e-16, 1.0],
+            ],
+            "t": [
+                -0.10777834127660704,
+                -0.09156325219029311,
+                1.0739560128998414e-17,
+            ],
+            "water_z": 0.15000000000000047,
+        },
+    }
+    _ANCHOR_REPROJECTION_RMS = 2.1586323025826994e-13
+    _ANCHOR_VALIDATION_3D_ERROR_MEAN = 1.9506001752094764e-16
+
+    @staticmethod
+    def _run_ideal_pipeline(tmp_path):
+        """Run run_calibration_from_config end to end (video-decode boundary
+        mocked only) on the deterministic 'ideal' scenario at seed=99, and
+        return the same numbers the pre-change anchor above was captured
+        with: per-camera extrinsics/water_z plus the written benchmark.json's
+        accuracy block."""
+        scenario = create_scenario("ideal")
+        board = BoardGeometry(scenario.board_config)
+        detections = generate_synthetic_detections(
+            intrinsics=scenario.intrinsics,
+            extrinsics=scenario.extrinsics,
+            water_zs=scenario.water_zs,
+            board=board,
+            board_poses=scenario.board_poses,
+            noise_std=scenario.noise_std,
+            n_air=scenario.n_air,
+            n_water=scenario.n_water,
+            seed=scenario.seed,
+        )
+        config = CalibrationConfig(
+            board=scenario.board_config,
+            camera_names=list(scenario.intrinsics.keys()),
+            intrinsic_video_paths={
+                cam: Path(f"/fake/{cam}_intrinsic.mp4") for cam in scenario.intrinsics
+            },
+            extrinsic_video_paths={
+                cam: Path(f"/fake/{cam}_extrinsic.mp4") for cam in scenario.intrinsics
+            },
+            output_dir=tmp_path,
+            save_stage_calibrations=False,
+            seed=99,
+        )
+        with (
+            patch("aquacal.calibration.pipeline.calibrate_intrinsics_all") as mock_intr,
+            patch("aquacal.calibration.pipeline.detect_all_frames") as mock_detect,
+        ):
+            mock_intr.return_value = {
+                cam: (intr, 0.1) for cam, intr in scenario.intrinsics.items()
+            }
+            mock_detect.return_value = detections
+            result = run_calibration_from_config(config)
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        cameras = {}
+        for cam_name in sorted(result.cameras):
+            cam = result.cameras[cam_name]
+            cameras[cam_name] = {
+                "R": cam.extrinsics.R.tolist(),
+                "t": cam.extrinsics.t.tolist(),
+                "water_z": float(cam.water_z),
+            }
+        return cameras, record["accuracy"]
+
+    @pytest.mark.slow
+    def test_same_process_repeat_is_bit_exact(self, tmp_path):
+        """Two identical-argument runs of the current (post-edit) code agree
+        exactly. This alone does NOT prove inertness across the edit (it
+        cannot see a change made to the code itself) -- see
+        test_matches_pre_change_anchor for that."""
+        cameras_1, accuracy_1 = self._run_ideal_pipeline(tmp_path / "run1")
+        cameras_2, accuracy_2 = self._run_ideal_pipeline(tmp_path / "run2")
+
+        assert cameras_1.keys() == cameras_2.keys()
+        for cam_name in cameras_1:
+            np.testing.assert_array_equal(
+                cameras_1[cam_name]["R"], cameras_2[cam_name]["R"]
+            )
+            np.testing.assert_array_equal(
+                cameras_1[cam_name]["t"], cameras_2[cam_name]["t"]
+            )
+            assert cameras_1[cam_name]["water_z"] == cameras_2[cam_name]["water_z"]
+        assert accuracy_1["reprojection_rms"] == accuracy_2["reprojection_rms"]
+        np.testing.assert_array_equal(
+            accuracy_1["validation_3d_error_mean"],
+            accuracy_2["validation_3d_error_mean"],
+        )
+
+    @pytest.mark.slow
+    def test_matches_pre_change_anchor(self, tmp_path):
+        """The current (post-edit) code's numbers exactly match the frozen
+        pre-change anchor captured at commit
+        e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477 -- proving the added
+        solver_config["seed"] key moved no calibration number."""
+        cameras, accuracy = self._run_ideal_pipeline(tmp_path)
+
+        assert cameras.keys() == self._ANCHOR_CAMERAS.keys()
+        for cam_name, anchor_cam in self._ANCHOR_CAMERAS.items():
+            np.testing.assert_array_equal(cameras[cam_name]["R"], anchor_cam["R"])
+            np.testing.assert_array_equal(cameras[cam_name]["t"], anchor_cam["t"])
+            assert cameras[cam_name]["water_z"] == anchor_cam["water_z"]
+        assert accuracy["reprojection_rms"] == self._ANCHOR_REPROJECTION_RMS
+        assert (
+            accuracy["validation_3d_error_mean"]
+            == self._ANCHOR_VALIDATION_3D_ERROR_MEAN
+        )
