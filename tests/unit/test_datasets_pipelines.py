@@ -7,7 +7,9 @@ import pytest
 
 import aquacal.datasets.pipelines as pipelines_module
 import tests.synthetic.experiment_helpers as experiment_helpers_shim
-from aquacal.datasets import create_scenario
+from aquacal.calibration._observability import SolverDiagnostics
+from aquacal.core.board import BoardGeometry
+from aquacal.datasets import create_scenario, generate_synthetic_detections
 from aquacal.datasets.pipelines import (
     calibrate_synthetic,
     compute_per_camera_errors,
@@ -181,8 +183,177 @@ def test_bit_exact_repeat():
 def test_evaluate_reconstruction_signature_frozen():
     """evaluate_reconstruction's positional argument order stays (calibration, board, test_detections)."""
     scenario, result, detections = _minimal_result()
-    from aquacal.core.board import BoardGeometry
 
     board = BoardGeometry(scenario.board_config)
     errors = evaluate_reconstruction(result, board, detections)
     assert errors is not None
+
+
+@pytest.mark.slow
+def test_memory_out_default_unchanged():
+    """Passing memory_out=None (the default) or omitting it entirely produce identical results."""
+    scenario = create_scenario("minimal", seed=1)
+
+    result_omitted, _ = calibrate_synthetic(scenario, **_MINIMAL_KWARGS)
+    result_explicit_none, _ = calibrate_synthetic(
+        scenario, **_MINIMAL_KWARGS, memory_out=None
+    )
+
+    np.testing.assert_array_equal(
+        result_omitted.diagnostics.reprojection_error_rms,
+        result_explicit_none.diagnostics.reprojection_error_rms,
+    )
+    for cam in result_omitted.cameras:
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].extrinsics.R,
+            result_explicit_none.cameras[cam].extrinsics.R,
+        )
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].extrinsics.t,
+            result_explicit_none.cameras[cam].extrinsics.t,
+        )
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].water_z,
+            result_explicit_none.cameras[cam].water_z,
+        )
+
+
+@pytest.mark.slow
+def test_memory_out_populates_settled_keys():
+    """A fresh memory_out dict is populated with _baseline and stage3_interface_optimization,
+    each a dict with peak_bytes and mode keys, and no key outside the settled vocabulary."""
+    scenario = create_scenario("minimal", seed=1)
+    memory_out: dict[str, dict] = {}
+
+    calibrate_synthetic(scenario, **_MINIMAL_KWARGS, memory_out=memory_out)
+
+    assert "_baseline" in memory_out
+    assert "stage3_interface_optimization" in memory_out
+    allowed_keys = {
+        "_baseline",
+        "stage3_interface_optimization",
+        "stage3_intrinsic_pass",
+    }
+    assert set(memory_out.keys()) <= allowed_keys
+    for reading in memory_out.values():
+        assert "peak_bytes" in reading
+        assert "mode" in reading
+
+
+def test_n_true_default_scenario_unchanged():
+    """The shipped detection path at the default scenario index (1.333) exactly matches an
+    explicit generate_synthetic_detections(n_air=1.0, n_water=1.333, ...) call."""
+    scenario = create_scenario("minimal", seed=1)
+    board = BoardGeometry(scenario.board_config)
+
+    _, shipped_detections = calibrate_synthetic(
+        scenario, n_water=1.333, refine_intrinsics=False, seed=1
+    )
+
+    explicit_detections = generate_synthetic_detections(
+        intrinsics=scenario.intrinsics,
+        extrinsics=scenario.extrinsics,
+        water_zs=scenario.water_zs,
+        board=board,
+        board_poses=scenario.board_poses,
+        noise_std=scenario.noise_std,
+        seed=1,
+        n_air=1.0,
+        n_water=1.333,
+    )
+
+    for frame_idx, frame in shipped_detections.frames.items():
+        for cam_name, detection in frame.detections.items():
+            explicit_detection = explicit_detections.frames[frame_idx].detections[
+                cam_name
+            ]
+            np.testing.assert_array_equal(
+                detection.corners_2d, explicit_detection.corners_2d
+            )
+
+
+def test_n_true_scenario_index_reaches_detections():
+    """Two scenarios identical except n_water=1.333 vs n_water=1.55 produce different
+    detection corner arrays through calibrate_synthetic's own detection path."""
+    scenario_default = create_scenario("minimal", seed=1)
+    scenario_shifted = create_scenario("minimal", seed=1, n_water=1.55)
+
+    _, detections_default = calibrate_synthetic(
+        scenario_default, n_water=1.333, refine_intrinsics=False, seed=1
+    )
+    _, detections_shifted = calibrate_synthetic(
+        scenario_shifted, n_water=1.333, refine_intrinsics=False, seed=1
+    )
+
+    common_frame_idx = next(iter(detections_default.frames))
+    common_camera = next(iter(detections_default.frames[common_frame_idx].detections))
+    corners_default = (
+        detections_default.frames[common_frame_idx].detections[common_camera].corners_2d
+    )
+    corners_shifted = (
+        detections_shifted.frames[common_frame_idx].detections[common_camera].corners_2d
+    )
+
+    assert not np.array_equal(corners_default, corners_shifted)
+
+
+@pytest.mark.slow
+def test_normal_fixed_default_unchanged():
+    """Passing normal_fixed=True (the default) or omitting it entirely produce identical
+    results — the guard that E1's and E7's committed records cannot have moved."""
+    scenario = create_scenario("minimal", seed=1)
+
+    result_omitted, _ = calibrate_synthetic(scenario, **_MINIMAL_KWARGS)
+    result_explicit_true, _ = calibrate_synthetic(
+        scenario, **_MINIMAL_KWARGS, normal_fixed=True
+    )
+
+    np.testing.assert_array_equal(
+        result_omitted.diagnostics.reprojection_error_rms,
+        result_explicit_true.diagnostics.reprojection_error_rms,
+    )
+    for cam in result_omitted.cameras:
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].extrinsics.R,
+            result_explicit_true.cameras[cam].extrinsics.R,
+        )
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].extrinsics.t,
+            result_explicit_true.cameras[cam].extrinsics.t,
+        )
+        np.testing.assert_array_equal(
+            result_omitted.cameras[cam].water_z,
+            result_explicit_true.cameras[cam].water_z,
+        )
+
+
+@pytest.mark.slow
+def test_normal_fixed_false_changes_problem_size():
+    """With normal_fixed=False, stage3_interface_optimization's n_params is exactly 2
+    greater than the same scenario at normal_fixed=True — proving the flag reaches the
+    packer and adds the two interface-tilt DOF, rather than being accepted and dropped."""
+    scenario = create_scenario("minimal", seed=1)
+
+    diagnostics_fixed = {"stage3_interface_optimization": SolverDiagnostics()}
+    calibrate_synthetic(
+        scenario,
+        n_water=1.0,
+        refine_intrinsics=False,
+        seed=1,
+        diagnostics_out=diagnostics_fixed,
+        normal_fixed=True,
+    )
+
+    diagnostics_tilted = {"stage3_interface_optimization": SolverDiagnostics()}
+    calibrate_synthetic(
+        scenario,
+        n_water=1.0,
+        refine_intrinsics=False,
+        seed=1,
+        diagnostics_out=diagnostics_tilted,
+        normal_fixed=False,
+    )
+
+    n_params_fixed = diagnostics_fixed["stage3_interface_optimization"].n_params
+    n_params_tilted = diagnostics_tilted["stage3_interface_optimization"].n_params
+    assert n_params_tilted - n_params_fixed == 2
