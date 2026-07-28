@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: "Phase 19.2: D-26 replan COMPLETE -- 14 plans in 8 waves, ready to execute"
-last_updated: "2026-07-28T21:26:12.628Z"
-last_activity: 2026-07-28 -- Phase 19.2 planning complete
+last_updated: "2026-07-28T22:08:31.185Z"
+last_activity: 2026-07-28 -- Phase 19.2 execution started
 progress:
   total_phases: 9
   completed_phases: 5
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.2 — experiment execution and provenance
+**Current focus:** Phase 19.2 — experiment-execution-and-provenance
 
 ## Current Position
 
-Phase: 19.2
+Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
   **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 0/14 executed.**
   Wave 1 = 19.2-01/02/03/04/14 (every src change, each exact-equality guarded).
   Plan 19.2-06 (the ~50 min E2 re-run) moved to wave 2; its launch gate is now
@@ -34,17 +34,17 @@ Phase: 19.2
   Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
   one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
   Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
-Plan: Not started
+Plan: 1 of 14
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Ready to execute
+Status: Executing Phase 19.2
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-28 -- Phase 19.2 planning complete
+Last activity: 2026-07-28 -- Phase 19.2 execution started
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
