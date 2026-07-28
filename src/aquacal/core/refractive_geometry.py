@@ -536,7 +536,7 @@ def refractive_project_newton_diagnostic(
 
     return {
         "n_iterations": n_iterations,
-        "converged": final_abs_delta < tolerance,
+        "converged": bool(final_abs_delta < tolerance),
         "final_residual": final_abs_delta,
         "r_p": r_p,
         "incidence_angle_deg": float(np.degrees(np.arctan2(r_p, h_c))),
