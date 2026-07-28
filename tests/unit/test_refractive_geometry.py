@@ -1,5 +1,7 @@
 """Unit tests for refractive geometry module."""
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -10,8 +12,42 @@ from aquacal.core.refractive_geometry import (
     refractive_back_project,
     refractive_project,
     refractive_project_batch,
+    refractive_project_newton_diagnostic,
     snells_law_3d,
     trace_ray_air_to_water,
+)
+
+# Pinned pre-D-19 expectations for refractive_project, captured from the pre-refactor
+# code at commit 5762d6d (before the Newton loop was extracted into _solve_newton_r_p).
+# Camera "cam0" at origin, K=[[500,0,320],[0,500,240],[0,0,1]], horizontal interface at
+# Z=0.15, n_air=1.0, n_water=1.333. Points at fixed depth Z=0.5, X offset swept from
+# near-normal (0.0) to oblique (0.3) incidence, Y=0. Used with assert_array_equal (zero
+# tolerance) to prove the refactor changed no numbers on the hot projection path.
+_BIT_EXACT_X_OFFSETS = np.linspace(0.0, 0.3, 20)
+_BIT_EXACT_DEPTH = 0.5
+_BIT_EXACT_EXPECTED_PIXELS = np.array(
+    [
+        [320.0, 240.0],
+        [339.1396108983536, 240.0],
+        [358.3026340260677, 240.0],
+        [377.51254274662455, 240.0],
+        [396.7929321237534, 240.0],
+        [416.16757832631237, 240.0],
+        [435.66049622810203, 240.0],
+        [455.2959944827717, 240.0],
+        [475.0987272525284, 240.0],
+        [495.0937416427271, 240.0],
+        [515.3065197434256, 240.0],
+        [535.7630140052964, 240.0],
+        [556.4896744838966, 240.0],
+        [577.5134662780249, 240.0],
+        [598.8618752720201, 240.0],
+        [620.5629000787767, 240.0],
+        [642.6450278842361, 240.0],
+        [665.1371917338768, 240.0],
+        [688.068706701009, 240.0],
+        [711.4691823643191, 240.0],
+    ]
 )
 
 
@@ -702,3 +738,130 @@ class TestRefractiveProjectBatch:
         np.testing.assert_allclose(result[0], [320, 240], atol=0.1)
         # Off-axis should be valid
         assert not np.any(np.isnan(result[1]))
+
+
+class TestNewtonDiagnostic:
+    """Tests for refractive_project_newton_diagnostic (D-19)."""
+
+    def test_newton_diagnostic_projection_bit_unchanged(
+        self, simple_camera, simple_interface
+    ):
+        """refractive_project's output is bit-unchanged by the D-19 refactor.
+
+        Compares against expectations captured from the pre-refactor code at commit
+        5762d6d, across configurations spanning near-normal to oblique incidence.
+        """
+        for offset, expected_pixel in zip(
+            _BIT_EXACT_X_OFFSETS, _BIT_EXACT_EXPECTED_PIXELS
+        ):
+            point = np.array([offset, 0.0, _BIT_EXACT_DEPTH])
+            pixel = refractive_project(simple_camera, simple_interface, point)
+            assert pixel is not None
+            np.testing.assert_array_equal(pixel, expected_pixel)
+
+    def test_newton_diagnostic_reports_iterations(
+        self, simple_camera, simple_interface
+    ):
+        """Diagnostic returns a converged dict with a sane iteration count."""
+        point = np.array([0.05, 0.02, 0.5])
+
+        result = refractive_project_newton_diagnostic(
+            simple_camera, simple_interface, point
+        )
+
+        assert result is not None
+        assert isinstance(result["n_iterations"], int)
+        assert 1 <= result["n_iterations"] <= 10
+        assert result["converged"] is True
+
+    def test_newton_diagnostic_agrees_with_projector(
+        self, simple_camera, simple_interface
+    ):
+        """Reconstructing the pixel from the diagnostic's r_p matches refractive_project."""
+        point = np.array([0.08, -0.04, 0.5])
+
+        diagnostic = refractive_project_newton_diagnostic(
+            simple_camera, simple_interface, point
+        )
+        assert diagnostic is not None
+
+        C = simple_camera.C
+        z_int = simple_interface.get_water_z(simple_camera.name)
+        dx = point[0] - C[0]
+        dy = point[1] - C[1]
+        r_q = np.hypot(dx, dy)
+        dir_x = dx / r_q
+        dir_y = dy / r_q
+        r_p = diagnostic["r_p"]
+
+        interface_point = np.array(
+            [C[0] + r_p * dir_x, C[1] + r_p * dir_y, z_int], dtype=np.float64
+        )
+        reconstructed_pixel = simple_camera.project(
+            interface_point, apply_distortion=True
+        )
+
+        expected_pixel = refractive_project(simple_camera, simple_interface, point)
+        assert expected_pixel is not None
+        np.testing.assert_array_equal(reconstructed_pixel, expected_pixel)
+
+    def test_newton_diagnostic_degenerate_returns_none(self):
+        """Camera at/below interface, point at/above interface, point below camera -> None."""
+        intrinsics = CameraIntrinsics(
+            K=np.array([[500, 0, 320], [0, 500, 240], [0, 0, 1]], dtype=np.float64),
+            dist_coeffs=np.zeros(5),
+            image_size=(640, 480),
+        )
+
+        # Camera at or below the interface (camera Z=0.2, interface Z=0.15)
+        camera_below_interface = Camera(
+            "cam_low",
+            intrinsics,
+            CameraExtrinsics(R=np.eye(3), t=np.array([0.0, 0.0, -0.2])),
+        )
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam_low": 0.15},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        point_underwater = np.array([0.05, 0.0, 0.5])
+        assert (
+            refractive_project_newton_diagnostic(
+                camera_below_interface, interface, point_underwater
+            )
+            is None
+        )
+
+        # Point at or above the interface, camera above interface as usual
+        camera = Camera(
+            "cam0", intrinsics, CameraExtrinsics(R=np.eye(3), t=np.zeros(3))
+        )
+        interface_normal = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        point_above_interface = np.array([0.05, 0.0, 0.1])
+        assert (
+            refractive_project_newton_diagnostic(
+                camera, interface_normal, point_above_interface
+            )
+            is None
+        )
+
+        # Point directly below the camera (r_q < 1e-10) -- no root-find to report
+        point_on_axis = np.array([0.0, 0.0, 0.5])
+        assert (
+            refractive_project_newton_diagnostic(
+                camera, interface_normal, point_on_axis
+            )
+            is None
+        )
+
+    def test_newton_diagnostic_defaults_match_declared_constants(self):
+        """The diagnostic's defaults are the same literals E3 tier 1 declares."""
+        params = inspect.signature(refractive_project_newton_diagnostic).parameters
+        assert params["tolerance"].default == 1e-9
+        assert params["max_iterations"].default == 10
