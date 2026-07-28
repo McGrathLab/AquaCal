@@ -322,6 +322,77 @@ def _refractive_project_brent(
     return camera.project(point_for_projection, apply_distortion=True)
 
 
+def _solve_newton_r_p(
+    r_p: float,
+    r_q: float,
+    h_c: float,
+    h_q: float,
+    n_air: float,
+    n_water: float,
+    max_iterations: int,
+    tolerance: float,
+) -> tuple[float, int, float]:
+    """
+    Run the Newton-Raphson root-find for the interface-crossing radius `r_p`.
+
+    Shared by `_refractive_project_newton` (the shipped projector) and
+    `refractive_project_newton_diagnostic` (the public diagnostic), so a change to the
+    convergence logic cannot drift between two copies.
+
+    Args:
+        r_p: Initial guess for the interface-crossing radius, in metres.
+        r_q: Horizontal distance from camera to point, in metres.
+        h_c: Vertical distance from camera to interface, in metres.
+        h_q: Vertical distance from interface to point, in metres.
+        n_air: Refractive index of air.
+        n_water: Refractive index of water.
+        max_iterations: Maximum Newton iterations.
+        tolerance: Convergence tolerance for `r_p`, in metres.
+
+    Returns:
+        Tuple of `(r_p, n_iterations, final_abs_delta)`: the converged (or clamped)
+        radius, the number of Newton steps actually taken, and the absolute value of
+        the last computed step.
+    """
+    n_iterations = 0
+    final_abs_delta = float("inf")
+
+    # Newton-Raphson iteration
+    for _ in range(max_iterations):
+        n_iterations += 1
+
+        # Compute f(r_p) and f'(r_p)
+        d_air_sq = r_p * r_p + h_c * h_c
+        d_air = np.sqrt(d_air_sq)
+
+        r_q_minus_r_p = r_q - r_p
+        d_water_sq = r_q_minus_r_p * r_q_minus_r_p + h_q * h_q
+        d_water = np.sqrt(d_water_sq)
+
+        sin_air = r_p / d_air
+        sin_water = r_q_minus_r_p / d_water
+
+        f = n_air * sin_air - n_water * sin_water
+
+        # Derivative: f' = n_air * h_c² / d_air³ + n_water * h_q² / d_water³
+        f_prime = n_air * h_c * h_c / (d_air_sq * d_air) + n_water * h_q * h_q / (
+            d_water_sq * d_water
+        )
+
+        # Newton step
+        delta = f / f_prime
+        r_p = r_p - delta
+
+        # Clamp to valid range
+        r_p = max(0.0, min(r_p, r_q))
+
+        final_abs_delta = abs(delta)
+        if final_abs_delta < tolerance:
+            break
+
+    return r_p, n_iterations, final_abs_delta
+
+
 def _refractive_project_newton(
     camera: Camera,
     interface: Interface,
@@ -380,35 +451,9 @@ def _refractive_project_newton(
     # Initial guess: pinhole projection (straight line intersection)
     r_p = r_q * h_c / (h_c + h_q)
 
-    # Newton-Raphson iteration
-    for _ in range(max_iterations):
-        # Compute f(r_p) and f'(r_p)
-        d_air_sq = r_p * r_p + h_c * h_c
-        d_air = np.sqrt(d_air_sq)
-
-        r_q_minus_r_p = r_q - r_p
-        d_water_sq = r_q_minus_r_p * r_q_minus_r_p + h_q * h_q
-        d_water = np.sqrt(d_water_sq)
-
-        sin_air = r_p / d_air
-        sin_water = r_q_minus_r_p / d_water
-
-        f = n_air * sin_air - n_water * sin_water
-
-        # Derivative: f' = n_air * h_c² / d_air³ + n_water * h_q² / d_water³
-        f_prime = n_air * h_c * h_c / (d_air_sq * d_air) + n_water * h_q * h_q / (
-            d_water_sq * d_water
-        )
-
-        # Newton step
-        delta = f / f_prime
-        r_p = r_p - delta
-
-        # Clamp to valid range
-        r_p = max(0.0, min(r_p, r_q))
-
-        if abs(delta) < tolerance:
-            break
+    r_p, _n_iterations, _final_abs_delta = _solve_newton_r_p(
+        r_p, r_q, h_c, h_q, n_air, n_water, max_iterations, tolerance
+    )
 
     # Compute interface point P
     px = C[0] + r_p * dir_x
@@ -417,6 +462,85 @@ def _refractive_project_newton(
 
     # Project P to pixel (the ray from C through P is the observed ray)
     return camera.project(P, apply_distortion=True)
+
+
+def refractive_project_newton_diagnostic(
+    camera: Camera,
+    interface: Interface,
+    point_3d: Vec3,
+    max_iterations: int = 10,
+    tolerance: float = 1e-9,
+) -> dict | None:
+    """
+    Report Newton-Raphson root-find diagnostics for a single refractive projection.
+
+    Performs the identical root-find as `_refractive_project_newton` — the shipped
+    projection path used inside every residual evaluation — via the shared
+    `_solve_newton_r_p` helper, so the counts and residual returned here describe
+    production behavior rather than a re-implementation. This is a diagnostic, not a
+    projector: it returns no pixel.
+
+    All lengths are in metres. `max_iterations=10` and `tolerance=1e-9` are the same
+    default literals the shipped projector uses (`_refractive_project_newton`).
+
+    Args:
+        camera: Camera object.
+        interface: Interface object (assumes horizontal normal).
+        point_3d: 3D point in water (world coordinates, Z > interface_z).
+        max_iterations: Maximum Newton iterations (default 10).
+        tolerance: Convergence tolerance for r_p, in metres (default 1e-9).
+
+    Returns:
+        `None` for the same three degenerate cases `_refractive_project_newton`
+        returns `None`/short-circuits for (camera at or below interface, point at or
+        above interface, point directly below the camera — no root-find to report).
+        Otherwise a dict with:
+          - `n_iterations` (int): Newton steps taken.
+          - `converged` (bool): whether `final_residual < tolerance`.
+          - `final_residual` (float): absolute value of the last Newton step, in metres.
+          - `r_p` (float): converged interface-crossing radius, in metres.
+          - `incidence_angle_deg` (float): air-side incidence angle at the interface,
+            `degrees(arctan2(r_p, h_c))`.
+    """
+    C = camera.C
+    Q = np.asarray(point_3d, dtype=np.float64)
+    z_int = interface.get_water_z(camera.name)
+    n_air = interface.n_air
+    n_water = interface.n_water
+
+    # Camera should be above interface (smaller Z in Z-down coords)
+    h_c = z_int - C[2]  # vertical distance camera to interface
+    if h_c <= 0:
+        return None  # Camera at or below interface
+
+    # Point should be below interface (larger Z)
+    h_q = Q[2] - z_int  # vertical distance interface to point
+    if h_q <= 0:
+        return None  # Point at or above interface
+
+    # Horizontal distance from camera to point
+    dx = Q[0] - C[0]
+    dy = Q[1] - C[1]
+    r_q = np.sqrt(dx * dx + dy * dy)
+
+    # Special case: point directly below camera -- no root-find to report
+    if r_q < 1e-10:
+        return None
+
+    # Initial guess: pinhole projection (straight line intersection)
+    r_p = r_q * h_c / (h_c + h_q)
+
+    r_p, n_iterations, final_abs_delta = _solve_newton_r_p(
+        r_p, r_q, h_c, h_q, n_air, n_water, max_iterations, tolerance
+    )
+
+    return {
+        "n_iterations": n_iterations,
+        "converged": final_abs_delta < tolerance,
+        "final_residual": final_abs_delta,
+        "r_p": r_p,
+        "incidence_angle_deg": float(np.degrees(np.arctan2(r_p, h_c))),
+    }
 
 
 def _refractive_project_newton_batch(
