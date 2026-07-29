@@ -1,0 +1,18 @@
+{
+  "metrics": {
+    "focal_error_pct_mean": -0.11557947687050836,
+    "num_comparisons": 520,
+    "num_frames": 37,
+    "reconstruction_mae_mm": 0.1088732866576495,
+    "reconstruction_rmse_mm": 0.1747766584255423,
+    "reprojection_rms_px": 0.7147933416999209,
+    "signed_mean_mm": 9.310011407665231e-05,
+    "water_z_error_mm_mean": 3.4625127644626836,
+    "xy_position_error_mm_mean": 0.18705121897066526,
+    "z_position_error_mm_mean": -0.34397860684062004
+  },
+  "n_frames": 100,
+  "seed": 42,
+  "status": "ok",
+  "status_reason": ""
+}

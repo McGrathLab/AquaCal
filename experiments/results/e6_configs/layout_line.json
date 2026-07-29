@@ -1,0 +1,7 @@
+{
+  "metrics": null,
+  "n_frames": 100,
+  "seed": 42,
+  "status": "failed",
+  "status_reason": "KeyError: 'cam11'"
+}
