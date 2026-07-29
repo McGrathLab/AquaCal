@@ -24,11 +24,27 @@ columns (review H1, L6).
 process-lifetime maximum contaminated by earlier cells, and an OS-level OOM
 kill becomes a non-zero exit code the parent records as `status=failed`
 instead of a death `except Exception` can never observe (review H2, H3).
+Every cell is additionally bounded by `CELL_TIMEOUT_SECONDS`: a
+`subprocess.TimeoutExpired` is mapped onto a recorded `status=failed` row
+with a reason distinguishable from a non-zero exit, never an exception
+(D-33 gap 2).
+
+**A cell cannot silently report a paged success as a clean `ok`** (D-33 gap
+3): this box has no OOM killer, so a thrashing cell can otherwise succeed
+via pagefile with an inflated wall-clock and an understated *resident*
+peak. Each cell records commit/virtual memory alongside `peak_wset`
+(`aquacal.io.benchmark.capture_peak_memory`'s additive fields), classifies
+itself with a `memory_pressure` measurement CONDITION (never a pass/fail
+verdict -- D-12 stands), and is refused BEFORE Stage 3 as a recorded row if
+its problem shape alone projects a peak beyond `MEMORY_CEILING_FRACTION` of
+this machine's physical RAM (`_preflight_ceiling_reason`).
 
 **Every declared cell emits a row unconditionally** (D-04): `status` is one
 of `ok`, `failed`, `skipped_existing`; a cell with no `benchmark.json` still
 produces a row via a left join onto the literal `DECLARED_CELLS` list, so a
-coverage gap is countable, not invisible.
+coverage gap is countable, not invisible. A `skipped_existing` cell whose
+record IS on disk keeps that record's metrics (CR-01) -- the resume path
+(D-24) exists precisely so a resumed run publishes what it already computed.
 
 Invoked as `python -m experiments.e4_benchmark_grid`. Inherits the shared
 five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`)
@@ -82,6 +98,7 @@ from aquacal.datasets.synthetic import (
     generate_camera_array,
     generate_synthetic_detections,
 )
+from aquacal.io.benchmark import capture_peak_memory
 from aquacal.validation.evaluation import evaluate_calibration
 from experiments._io import (
     build_experiment_arg_parser,
@@ -167,13 +184,71 @@ E2_BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
 )
 
+# ---------------------------------------------------------------------------
+# D-33: per-cell timeout, memory-pressure vocabulary, and a pre-flight
+# ceiling that refuses a cell rather than letting the OS page it.
+# ---------------------------------------------------------------------------
+
+_GIB = 1024**3
+
+# Per-cell subprocess timeout (D-33 gap 2). Exists to bound a THRASHING cell,
+# not to enforce a schedule -- sized generously above any expected healthy
+# cell. Derivation: the previous (unrealistic-geometry) nine-cell grid ran
+# in ~27 minutes total (~3 min/cell); D-29's most demanding projected cell
+# (16 cameras x 200 frames, corner-density rise up to 4.5x) projects to
+# ~12 minutes of Stage-3 wall time alone (19.2-GAP-CONTEXT.md D-29 table).
+# A real-rig, real-video end-to-end calibration (13 cameras x 200 frames)
+# takes 48-87 minutes, so a single SYNTHETIC cell running anywhere near that
+# long is thrashing, not merely slow. 20 minutes leaves roughly 60%
+# headroom over the worst projected healthy cell while stopping a thrashing
+# one well short of the real-rig floor.
+CELL_TIMEOUT_SECONDS = 20 * 60
+
+# The interior-corner count of GRID_BOARD_CONFIG (12x9 squares -> 11x8
+# interior ChArUco corners) -- the theoretical per-view maximum used as a
+# deliberately conservative (over-estimating) input to the pre-flight
+# projection below; a pre-flight guard should err toward refusing rather
+# than admitting a thrashing cell.
+MAX_CORNERS_PER_VIEW = (GRID_BOARD_CONFIG.squares_x - 1) * (
+    GRID_BOARD_CONFIG.squares_y - 1
+)
+
+# Plan 19.2-06's measured real-rig Stage-3 peak was 9.78 GiB whole-run
+# against a 1.40 GiB dense Jacobian (~7x), because scipy's trf.py:481-482
+# holds J, J_h = J * d, the SVD input copy, U, and the LAPACK gesdd
+# workspace simultaneously. JACOBIAN_MEMORY_MULTIPLIER scales a projected
+# Jacobian footprint up to a projected WHOLE-RUN peak.
+JACOBIAN_MEMORY_MULTIPLIER = 7.0
+
+# Pre-flight refusal threshold (D-33 gap 3): a cell whose projected Stage-3
+# peak exceeds this fraction of physical RAM is refused as a recorded
+# status="failed" row BEFORE Stage 3 runs, rather than left for Windows (no
+# OOM killer) to page. A deliberate recorded failure is a better datum than
+# a paged success whose timings silently measure pagefile thrash.
+MEMORY_CEILING_FRACTION = 0.75
+
+# Below MEMORY_CEILING_FRACTION but still worth flagging: a cell that
+# COMPLETED but whose observed peak approached the physical limit. This is
+# purely informational (a measurement CONDITION, not a verdict -- D-12
+# stands; no pass/fail column exists anywhere in this module's output).
+MEMORY_NEAR_CEILING_FRACTION = 0.5
+
+# memory_pressure vocabulary (D-33 gap 3) -- a fixed, small enumeration.
+# NOT a pass/fail verdict column: it describes the CONDITION under which a
+# measurement was taken, so a reader can distinguish a clean measurement
+# from one taken close to the physical ceiling, or one refused outright.
+MEMORY_PRESSURE_CLEAN = "clean"
+MEMORY_PRESSURE_NEAR_CEILING = "near_physical_ceiling"
+MEMORY_PRESSURE_REFUSED_PREFLIGHT = "refused_preflight"
+
 GRID_KEY_COLUMNS = ["cell_key"]
 
 # The settled Phase-18 stage vocabulary this module reports on.
 _STAGE1 = "stage3_interface_optimization"
 _STAGE2 = "stage3_intrinsic_pass"
 
-# 34 columns, in order (D-02, D-04, D-14, D-15, D-16; review H1, H5, M3, L6).
+# 35 columns, in order (D-02, D-04, D-14, D-15, D-16; review H1, H5, M3, L6;
+# D-33 gap 3 adds memory_pressure).
 GRID_COLUMNS: list[str] = [
     "cell_key",
     "n_cameras",
@@ -187,6 +262,7 @@ GRID_COLUMNS: list[str] = [
     "normal_fixed",
     "shared_interface",
     "n_observations",
+    "memory_pressure",
     "seconds_stage3_interface_optimization",
     "seconds_stage3_intrinsic_pass",
     "peak_bytes_baseline",
@@ -221,6 +297,7 @@ _NULL_METRICS: dict = {
     "normal_fixed": None,
     "shared_interface": None,
     "n_observations": None,
+    "memory_pressure": None,
     "seconds_stage3_interface_optimization": None,
     "seconds_stage3_intrinsic_pass": None,
     "peak_bytes_baseline": None,
@@ -368,6 +445,118 @@ def build_grid_scenario(
 
 
 # ---------------------------------------------------------------------------
+# D-33 gap 3: pre-flight memory ceiling and post-hoc pressure classification
+# ---------------------------------------------------------------------------
+
+
+def _project_stage3_memory_bytes(n_cameras: int, n_frames: int) -> int:
+    """Project Stage-3's dense-Jacobian memory from problem shape alone.
+
+    Deliberately computed BEFORE any scenario or detections are built --
+    the whole point is to refuse a cell before spending time generating a
+    scene it should never solve.
+
+    `n_residuals` is projected as 2 (u, v) x `n_cameras` x `n_frames` x
+    `MAX_CORNERS_PER_VIEW` -- the worst case where every camera sees every
+    board corner in every frame. `n_params` is projected from the
+    shared-interface packing layout (`_optim_common.pack_params`): 6
+    extrinsic DOF per non-reference camera, 1 shared `water_z`, 6 pose DOF
+    per frame, plus 4 intrinsic DOF per camera (every grid cell runs with
+    `refine_intrinsics=True`). Both are deliberate over-estimates: a
+    pre-flight guard should err toward refusing rather than admitting a
+    thrashing cell.
+
+    The projected dense Jacobian (`n_residuals * n_params * 8` bytes, one
+    `float64` element) is then scaled by `JACOBIAN_MEMORY_MULTIPLIER` to
+    project a projected WHOLE-RUN peak, not just the Jacobian's own
+    footprint (see that constant's docstring for the measurement this
+    multiplier is derived from).
+
+    Returns:
+        Projected whole-run peak memory, in bytes.
+    """
+    n_residuals = 2 * n_cameras * n_frames * MAX_CORNERS_PER_VIEW
+    n_params = 6 * (n_cameras - 1) + 1 + 6 * n_frames + 4 * n_cameras
+    jacobian_bytes = n_residuals * n_params * 8
+    return int(jacobian_bytes * JACOBIAN_MEMORY_MULTIPLIER)
+
+
+def _preflight_ceiling_reason(n_cameras: int, n_frames: int) -> str | None:
+    """Return a refusal reason if this cell's projected peak is too large.
+
+    Compares `_project_stage3_memory_bytes` against `MEMORY_CEILING_FRACTION`
+    of this machine's physical RAM (read via `capture_peak_memory`'s
+    Windows-only `ram_total_bytes` field). Returns `None` (proceed) when the
+    projection is unavailable (e.g. `ram_total_bytes` is `None` off Windows)
+    or comfortably under the ceiling -- a missing measurement must never
+    itself become a refusal.
+
+    Args:
+        n_cameras: Camera count for this cell.
+        n_frames: Frame count for this cell.
+
+    Returns:
+        A human-readable reason naming both the projection and the ceiling,
+        or `None` if the cell should proceed.
+    """
+    ram_total_bytes = capture_peak_memory().get("ram_total_bytes")
+    if ram_total_bytes is None:
+        return None
+
+    projected_bytes = _project_stage3_memory_bytes(n_cameras, n_frames)
+    ceiling_bytes = MEMORY_CEILING_FRACTION * ram_total_bytes
+    if projected_bytes <= ceiling_bytes:
+        return None
+
+    return (
+        f"pre-flight refusal (D-33 gap 3): projected Stage-3 peak "
+        f"{projected_bytes / _GIB:.2f} GiB exceeds "
+        f"{MEMORY_CEILING_FRACTION:.0%} of physical RAM "
+        f"({ceiling_bytes / _GIB:.2f} GiB of {ram_total_bytes / _GIB:.2f} GiB "
+        "total); refused before Stage 3 rather than left for the OS to page"
+    )
+
+
+def _classify_memory_pressure(memory: dict) -> str:
+    """Classify a completed cell's peak-memory readings as a measurement
+    condition (D-33 gap 3) -- NOT a verdict (D-12 stands; no pass/fail
+    column exists anywhere in this module's output).
+
+    Compares the worst commit/peak figure across every boundary reading
+    (Task 1's additive `commit_peak_bytes`, falling back to `peak_bytes`
+    when commit figures are unavailable) against `ram_total_bytes` from the
+    same readings. Degrades to `MEMORY_PRESSURE_CLEAN` when no reading
+    carries a usable `ram_total_bytes` (e.g. off Windows) -- absence of the
+    measurement is not evidence of pressure.
+
+    Args:
+        memory: The `memory_out` dict `calibrate_synthetic` populated,
+            keyed by boundary name, each value a `capture_peak_memory()`
+            reading.
+
+    Returns:
+        One of `MEMORY_PRESSURE_CLEAN` or `MEMORY_PRESSURE_NEAR_CEILING`.
+    """
+    readings = [r for r in memory.values() if isinstance(r, dict)]
+    if not readings:
+        return MEMORY_PRESSURE_CLEAN
+
+    ram_total_bytes = next(
+        (r["ram_total_bytes"] for r in readings if r.get("ram_total_bytes")),
+        None,
+    )
+    if ram_total_bytes is None:
+        return MEMORY_PRESSURE_CLEAN
+
+    worst_peak = max(
+        (r.get("commit_peak_bytes") or r.get("peak_bytes") or 0) for r in readings
+    )
+    if worst_peak >= MEMORY_NEAR_CEILING_FRACTION * ram_total_bytes:
+        return MEMORY_PRESSURE_NEAR_CEILING
+    return MEMORY_PRESSURE_CLEAN
+
+
+# ---------------------------------------------------------------------------
 # Per-cell runner (D-01, D-04, D-14; review H1, H2, H3, H5, M3)
 # ---------------------------------------------------------------------------
 
@@ -423,6 +612,24 @@ def run_grid_cell(
             "n_frames": n_frames,
             "status": "skipped_existing",
             "status_reason": "",
+        }
+
+    preflight_reason = _preflight_ceiling_reason(n_cameras, n_frames)
+    if preflight_reason is not None:
+        logger.warning("Cell %s refused pre-flight: %s", cell_key, preflight_reason)
+        return {
+            "cell_key": cell_key,
+            "n_cameras": n_cameras,
+            "n_frames": n_frames,
+            "status": "failed",
+            "status_reason": preflight_reason,
+            # Informational only -- no benchmark.json is ever written for a
+            # pre-flight-refused cell (calibrate_synthetic was never called),
+            # so this never reaches build_grid_dataframe's memory_pressure
+            # column (a "failed" row nulls every metric regardless, CR-01).
+            # It documents the refusal's nature for a caller inspecting this
+            # dict directly.
+            "memory_pressure": MEMORY_PRESSURE_REFUSED_PREFLIGHT,
         }
 
     try:
@@ -508,6 +715,10 @@ def run_grid_cell(
             # passthrough dict, so stashing it here is how it survives into
             # the committed record for the peak_bytes_baseline column.
             "peak_bytes_baseline": memory.get("_baseline", {}).get("peak_bytes"),
+            # D-33 gap 3: a measurement CONDITION, not a verdict (D-12
+            # stands) -- lets a reader tell a clean measurement from one
+            # taken close to the physical ceiling.
+            "memory_pressure": _classify_memory_pressure(memory),
         }
         solver_config = {
             "normal_fixed": GRID_NORMAL_FIXED,
@@ -551,6 +762,58 @@ def run_grid_cell(
         }
 
 
+def _invoke_subprocess_with_status_mapping(
+    cmd: list[str], timeout: float | None
+) -> tuple[str, str, int | None, float]:
+    """Run `cmd` and map its outcome onto E4's status vocabulary.
+
+    Shared by `run_cell_subprocess` (production) and this module's own
+    real-child tests (D-33 gap 1) -- factored out so a genuine child
+    process (no `monkeypatch` of `subprocess.run`) can exercise exactly the
+    same mapping logic the parent path runs in production.
+
+    Never raises: a non-zero exit is data (D-04), and a `TimeoutExpired` is
+    mapped onto `status="failed"` with a reason distinguishable from a
+    non-zero exit (D-33 gap 2) -- the SAME never-raises contract a non-zero
+    exit already has.
+
+    Args:
+        cmd: The full command to spawn via `subprocess.run`.
+        timeout: Optional subprocess timeout in seconds. `None` means wait
+            indefinitely (production call sites always pass
+            `CELL_TIMEOUT_SECONDS`; only ad-hoc/manual invocations should
+            ever pass `None`).
+
+    Returns:
+        `(status, status_reason, exit_code, elapsed_seconds)`. `status` is
+        one of `"ok"`, `"skipped_existing"`, or `"failed"`. `exit_code` is
+        `None` only on a timeout (there was no exit).
+    """
+    t0 = time.perf_counter()
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        elapsed = time.perf_counter() - t0
+        status = "failed"
+        status_reason = (
+            f"child exceeded timeout={timeout}s (D-33 gap 2); the run may be "
+            "thrashing rather than merely slow"
+        )
+        return status, status_reason, None, elapsed
+
+    elapsed = time.perf_counter() - t0
+    if proc.returncode == 0:
+        status, status_reason = "ok", ""
+    elif proc.returncode == SKIPPED_EXIT_CODE:
+        status, status_reason = "skipped_existing", ""
+    else:
+        stderr_tail = (proc.stderr or "")[-400:]
+        status = "failed"
+        status_reason = f"child exit_code={proc.returncode}: {stderr_tail}"
+
+    return status, status_reason, proc.returncode, elapsed
+
+
 def run_cell_subprocess(
     n_cameras: int,
     n_frames: int,
@@ -571,7 +834,9 @@ def run_cell_subprocess(
     death `except Exception` can never observe.
 
     Never raises on a non-zero child exit -- that is data (D-04), not an
-    exception (`subprocess.run` is never called with `check=True`).
+    exception (`subprocess.run` is never called with `check=True`) -- and
+    never raises on a timeout either (D-33 gap 2): see
+    `_invoke_subprocess_with_status_mapping`, which does the actual mapping.
 
     Args:
         n_cameras: Camera count for this cell.
@@ -579,14 +844,14 @@ def run_cell_subprocess(
         seed: Seed forwarded to the child's `--seed`.
         out_dir: Root output directory forwarded to the child's `--out`.
         force: Forwarded to the child's `--force` flag when True.
-        timeout: Optional subprocess timeout in seconds, forwarded to
-            `subprocess.run`.
+        timeout: Optional subprocess timeout in seconds. Production call
+            sites always pass `CELL_TIMEOUT_SECONDS` explicitly.
 
     Returns:
         A dict with `cell_key`, `n_cameras`, `n_frames`, `status` (`"ok"`,
         `"skipped_existing"`, or `"failed"`), `status_reason`, and
         `exit_code` (the child's raw return code, including a negative
-        signal code or an OS OOM-kill code).
+        signal code or an OS OOM-kill code, or `None` on a timeout).
     """
     cell_key = f"cameras_{n_cameras}_frames_{n_frames}"
     cmd = [
@@ -604,24 +869,15 @@ def run_cell_subprocess(
     if force:
         cmd.append("--force")
 
-    t0 = time.perf_counter()
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    elapsed = time.perf_counter() - t0
-
-    if proc.returncode == 0:
-        status, status_reason = "ok", ""
-    elif proc.returncode == SKIPPED_EXIT_CODE:
-        status, status_reason = "skipped_existing", ""
-    else:
-        stderr_tail = (proc.stderr or "")[-400:]
-        status = "failed"
-        status_reason = f"child exit_code={proc.returncode}: {stderr_tail}"
+    status, status_reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+        cmd, timeout
+    )
 
     logger.info(
         "cell %s: status=%s exit_code=%s elapsed=%.1fs",
         cell_key,
         status,
-        proc.returncode,
+        exit_code,
         elapsed,
     )
 
@@ -631,7 +887,7 @@ def run_cell_subprocess(
         "n_frames": n_frames,
         "status": status,
         "status_reason": status_reason,
-        "exit_code": proc.returncode,
+        "exit_code": exit_code,
     }
 
 
@@ -671,6 +927,7 @@ def _extract_assembled_row(row: pd.Series) -> dict:
         "normal_fixed": _get(row, "solver_config.normal_fixed"),
         "shared_interface": _get(row, "solver_config.shared_interface"),
         "n_observations": _get(row, "problem_shape.n_observations"),
+        "memory_pressure": _get(row, "problem_shape.memory_pressure"),
         "seconds_stage3_interface_optimization": _get(row, f"{_STAGE1}.seconds"),
         "seconds_stage3_intrinsic_pass": _get(row, f"{_STAGE2}.seconds"),
         "peak_bytes_baseline": _get(row, "problem_shape.peak_bytes_baseline"),
@@ -744,6 +1001,9 @@ def _extract_pipeline_row(record: dict) -> dict:
         "normal_fixed": solver_config.get("interface_normal_fixed"),
         "shared_interface": solver_config.get("shared_interface"),
         "n_observations": None,
+        # D-26: E2 never recorded a memory_pressure classification (its
+        # benchmark.json predates D-33); None rather than invented (D-14).
+        "memory_pressure": None,
         "seconds_stage3_interface_optimization": stage1.get("seconds"),
         "seconds_stage3_intrinsic_pass": stage2.get("seconds"),
         "peak_bytes_baseline": None,
@@ -1072,7 +1332,9 @@ def _run_smoke_cells(out_dir: Path, seed: int) -> int:
     """Run `SMOKE_CELLS` through the real subprocess hop at trivial scale."""
     all_ok = True
     for n_cameras, n_frames in SMOKE_CELLS:
-        row = run_cell_subprocess(n_cameras, n_frames, seed, out_dir, force=True)
+        row = run_cell_subprocess(
+            n_cameras, n_frames, seed, out_dir, force=True, timeout=CELL_TIMEOUT_SECONDS
+        )
         logger.info(
             "smoke cell %s: status=%s exit_code=%s",
             row["cell_key"],
@@ -1110,7 +1372,14 @@ def _run_full(args: argparse.Namespace) -> int:
         # and peak-memory benchmark and two cells sharing the box would
         # contaminate both measurements.
         cell_statuses.append(
-            run_cell_subprocess(n_cameras, n_frames, args.seed, out_dir, args.force)
+            run_cell_subprocess(
+                n_cameras,
+                n_frames,
+                args.seed,
+                out_dir,
+                args.force,
+                timeout=CELL_TIMEOUT_SECONDS,
+            )
         )
 
     df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)

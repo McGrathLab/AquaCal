@@ -1,21 +1,30 @@
 """Unit tests for `experiments/e4_benchmark_grid.py` (EXP-08).
 
-Fast unit tests only: hand-built `benchmark.json` fixtures written directly
-via `write_direct_call_benchmark`, no calibration solve of any kind is
-invoked, and no real subprocess is spawned (`test_subprocess_status_mapping`
-monkeypatches `subprocess.run`). None of these tests are marked slow --
-that is `--smoke` and production-run territory (plan 19.2-09).
+Most tests here are fast: hand-built `benchmark.json` fixtures written
+directly via `write_direct_call_benchmark`, no calibration solve of any
+kind. `test_subprocess_status_mapping` monkeypatches `subprocess.run` to
+prove the status-mapping LOGIC in isolation; the
+`TestRealChildProcess` class (D-33 gap 1) additionally spawns GENUINE
+`python -c ...` child processes (no monkeypatching) through the exact same
+`_invoke_subprocess_with_status_mapping` helper, so the mapping is proven
+against a real process this machine actually runs, not only against a
+`_FakeCompletedProcess`. None of these tests are marked slow -- the real
+children are trivial one-liners that exit in well under a second, and the
+smoke-cell calibration (`test_smoke_cell_reports_clean_memory_pressure`)
+matches the timing of the module's own `--smoke` path (a few seconds).
 """
 
 from __future__ import annotations
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+import experiments.e4_benchmark_grid as e4_grid_module
 from aquacal.calibration._observability import SolverDiagnostics
 from experiments._io import write_direct_call_benchmark
 from experiments.e4_benchmark_grid import (
@@ -25,10 +34,15 @@ from experiments.e4_benchmark_grid import (
     GRID_BOARD_CONFIG,
     GRID_COLUMNS,
     GRID_SCENARIO_NAME,
+    MEMORY_CEILING_FRACTION,
+    MEMORY_PRESSURE_CLEAN,
     SKIPPED_EXIT_CODE,
+    _invoke_subprocess_with_status_mapping,
+    _preflight_ceiling_reason,
     build_grid_dataframe,
     build_grid_scenario,
     run_cell_subprocess,
+    run_grid_cell,
     write_grid_latex,
 )
 from experiments.e4_benchmark_grid import subprocess as e4_subprocess
@@ -519,3 +533,127 @@ def test_latex_fragment_separates_real_rig(full_grid_dir, tmp_path):
     # The real-rig row's key must not appear before its own labeled block --
     # i.e. it is not folded into the earlier nine-cell blocks.
     assert real_rig_key_rendered not in text[:real_rig_marker]
+
+
+class TestRealChildProcess:
+    """D-33 gap 1: a real child process, not a monkeypatched `subprocess.run`.
+
+    `test_subprocess_status_mapping` above proves the status MAPPING; these
+    tests prove the same mapping against a genuine `python -c ...` child
+    this machine actually spawns and terminates, via the exact
+    `_invoke_subprocess_with_status_mapping` helper `run_cell_subprocess`
+    calls in production.
+    """
+
+    def test_real_child_nonzero_exit_is_recorded_not_raised(self):
+        cmd = [sys.executable, "-c", "import sys; sys.exit(1)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=30
+        )
+        assert status == "failed"
+        assert exit_code == 1
+        assert reason
+        assert elapsed >= 0
+
+    def test_real_child_timeout_is_recorded_not_raised_and_is_distinguishable(self):
+        """A child that sleeps past a short timeout: `status="failed"` with
+        a reason distinguishable from a non-zero exit, `exit_code=None`
+        (there was no exit), and no exception propagates."""
+        cmd = [sys.executable, "-c", "import time; time.sleep(30)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=0.5
+        )
+        assert status == "failed"
+        assert exit_code is None
+        assert "timeout" in reason.lower()
+        assert "exit_code=" not in reason
+
+    def test_real_child_allocating_until_it_dies_is_recorded(self):
+        """A real child that allocates until it dies.
+
+        Bounded per this environment's concurrency-safety rule (other
+        executor agents run in parallel worktrees on this box): rather than
+        growing memory incrementally toward the 15.7 GB physical ceiling
+        (which the environment rules explicitly forbid attempting here),
+        this spawns a child that requests a SINGLE allocation so large
+        (10**20 bytes, far beyond any real address space) that CPython
+        refuses it immediately -- observed here as an uncaught
+        `OverflowError` ("cannot fit 'int' into an index-sized integer"),
+        not `MemoryError`, because CPython's `bytearray()` constructor
+        checks the requested size against `Py_ssize_t` before ever asking
+        the allocator for memory. The child exits with code 1 in ~15 ms; no
+        real memory or pagefile pressure is placed on the shared box. This
+        proves `run_cell_subprocess`'s contract (a dying, memory-related
+        child produces a RECORDED row, not a hang or a raised exception in
+        the parent) without exercising the slow-paging incremental-growth
+        scenario D-33 describes -- that scenario is deliberately deferred to
+        the actual wave-3 production run, and the summary records this as an
+        explicit, honest limitation.
+        """
+        cmd = [sys.executable, "-c", "bytearray(10**20)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=30
+        )
+        assert status == "failed"
+        assert exit_code == 1
+        assert reason
+
+
+def test_preflight_ceiling_refuses_cell_before_calibration(monkeypatch, tmp_path):
+    """D-33 gap 3: a fabricated problem shape whose projected Stage-3 peak
+    vastly exceeds any real machine's RAM must be refused BEFORE
+    calibrate_synthetic is ever called, as a recorded status="failed" row
+    naming both the projection and the ceiling."""
+    calls: list[int] = []
+
+    def _must_not_be_called(*args, **kwargs):
+        calls.append(1)
+        raise AssertionError(
+            "calibrate_synthetic must not be called for a pre-flight-refused cell"
+        )
+
+    monkeypatch.setattr(e4_grid_module, "calibrate_synthetic", _must_not_be_called)
+
+    # 1000 cameras x 1000 frames projects an astronomically large Jacobian --
+    # guaranteed to exceed MEMORY_CEILING_FRACTION of any real machine's RAM
+    # without needing to monkeypatch psutil/ram_total_bytes.
+    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
+
+    assert calls == []
+    assert row["status"] == "failed"
+    assert "projected" in row["status_reason"]
+    assert "GiB" in row["status_reason"]
+    assert f"{MEMORY_CEILING_FRACTION:.0%}" in row["status_reason"]
+
+
+def test_preflight_ceiling_reason_is_none_for_a_tiny_cell():
+    """A comfortably-sized cell must not be refused pre-flight."""
+    assert _preflight_ceiling_reason(3, 3) is None
+
+
+def test_preflight_ceiling_refusal_names_the_refused_preflight_condition(
+    monkeypatch, tmp_path
+):
+    """The pre-flight-refused row's memory_pressure is the dedicated
+    vocabulary member, distinguishable from a clean or near-ceiling run --
+    D-33 gap 3's measurement condition, never a pass/fail verdict."""
+    monkeypatch.setattr(
+        e4_grid_module,
+        "calibrate_synthetic",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")),
+    )
+    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
+    assert row["memory_pressure"] == e4_grid_module.MEMORY_PRESSURE_REFUSED_PREFLIGHT
+
+
+def test_smoke_cell_reports_clean_memory_pressure(tmp_path):
+    """A comfortably-sized smoke cell reports the clean memory-pressure
+    value (D-33 gap 3) -- exercised through the real subprocess hop, the
+    same path production cells run."""
+    row = run_cell_subprocess(3, 3, seed=1, out_dir=tmp_path, force=True, timeout=60)
+    assert row["status"] == "ok"
+
+    cell_path = tmp_path / "e4_cells" / "cameras_3_frames_3" / "benchmark.json"
+    with open(cell_path) as f:
+        record = json.load(f)
+    assert record["problem_shape"]["memory_pressure"] == MEMORY_PRESSURE_CLEAN
