@@ -158,8 +158,14 @@ SKIPPED_EXIT_CODE = 3
 SMOKE_CELLS: list[tuple[int, int]] = [(3, 3), (3, 4)]
 _ALLOWED_CELL_VALUES = frozenset(DECLARED_CELLS) | frozenset(SMOKE_CELLS)
 
-# E2's real-rig tenth row: never run here, only read (D-02).
-E2_BENCHMARK_PATH = Path("experiments/results/benchmark.json")
+# E2's real-rig tenth row: never run here, only read (D-02). Anchored to
+# __file__ (never the process's cwd) the way E3's _E2_BENCHMARK_JSON_PATH is
+# (e3_derived_quantities.py:153-155, CR-03) -- a cwd-relative path silently
+# resolves to nothing when this module is invoked from any directory other
+# than the repository root.
+E2_BENCHMARK_PATH = (
+    Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
+)
 
 GRID_KEY_COLUMNS = ["cell_key"]
 
@@ -800,7 +806,24 @@ def build_grid_dataframe(
         (`record_source="pipeline"`).
     """
     cells_dir = Path(out_dir) / "e4_cells"
-    agg = aggregate(cells_dir)
+    try:
+        agg = aggregate(cells_dir)
+    except Exception as exc:
+        # CR-03: aggregate() refuses loudly (e.g. UnsupportedSchemaVersionError)
+        # on a record it does not recognize. By this point every declared cell
+        # may already have solved -- losing the whole run's CSV and LaTeX here
+        # is the failure mode, whatever record triggered it (D-04: a row per
+        # declared cell, never an aborted run). Degrade to no metrics read
+        # rather than raise; affected cells fall back to _NULL_METRICS below.
+        logger.warning(
+            "aggregate(%s) failed (%s: %s); every cell's metric columns will be "
+            "null for this run rather than losing benchmark_grid.csv/.tex "
+            "entirely after the cells have already solved.",
+            cells_dir,
+            type(exc).__name__,
+            exc,
+        )
+        agg = pd.DataFrame()
 
     metrics_by_cell: dict[tuple[int, int], dict] = {}
     if not agg.empty:
@@ -834,23 +857,65 @@ def build_grid_dataframe(
         }
 
         metrics = metrics_by_cell.get((n_cameras, n_frames))
-        row.update(metrics if metrics is not None else _NULL_METRICS)
-        if row["status"] != "ok":
+        # CR-01: null the metric columns only when the status is "failed" or
+        # when no record was ever read for this cell -- never merely because
+        # the status is not "ok". A "skipped_existing" cell's whole reason for
+        # existing is the documented D-24 resume path: aggregate() already
+        # read that cell's on-disk record successfully a few lines above, and
+        # nulling it here would defeat the only reason the skip exists.
+        if row["status"] == "failed" or metrics is None:
             row.update(_NULL_METRICS)
+        else:
+            row.update(metrics)
 
         rows.append(row)
 
-    with open(Path(e2_benchmark_path)) as f:
-        e2_record = json.load(f)
-    e2_row: dict = {
-        "cell_key": "real_rig_13cam_200fr",
-        "n_cameras": e2_record.get("problem_shape", {}).get("n_cameras"),
-        "n_frames": e2_record.get("problem_shape", {}).get("n_frames_calibration"),
-        "status": "ok",
-        "status_reason": "",
-        "exit_code": None,
-    }
-    e2_row.update(_extract_pipeline_row(e2_record))
+    e2_benchmark_path = Path(e2_benchmark_path)
+    e2_record: dict | None = None
+    if not e2_benchmark_path.exists():
+        logger.warning(
+            "E2 benchmark record not found at %s; emitting a null real-rig row "
+            "(record_source=missing_e2_benchmark) instead of raising after all "
+            "declared cells have solved (CR-03).",
+            e2_benchmark_path,
+        )
+    else:
+        try:
+            with open(e2_benchmark_path) as f:
+                e2_record = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "E2 benchmark record at %s could not be read (%s: %s); "
+                "emitting a null real-rig row (record_source=missing_e2_benchmark) "
+                "instead of raising (CR-03).",
+                e2_benchmark_path,
+                type(exc).__name__,
+                exc,
+            )
+
+    if e2_record is None:
+        e2_row = {
+            "cell_key": "real_rig_13cam_200fr",
+            "n_cameras": None,
+            "n_frames": None,
+            "status": "failed",
+            "status_reason": (
+                f"E2 benchmark.json missing or unreadable at {e2_benchmark_path}"
+            ),
+            "exit_code": None,
+        }
+        e2_row.update(_NULL_METRICS)
+        e2_row["record_source"] = "missing_e2_benchmark"
+    else:
+        e2_row = {
+            "cell_key": "real_rig_13cam_200fr",
+            "n_cameras": e2_record.get("problem_shape", {}).get("n_cameras"),
+            "n_frames": e2_record.get("problem_shape", {}).get("n_frames_calibration"),
+            "status": "ok",
+            "status_reason": "",
+            "exit_code": None,
+        }
+        e2_row.update(_extract_pipeline_row(e2_record))
     rows.append(e2_row)
 
     return pd.DataFrame(rows, columns=GRID_COLUMNS)

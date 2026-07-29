@@ -19,7 +19,9 @@ import pytest
 from aquacal.calibration._observability import SolverDiagnostics
 from experiments._io import write_direct_call_benchmark
 from experiments.e4_benchmark_grid import (
+    _NULL_METRICS,
     DECLARED_CELLS,
+    E2_BENCHMARK_PATH,
     GRID_BOARD_CONFIG,
     GRID_COLUMNS,
     GRID_SCENARIO_NAME,
@@ -300,6 +302,157 @@ def test_grid_solver_config_is_self_describing(full_grid_dir):
     assert not ok_synthetic["normal_fixed"].any()
     assert ok_synthetic["shared_interface"].all()
     assert ok_synthetic["seed"].notna().all()
+
+
+def test_e2_benchmark_path_is_absolute():
+    """CR-03: E2_BENCHMARK_PATH must be anchored to __file__, never cwd-relative
+    (module-level constant already resolved at import time)."""
+    assert E2_BENCHMARK_PATH.is_absolute()
+
+
+def test_skipped_existing_cell_with_on_disk_record_keeps_its_metrics(full_grid_dir):
+    """CR-01: a `skipped_existing` cell whose record IS on disk must keep the
+    metric columns `aggregate()` just read successfully -- the resume path
+    (D-24) exists precisely so a resumed run publishes what it already
+    computed. This FAILS on EXPECTED_BASE, where the nulling rule fires on
+    any non-"ok" status regardless of whether a record was actually read."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    resumed_cell = DECLARED_CELLS[0]
+
+    statuses = []
+    for n, f in DECLARED_CELLS:
+        if (n, f) == resumed_cell:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "skipped_existing",
+                    "status_reason": "",
+                    "exit_code": SKIPPED_EXIT_CODE,
+                }
+            )
+        else:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "ok",
+                    "status_reason": "",
+                    "exit_code": 0,
+                }
+            )
+
+    df = build_grid_dataframe(out_dir, statuses, e2_path)
+
+    resumed_key = f"cameras_{resumed_cell[0]}_frames_{resumed_cell[1]}"
+    resumed_row = df[df["cell_key"] == resumed_key].iloc[0]
+    assert resumed_row["status"] == "skipped_existing"
+    assert not pd.isna(resumed_row["reprojection_rms"])
+    assert resumed_row["reprojection_rms"] == 0.5
+    assert not pd.isna(resumed_row["n_params_stage3_interface_optimization"])
+    assert resumed_row["n_params_stage3_interface_optimization"] == 50
+
+
+def test_failed_cell_nulls_metrics_even_with_a_stale_on_disk_record(full_grid_dir):
+    """A "failed" cell must null every metric column and preserve
+    status_reason/exit_code, even when a (stale) benchmark.json happens to
+    exist on disk for it -- unlike "skipped_existing", "failed" is never a
+    legitimate resume outcome."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    failed_cell = DECLARED_CELLS[1]
+
+    statuses = []
+    for n, f in DECLARED_CELLS:
+        if (n, f) == failed_cell:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "failed",
+                    "status_reason": "OOM during Stage 3",
+                    "exit_code": 137,
+                }
+            )
+        else:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "ok",
+                    "status_reason": "",
+                    "exit_code": 0,
+                }
+            )
+
+    df = build_grid_dataframe(out_dir, statuses, e2_path)
+
+    failed_key = f"cameras_{failed_cell[0]}_frames_{failed_cell[1]}"
+    failed_row = df[df["cell_key"] == failed_key].iloc[0]
+    assert failed_row["status"] == "failed"
+    assert failed_row["status_reason"] == "OOM during Stage 3"
+    assert failed_row["exit_code"] == 137
+    for metric_col in _NULL_METRICS:
+        if metric_col in ("timing_scope", "record_source"):
+            continue
+        assert pd.isna(failed_row[metric_col])
+
+
+def test_missing_e2_benchmark_degrades_to_null_row_no_exception(full_grid_dir):
+    """CR-03: a missing E2 benchmark.json must not raise after all nine
+    cells have solved -- it costs a null real-rig row with a named
+    record_source, not the entire run's CSV/LaTeX."""
+    out_dir, cell_statuses, _ = full_grid_dir
+    missing_e2_path = out_dir / "does_not_exist" / "benchmark.json"
+
+    df = build_grid_dataframe(out_dir, cell_statuses, missing_e2_path)
+
+    assert len(df) == 10
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+    assert pd.isna(real_rig_row["n_params_stage3_interface_optimization"])
+    # The nine synthetic cells are unaffected by the missing real-rig record.
+    assert len(df[df["record_source"] == "assembled"]) == 9
+
+
+def test_unreadable_e2_benchmark_degrades_to_null_row_no_exception(
+    full_grid_dir, tmp_path
+):
+    """CR-03: an unparseable E2 benchmark.json (corrupt JSON) must degrade
+    the same way a missing file does, not raise `json.JSONDecodeError`."""
+    out_dir, cell_statuses, _ = full_grid_dir
+    corrupt_e2_path = tmp_path / "corrupt_benchmark.json"
+    corrupt_e2_path.write_text("{not valid json")
+
+    df = build_grid_dataframe(out_dir, cell_statuses, corrupt_e2_path)
+
+    assert len(df) == 10
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+
+
+def test_aggregate_refusal_degrades_instead_of_losing_the_whole_run(
+    full_grid_dir,
+):
+    """CR-03: if aggregate() refuses a record it does not recognize (e.g. a
+    schema_version mismatch on one cell), build_grid_dataframe must not lose
+    benchmark_grid.csv/.tex for every OTHER cell that already solved."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    bad_cell = DECLARED_CELLS[2]
+    bad_cell_path = (
+        out_dir
+        / "e4_cells"
+        / f"cameras_{bad_cell[0]}_frames_{bad_cell[1]}"
+        / "benchmark.json"
+    )
+    record = json.loads(bad_cell_path.read_text())
+    record["schema_version"] = 999
+    bad_cell_path.write_text(json.dumps(record))
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    assert len(df) == 10
 
 
 class _FakeCompletedProcess:
