@@ -235,10 +235,12 @@ class TestCheckComparator:
     def test_check_row_count_mismatch_reports_not_raises(self, tmp_path):
         """Regression for CR-04 case 1: a fresh frame with more rows than the
         committed baseline (same header) must return a failing
-        `ComparisonReport` naming both row counts, never raise. This FAILS on
+        `ComparisonReport` naming the extra key, never raise. This FAILS on
         EXPECTED_BASE with `ValueError: Can only compare identically-labeled
         Series objects` because the old code sorted both frames and compared
-        positionally without checking length first."""
+        positionally without checking length first. A row-count mismatch that
+        also differs in key set is reported via the key-set-mismatch path
+        (it subsumes the plain row-count case -- see task 1's action)."""
         committed = _exp1_frame(["cam0", "cam1"])
         committed_path = tmp_path / "exp1_parameter_errors.csv"
         committed.to_csv(committed_path, index=False)
@@ -249,8 +251,7 @@ class TestCheckComparator:
             fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
         )
         assert report.passed is False
-        assert "3" in report.message
-        assert "2" in report.message
+        assert "cam2" in report.message
         assert str(committed_path) in report.message
         assert exit_code_for(report) == 1
 

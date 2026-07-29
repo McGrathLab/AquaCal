@@ -426,13 +426,51 @@ def compare_experiment_csv(
     n_mismatched_cells = len(mismatched_non_float)
 
     for col in float_columns:
-        fresh_vals = fresh_sorted[col].to_numpy(dtype=float)
-        committed_vals = committed_sorted[col].to_numpy(dtype=float)
+        # `float_columns` classifies by dtype in EITHER frame (see above), so
+        # a column that is float-classified because `fresh` is all-NaN can
+        # still carry a real non-numeric string on the `committed` side (the
+        # third member of the CSV dtype round-trip family, after `ee8af31`
+        # and `ac75e35`): e.g. a `status_reason` column that is all-NaN in a
+        # fresh run but holds `"KeyError: 'cam11'"` in one committed row.
+        # `to_numpy(dtype=float)` would raise `ValueError: could not convert
+        # string to float` on that cell. Coerce with `pd.to_numeric(...,
+        # errors="coerce")` on BOTH sides instead of adding a fourth dtype
+        # special case: any non-numeric cell becomes NaN, which then compares
+        # as a mismatch below (never silently skipped -- a NaN-vs-value pair
+        # must still count against n_mismatched_cells, or this fix would hide
+        # the very defect it exists to surface).
+        # Track "genuinely missing" (NaN in the RAW, pre-coercion column) so
+        # a real non-numeric string that `to_numeric` coerces away (e.g.
+        # committed's "KeyError: 'cam11'") is never confused with a
+        # legitimate missing value -- only both-sides-raw-NaN is a match.
+        fresh_raw_isna = fresh_sorted[col].isna().to_numpy()
+        committed_raw_isna = committed_sorted[col].isna().to_numpy()
+        both_genuinely_missing = fresh_raw_isna & committed_raw_isna
+
+        fresh_vals = pd.to_numeric(fresh_sorted[col], errors="coerce").to_numpy(
+            dtype=float
+        )
+        committed_vals = pd.to_numeric(committed_sorted[col], errors="coerce").to_numpy(
+            dtype=float
+        )
         denom = committed_vals.copy()
         denom[denom == 0] = 1.0
         rel_diff = abs(fresh_vals - committed_vals) / abs(denom)
         for row_idx in fresh_sorted.index:
-            cell_rtol = rel_diff[row_idx]
+            if both_genuinely_missing[row_idx]:
+                # Both sides were NaN before coercion too (e.g. both
+                # genuinely missing) -- not a mismatch.
+                continue
+            # A cell where coercion produced NaN on either side but the two
+            # sides were not BOTH genuinely missing (one is a real
+            # non-numeric string, or one is missing and the other a real
+            # value) must still count as a mismatch -- silently skipping it
+            # would hide the very defect this coercion exists to surface.
+            cell_rtol = (
+                float("inf")
+                if (pd.isna(fresh_vals[row_idx]) or pd.isna(committed_vals[row_idx]))
+                else rel_diff[row_idx]
+            )
             if cell_rtol > rtol:
                 n_mismatched_cells += 1
                 if cell_rtol > worst_rtol:
