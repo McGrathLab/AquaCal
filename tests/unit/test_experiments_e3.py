@@ -1,4 +1,4 @@
-"""Unit tests for E3 tier 3: the `P` formula validated against live `pack_params` (D-22, EXP-07).
+"""Unit tests for E3 tiers 1-3 (D-22, D-18, D-21, EXP-07).
 
 Fast unit tests -- minimal fixtures constructed directly, no `create_scenario`, no calibration,
 none marked slow.
@@ -9,7 +9,10 @@ from `tests/unit/test_optim_common.py` so this file stands alone.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 import pytest
 
 from aquacal.calibration._optim_common import (
@@ -263,3 +266,134 @@ class TestPerCameraModeGrowsPWithoutGrowingGroups:
         # Group count unchanged: two cameras' water_z columns never share a residual row, so
         # they collapse into the same FD group slot the shared water_z column occupied.
         assert groups_pc.max() + 1 == groups_shared.max() + 1
+
+
+# --- E3 tier 1 / tier 3 / sidecar behaviors (Task 3) -----------------------------------
+
+BENCHMARK_JSON_PATH = (
+    Path(__file__).resolve().parents[2] / "experiments" / "results" / "benchmark.json"
+)
+
+# The six published `tab:cpr` configurations (19.2-SOURCE-BRIEF.md Sec E3 Tier 3), as
+# (n_cameras, n_frames, normal_fixed, refine_intrinsics) tuples. Every row is
+# normal_fixed=False (tilt-enabled) -- a tilt-fixed row would report a P exactly 2 smaller
+# and look entirely plausible (review H1).
+_EXPECTED_TAB_CPR_CONFIGS = {
+    (3, 3, False, False),
+    (16, 200, False, False),
+    (8, 100, False, True),
+    (12, 100, False, True),
+    (13, 200, False, True),
+    (16, 200, False, True),
+}
+
+
+class TestBuildCodeConstantsDfShape:
+    """`test_build_code_constants_df_shape` (Task 3 behavior 1)."""
+
+    def test_build_code_constants_df_shape(self):
+        from experiments.e3_derived_quantities import (
+            CODE_CONSTANTS_COLUMNS,
+            build_code_constants_df,
+        )
+
+        df = build_code_constants_df()
+        assert list(df.columns) == CODE_CONSTANTS_COLUMNS
+        assert len(df.columns) == 7
+        assert len(df) == 9  # len(DECLARED_CONSTANTS), plan 04's M10 fix
+        assert set(df["pass_fail"]) <= {"PASS", "FAIL"}
+
+
+class TestCPRConfigsCoverAllSixTabCprRows:
+    """`test_cpr_configs_cover_all_six_tab_cpr_rows` (Task 3 behavior 2, retires D-16 split)."""
+
+    def test_cpr_configs_cover_all_six_tab_cpr_rows(self):
+        from experiments.e3_derived_quantities import CPR_CONFIGS
+
+        assert set(CPR_CONFIGS) == _EXPECTED_TAB_CPR_CONFIGS
+        assert len(CPR_CONFIGS) == 6
+
+
+class TestCPRConfigsAreAllTiltEnabled:
+    """`test_cpr_configs_are_all_tilt_enabled` (Task 3 behavior 3)."""
+
+    def test_cpr_configs_are_all_tilt_enabled(self):
+        from experiments.e3_derived_quantities import CPR_CONFIGS
+
+        for n_cameras, n_frames, normal_fixed, refine_intrinsics in CPR_CONFIGS:
+            assert normal_fixed is False
+
+
+class TestCPRRowBuilderShape:
+    """`test_cpr_row_builder_shape` (Task 3 behavior 4)."""
+
+    def test_cpr_row_builder_shape(self):
+        from experiments.e3_derived_quantities import (
+            CPR_COLUMNS,
+            _build_computed_cpr_row,
+        )
+
+        row = _build_computed_cpr_row(
+            config_key="tiny_test_config",
+            n_cameras=3,
+            n_frames=2,
+            normal_fixed=False,
+            refine_intrinsics=False,
+            shared_interface=True,
+        )
+        assert set(row.keys()) == set(CPR_COLUMNS)
+        assert row["n_params"] > 0
+        assert row["n_groups"] > 0
+        assert row["fd_reduction"] == pytest.approx(row["n_params"] / row["n_groups"])
+        assert row["record_source"] == "computed"
+
+
+class TestPerCameraRowsPresent:
+    """`test_per_camera_rows_present` (Task 3 behavior 5)."""
+
+    def test_per_camera_rows_present(self):
+        from experiments.e3_derived_quantities import build_cpr_grouping_df
+
+        df = build_cpr_grouping_df(BENCHMARK_JSON_PATH)
+        key_cols = ["n_cameras", "n_frames", "refine_intrinsics", "normal_fixed"]
+
+        shared_keys = set(
+            map(tuple, df[df["shared_interface"]][key_cols].to_numpy().tolist())
+        )
+        percamera_keys = set(
+            map(tuple, df[~df["shared_interface"]][key_cols].to_numpy().tolist())
+        )
+        assert shared_keys == percamera_keys
+        assert len(shared_keys) == 6
+
+
+class TestLatexFragmentDefaultExcludesPerCamera:
+    """`test_latex_fragment_default_excludes_per_camera` (Task 3 behavior 6, D-21)."""
+
+    def test_latex_fragment_default_excludes_per_camera(self):
+        from experiments.e3_derived_quantities import _select_cpr_rows_for_latex
+
+        df = pd.DataFrame(
+            [
+                {"config_key": "a_shared", "shared_interface": True},
+                {"config_key": "a_percamera", "shared_interface": False},
+            ]
+        )
+
+        default_selection = _select_cpr_rows_for_latex(df, include_per_camera=False)
+        assert list(default_selection["config_key"]) == ["a_shared"]
+
+        both_selection = _select_cpr_rows_for_latex(df, include_per_camera=True)
+        assert set(both_selection["config_key"]) == {"a_shared", "a_percamera"}
+
+
+class TestSidecarCarriesEnvironment:
+    """`test_sidecar_carries_environment` (Task 3 behavior 7)."""
+
+    def test_sidecar_carries_environment(self):
+        from aquacal.io import capture_environment
+        from experiments.e3_derived_quantities import build_provenance_sidecar
+
+        sidecar = build_provenance_sidecar(42)
+        expected_keys = set(capture_environment().keys())
+        assert set(sidecar["environment"].keys()) == expected_keys
