@@ -308,6 +308,7 @@ def generate_board_trajectory(
     rotation_range_deg: float = 15.0,
     min_cameras_per_frame: int = 2,
     seed: int = 42,
+    center: tuple[float, float] | None = None,
 ) -> list[BoardPose]:
     """
     Generate board poses ensuring pose graph connectivity.
@@ -317,26 +318,53 @@ def generate_board_trajectory(
     - The pose graph is connected (can chain from reference to all cameras)
     - Board stays within reasonable depth range underwater
 
+    D-27: ``center`` defaults to the CENTROID of ``camera_positions``, not to
+    the origin and not to this function's pre-D-27 behaviour.
+    ``generate_camera_array`` recentres every layout so that ``cam0`` sits at
+    the origin, and ``cam0`` is never the middle of the array under any
+    layout -- it is a corner under ``"grid"`` and an end under ``"line"``.
+    Sampling the working volume about the origin therefore pins the
+    calibration volume to an arbitrary corner camera, by an amount that
+    differs per layout (see ``19.2-GAP-CONTEXT.md`` D-27). There is no
+    scenario in which that is the desired behaviour, so the default is
+    corrected rather than preserved for backwards compatibility. Pass
+    ``center=(0.0, 0.0)`` explicitly to reproduce the pre-D-27 behaviour
+    exactly for a given seed -- the RNG call order and count are unchanged,
+    so the sampled offsets from ``center`` are bit-identical to the old
+    offsets from the origin.
+
     Args:
         n_frames: Number of frames to generate
-        camera_positions: Dict of camera center positions (from extrinsics)
+        camera_positions: Dict of camera center positions (from extrinsics).
+            Used to compute the default ``center`` (the mean of the XY
+            positions) when ``center`` is not passed explicitly.
         water_zs: Per-camera interface distances
         depth_range: (min_z, max_z) for board center in world coords
-        xy_extent: Maximum XY offset from origin
+        xy_extent: Maximum XY offset from ``center``
         rotation_range_deg: Maximum board tilt from horizontal
         min_cameras_per_frame: Minimum cameras that must see board
         seed: Random seed
+        center: (x, y) centre of the sampled working volume. Defaults to the
+            centroid of ``camera_positions``' XY coordinates (D-27). Pass
+            ``(0.0, 0.0)`` explicitly to reproduce pre-D-27 behaviour.
 
     Returns:
         List of BoardPose objects with frame indices 0 to n_frames-1
     """
+    if center is None:
+        xs = [float(p[0]) for p in camera_positions.values()]
+        ys = [float(p[1]) for p in camera_positions.values()]
+        cx, cy = float(np.mean(xs)), float(np.mean(ys))
+    else:
+        cx, cy = center
+
     rng = np.random.default_rng(seed)
 
     poses: list[BoardPose] = []
     for frame_idx in range(n_frames):
-        # Position: random within extent, random depth
-        x = rng.uniform(-xy_extent, xy_extent)
-        y = rng.uniform(-xy_extent, xy_extent)
+        # Position: random within extent (about center), random depth
+        x = cx + rng.uniform(-xy_extent, xy_extent)
+        y = cy + rng.uniform(-xy_extent, xy_extent)
         z = rng.uniform(depth_range[0], depth_range[1])
         tvec = np.array([x, y, z], dtype=np.float64)
 
