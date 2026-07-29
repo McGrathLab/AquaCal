@@ -335,9 +335,17 @@ def _solve_newton_r_p(
     """
     Run the Newton-Raphson root-find for the interface-crossing radius `r_p`.
 
-    Shared by `_refractive_project_newton` (the shipped projector) and
-    `refractive_project_newton_diagnostic` (the public diagnostic), so a change to the
-    convergence logic cannot drift between two copies.
+    Shared by `_refractive_project_newton` (the shipped scalar projector) and
+    `refractive_project_newton_diagnostic` (the public scalar diagnostic), so a change to
+    the convergence logic cannot drift between those two copies.
+
+    This module has a THIRD Newton loop that does not use this helper:
+    `_refractive_project_newton_batch` (the vectorized loop actually called by the
+    production residual path, `refractive_project_batch`) hand-inlines its own
+    all-points-terminated iteration and never calls this function. Migrating it onto this
+    helper would require making the helper array-aware or calling it per-point (which
+    would destroy vectorization in the hottest loop of every residual evaluation) and is a
+    deliberate, recorded deferral (D-32 option (a)), not an oversight.
 
     Args:
         r_p: Initial guess for the interface-crossing radius, in metres.
@@ -475,10 +483,16 @@ def refractive_project_newton_diagnostic(
     Report Newton-Raphson root-find diagnostics for a single refractive projection.
 
     Performs the identical root-find as `_refractive_project_newton` — the shipped
-    projection path used inside every residual evaluation — via the shared
-    `_solve_newton_r_p` helper, so the counts and residual returned here describe
-    production behavior rather than a re-implementation. This is a diagnostic, not a
-    projector: it returns no pixel.
+    **scalar** projection path — via the shared `_solve_newton_r_p` helper, so the counts
+    and residual returned here describe that scalar path exactly, not a re-implementation.
+    This is a diagnostic, not a projector: it returns no pixel.
+
+    This does NOT describe the optimizer's residual evaluation: the production bundle
+    adjustment (`calibration/_optim_common.py`) projects through the vectorized
+    `refractive_project_batch` → `_refractive_project_newton_batch` path instead, which has
+    its own hand-inlined, all-points-terminated Newton loop and does not call
+    `_solve_newton_r_p`. Use `refractive_project_batch_newton_diagnostic` to measure the
+    loop production actually runs (D-32).
 
     All lengths are in metres. `max_iterations=10` and `tolerance=1e-9` are the same
     default literals the shipped projector uses (`_refractive_project_newton`).
@@ -543,18 +557,41 @@ def refractive_project_newton_diagnostic(
     }
 
 
+def _empty_batch_diagnostics() -> dict:
+    """Diagnostics dict for the degenerate case: no valid off-axis points to root-find."""
+    return {
+        "point_index": np.array([], dtype=np.int64),
+        "converged_at_iteration": np.array([], dtype=np.int64),
+        "converged": np.array([], dtype=bool),
+        "final_abs_delta": np.array([], dtype=np.float64),
+        "r_p": np.array([], dtype=np.float64),
+        "incidence_angle_deg": np.array([], dtype=np.float64),
+        "n_iterations_executed": 0,
+    }
+
+
 def _refractive_project_newton_batch(
     camera: Camera,
     interface: Interface,
     points_3d: NDArray[np.float64],
     max_iterations: int = 10,
     tolerance: float = 1e-9,
-) -> NDArray[np.float64]:
+    return_diagnostics: bool = False,
+) -> NDArray[np.float64] | tuple[NDArray[np.float64], dict]:
     """
     Project multiple 3D underwater points to 2D pixels (vectorized Newton-Raphson).
 
     Only works for horizontal interface (normal = [0, 0, -1]).
     Caller must check interface orientation before calling.
+
+    This is the loop the production residual path (`refractive_project_batch`, called
+    from `calibration/_optim_common.py`) actually runs. `return_diagnostics` is an
+    opt-in, OFF-by-default flag (D-32): when `False` (the production default), this
+    function's arithmetic, termination rule, clipping, and iteration cap are byte-for-byte
+    what shipped before D-32 -- the diagnostic bookkeeping below is purely observational
+    and never feeds back into `r_p_v`. When `True`, a second value is returned: a dict of
+    per-point convergence diagnostics for the same points (see
+    `refractive_project_batch_newton_diagnostic`).
 
     Args:
         camera: Camera object
@@ -562,10 +599,13 @@ def _refractive_project_newton_batch(
         points_3d: Array of shape (N, 3) with 3D points
         max_iterations: Maximum Newton iterations
         tolerance: Convergence tolerance
+        return_diagnostics: If True, also return a per-point diagnostics dict (default
+            False; production callers never set this).
 
     Returns:
-        Array of shape (N, 2) with pixel coordinates.
-        Invalid projections have NaN values.
+        Array of shape (N, 2) with pixel coordinates (invalid projections have NaN
+        values), or, if `return_diagnostics=True`, a tuple of that array and a
+        diagnostics dict.
     """
 
     points = np.asarray(points_3d, dtype=np.float64)
@@ -580,6 +620,8 @@ def _refractive_project_newton_batch(
     # Camera should be above interface
     h_c = z_int - C[2]
     if h_c <= 0:
+        if return_diagnostics:
+            return result, _empty_batch_diagnostics()
         return result
 
     # Compute per-point values
@@ -605,6 +647,8 @@ def _refractive_project_newton_batch(
     # Process valid off-axis points
     valid_indices = np.where(valid)[0]
     if len(valid_indices) == 0:
+        if return_diagnostics:
+            return result, _empty_batch_diagnostics()
         return result
 
     # Extract valid subset
@@ -620,8 +664,15 @@ def _refractive_project_newton_batch(
     # Initial guess: pinhole projection
     r_p_v = r_q_v * h_c / (h_c + h_q_v)
 
+    n_valid = len(valid_indices)
+    if return_diagnostics:
+        # -1 sentinel: this point's own |delta| has not yet fallen below tolerance.
+        converged_at_iteration = np.full(n_valid, -1, dtype=np.int64)
+        final_abs_delta = np.full(n_valid, np.inf, dtype=np.float64)
+    n_iterations_executed = 0
+
     # Newton-Raphson iteration (vectorized)
-    for _ in range(max_iterations):
+    for iteration in range(max_iterations):
         d_air_sq = r_p_v * r_p_v + h_c * h_c
         d_air = np.sqrt(d_air_sq)
 
@@ -641,6 +692,15 @@ def _refractive_project_newton_batch(
         r_p_v = r_p_v - delta
         r_p_v = np.clip(r_p_v, 0.0, r_q_v)
 
+        n_iterations_executed = iteration + 1
+        if return_diagnostics:
+            # Pure observation: records per-point convergence without altering delta,
+            # r_p_v, the clip, or the termination check below.
+            abs_delta = np.abs(delta)
+            final_abs_delta = abs_delta
+            newly_converged = (abs_delta < tolerance) & (converged_at_iteration < 0)
+            converged_at_iteration[newly_converged] = iteration + 1
+
         if np.all(np.abs(delta) < tolerance):
             break
 
@@ -655,7 +715,95 @@ def _refractive_project_newton_batch(
         if projected is not None:
             result[idx] = projected
 
-    return result
+    if not return_diagnostics:
+        return result
+
+    diagnostics = {
+        "point_index": valid_indices.copy(),
+        "converged_at_iteration": converged_at_iteration,
+        "converged": converged_at_iteration >= 0,
+        "final_abs_delta": final_abs_delta,
+        "r_p": r_p_v.copy(),
+        "incidence_angle_deg": np.degrees(np.arctan2(r_p_v, h_c)),
+        "n_iterations_executed": n_iterations_executed,
+    }
+    return result, diagnostics
+
+
+def refractive_project_batch_newton_diagnostic(
+    camera: Camera,
+    interface: Interface,
+    points_3d: NDArray[np.float64],
+    max_iterations: int = 10,
+    tolerance: float = 1e-9,
+) -> dict:
+    """
+    Report per-point Newton root-find diagnostics for the BATCH (production) projection
+    path (D-32).
+
+    Unlike `refractive_project_newton_diagnostic` (which measures the scalar path that
+    the optimizer's residual evaluation does not run), this function instruments
+    `_refractive_project_newton_batch` -- the vectorized, all-points-terminated loop that
+    `refractive_project_batch` actually calls from `calibration/_optim_common.py`. The
+    flag that enables this bookkeeping defaults to `False` inside the batch loop and is
+    never set by any production caller, so this function has zero effect on production
+    projection output (proven by
+    `tests/unit/test_refractive_geometry.py::TestBatchNewtonDiagnostic`).
+
+    Under all-points termination, every point iterates until the slowest point in the
+    batch converges -- there is no early exit per point. So `converged_at_iteration`
+    below is the iteration at which a point's OWN `|delta|` first dropped under
+    `tolerance`; the loop itself may keep running past that point for other points'
+    sake. This is exactly the quantity the batch loop could not report before D-32, and
+    the reason per-point cost under this loop behaves like the tail, not the median.
+
+    Only works for horizontal interface (normal = [0, 0, -1]). Caller must check
+    interface orientation before calling (mirrors `refractive_project_batch`).
+
+    Args:
+        camera: Camera object.
+        interface: Interface object (assumes horizontal normal).
+        points_3d: Array of shape (N, 3) with 3D points in water.
+        max_iterations: Maximum Newton iterations (default 10, same literal the
+            production path uses).
+        tolerance: Convergence tolerance for r_p, in metres (default 1e-9, same literal
+            the production path uses).
+
+    Returns:
+        A dict describing only the VALID off-axis points (points below the interface
+        and not directly below the camera -- the same population
+        `refractive_project_newton_diagnostic` reports over, so the two loops are
+        comparable):
+          - `point_index` (int64 array): index into `points_3d` for each reported point.
+          - `converged_at_iteration` (int64 array): 1-based iteration at which that
+            point's own `|delta|` first fell below `tolerance`, or `-1` if it never did.
+          - `converged` (bool array): `converged_at_iteration >= 0`.
+          - `final_abs_delta` (float64 array): `|delta|` at the last iteration the batch
+            loop executed (not necessarily this point's own convergence iteration, since
+            the loop may keep running for slower points).
+          - `r_p` (float64 array): converged (or clamped) interface-crossing radius, in
+            metres.
+          - `incidence_angle_deg` (float64 array): air-side incidence angle at the
+            interface, `degrees(arctan2(r_p, h_c))`.
+          - `n_iterations_executed` (int): number of vectorized loop iterations actually
+            executed before the all-points break (or `max_iterations` if it never
+            triggered), shared by the whole batch call.
+    """
+    if not _is_flat_interface(interface.normal):
+        raise ValueError(
+            "refractive_project_batch_newton_diagnostic currently only supports flat "
+            "interfaces (normal = [0,0,-1])."
+        )
+
+    _, diagnostics = _refractive_project_newton_batch(
+        camera,
+        interface,
+        points_3d,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        return_diagnostics=True,
+    )
+    return diagnostics
 
 
 def _is_flat_interface(normal: Vec3) -> bool:

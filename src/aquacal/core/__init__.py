@@ -7,6 +7,7 @@ from aquacal.core.refractive_geometry import (
     refractive_back_project,
     refractive_project,
     refractive_project_batch,
+    refractive_project_batch_newton_diagnostic,
     refractive_project_newton_diagnostic,
     snells_law_3d,
     trace_ray_air_to_water,
@@ -24,4 +25,5 @@ __all__ = [
     "refractive_project_batch",
     "refractive_back_project",
     "refractive_project_newton_diagnostic",
+    "refractive_project_batch_newton_diagnostic",
 ]

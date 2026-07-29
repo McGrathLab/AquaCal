@@ -9,9 +9,11 @@ from aquacal.config.schema import CameraExtrinsics, CameraIntrinsics
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import (
+    _refractive_project_newton_batch,
     refractive_back_project,
     refractive_project,
     refractive_project_batch,
+    refractive_project_batch_newton_diagnostic,
     refractive_project_newton_diagnostic,
     snells_law_3d,
     trace_ray_air_to_water,
@@ -865,3 +867,208 @@ class TestNewtonDiagnostic:
         params = inspect.signature(refractive_project_newton_diagnostic).parameters
         assert params["tolerance"].default == 1e-9
         assert params["max_iterations"].default == 10
+
+
+# --- D-32: batch Newton diagnostic (CR-05) ---------------------------------------------
+#
+# `_refractive_project_newton_batch` is the loop the production residual path
+# (`refractive_project_batch`, called from `calibration/_optim_common.py:635`) actually
+# runs. The frozen anchor below was captured from the PRE-D-32 implementation at commit
+# 7ae7ff640ea9ce561a540992d311a13556b4a190 (the base this plan forked from), loaded via
+# `importlib.util.spec_from_file_location` from a `git show <sha>:...` blob of
+# `src/aquacal/core/refractive_geometry.py` and run once through
+# `refractive_project_batch` on a real-rig camera ("cam0" from
+# `generate_real_rig_array()`) over a fixed point set spanning: two near-normal/oblique
+# off-axis points in different quadrants, one on-axis point, and one invalid
+# (above-interface) point. These constants must NEVER be regenerated to make a failing
+# test pass -- a mismatch means the D-32 instrumentation moved production projection
+# output, which is a hard stop per the plan's threat model (T-19.2-77).
+
+_BATCH_ANCHOR_POINTS = np.array(
+    [
+        [0.05, 0.02, 1.3809999999999998],
+        [0.3, -0.15, 1.2309999999999999],
+        [-0.2, 0.25, 1.531],
+        [0.0, 0.0, 1.431],
+        [0.0, 0.0, 0.9309999999999999],
+    ]
+)
+_BATCH_ANCHOR_EXPECTED_VALID = np.array(
+    [
+        [841.5638369800935, 626.2849331688894],
+        [1169.5323076671357, 407.25445646385833],
+        [559.770627500186, 877.7057474325691],
+        [780.22, 601.74],
+    ]
+)
+
+
+@pytest.fixture
+def real_rig_camera_and_interface():
+    """ "cam0" from the real-rig geometry (`aquacal.datasets.generate_real_rig_array`),
+    the same rig E3/E5's Newton sweeps use, paired with its Interface."""
+    from aquacal.datasets import generate_real_rig_array
+
+    intrinsics, extrinsics, water_zs = generate_real_rig_array()
+    cam_name = "cam0"
+    camera = Camera(cam_name, intrinsics[cam_name], extrinsics[cam_name])
+    interface = Interface(
+        normal=np.array([0.0, 0.0, -1.0]),
+        camera_distances=water_zs,
+        n_air=1.0,
+        n_water=1.333,
+    )
+    return camera, interface
+
+
+class TestBatchNewtonBitIdentity:
+    """D-32 acceptance: production projection output is proven bit-identical, by exact
+    equality against a frozen pre-change anchor -- not asserted."""
+
+    def test_batch_matches_pre_change_anchor(self, real_rig_camera_and_interface):
+        """`refractive_project_batch`'s output (diagnostic flag OFF, the production
+        default) is exactly equal to the frozen pre-D-32 anchor."""
+        camera, interface = real_rig_camera_and_interface
+
+        result = refractive_project_batch(camera, interface, _BATCH_ANCHOR_POINTS)
+
+        np.testing.assert_array_equal(result[:4], _BATCH_ANCHOR_EXPECTED_VALID)
+        assert np.all(np.isnan(result[4]))  # above-interface point stays invalid
+
+    def test_flag_on_and_flag_off_pixels_are_array_equal(
+        self, real_rig_camera_and_interface
+    ):
+        """Turning the opt-in diagnostic ON changes nothing about the returned pixels."""
+        camera, interface = real_rig_camera_and_interface
+
+        pixels_off = refractive_project_batch(camera, interface, _BATCH_ANCHOR_POINTS)
+        pixels_on, _diagnostics = _refractive_project_newton_batch(
+            camera, interface, _BATCH_ANCHOR_POINTS, return_diagnostics=True
+        )
+
+        np.testing.assert_array_equal(pixels_off[:4], pixels_on[:4])
+        assert np.all(np.isnan(pixels_off[4])) and np.all(np.isnan(pixels_on[4]))
+
+    def test_termination_rule_is_unchanged(self):
+        """Source-level guard: the all-points termination rule is untouched by D-32."""
+        source = inspect.getsource(_refractive_project_newton_batch)
+        assert "np.all(np.abs(delta) < tolerance)" in source
+
+
+class TestBatchNewtonDiagnostic:
+    """D-32: the new opt-in per-point diagnostic on the batch (production) Newton loop."""
+
+    def test_reports_only_valid_points_like_the_scalar_diagnostic(
+        self, real_rig_camera_and_interface
+    ):
+        """Degenerate points (on-axis, above-interface) are excluded from the per-point
+        statistics exactly as `refractive_project_newton_diagnostic` excludes them, so the
+        two loops are comparable over the same population."""
+        camera, interface = real_rig_camera_and_interface
+
+        diagnostics = refractive_project_batch_newton_diagnostic(
+            camera, interface, _BATCH_ANCHOR_POINTS
+        )
+
+        # Points 0, 1, 2 are the valid off-axis points; 3 is on-axis, 4 is invalid.
+        assert sorted(diagnostics["point_index"].tolist()) == [0, 1, 2]
+        assert len(diagnostics["converged_at_iteration"]) == 3
+        assert len(diagnostics["converged"]) == 3
+        assert len(diagnostics["final_abs_delta"]) == 3
+        assert len(diagnostics["r_p"]) == 3
+        assert len(diagnostics["incidence_angle_deg"]) == 3
+        assert isinstance(diagnostics["n_iterations_executed"], int)
+        assert 1 <= diagnostics["n_iterations_executed"] <= 10
+
+    def test_converged_points_report_a_positive_iteration_and_small_final_delta(
+        self, real_rig_camera_and_interface
+    ):
+        camera, interface = real_rig_camera_and_interface
+
+        diagnostics = refractive_project_batch_newton_diagnostic(
+            camera, interface, _BATCH_ANCHOR_POINTS
+        )
+
+        assert np.all(diagnostics["converged"])
+        assert np.all(diagnostics["converged_at_iteration"] >= 1)
+        assert np.all(
+            diagnostics["converged_at_iteration"]
+            <= diagnostics["n_iterations_executed"]
+        )
+        assert np.all(diagnostics["final_abs_delta"] < 1e-9)
+
+    def test_never_converged_point_reports_sentinel(self, simple_camera):
+        """A point that cannot converge within `max_iterations=0` reports the -1
+        sentinel and `converged=False`, rather than a fabricated iteration count."""
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        points = np.array([[0.05, 0.02, 0.5]])
+
+        diagnostics = refractive_project_batch_newton_diagnostic(
+            simple_camera, interface, points, max_iterations=0
+        )
+
+        assert diagnostics["n_iterations_executed"] == 0
+        assert diagnostics["converged_at_iteration"][0] == -1
+        assert diagnostics["converged"][0] == np.False_
+
+    def test_empty_and_degenerate_inputs_return_empty_diagnostics(
+        self, simple_camera, simple_interface
+    ):
+        """No valid off-axis points (empty array, or all points on-axis/invalid) yields
+        empty diagnostics arrays rather than an error."""
+        empty_points = np.zeros((0, 3))
+        diagnostics = refractive_project_batch_newton_diagnostic(
+            simple_camera, simple_interface, empty_points
+        )
+        assert len(diagnostics["point_index"]) == 0
+        assert diagnostics["n_iterations_executed"] == 0
+
+        z_int = simple_interface.get_water_z(simple_camera.name)
+        all_invalid = np.array([[0.0, 0.0, z_int - 0.05]])  # above interface
+        diagnostics = refractive_project_batch_newton_diagnostic(
+            simple_camera, simple_interface, all_invalid
+        )
+        assert len(diagnostics["point_index"]) == 0
+
+    def test_non_horizontal_interface_raises(self, simple_camera):
+        tilted = Interface(
+            normal=np.array([0.1, 0, -0.995]),
+            camera_distances={"cam0": 0.15},
+        )
+        points = np.array([[0.1, 0.1, 0.4]])
+        with pytest.raises(ValueError, match="flat"):
+            refractive_project_batch_newton_diagnostic(simple_camera, tilted, points)
+
+    def test_batch_diagnostic_agrees_with_scalar_diagnostic_rp(
+        self, real_rig_camera_and_interface
+    ):
+        """The two independently-terminated loops converge to the same root for the same
+        points, within a stated tolerance. Records (does not assert equality of) the
+        iteration-count difference -- the whole point of D-32 is that the two loops
+        report iteration counts differently under different termination rules."""
+        camera, interface = real_rig_camera_and_interface
+
+        batch_diag = refractive_project_batch_newton_diagnostic(
+            camera, interface, _BATCH_ANCHOR_POINTS
+        )
+
+        iteration_diffs = []
+        for i, idx in enumerate(batch_diag["point_index"]):
+            point = _BATCH_ANCHOR_POINTS[idx]
+            scalar_diag = refractive_project_newton_diagnostic(camera, interface, point)
+            assert scalar_diag is not None
+
+            assert batch_diag["r_p"][i] == pytest.approx(scalar_diag["r_p"], abs=1e-9)
+            iteration_diffs.append(
+                int(batch_diag["converged_at_iteration"][i])
+                - int(scalar_diag["n_iterations"])
+            )
+
+        # Recorded for the summary, not asserted: under all-points termination, a point's
+        # own convergence iteration can differ from the scalar loop's per-point count.
+        assert all(isinstance(d, int) for d in iteration_diffs)
