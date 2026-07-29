@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -263,3 +265,55 @@ class TestProvenanceSidecar:
         """The production band ran with intrinsics pinned at ground truth --
         the sidecar must record that value, not silently change it."""
         assert E5_REFINE_INTRINSICS is False
+
+
+class TestDefaultMetricsPathAnchoring:
+    """Task 2 (WR-06): `_default_metrics_path` must not depend on cwd."""
+
+    def test_resolves_to_the_same_path_from_two_different_working_directories(
+        self, tmp_path, monkeypatch
+    ):
+        from experiments.e5_index_sensitivity import _default_metrics_path
+
+        original_cwd = Path.cwd()
+
+        monkeypatch.chdir(tmp_path)
+        path_from_tmp = _default_metrics_path()
+
+        monkeypatch.chdir(original_cwd)
+        path_from_original = _default_metrics_path()
+
+        assert path_from_tmp == path_from_original
+        assert path_from_tmp.is_absolute()
+
+    def test_resolves_to_an_existing_file_from_a_foreign_directory(
+        self, tmp_path, monkeypatch
+    ):
+        """Invoked from a directory OTHER than the repository root (a fresh
+        tmp_path), the resolved path must still be absolute and exist."""
+        from experiments.e5_index_sensitivity import _default_metrics_path
+
+        monkeypatch.chdir(tmp_path)
+        resolved = _default_metrics_path()
+        assert resolved.is_absolute()
+        assert resolved.exists(), resolved
+
+
+class TestCheckGuardsMissingBaseline:
+    """Task 2 (WR-12): `--check` must not re-run the band when there is no
+    committed baseline to compare against."""
+
+    def test_run_check_reports_missing_baseline_without_running_the_band(
+        self, tmp_path
+    ):
+        from argparse import Namespace
+
+        from experiments.e5_index_sensitivity import _run_check
+
+        args = Namespace(out=tmp_path, seed=42, force=False, smoke=False, check=True)
+
+        with patch("experiments.e5_index_sensitivity.run_band") as mock_run_band:
+            exit_code = _run_check(args)
+
+        assert exit_code != 0
+        mock_run_band.assert_not_called()

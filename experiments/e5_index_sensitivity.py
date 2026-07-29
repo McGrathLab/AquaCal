@@ -519,7 +519,25 @@ def run_band(
 
 
 def _default_metrics_path() -> Path:
-    return Path("experiments/results/real_rig_metrics.json").resolve()
+    """Resolve `real_rig_metrics.json` relative to this file, never the process cwd (WR-06).
+
+    `holdout_floor_pct` and `scale_bias_over_floor` -- the two columns this
+    path feeds -- are the yardsticks E5's whole argument rests on. A
+    cwd-relative miss degrades both to null with only a WARNING (see
+    `load_holdout_floor_pct`), which is a silently degraded artifact of
+    exactly the kind this phase exists to eliminate: in wave 5's re-run it
+    would surface as two columns moving from populated to null,
+    indistinguishable at a glance from a determinism defect. Anchoring to
+    `__file__` (the same pattern `e3_derived_quantities.py` uses for
+    `_E2_BENCHMARK_JSON_PATH`) makes resolution independent of the directory
+    the process was launched from.
+    """
+    return (
+        Path(__file__).resolve().parents[1]
+        / "experiments"
+        / "results"
+        / "real_rig_metrics.json"
+    )
 
 
 def _run_full(args: argparse.Namespace) -> int:
@@ -560,12 +578,19 @@ def _run_full(args: argparse.Namespace) -> int:
 def _run_check(args: argparse.Namespace) -> int:
     """Recompute the full band fresh and compare against the committed baseline (D-22).
 
-    Never writes. Reruns `run_band` at the same seed/frame count as
-    `_run_full` and compares the fresh DataFrame against the committed
-    `index_sensitivity.csv` at `CHECK_RTOL`, proving the production run
-    plan 19.2-13 committed is reproducible.
+    Never writes. Checks the committed baseline exists BEFORE re-running the
+    band (WR-12) -- a missing baseline costs a message rather than eleven real
+    calibrations (~22 min) -- then reruns `run_band` at the same seed/frame
+    count as `_run_full` and compares the fresh DataFrame against the
+    committed `index_sensitivity.csv` at `CHECK_RTOL`, proving the production
+    run plan 19.2-13 committed is reproducible.
     """
     out_dir = resolve_out_dir(args.out)
+    baseline_path = out_dir / "index_sensitivity.csv"
+    if not baseline_path.exists():
+        print(f"No committed baseline at {baseline_path} to check against.")
+        return 1
+
     df = run_band(
         band=N_ASSUMED_BAND,
         n_true=N_TRUE,
@@ -576,7 +601,7 @@ def _run_check(args: argparse.Namespace) -> int:
     )
     report = compare_experiment_csv(
         df,
-        out_dir / "index_sensitivity.csv",
+        baseline_path,
         key_columns=E5_KEY_COLUMNS,
         rtol=CHECK_RTOL,
     )
