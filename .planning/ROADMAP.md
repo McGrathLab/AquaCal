@@ -291,7 +291,7 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 17/25 plans executed
+**Plans:** 20/25 plans executed
 (D-26: all `src` changes land and are proven contained before any experiment yielding a publishable
 result — see `19.2-GAP-CONTEXT.md` § "D-26 reconciliation")
 
@@ -315,9 +315,9 @@ Gap-closure plans (verification `gaps_found` 5/7; `19.2-GAP-CONTEXT.md` D-27..D-
 - [x] 19.2-15-PLAN.md — wave 1 — CR-04: make `compare_experiment_csv` total — a row-count or key-set mismatch produces a report, not a `ValueError` (third bug in this function this phase; fixed as a contract, not a fourth dtype case)
 - [x] 19.2-16-PLAN.md — wave 1 — CR-02/WR-08: E6's resume path returns the checkpoint it wrote (metrics and failure reason survive), plus D-31's E6 half — an `e6_provenance.json` sidecar and self-describing checkpoints
 - [x] 19.2-17-PLAN.md — wave 1 — CR-01/CR-03 and all three D-33 gaps: lossless E4 resume, guarded aggregation, per-cell timeout, a real-child failure test, and commit/virtual memory plus a pre-flight ceiling so a paged success cannot report `status=ok`
-- [ ] 19.2-18-PLAN.md — wave 2 — D-27/D-28/D-29: the board volume centres on the array centroid, `xy_extent` scales with the footprint, and the grid family moves to real-rig optical geometry — with D-27's containment gate (frozen anchors, grep-gate, four `--check` reproductions) standing in for D-26's blanket inertness proof
-- [ ] 19.2-19-PLAN.md — wave 2 — D-31's E5 half: an `e5_provenance.json` sidecar carrying the run configuration (WR-04), with `E5_COLUMNS` deliberately unchanged so wave 5's re-run is a determinism proof; plus WR-06/WR-12
-- [ ] 19.2-20-PLAN.md — wave 2 — D-32/CR-05: opt-in per-point instrumentation on the batch Newton loop the optimizer actually runs, proven bit-identical on production output, with E3 tier 2 rewired onto it
+- [x] 19.2-18-PLAN.md — wave 2 — D-27/D-28/D-29: the board volume centres on the array centroid, `xy_extent` scales with the footprint, and the grid family moves to real-rig optical geometry — with D-27's containment gate (frozen anchors, grep-gate, four `--check` reproductions) standing in for D-26's blanket inertness proof
+- [x] 19.2-19-PLAN.md — wave 2 — D-31's E5 half: an `e5_provenance.json` sidecar carrying the run configuration (WR-04), with `E5_COLUMNS` deliberately unchanged so wave 5's re-run is a determinism proof; plus WR-06/WR-12
+- [x] 19.2-20-PLAN.md — wave 2 — D-32/CR-05: opt-in per-point instrumentation on the batch Newton loop the optimizer actually runs, proven bit-identical on production output, with E3 tier 2 rewired onto it
 - [ ] 19.2-21-PLAN.md — wave 3 — E4's nine-cell grid re-run on the new geometry, **alone on the box**; 16×200 is pre-authorised to fail as a recorded row
 - [ ] 19.2-22-PLAN.md — wave 4 — E6's sweep re-run, **alone on the box**, re-anchored to E4's new 12×100 cell; `layout_line` is the direct empirical test of D-27
 - [ ] 19.2-23-PLAN.md — wave 5 — E5's band re-run for provenance and E3's fast tiers, **alone on the box**; a moved science column is a hard stop, and only `newton_iterations.csv` may change schema
@@ -400,7 +400,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 17/25 | In Progress|  |
+| 19.2 Experiment Execution and Provenance | v1.9 | 20/25 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
