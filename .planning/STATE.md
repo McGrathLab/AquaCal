@@ -26,15 +26,19 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
-  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 0/14 executed.**
-  Wave 1 = 19.2-01/02/03/04/14 (every src change, each exact-equality guarded).
-  Plan 19.2-06 (the ~50 min E2 re-run) moved to wave 2; its launch gate is now
-  "every src change passes its bit-identity test", not "git diff -- src/ is empty".
+  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 6/14 executed.**
+  Wave 1 COMPLETE (19.2-01/02/03/04/14 — every src change, each exact-equality guarded).
+  Wave 2 COMPLETE (19.2-06): E2 re-ran with benchmark_memory; every section-3 number
+  reproduced at 0.000% delta, so D-08's hard stop did not trigger. Measured Stage-3 peak
+  is 9.78 GiB (+8.54 GiB in stage3_interface_optimization) — see the 16-camera OOM risk
+  for plan 19.2-09. Its launch gate was the bit-identity suites passing unfiltered
+  (248 + 977 passed), not "git diff -- src/ is empty".
+  **Next: wave 3 (19.2-05 + 19.2-07).**
   New plan 19.2-14 adds seed to pipeline.py solver_config (EXP-11).
   Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
   one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
   Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
-Plan: 2 of 14
+Plan: 6 of 14
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
