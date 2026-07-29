@@ -291,7 +291,7 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 8/14 plans executed
+**Plans:** 10/14 plans executed
 changes land and are proven inert before any experiment yielding a publishable result)
 
 Plans:
@@ -303,8 +303,8 @@ Plans:
 - [x] 19.2-06-PLAN.md — wave 2 — E2 re-run against the local release frameset with `benchmark_memory: true`; a moved section-3 number is a hard stop (D-07/D-08). **Moved from wave 1 by D-26**: its launch gate is now "every `src` change is covered by a passing exact-equality bit-identity test", replacing the withdrawn `git diff .. -- src/` is-empty check
 - [x] 19.2-05-PLAN.md — wave 3 — E3 `experiments/e3_derived_quantities.py`: tiers 1-3, all six `tab:cpr` rows in both interface modes (review H1 retires the D-16 split), LaTeX fragments, environment-only sidecar. Now `depends_on` 19.2-06 — its 13/200 row copies from E2's refreshed record
 - [x] 19.2-07-PLAN.md — wave 3 — E4 rewritten as a direct-call synthetic grid, tilt-enabled and self-describing, one subprocess per cell so peak memory is per-run and an OOM is a recorded exit code (D-01..D-04, D-14, D-15; review H1/H2/H3/H5)
-- [ ] 19.2-08-PLAN.md — wave 4 — E5 `experiments/e5_index_sensitivity.py`: index band on real-rig geometry, bias vs both its own Δn = 0 control and the live-read E2 noise floor (code and tests only)
-- [ ] 19.2-10-PLAN.md — wave 4 — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline at E4's own tilt configuration (D-11, D-12; review M2/M4/M5/M7)
+- [x] 19.2-08-PLAN.md — wave 4 — E5 `experiments/e5_index_sensitivity.py`: index band on real-rig geometry, bias vs both its own Δn = 0 control and the live-read E2 noise floor (code and tests only)
+- [x] 19.2-10-PLAN.md — wave 4 — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline at E4's own tilt configuration (D-11, D-12; review M2/M4/M5/M7)
 - [ ] 19.2-09-PLAN.md — wave 5 — E4 production run, **alone on the box**: one measured probe cell, then nine cells plus E2's tenth point, `benchmark_grid.csv` + LaTeX
 - [ ] 19.2-13-PLAN.md — wave 6 — E5 production run and `index_sensitivity.csv` (split out of 19.2-08 so it never shares the machine with E4's grid — review H4)
 - [ ] 19.2-11-PLAN.md — wave 7 — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep), with a baseline cross-check against E4's 12/100 cell
@@ -386,7 +386,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 8/14 | In Progress|  |
+| 19.2 Experiment Execution and Provenance | v1.9 | 10/14 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
