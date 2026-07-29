@@ -70,7 +70,14 @@ from experiments._io import (
     validate_args,
     write_experiment_csv,
 )
-from experiments.e4_benchmark_grid import GRID_NORMAL_FIXED, build_grid_scenario
+from experiments.e4_benchmark_grid import (
+    GRID_DEPTH_RANGE,
+    GRID_HEIGHT_ABOVE_WATER,
+    GRID_NORMAL_FIXED,
+    GRID_SPACING,
+    build_grid_scenario,
+    default_xy_extent_for_layout,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,28 +105,63 @@ INDEX_AXIS_VALUES: list[float] = [1.333, 1.36, 1.39, 1.42, 1.45, 1.48, 1.51, 1.5
 LAYOUT_AXIS_VALUES: list[str] = ["grid", "ring", "line"]
 
 # Three (label, depth_range, xy_extent, spacing) settings. "default" (None,
-# None, None) is the underlying scene generators' own defaults -- the camera
-# array's spacing=0.1 m and the board trajectory's depth_range=(0.3, 0.6) m /
-# xy_extent=0.15 m (see `build_grid_scenario`'s own docstring) -- and is the
-# baseline.
+# None, None) is `build_grid_scenario`'s own default geometry -- D-29's
+# real-rig-like GRID_HEIGHT_ABOVE_WATER / GRID_DEPTH_RANGE / GRID_SPACING and
+# D-28's derived xy_extent (see `build_grid_scenario`'s own docstring) -- and
+# is the baseline.
 #
 # `spacing` deliberately varies alongside `depth_range`/`xy_extent` (review
-# M2): the camera array generator pins `spacing` at 0.1 m and the board
-# trajectory generator defaults `xy_extent` to 0.15 m, so varying only
-# the working volume changes the RATIO of working volume to camera baseline,
-# not the scale itself. Each non-default setting scales all three together by
-# the same factor (0.5x and 2x), so this axis measures "does accuracy hold as
-# the whole rig/tank scales up or down together," not a ratio effect. The
-# board's `square_size` is deliberately NOT scaled -- a real calibration
-# target does not shrink with the tank (see
-# `experiments.e4_benchmark_grid.build_grid_scenario`'s own docstring, which
-# states this same rationale for GRID_BOARD_CONFIG).
+# M2), so varying only the working volume changes the RATIO of working
+# volume to camera baseline, not the scale itself. Each non-default setting
+# scales all three together by the same factor (0.5x and 2x) relative to
+# E4's own new geometry constants (D-28, D-29) -- imported and derived here
+# rather than hardcoding a second copy of absolute numbers -- so this axis
+# measures "does accuracy hold as the whole rig/tank scales up or down
+# together," not a ratio effect. `height_above_water` is deliberately NOT
+# swept by this axis (unchanged from `build_grid_scenario`'s own default at
+# every scale value): `depth_range` is expressed relative to the water
+# surface below so that scaling by 0.5x/2x moves the board within the water
+# rather than through the surface into air. The board's `square_size` is
+# deliberately NOT scaled -- a real calibration target does not shrink with
+# the tank (see `experiments.e4_benchmark_grid.build_grid_scenario`'s own
+# docstring, which states this same rationale for GRID_BOARD_CONFIG).
+_BASELINE_DEPTH_BELOW_WATER: tuple[float, float] = (
+    GRID_DEPTH_RANGE[0] - GRID_HEIGHT_ABOVE_WATER,
+    GRID_DEPTH_RANGE[1] - GRID_HEIGHT_ABOVE_WATER,
+)
+_BASELINE_XY_EXTENT: float = default_xy_extent_for_layout(
+    n_cameras=BASELINE_N_CAMERAS, layout=BASELINE_LAYOUT, spacing=GRID_SPACING
+)
+
+
+def _scaled_depth_range(factor: float) -> tuple[float, float]:
+    """Scale the baseline's depth-below-water interval by `factor`, then
+    re-express it as an absolute Z (world-frame) depth_range by adding back
+    `GRID_HEIGHT_ABOVE_WATER` -- keeping the board underwater at every
+    scale factor."""
+    lo, hi = _BASELINE_DEPTH_BELOW_WATER
+    return (
+        GRID_HEIGHT_ABOVE_WATER + factor * lo,
+        GRID_HEIGHT_ABOVE_WATER + factor * hi,
+    )
+
+
 SCALE_AXIS_VALUES: list[
     tuple[str, tuple[float, float] | None, float | None, float | None]
 ] = [
-    ("half_scale", (0.15, 0.3), 0.075, 0.05),
+    (
+        "half_scale",
+        _scaled_depth_range(0.5),
+        0.5 * _BASELINE_XY_EXTENT,
+        0.5 * GRID_SPACING,
+    ),
     ("default", None, None, None),
-    ("double_scale", (0.6, 1.2), 0.3, 0.2),
+    (
+        "double_scale",
+        _scaled_depth_range(2.0),
+        2.0 * _BASELINE_XY_EXTENT,
+        2.0 * GRID_SPACING,
+    ),
 ]
 
 STATUS_VALUES = frozenset({"ok", "failed", "skipped_existing"})
