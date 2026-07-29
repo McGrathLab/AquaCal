@@ -77,3 +77,7 @@ jobs:
           python -m experiments.e1_refractive_comparison --smoke
           python -m experiments.e2_real_rig --smoke
           python -m experiments.e7_interface_ablation --smoke
+          python -m experiments.e3_derived_quantities --smoke
+          python -m experiments.e4_benchmark_grid --smoke
+          python -m experiments.e5_index_sensitivity --smoke
+          python -m experiments.e6_generalization_sweep --smoke
