@@ -63,6 +63,7 @@ from aquacal.datasets.synthetic import (
     generate_real_rig_array,
     generate_real_rig_trajectory,
 )
+from aquacal.io import capture_environment
 from aquacal.validation.evaluation import evaluate_calibration
 from experiments._io import (
     build_experiment_arg_parser,
@@ -144,6 +145,13 @@ BOARD_CONFIG = GRID_BOARD_CONFIG
 # drawn from the same noise realization as the frames the calibration itself
 # trained on.
 HOLDOUT_SEED_OFFSET = 100_000
+
+# The production band's calibration frame count and refine_intrinsics setting,
+# lifted to named constants so the provenance sidecar (`build_provenance_
+# sidecar`) can read the exact values `_run_full` uses rather than restating
+# them as literals that could silently drift from the run (WR-04).
+E5_N_FRAMES = 30
+E5_REFINE_INTRINSICS = False
 
 
 def build_real_rig_scenario(
@@ -229,6 +237,47 @@ def load_holdout_floor_pct(metrics_path: Path, square_size_m: float) -> float | 
     inter_corner_rmse_mm = metrics["inter_corner_rmse_mm"]
     square_size_mm = square_size_m * 1000.0
     return (inter_corner_rmse_mm / square_size_mm) * 100.0
+
+
+def build_provenance_sidecar(seed: int) -> dict:
+    """Build E5's provenance sidecar in E3's exact shape (D-31, WR-04).
+
+    Beyond the four EXP-11 fields (seed, AquaCal version, git SHA, environment),
+    the sidecar carries the configuration WR-04 identifies as unreconstructable
+    from `index_sensitivity.csv` alone: `refine_intrinsics` (which defaulted to
+    `False` for the whole production band -- a best-case bound the CSV cannot
+    reveal on its own), `normal_fixed` (`E5_NORMAL_FIXED`), the calibration
+    frame count, the swept `n_assumed` band, `n_true`, and
+    `HOLDOUT_SEED_OFFSET`. Every value is read from the same module constants
+    `_run_full` uses (never restated as a literal), so the record cannot drift
+    from the run it describes.
+
+    `solver_config: {"seed": seed}` deliberately duplicates the top-level
+    `seed` key, matching E3's documented convention
+    (`e3_derived_quantities.build_provenance_sidecar`): the generic
+    schema_version-keyed provenance check reads `solver_config["seed"]`.
+
+    Args:
+        seed: The seed the production band ran at (`args.seed`).
+
+    Returns:
+        A dict with `experiment == "e5"`, `schema_version`, `seed`,
+        `solver_config["seed"]`, an `environment` block, and the run
+        configuration described above.
+    """
+    return {
+        "experiment": "e5",
+        "schema_version": 1,
+        "seed": seed,
+        "solver_config": {"seed": seed},
+        "environment": capture_environment(),
+        "refine_intrinsics": E5_REFINE_INTRINSICS,
+        "normal_fixed": E5_NORMAL_FIXED,
+        "n_frames": E5_N_FRAMES,
+        "n_assumed_band": list(N_ASSUMED_BAND),
+        "n_true": N_TRUE,
+        "holdout_seed_offset": HOLDOUT_SEED_OFFSET,
+    }
 
 
 def build_row(
@@ -479,9 +528,10 @@ def _run_full(args: argparse.Namespace) -> int:
     df = run_band(
         band=N_ASSUMED_BAND,
         n_true=N_TRUE,
-        n_frames=30,
+        n_frames=E5_N_FRAMES,
         seed=args.seed,
         metrics_path=_default_metrics_path(),
+        refine_intrinsics=E5_REFINE_INTRINSICS,
     )
     write_experiment_csv(
         df,
@@ -489,6 +539,20 @@ def _run_full(args: argparse.Namespace) -> int:
         key_columns=E5_KEY_COLUMNS,
         force=args.force,
     )
+
+    sidecar_path = out_dir / "e5_provenance.json"
+    if args.force or not sidecar_path.exists():
+        sidecar = build_provenance_sidecar(args.seed)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(sidecar_path, "w") as f:
+            json.dump(sidecar, f, indent=2, sort_keys=True)
+    else:
+        logger.info(
+            "Skipping write to %s: file already exists and --force was not given "
+            "(resumability).",
+            sidecar_path,
+        )
+
     print("\nE5 run complete.")
     return 0
 
@@ -500,17 +564,15 @@ def _run_check(args: argparse.Namespace) -> int:
     `_run_full` and compares the fresh DataFrame against the committed
     `index_sensitivity.csv` at `CHECK_RTOL`, proving the production run
     plan 19.2-13 committed is reproducible.
-
-    Unimplemented until plan 19.2-13 commits the first baseline -- there was
-    nothing to compare against before then.
     """
     out_dir = resolve_out_dir(args.out)
     df = run_band(
         band=N_ASSUMED_BAND,
         n_true=N_TRUE,
-        n_frames=30,
+        n_frames=E5_N_FRAMES,
         seed=args.seed,
         metrics_path=_default_metrics_path(),
+        refine_intrinsics=E5_REFINE_INTRINSICS,
     )
     report = compare_experiment_csv(
         df,
