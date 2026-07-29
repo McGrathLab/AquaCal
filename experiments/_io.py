@@ -226,11 +226,22 @@ def compare_experiment_csv(
 ) -> ComparisonReport:
     """Compare a freshly produced DataFrame against a committed baseline CSV (D-22).
 
-    Never writes to `committed_path` or anywhere else. Sorts both frames by
-    `key_columns` before comparing (RESEARCH Pitfall 5: a committed CSV whose
-    rows are shuffled relative to the fresh frame must still compare as
-    passed). Float columns compare at `rtol`; non-float (object/string/int)
-    columns must compare exactly.
+    Never writes to `committed_path` or anywhere else. Aligns the two frames
+    on `key_columns` before comparing (RESEARCH Pitfall 5: a committed CSV
+    whose rows are shuffled relative to the fresh frame must still compare as
+    passed) rather than by row position. Float columns compare at `rtol`;
+    non-float (object/string/int) columns must compare exactly.
+
+    Totality contract: this function returns a `ComparisonReport` for every
+    `(fresh, committed_path, key_columns, rtol)` whose committed file is
+    readable as a CSV, including a row-count mismatch, a key-set mismatch, a
+    duplicate key, and a non-numeric cell inside a column pandas classified
+    as float. The only exceptions it may propagate are I/O errors reading
+    `committed_path` (e.g. the file does not exist or is not valid CSV). A
+    caller extending this function is extending a total function, not adding
+    a new special case to a partial one -- see the CR-04 history in the
+    body below (`ee8af31`, `ac75e35`, and the key-alignment fix that replaced
+    positional sort-and-compare).
 
     Args:
         fresh: The freshly computed `DataFrame` to check.
@@ -240,9 +251,10 @@ def compare_experiment_csv(
         rtol: Relative tolerance applied to float columns only.
 
     Returns:
-        A `ComparisonReport` describing the outcome. On a header mismatch,
-        `passed` is False and `message` names the offending column(s) rather
-        than reporting a tolerance failure.
+        A `ComparisonReport` describing the outcome. On a header mismatch, a
+        row-count mismatch, a key-set mismatch, or a duplicate key, `passed`
+        is False and `message` names the offending structural difference
+        rather than reporting a tolerance failure or raising.
     """
     committed = pd.read_csv(committed_path)
 
@@ -262,6 +274,68 @@ def compare_experiment_csv(
             message=message,
         )
 
+    # Align on key_columns explicitly, and classify the structural outcome
+    # BEFORE any cell-level comparison. Sorting both frames and comparing
+    # positionally (the prior approach) raises `ValueError: Can only compare
+    # identically-labeled Series objects` the moment the two frames differ in
+    # length, and silently mis-pairs row i of one frame against row i of the
+    # other whenever the key sets merely happen to have equal length (WR-10)
+    # -- e.g. a row-count mismatch, or two frames whose keys differ but whose
+    # counts coincide.
+    fresh_keys = list(fresh.set_index(key_columns).index)
+    committed_keys = list(committed.set_index(key_columns).index)
+    fresh_key_set = set(fresh_keys)
+    committed_key_set = set(committed_keys)
+
+    if fresh_key_set != committed_key_set:
+        fresh_only = sorted(map(str, fresh_key_set - committed_key_set))
+        committed_only = sorted(map(str, committed_key_set - fresh_key_set))
+        _MAX_SHOWN = 10
+        message = (
+            f"Key set mismatch on {key_columns} (committed file: "
+            f"{committed_path}): {len(fresh_only)} key(s) only in fresh "
+            f"{fresh_only[:_MAX_SHOWN]}"
+            f"{'...' if len(fresh_only) > _MAX_SHOWN else ''}, "
+            f"{len(committed_only)} key(s) only in committed "
+            f"{committed_only[:_MAX_SHOWN]}"
+            f"{'...' if len(committed_only) > _MAX_SHOWN else ''}"
+        )
+        return ComparisonReport(
+            passed=False,
+            worst_cell=message,
+            worst_rtol=float("inf"),
+            n_mismatched_cells=max(len(fresh_only) + len(committed_only), 1),
+            message=message,
+        )
+
+    if len(fresh_keys) != len(fresh_key_set) or len(committed_keys) != len(
+        committed_key_set
+    ):
+        # Same key set (by unique value) but a different row count means at
+        # least one side has a duplicate key -- key-based alignment cannot
+        # pair rows unambiguously in that case.
+        message = (
+            f"Duplicate key(s) on {key_columns} (committed file: "
+            f"{committed_path}): fresh has {len(fresh_keys)} row(s) / "
+            f"{len(fresh_key_set)} unique key(s), committed has "
+            f"{len(committed_keys)} row(s) / {len(committed_key_set)} "
+            "unique key(s)."
+        )
+        return ComparisonReport(
+            passed=False,
+            worst_cell=message,
+            worst_rtol=float("inf"),
+            n_mismatched_cells=max(
+                abs(len(fresh_keys) - len(fresh_key_set))
+                + abs(len(committed_keys) - len(committed_key_set)),
+                1,
+            ),
+            message=message,
+        )
+
+    # Key sets are equal and each key is unique on both sides: align by key
+    # (not row position) so every subsequent comparison names the true
+    # counterpart row.
     fresh_sorted = fresh.sort_values(by=key_columns, kind="stable").reset_index(
         drop=True
     )
@@ -352,13 +426,51 @@ def compare_experiment_csv(
     n_mismatched_cells = len(mismatched_non_float)
 
     for col in float_columns:
-        fresh_vals = fresh_sorted[col].to_numpy(dtype=float)
-        committed_vals = committed_sorted[col].to_numpy(dtype=float)
+        # `float_columns` classifies by dtype in EITHER frame (see above), so
+        # a column that is float-classified because `fresh` is all-NaN can
+        # still carry a real non-numeric string on the `committed` side (the
+        # third member of the CSV dtype round-trip family, after `ee8af31`
+        # and `ac75e35`): e.g. a `status_reason` column that is all-NaN in a
+        # fresh run but holds `"KeyError: 'cam11'"` in one committed row.
+        # `to_numpy(dtype=float)` would raise `ValueError: could not convert
+        # string to float` on that cell. Coerce with `pd.to_numeric(...,
+        # errors="coerce")` on BOTH sides instead of adding a fourth dtype
+        # special case: any non-numeric cell becomes NaN, which then compares
+        # as a mismatch below (never silently skipped -- a NaN-vs-value pair
+        # must still count against n_mismatched_cells, or this fix would hide
+        # the very defect it exists to surface).
+        # Track "genuinely missing" (NaN in the RAW, pre-coercion column) so
+        # a real non-numeric string that `to_numeric` coerces away (e.g.
+        # committed's "KeyError: 'cam11'") is never confused with a
+        # legitimate missing value -- only both-sides-raw-NaN is a match.
+        fresh_raw_isna = fresh_sorted[col].isna().to_numpy()
+        committed_raw_isna = committed_sorted[col].isna().to_numpy()
+        both_genuinely_missing = fresh_raw_isna & committed_raw_isna
+
+        fresh_vals = pd.to_numeric(fresh_sorted[col], errors="coerce").to_numpy(
+            dtype=float
+        )
+        committed_vals = pd.to_numeric(committed_sorted[col], errors="coerce").to_numpy(
+            dtype=float
+        )
         denom = committed_vals.copy()
         denom[denom == 0] = 1.0
         rel_diff = abs(fresh_vals - committed_vals) / abs(denom)
         for row_idx in fresh_sorted.index:
-            cell_rtol = rel_diff[row_idx]
+            if both_genuinely_missing[row_idx]:
+                # Both sides were NaN before coercion too (e.g. both
+                # genuinely missing) -- not a mismatch.
+                continue
+            # A cell where coercion produced NaN on either side but the two
+            # sides were not BOTH genuinely missing (one is a real
+            # non-numeric string, or one is missing and the other a real
+            # value) must still count as a mismatch -- silently skipping it
+            # would hide the very defect this coercion exists to surface.
+            cell_rtol = (
+                float("inf")
+                if (pd.isna(fresh_vals[row_idx]) or pd.isna(committed_vals[row_idx]))
+                else rel_diff[row_idx]
+            )
             if cell_rtol > rtol:
                 n_mismatched_cells += 1
                 if cell_rtol > worst_rtol:
