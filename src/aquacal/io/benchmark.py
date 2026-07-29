@@ -169,6 +169,13 @@ def _linux_vmhwm_bytes() -> int | None:
     return None
 
 
+_NULL_COMMIT_FIELDS = {
+    "commit_current_bytes": None,
+    "commit_peak_bytes": None,
+    "ram_total_bytes": None,
+}
+
+
 def capture_peak_memory() -> dict:
     """Capture a labelled peak-memory reading, safe to call repeatedly.
 
@@ -190,18 +197,42 @@ def capture_peak_memory() -> dict:
     (D-18) -- this is the property per-stage attribution depends on.
 
     Never raises: the entire dispatch is wrapped in `try/except`, degrading
-    to `{"peak_bytes": None, "mode": "unavailable"}` on any unexpected
-    error, because a memory measurement must never abort a calibration run.
+    to `{"peak_bytes": None, "mode": "unavailable", "commit_current_bytes":
+    None, "commit_peak_bytes": None, "ram_total_bytes": None}` on any
+    unexpected error, because a memory measurement must never abort a
+    calibration run.
+
+    `peak_bytes` alone cannot distinguish a clean measurement from one
+    where the OS silently paged a near-limit process to disk (D-33 gap 3):
+    on Windows, `peak_bytes`/`mode` describe the *resident* working set
+    (`peak_wset`), which paging caps near the physical ceiling while the
+    process's true *commit* charge keeps climbing. `commit_current_bytes`/
+    `commit_peak_bytes` -- read from the same `psutil` call alongside
+    `ram_total_bytes` -- let a reader detect that divergence rather than
+    inferring it.
 
     Returns:
-        Dict with exactly two keys:
-            - `peak_bytes` (int | None): the reading, in bytes.
+        Dict with five keys:
+            - `peak_bytes` (int | None): the resident high-water-mark
+              reading, in bytes. Unchanged in meaning and value from before
+              this function grew the commit/virtual fields below.
             - `mode` (str): one of `"psutil_peak_wset"`,
               `"proc_status_vmhwm"`, `"tracemalloc_python_heap"`,
               `"psutil_rss_sampled"`, or `"unavailable"`. Distinguishes a
               true OS-maintained high-water mark from the weaker
               instantaneous `"psutil_rss_sampled"` fallback -- never
-              conflate the two.
+              conflate the two. Unchanged vocabulary.
+            - `commit_current_bytes` (int | None): the process's current
+              commit/pagefile charge, in bytes. Populated only on Windows
+              (`psutil.Process().memory_full_info().pagefile`); `None`
+              everywhere else, including on any failure.
+            - `commit_peak_bytes` (int | None): the process's peak
+              commit/pagefile charge, in bytes. Populated only on Windows
+              (`...memory_full_info().peak_pagefile`); `None` everywhere
+              else.
+            - `ram_total_bytes` (int | None): the machine's total physical
+              RAM, in bytes. Populated only on Windows
+              (`psutil.virtual_memory().total`); `None` everywhere else.
     """
     try:
         system = platform.system()
@@ -209,14 +240,25 @@ def capture_peak_memory() -> dict:
         if system == "Linux":
             vmhwm_bytes = _linux_vmhwm_bytes()
             if vmhwm_bytes is not None:
-                return {"peak_bytes": vmhwm_bytes, "mode": "proc_status_vmhwm"}
+                return {
+                    "peak_bytes": vmhwm_bytes,
+                    "mode": "proc_status_vmhwm",
+                    **_NULL_COMMIT_FIELDS,
+                }
 
         if system == "Windows":
             try:
                 import psutil
 
-                peak_wset = psutil.Process().memory_full_info().peak_wset
-                return {"peak_bytes": int(peak_wset), "mode": "psutil_peak_wset"}
+                full_info = psutil.Process().memory_full_info()
+                ram_total_bytes = int(psutil.virtual_memory().total)
+                return {
+                    "peak_bytes": int(full_info.peak_wset),
+                    "mode": "psutil_peak_wset",
+                    "commit_current_bytes": int(full_info.pagefile),
+                    "commit_peak_bytes": int(full_info.peak_pagefile),
+                    "ram_total_bytes": ram_total_bytes,
+                }
             except ImportError:
                 logger.debug(
                     "psutil unavailable on Windows; falling back to tracemalloc."
@@ -226,7 +268,11 @@ def capture_peak_memory() -> dict:
                 import psutil
 
                 rss = psutil.Process().memory_info().rss
-                return {"peak_bytes": int(rss), "mode": "psutil_rss_sampled"}
+                return {
+                    "peak_bytes": int(rss),
+                    "mode": "psutil_rss_sampled",
+                    **_NULL_COMMIT_FIELDS,
+                }
             except ImportError:
                 logger.debug(
                     "psutil unavailable on %s; falling back to tracemalloc.", system
@@ -235,12 +281,16 @@ def capture_peak_memory() -> dict:
         if not tracemalloc.is_tracing():
             tracemalloc.start()
         _, peak_bytes = tracemalloc.get_traced_memory()
-        return {"peak_bytes": int(peak_bytes), "mode": "tracemalloc_python_heap"}
+        return {
+            "peak_bytes": int(peak_bytes),
+            "mode": "tracemalloc_python_heap",
+            **_NULL_COMMIT_FIELDS,
+        }
     except Exception:
         logger.debug(
             "capture_peak_memory() failed unexpectedly; degrading to unavailable."
         )
-        return {"peak_bytes": None, "mode": "unavailable"}
+        return {"peak_bytes": None, "mode": "unavailable", **_NULL_COMMIT_FIELDS}
 
 
 _STAGES_WITH_NO_SOLVER_DIAGNOSTICS_REASON = (
@@ -405,6 +455,11 @@ def assemble_benchmark_record(
                 "cumulative_peak_bytes_as_of_stage_end": reading.get("peak_bytes"),
                 "delta_bytes_since_previous_boundary": delta_bytes,
                 "mode": reading.get("mode"),
+                "commit_current_bytes_as_of_stage_end": reading.get(
+                    "commit_current_bytes"
+                ),
+                "commit_peak_bytes_as_of_stage_end": reading.get("commit_peak_bytes"),
+                "ram_total_bytes": reading.get("ram_total_bytes"),
             }
 
             if boundary_name in record["stages"]:
