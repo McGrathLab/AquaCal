@@ -33,12 +33,16 @@ Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
   is 9.78 GiB (+8.54 GiB in stage3_interface_optimization) — see the 16-camera OOM risk
   for plan 19.2-09. Its launch gate was the bit-identity suites passing unfiltered
   (248 + 977 passed), not "git diff -- src/ is empty".
-  **Next: wave 3 (19.2-05 + 19.2-07).**
+  Wave 3 COMPLETE (19.2-05 + 19.2-07): E3's three-tier derived-quantities script and E4's
+  direct-call grid runner. Both interrupted by a power outage mid-wave and resumed in place from
+  their worktrees with no lost commits. E3 surfaced MF-01 (see .planning/MANUSCRIPT-FINDINGS.md):
+  the supplement's "two to four steps" Newton claim matches the median but misses a tail of 7.
+  **Next: wave 4 (19.2-08 + 19.2-10).**
   New plan 19.2-14 adds seed to pipeline.py solver_config (EXP-11).
   Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
   one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
   Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
-Plan: 6 of 14
+Plan: 8 of 14
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
