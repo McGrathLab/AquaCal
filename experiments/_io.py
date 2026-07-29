@@ -269,6 +269,20 @@ def compare_experiment_csv(
         drop=True
     )
 
+    # A column that is all empty strings in `fresh` (e.g. status_reason on an
+    # all-"ok" grid) round-trips through CSV as an all-NaN float64 column on
+    # `committed`, which would otherwise misclassify it as a float column
+    # below and crash `to_numpy(dtype=float)` on the empty-string side. Bring
+    # `committed` back to object dtype with "" in place of NaN wherever
+    # `fresh` is itself an object (string) column, so the exact non-float
+    # comparison sees "" == "" rather than a spurious dtype-driven mismatch.
+    for col in fresh_sorted.columns:
+        fresh_is_stringlike = pd.api.types.is_object_dtype(
+            fresh_sorted[col]
+        ) or pd.api.types.is_string_dtype(fresh_sorted[col])
+        if fresh_is_stringlike and pd.api.types.is_float_dtype(committed_sorted[col]):
+            committed_sorted[col] = committed_sorted[col].fillna("").astype(object)
+
     float_columns = [
         c
         for c in fresh_columns
