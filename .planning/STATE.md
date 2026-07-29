@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: executing
-stopped_at: Completed 19.2-12-PLAN.md
+status: gaps_found
+stopped_at: Phase 19.2 verification found gaps (EXP-11 provenance, CR-05 Newton path)
 last_updated: "2026-07-29T01:30:04.528Z"
 last_activity: 2026-07-29 -- Phase 19.2 execution started
 progress:

@@ -386,7 +386,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 14/14 | Complete   | 2026-07-29 |
+| 19.2 Experiment Execution and Provenance | v1.9 | 14/14 | Gaps found  | -          |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
