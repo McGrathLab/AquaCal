@@ -8,13 +8,23 @@ exercise a real, small solve) is verified separately by the plan's own
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 import experiments.e4_benchmark_grid as e4
 import experiments.e6_generalization_sweep as m
+
+REQUIRED_ENVIRONMENT_KEYS = {
+    "aquacal_version",
+    "git_sha",
+    "python_version",
+    "numpy_version",
+    "scipy_version",
+}
 
 
 def _sample_metrics() -> dict:
@@ -149,3 +159,273 @@ def test_status_vocabulary():
         if status != "ok":
             for col in m._METRIC_COLUMNS:
                 assert row[col] is None
+
+
+# ---------------------------------------------------------------------------
+# CR-02 / WR-08: resume path returns the checkpoint it wrote (Task 1)
+# ---------------------------------------------------------------------------
+
+
+def test_resume_returns_cached_ok_metrics(tmp_path):
+    """A force=False re-entry over an 'ok' checkpoint returns its cached metrics,
+    not None -- CR-02. On EXPECTED_BASE this fails: the skip branch returns
+    `metrics: None` unconditionally without opening the file."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    metrics = _sample_metrics()
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": metrics,
+        "seed": 42,
+        "n_frames": 100,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    outcome = m.run_configuration(config, seed=42, n_frames=100, out_dir=tmp_path)
+
+    assert outcome["status"] == "ok"
+    assert outcome["metrics"] == metrics
+    row = m.build_row(
+        config,
+        seed=42,
+        n_frames=100,
+        metrics=outcome["metrics"],
+        status=outcome["status"],
+        status_reason=outcome["status_reason"],
+    )
+    for col in m._METRIC_COLUMNS:
+        assert row[col] is not None
+
+
+def test_resume_returns_cached_failed_reason(tmp_path):
+    """A force=False re-entry over a 'failed' checkpoint returns the recorded
+    status_reason, not "" -- WR-08. On EXPECTED_BASE this fails: the skip
+    branch always returns `status_reason: ""`."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    checkpoint = {
+        "status": "failed",
+        "status_reason": "KeyError: 'cam11'",
+        "metrics": None,
+        "seed": 42,
+        "n_frames": 100,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    outcome = m.run_configuration(config, seed=42, n_frames=100, out_dir=tmp_path)
+
+    assert outcome["status"] == "failed"
+    assert outcome["status_reason"] == "KeyError: 'cam11'"
+    assert outcome["metrics"] is None
+
+
+def test_resume_survives_corrupt_checkpoint(tmp_path, monkeypatch):
+    """A truncated/corrupt (non-JSON) checkpoint degrades to a re-run, never an
+    exception out of run_configuration. `build_grid_scenario` is monkeypatched
+    to fail fast so this stays a fast unit test rather than a real solve."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    (configs_dir / f"{config['config_key']}.json").write_text("{not valid json")
+
+    def _boom(**kwargs):
+        raise RuntimeError("synthetic failure for the corrupt-checkpoint test")
+
+    monkeypatch.setattr(m, "build_grid_scenario", _boom)
+
+    outcome = m.run_configuration(config, seed=42, n_frames=100, out_dir=tmp_path)
+
+    assert outcome["status"] == "failed"
+    assert "synthetic failure" in outcome["status_reason"]
+
+
+def test_force_true_still_reruns_and_overwrites(tmp_path, monkeypatch):
+    """force=True re-runs and overwrites an existing checkpoint, unchanged."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    stale_checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(
+        json.dumps(stale_checkpoint)
+    )
+
+    def _boom(**kwargs):
+        raise RuntimeError("forced re-run reached the scenario builder")
+
+    monkeypatch.setattr(m, "build_grid_scenario", _boom)
+
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=100, out_dir=tmp_path, force=True
+    )
+
+    assert outcome["status"] == "failed"
+    assert "forced re-run reached the scenario builder" in outcome["status_reason"]
+
+
+def test_false_resume_concession_removed():
+    """The docstring no longer claims a resumed CSV requires --force to fill
+    every metric column -- that sentence described the CR-02 defect as an
+    intentional limitation."""
+    source = Path(m.__file__).read_text(encoding="utf-8")
+    assert "requires re-running with `force=True`" not in source
+
+
+# ---------------------------------------------------------------------------
+# D-31: four-field provenance -- sidecar plus self-describing checkpoints (Task 2)
+# ---------------------------------------------------------------------------
+
+
+def test_checkpoint_has_provenance_keys(tmp_path, monkeypatch):
+    """Every checkpoint written by run_configuration is self-describing: it
+    carries schema_version, an environment block, and solver_config['seed']
+    in addition to the pre-existing fields."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+
+    def _fail_fast(**kwargs):
+        raise RuntimeError("keep this test fast -- fail before any real solve")
+
+    monkeypatch.setattr(m, "build_grid_scenario", _fail_fast)
+
+    outcome = m.run_configuration(config, seed=42, n_frames=100, out_dir=tmp_path)
+    assert outcome["status"] == "failed"
+
+    checkpoint_path = tmp_path / "e6_configs" / f"{config['config_key']}.json"
+    with open(checkpoint_path) as f:
+        checkpoint = json.load(f)
+
+    required_keys = {
+        "schema_version",
+        "environment",
+        "seed",
+        "solver_config",
+        "status",
+        "status_reason",
+        "metrics",
+        "n_frames",
+        "config",
+    }
+    assert required_keys <= set(checkpoint)
+    assert checkpoint["solver_config"]["seed"] == 42
+    assert REQUIRED_ENVIRONMENT_KEYS <= set(checkpoint["environment"])
+
+
+def test_provenance_sidecar_shape():
+    """E6's provenance sidecar matches E3's exact shape (D-31)."""
+    sidecar = m.build_provenance_sidecar(seed=42)
+    assert sidecar["experiment"] == "e6"
+    assert "schema_version" in sidecar
+    assert sidecar["seed"] == 42
+    assert sidecar["solver_config"]["seed"] == 42
+    assert REQUIRED_ENVIRONMENT_KEYS <= set(sidecar["environment"])
+
+
+def test_e6_columns_unchanged_by_provenance_work():
+    """generalization_sweep.csv's header is untouched by this plan (28 columns)."""
+    assert len(m.E6_COLUMNS) == 28
+
+
+# ---------------------------------------------------------------------------
+# WR-03: cached config identity must match the recomputed configuration
+# ---------------------------------------------------------------------------
+
+
+def test_config_identity_matches_helper():
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    identity = m._resolve_config_identity(config)
+    cached_config = json.loads(json.dumps(identity))
+    assert m._config_identity_matches(config, cached_config)
+
+    mutated = dict(cached_config)
+    mutated["n_water"] = (mutated.get("n_water") or 1.0) + 100.0
+    assert not m._config_identity_matches(config, mutated)
+
+
+def test_reconstitute_row_flags_mismatched_config(tmp_path):
+    """_run_check's row reconstitution refuses a cached checkpoint whose
+    recorded config does not match the recomputed configuration (WR-03,
+    T-19.2-63) -- it does not silently trust stale cached metrics."""
+    config = m.build_axis_configurations()[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    identity = m._resolve_config_identity(config)
+    mismatched = {**identity, "n_water": (identity.get("n_water") or 1.0) + 999.0}
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "config": mismatched,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    row = m._reconstitute_row(config, configs_dir, default_seed=42)
+
+    assert row["status"] == "failed"
+    assert "does not match" in row["status_reason"]
+    for col in m._METRIC_COLUMNS:
+        assert row[col] is None
+
+
+def test_reconstitute_row_accepts_matching_config(tmp_path):
+    config = m.build_axis_configurations()[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    identity = json.loads(json.dumps(m._resolve_config_identity(config)))
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "config": identity,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    row = m._reconstitute_row(config, configs_dir, default_seed=42)
+
+    assert row["status"] == "ok"
+    assert row["reprojection_rms_px"] is not None
+
+
+def test_reconstitute_row_missing_config_is_backward_compatible(tmp_path):
+    """A pre-D-31 checkpoint with no `config` key is trusted, not flagged -- the
+    twelve committed checkpoints are only regenerated in wave 4."""
+    config = m.build_axis_configurations()[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    row = m._reconstitute_row(config, configs_dir, default_seed=42)
+
+    assert row["status"] == "ok"
+
+
+def test_reconstitute_row_missing_checkpoint_is_failed():
+    config = m.build_axis_configurations()[0]
+    with pytest.MonkeyPatch.context():
+        row = m._reconstitute_row(config, Path("does-not-exist"), default_seed=42)
+    assert row["status"] == "failed"
+    assert "no checkpoint JSON found" in row["status_reason"]
