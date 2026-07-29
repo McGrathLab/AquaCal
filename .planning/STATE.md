@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Completed 19.2-06-PLAN.md
+stopped_at: "Phase 19.2 wave 3 COMPLETE (05, 07) -- next: wave 4 (08 + 10)"
 last_updated: "2026-07-29T00:17:03.239Z"
 last_activity: 2026-07-29
 progress:
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-23)
 ## Current Position
 
 Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
-  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 6/14 executed.**
+  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 8/14 executed.**
   Wave 1 COMPLETE (19.2-01/02/03/04/14 — every src change, each exact-equality guarded).
   Wave 2 COMPLETE (19.2-06): E2 re-ran with benchmark_memory; every section-3 number
   reproduced at 0.000% delta, so D-08's hard stop did not trigger. Measured Stage-3 peak
