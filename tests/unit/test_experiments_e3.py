@@ -10,6 +10,7 @@ from `tests/unit/test_optim_common.py` so this file stands alone.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -397,3 +398,136 @@ class TestSidecarCarriesEnvironment:
         sidecar = build_provenance_sidecar(42)
         expected_keys = set(capture_environment().keys())
         assert set(sidecar["environment"].keys()) == expected_keys
+
+
+# --- D-32/CR-05: tier 2 rewired to measure the production (batch) Newton loop ----------
+
+
+class TestNewtonColumnsIncludeLoop:
+    """`NEWTON_COLUMNS`/`NEWTON_KEY_COLUMNS` gain a `loop` column (D-32)."""
+
+    def test_newton_columns_include_loop_and_key_columns_updated(self):
+        from experiments.e3_derived_quantities import (
+            NEWTON_COLUMNS,
+            NEWTON_KEY_COLUMNS,
+            NEWTON_LOOP_VALUES,
+        )
+
+        assert "loop" in NEWTON_COLUMNS
+        assert NEWTON_KEY_COLUMNS == ["camera", "loop"]
+        assert set(NEWTON_LOOP_VALUES) == {"scalar", "batch"}
+
+
+class TestBuildNewtonIterationsDfBothLoops:
+    """`build_newton_iterations_df` emits rows for both loops over the same population
+    (Task 2 behavior 1), row count doubles to 26 for 12 cameras + ALL (Task 2 behavior 2)."""
+
+    def test_both_loops_represented_with_double_row_count(self):
+        from experiments.e3_derived_quantities import (
+            NEWTON_COLUMNS,
+            NEWTON_LOOP_BATCH,
+            NEWTON_LOOP_SCALAR,
+            build_newton_iterations_df,
+        )
+
+        df = build_newton_iterations_df(n_frames=2, seed=42)
+
+        assert list(df.columns) == NEWTON_COLUMNS
+        assert len(df) == 26  # 12 cameras + ALL, times 2 loops
+        assert set(df["loop"]) == {NEWTON_LOOP_SCALAR, NEWTON_LOOP_BATCH}
+        # Every camera (+ALL) reports exactly one scalar row and one batch row.
+        counts = df.groupby("camera")["loop"].nunique()
+        assert (counts == 2).all()
+
+    def test_scalar_rows_unchanged_columns_and_semantics_vs_committed_baseline(self):
+        """Scalar rows' column names/semantics match the header of the committed
+        pre-D-32 baseline (`experiments/results/newton_iterations.csv`, minus the new
+        `loop` column), and the loop column uses the fixed vocabulary."""
+        from experiments.e3_derived_quantities import (
+            NEWTON_LOOP_SCALAR,
+            build_newton_iterations_df,
+        )
+
+        baseline_path = (
+            Path(__file__).resolve().parents[2]
+            / "experiments"
+            / "results"
+            / "newton_iterations.csv"
+        )
+        baseline_header = pd.read_csv(baseline_path, nrows=0).columns.tolist()
+
+        df = build_newton_iterations_df(n_frames=2, seed=42)
+        scalar_df = df[df["loop"] == NEWTON_LOOP_SCALAR]
+
+        # The scalar rows carry every pre-D-32 column (order-independent), plus the new
+        # `loop` column as the only addition.
+        assert set(baseline_header) <= set(scalar_df.columns)
+        assert set(scalar_df.columns) - set(baseline_header) == {"loop"}
+        assert set(scalar_df["loop"]) == {NEWTON_LOOP_SCALAR}
+
+    def test_batch_rows_n_not_converged_from_per_point_convergence_flags(self):
+        """The batch rows' `n_not_converged` is computed from the batch diagnostic's
+        `converged` array, not inferred from a residual threshold (Task 2 behavior 3)."""
+        from aquacal.core.refractive_geometry import (
+            refractive_project_batch_newton_diagnostic,
+        )
+        from experiments.e3_derived_quantities import (
+            NEWTON_LOOP_BATCH,
+            build_newton_iterations_df,
+        )
+
+        # Patch the batch diagnostic to force one point to report converged=False,
+        # and assert that single non-convergence surfaces in the aggregated row --
+        # proving n_not_converged is read from the diagnostic's own flag, not derived
+        # from `final_abs_delta` by a threshold comparison in this module.
+        def _forced_one_not_converged(camera, interface, points_3d, **kwargs):
+            diagnostics = refractive_project_batch_newton_diagnostic(
+                camera, interface, points_3d, **kwargs
+            )
+            if len(diagnostics["converged"]) > 0:
+                diagnostics = dict(diagnostics)
+                diagnostics["converged"] = diagnostics["converged"].copy()
+                diagnostics["converged_at_iteration"] = diagnostics[
+                    "converged_at_iteration"
+                ].copy()
+                diagnostics["converged"][0] = False
+                diagnostics["converged_at_iteration"][0] = -1
+            return diagnostics
+
+        with patch(
+            "experiments.e3_derived_quantities.refractive_project_batch_newton_diagnostic",
+            side_effect=_forced_one_not_converged,
+        ):
+            df = build_newton_iterations_df(n_frames=1, seed=42)
+
+        batch_all_row = df[
+            (df["loop"] == NEWTON_LOOP_BATCH) & (df["camera"] == "ALL")
+        ].iloc[0]
+        assert batch_all_row["n_not_converged"] >= 1
+
+
+class TestRunCheckHonoursSeed:
+    """`_run_check` uses the seed it was given, closing WR-05 (Task 2 behavior 4)."""
+
+    def test_run_check_passes_seed_to_build_newton_iterations_df(self, tmp_path):
+        from experiments.e3_derived_quantities import _run_check
+
+        # No committed baselines in tmp_path -> _run_check reports failure for all
+        # tiers, but the call under test only cares whether build_newton_iterations_df
+        # was invoked with the seed _run_check was given.
+        with patch(
+            "experiments.e3_derived_quantities.build_newton_iterations_df"
+        ) as mock_build:
+            mock_build.return_value = pd.DataFrame()
+            _run_check(tmp_path, seed=7)
+
+        # newton_path.exists() is False in an empty tmp_path, so build_newton_iterations_df
+        # is never called in that branch. Create a stub baseline so the branch executes.
+        (tmp_path / "newton_iterations.csv").write_text("camera,loop\n")
+        with patch(
+            "experiments.e3_derived_quantities.build_newton_iterations_df"
+        ) as mock_build:
+            mock_build.return_value = pd.DataFrame({"camera": [], "loop": []})
+            _run_check(tmp_path, seed=7)
+
+        mock_build.assert_called_once_with(n_frames=100, seed=7)
