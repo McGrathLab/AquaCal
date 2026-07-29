@@ -291,8 +291,9 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 14/14 plans complete
-changes land and are proven inert before any experiment yielding a publishable result)
+**Plans:** 14/14 original plans complete; 11 gap-closure plans (19.2-15..19.2-25) added 2026-07-29
+(D-26: all `src` changes land and are proven contained before any experiment yielding a publishable
+result — see `19.2-GAP-CONTEXT.md` § "D-26 reconciliation")
 
 Plans:
 - [x] 19.2-01-PLAN.md — wave 1 — `calibrate_synthetic` gains `memory_out` (D-06), honours the scenario's own `n_air`/`n_water` (D-23), and gains a `normal_fixed` passthrough so the grid can run tilt-enabled (review H1); all three exact-equality guarded
@@ -309,6 +310,19 @@ Plans:
 - [x] 19.2-13-PLAN.md — wave 6 — E5 production run and `index_sensitivity.csv` (split out of 19.2-08 so it never shares the machine with E4's grid — review H4)
 - [x] 19.2-11-PLAN.md — wave 7 — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep), with a baseline cross-check against E4's 12/100 cell
 - [x] 19.2-12-PLAN.md — wave 8 — EXP-11 close-out: provenance key-presence and seed tests with an explicit six-member legacy carve-out (E2's refreshed record is NOT exempt), README table completion, CI smoke wiring, derived-values verification
+
+Gap-closure plans (verification `gaps_found` 5/7; `19.2-GAP-CONTEXT.md` D-27..D-33, review CR-01..CR-05):
+- [ ] 19.2-15-PLAN.md — wave 1 — CR-04: make `compare_experiment_csv` total — a row-count or key-set mismatch produces a report, not a `ValueError` (third bug in this function this phase; fixed as a contract, not a fourth dtype case)
+- [ ] 19.2-16-PLAN.md — wave 1 — CR-02/WR-08: E6's resume path returns the checkpoint it wrote (metrics and failure reason survive), plus D-31's E6 half — an `e6_provenance.json` sidecar and self-describing checkpoints
+- [ ] 19.2-17-PLAN.md — wave 1 — CR-01/CR-03 and all three D-33 gaps: lossless E4 resume, guarded aggregation, per-cell timeout, a real-child failure test, and commit/virtual memory plus a pre-flight ceiling so a paged success cannot report `status=ok`
+- [ ] 19.2-18-PLAN.md — wave 2 — D-27/D-28/D-29: the board volume centres on the array centroid, `xy_extent` scales with the footprint, and the grid family moves to real-rig optical geometry — with D-27's containment gate (frozen anchors, grep-gate, four `--check` reproductions) standing in for D-26's blanket inertness proof
+- [ ] 19.2-19-PLAN.md — wave 2 — D-31's E5 half: an `e5_provenance.json` sidecar carrying the run configuration (WR-04), with `E5_COLUMNS` deliberately unchanged so wave 5's re-run is a determinism proof; plus WR-06/WR-12
+- [ ] 19.2-20-PLAN.md — wave 2 — D-32/CR-05: opt-in per-point instrumentation on the batch Newton loop the optimizer actually runs, proven bit-identical on production output, with E3 tier 2 rewired onto it
+- [ ] 19.2-21-PLAN.md — wave 3 — E4's nine-cell grid re-run on the new geometry, **alone on the box**; 16×200 is pre-authorised to fail as a recorded row
+- [ ] 19.2-22-PLAN.md — wave 4 — E6's sweep re-run, **alone on the box**, re-anchored to E4's new 12×100 cell; `layout_line` is the direct empirical test of D-27
+- [ ] 19.2-23-PLAN.md — wave 5 — E5's band re-run for provenance and E3's fast tiers, **alone on the box**; a moved science column is a hard stop, and only `newton_iterations.csv` may change schema
+- [ ] 19.2-24-PLAN.md — wave 6 — widen the EXP-11 gate to all four fields per artifact, per file (WR-11), and re-assert E1's and E7's reproduction on the shipping tree
+- [ ] 19.2-25-PLAN.md — wave 6 — make the README's universal provenance claim true, record the pre/post-D-27 boundary, close EXP-07/09/10/11 in `REQUIREMENTS.md`, and resolve MF-01 and MF-02 against fresh measurements
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
