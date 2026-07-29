@@ -274,15 +274,25 @@ def test_n_true_default_scenario_unchanged():
 
 def test_n_true_scenario_index_reaches_detections():
     """Two scenarios identical except n_water=1.333 vs n_water=1.55 produce different
-    detection corner arrays through calibrate_synthetic's own detection path."""
-    scenario_default = create_scenario("minimal", seed=1)
-    scenario_shifted = create_scenario("minimal", seed=1, n_water=1.55)
+    detection corner arrays through calibrate_synthetic's own detection path.
+
+    seed=3 (not 1): 19.2-18's D-27 recentred "minimal"'s board trajectory on
+    the array centroid rather than the origin (a deliberate, non-inert
+    change to this preset -- see 19.2-GAP-CONTEXT.md D-27's containment
+    audit). seed=1's shifted (n_water=1.55) scenario no longer has any of
+    its 10 frames retain 2+ camera visibility post-recentring -- a
+    connectivity edge case inherent to "minimal"'s tiny 2-camera/10-frame
+    geometry, not a defect in the recentring itself. seed=3 reliably
+    retains connectivity for both scenarios.
+    """
+    scenario_default = create_scenario("minimal", seed=3)
+    scenario_shifted = create_scenario("minimal", seed=3, n_water=1.55)
 
     _, detections_default = calibrate_synthetic(
-        scenario_default, n_water=1.333, refine_intrinsics=False, seed=1
+        scenario_default, n_water=1.333, refine_intrinsics=False, seed=3
     )
     _, detections_shifted = calibrate_synthetic(
-        scenario_shifted, n_water=1.333, refine_intrinsics=False, seed=1
+        scenario_shifted, n_water=1.333, refine_intrinsics=False, seed=3
     )
 
     common_frame_idx = next(iter(detections_default.frames))

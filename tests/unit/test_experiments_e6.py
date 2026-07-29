@@ -117,6 +117,48 @@ def test_tilt_configuration_matches_e4():
     assert (df["normal_fixed"] == m.GRID_NORMAL_FIXED).all()
 
 
+def test_scale_axis_is_a_factor_of_two_ladder_about_the_new_baseline():
+    """D-28/D-29: SCALE_AXIS_VALUES' half_scale/default/double_scale rescale
+    around E4's NEW baseline geometry (GRID_DEPTH_RANGE/GRID_SPACING) rather
+    than the old, now-stale absolute numbers -- and remain a factor-of-two
+    ladder, derived from E4's constants rather than hardcoded a second time."""
+    labels = [v[0] for v in m.SCALE_AXIS_VALUES]
+    assert labels == ["half_scale", "default", "double_scale"]
+
+    half, default, double = m.SCALE_AXIS_VALUES
+    assert default[1] is None and default[2] is None and default[3] is None
+
+    half_depth_range, half_xy_extent, half_spacing = half[1], half[2], half[3]
+    double_depth_range, double_xy_extent, double_spacing = (
+        double[1],
+        double[2],
+        double[3],
+    )
+
+    assert half_spacing == pytest.approx(0.5 * e4.GRID_SPACING)
+    assert double_spacing == pytest.approx(2.0 * e4.GRID_SPACING)
+    assert double_xy_extent == pytest.approx(4.0 * half_xy_extent)
+
+    # depth_range is expressed relative to the water surface, so scaling by
+    # 0.5x/2x must keep the board strictly below GRID_HEIGHT_ABOVE_WATER
+    # (never move it into air) at both ends of the ladder.
+    assert half_depth_range[0] > e4.GRID_HEIGHT_ABOVE_WATER
+    assert half_depth_range[1] > half_depth_range[0]
+    assert double_depth_range[0] > e4.GRID_HEIGHT_ABOVE_WATER
+    assert double_depth_range[1] > double_depth_range[0]
+
+    half_below = (
+        half_depth_range[0] - e4.GRID_HEIGHT_ABOVE_WATER,
+        half_depth_range[1] - e4.GRID_HEIGHT_ABOVE_WATER,
+    )
+    double_below = (
+        double_depth_range[0] - e4.GRID_HEIGHT_ABOVE_WATER,
+        double_depth_range[1] - e4.GRID_HEIGHT_ABOVE_WATER,
+    )
+    assert double_below[0] == pytest.approx(4.0 * half_below[0])
+    assert double_below[1] == pytest.approx(4.0 * half_below[1])
+
+
 def test_seed_column_populated():
     """Every row of a hand-built frame carries a non-null seed."""
     configs = m.build_axis_configurations()

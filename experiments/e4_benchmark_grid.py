@@ -87,6 +87,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from aquacal.calibration._observability import SolverDiagnostics
 from aquacal.config.schema import BoardConfig
@@ -183,6 +184,46 @@ _ALLOWED_CELL_VALUES = frozenset(DECLARED_CELLS) | frozenset(SMOKE_CELLS)
 E2_BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
 )
+
+# ---------------------------------------------------------------------------
+# D-29: grid-family optical geometry -- real-rig-like rather than the
+# unrealistic 0.15 m / (0.3, 0.6) m / 0.1 m the underlying generators
+# default to. Declared here as named constants (not passed inline) so a
+# reader can see, in one place, what the grid family assumes and why.
+# ---------------------------------------------------------------------------
+
+# Matches generate_real_rig_array's calibrated WATER_Z (1.031 m) so the grid
+# family's cameras sit at the same height above water the real rig does,
+# rather than the unrealistic 0.15 m the underlying generator otherwise
+# defaults to (19.2-GAP-CONTEXT.md D-29).
+GRID_HEIGHT_ABOVE_WATER = 1.031
+
+# Matches generate_real_rig_trajectory's own default depth_range, so the
+# grid family's board sits at the same relative depths below the water
+# surface the real rig calibration uses (D-29).
+GRID_DEPTH_RANGE = (1.1, 2.0)
+
+# Sized so a 12-camera "grid" array (side = ceil(sqrt(12)) = 4, so a 4x3
+# layout) spans (side - 1) * GRID_SPACING = 3 * 0.43 =~ 1.29 m in X --
+# matching generate_real_rig_array's measured ~1.3 m x 1.2 m footprint
+# (D-29; 19.2-GAP-CONTEXT.md's verified proposal table). GRID_BOARD_CONFIG
+# is deliberately NOT scaled alongside this constant -- a real calibration
+# target does not shrink with the tank (see build_grid_scenario's own
+# docstring, which states this same rationale).
+GRID_SPACING = 0.43
+
+# D-28: xy_extent scales with the array's OWN footprint span rather than a
+# fixed 0.15 m, so every layout (grid/ring/line) exercises the same
+# FRACTION of its own footprint instead of a fraction that differs per
+# layout (today's 0.75x down to 0.14x, the root cause of D-27's confounded
+# E6 layout axis). generate_real_rig_trajectory's own XY_EXTENT (0.7 m)
+# against generate_real_rig_array's ~1.3 m footprint is ~=0.54x the span --
+# the ratio this constant reproduces.
+GRID_XY_EXTENT_RATIO = 0.54
+
+# Floor so a small/tightly-spaced array still gets a usable working volume
+# rather than a near-zero xy_extent.
+GRID_XY_EXTENT_FLOOR = 0.05  # meters
 
 # ---------------------------------------------------------------------------
 # D-33: per-cell timeout, memory-pressure vocabulary, and a pre-flight
@@ -336,6 +377,72 @@ GRID_SUMMARY_COLUMNS = [
 
 
 # ---------------------------------------------------------------------------
+# D-28: xy_extent scales with the array's own footprint span.
+# ---------------------------------------------------------------------------
+
+
+def _array_xy_span(camera_positions: dict[str, NDArray[np.float64]]) -> float:
+    """The camera array's XY footprint span (D-28).
+
+    Returns the Euclidean diagonal of the XY bounding box spanned by
+    `camera_positions` -- a single representative number for a layout whose
+    extent is asymmetric (e.g. `"line"`, whose Y range is zero) as well as
+    one that is symmetric (`"ring"`).
+
+    Args:
+        camera_positions: Dict of camera center positions (from extrinsics).
+
+    Returns:
+        The XY bounding-box diagonal, in meters.
+    """
+    xs = np.array([float(p[0]) for p in camera_positions.values()])
+    ys = np.array([float(p[1]) for p in camera_positions.values()])
+    x_range = float(xs.max() - xs.min())
+    y_range = float(ys.max() - ys.min())
+    return float(np.hypot(x_range, y_range))
+
+
+def _default_xy_extent(camera_positions: dict[str, NDArray[np.float64]]) -> float:
+    """D-28's derived `xy_extent`: a fixed fraction of the array's own span.
+
+    Args:
+        camera_positions: Dict of camera center positions (from extrinsics).
+
+    Returns:
+        `GRID_XY_EXTENT_RATIO` of the array's span, floored at
+        `GRID_XY_EXTENT_FLOOR` so a tiny array still gets a usable working
+        volume.
+    """
+    span = _array_xy_span(camera_positions)
+    return max(GRID_XY_EXTENT_RATIO * span, GRID_XY_EXTENT_FLOOR)
+
+
+def default_xy_extent_for_layout(n_cameras: int, layout: str, spacing: float) -> float:
+    """Convenience wrapper: D-28's derived `xy_extent` from
+    `(n_cameras, layout, spacing)` alone, without building a full scenario.
+
+    Used by E6 to derive its scale axis from E4's geometry constants rather
+    than hardcoding a second copy (D-28). Camera XY positions do not depend
+    on `seed` -- only per-camera roll and height jitter do
+    (`generate_camera_array`) -- so any seed value yields the same span;
+    `seed=0` is used here for clarity, not reproducibility.
+
+    Args:
+        n_cameras: Camera count for `generate_camera_array`.
+        layout: `generate_camera_array`'s layout ("grid", "line", "ring").
+        spacing: `generate_camera_array`'s spacing.
+
+    Returns:
+        The derived `xy_extent`, in meters.
+    """
+    _, extrinsics, _ = generate_camera_array(
+        n_cameras=n_cameras, layout=layout, spacing=spacing, seed=0
+    )
+    camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+    return _default_xy_extent(camera_positions)
+
+
+# ---------------------------------------------------------------------------
 # Scene builder (D-01, D-03, amended D-03/D-11 -- E6's baseline)
 # ---------------------------------------------------------------------------
 
@@ -372,19 +479,34 @@ def build_grid_scenario(
     `square_size` is deliberately NOT scaled, since a real calibration target
     does not shrink with the tank.
 
+    D-29: when not passed explicitly, `depth_range`, `spacing`, and
+    `height_above_water` default to this module's `GRID_DEPTH_RANGE`,
+    `GRID_SPACING`, and `GRID_HEIGHT_ABOVE_WATER` -- real-rig-like optical
+    geometry -- rather than falling through to `generate_camera_array`'s and
+    `generate_board_trajectory`'s own (unrealistic, 0.15 m / 0.1 m) defaults.
+    D-28: when not passed explicitly, `xy_extent` defaults to
+    `_default_xy_extent(camera_positions)`, a fixed fraction
+    (`GRID_XY_EXTENT_RATIO`) of THIS scenario's own array span, rather than a
+    fixed 0.15 m -- so every layout exercises the same fraction of its own
+    footprint. `center` is deliberately never passed here: D-27's centroid
+    default (in `generate_board_trajectory`) already centers the working
+    volume on this scenario's own array, computed from the SAME
+    `camera_positions` this function builds below.
+
     Args:
         n_cameras: Camera count for `generate_camera_array`.
         n_frames: Frame count for `generate_board_trajectory`.
         seed: Shared seed for both the camera array and the trajectory.
         layout: `generate_camera_array`'s layout ("grid", "line", "ring").
-        depth_range: Forwarded to `generate_board_trajectory` only when not
-            `None`; otherwise that function's own default is used, keeping
-            the grid family's fixed working-volume value.
-        xy_extent: Forwarded to `generate_board_trajectory` only when not
-            `None`, same rationale as `depth_range`.
-        spacing: Forwarded to `generate_camera_array` only when not `None`.
-        height_above_water: Forwarded to `generate_camera_array` only when
-            not `None`.
+        depth_range: Forwarded to `generate_board_trajectory` when given;
+            otherwise defaults to `GRID_DEPTH_RANGE` (D-29).
+        xy_extent: Forwarded to `generate_board_trajectory` when given;
+            otherwise defaults to `_default_xy_extent(camera_positions)`
+            (D-28).
+        spacing: Forwarded to `generate_camera_array` when given; otherwise
+            defaults to `GRID_SPACING` (D-29).
+        height_above_water: Forwarded to `generate_camera_array` when given;
+            otherwise defaults to `GRID_HEIGHT_ABOVE_WATER` (D-29).
         n_water: Assumed AND true refractive index recorded on the returned
             scenario (E4 does not sweep index; that is E5/E6's axis).
         name: Scenario name recorded on the returned `SyntheticScenario`.
@@ -409,25 +531,31 @@ def build_grid_scenario(
             "grid cell's Stage-3 initialization."
         )
 
-    array_kwargs: dict = {"n_cameras": n_cameras, "layout": layout, "seed": seed}
-    if spacing is not None:
-        array_kwargs["spacing"] = spacing
-    if height_above_water is not None:
-        array_kwargs["height_above_water"] = height_above_water
-    intrinsics, extrinsics, water_zs = generate_camera_array(**array_kwargs)
+    resolved_spacing = GRID_SPACING if spacing is None else spacing
+    resolved_height_above_water = (
+        GRID_HEIGHT_ABOVE_WATER if height_above_water is None else height_above_water
+    )
+    intrinsics, extrinsics, water_zs = generate_camera_array(
+        n_cameras=n_cameras,
+        layout=layout,
+        seed=seed,
+        spacing=resolved_spacing,
+        height_above_water=resolved_height_above_water,
+    )
 
     camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
-    trajectory_kwargs: dict = {
-        "n_frames": n_frames,
-        "camera_positions": camera_positions,
-        "water_zs": water_zs,
-        "seed": seed,
-    }
-    if depth_range is not None:
-        trajectory_kwargs["depth_range"] = depth_range
-    if xy_extent is not None:
-        trajectory_kwargs["xy_extent"] = xy_extent
-    board_poses = generate_board_trajectory(**trajectory_kwargs)
+    resolved_depth_range = GRID_DEPTH_RANGE if depth_range is None else depth_range
+    resolved_xy_extent = (
+        _default_xy_extent(camera_positions) if xy_extent is None else xy_extent
+    )
+    board_poses = generate_board_trajectory(
+        n_frames=n_frames,
+        camera_positions=camera_positions,
+        water_zs=water_zs,
+        depth_range=resolved_depth_range,
+        xy_extent=resolved_xy_extent,
+        seed=seed,
+    )
 
     return SyntheticScenario(
         name=name,
@@ -667,20 +795,24 @@ def run_grid_cell(
         # DiagnosticsData.validation_3d_error_mean/_std to 0.0, so reading
         # those hardcoded fields off the CalibrationResult's own diagnostics
         # here would publish two fabricated zeros (review D-14 amendment).
+        #
+        # Built from a SECOND call to build_grid_scenario (mirroring E6's
+        # own holdout pattern) rather than a bare generate_board_trajectory
+        # call: after D-29, the latter would inherit generate_board_
+        # trajectory's OWN defaults, scoring every cell's accuracy against a
+        # working volume the calibration never saw -- a silent, plausible,
+        # wrong number. Only the second scenario's board_poses are used,
+        # paired with the FIRST scenario's own camera geometry below, so
+        # held-out accuracy is scored against the same rig the calibration
+        # solved for.
         holdout_seed = seed + 1_000_000
-        camera_positions = {cam: ext.C for cam, ext in scenario.extrinsics.items()}
-        holdout_poses = generate_board_trajectory(
-            n_frames=n_frames,
-            camera_positions=camera_positions,
-            water_zs=scenario.water_zs,
-            seed=holdout_seed,
-        )
+        holdout_scenario = build_grid_scenario(n_cameras, n_frames, holdout_seed)
         holdout_detections = generate_synthetic_detections(
             intrinsics=scenario.intrinsics,
             extrinsics=scenario.extrinsics,
             water_zs=scenario.water_zs,
             board=board,
-            board_poses=holdout_poses,
+            board_poses=holdout_scenario.board_poses,
             noise_std=scenario.noise_std,
             n_air=scenario.n_air,
             n_water=scenario.n_water,

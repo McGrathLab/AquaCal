@@ -21,11 +21,17 @@ import shutil
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 import experiments.e4_benchmark_grid as e4_grid_module
 from aquacal.calibration._observability import SolverDiagnostics
+from aquacal.config.schema import CameraExtrinsics
+from aquacal.core.camera import Camera
+from aquacal.core.interface_model import Interface
+from aquacal.core.refractive_geometry import refractive_back_project
+from aquacal.datasets.synthetic import generate_camera_array, generate_camera_intrinsics
 from experiments._io import write_direct_call_benchmark
 from experiments.e4_benchmark_grid import (
     _NULL_METRICS,
@@ -33,17 +39,23 @@ from experiments.e4_benchmark_grid import (
     E2_BENCHMARK_PATH,
     GRID_BOARD_CONFIG,
     GRID_COLUMNS,
+    GRID_DEPTH_RANGE,
+    GRID_HEIGHT_ABOVE_WATER,
     GRID_SCENARIO_NAME,
+    GRID_SPACING,
+    GRID_XY_EXTENT_RATIO,
     MEMORY_CEILING_FRACTION,
     MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
     MEMORY_PRESSURE_NEAR_CEILING,
     SKIPPED_EXIT_CODE,
+    _array_xy_span,
     _classify_memory_pressure,
     _invoke_subprocess_with_status_mapping,
     _preflight_ceiling_reason,
     build_grid_dataframe,
     build_grid_scenario,
+    default_xy_extent_for_layout,
     run_cell_subprocess,
     run_grid_cell,
     write_grid_latex,
@@ -758,3 +770,204 @@ def test_classify_memory_pressure_degrades_to_clean_with_no_readings():
     assert _classify_memory_pressure({"stage1_intrinsics": None}) == (
         MEMORY_PRESSURE_CLEAN
     )
+
+
+# ============================================================================
+# D-28 / D-29: grid-family geometry (19.2-GAP-CONTEXT.md; plan 19.2-18)
+# ============================================================================
+
+
+def _single_camera_view_footprint(depth: float) -> tuple[float, float]:
+    """The (width, height) a single camera at the origin, at
+    `GRID_HEIGHT_ABOVE_WATER` above the water surface, sees at `depth`
+    (D-29's frame-fit computation) -- back-projects the four image corners
+    through the refractive interface to `depth` and measures the resulting
+    XY bounding box. A COMPUTATION, not a literal, so a later constant tweak
+    re-checks the property rather than re-asserting a number."""
+    intr = generate_camera_intrinsics(image_size=(1920, 1080), fov_horizontal_deg=60.0)
+    ext = CameraExtrinsics(R=np.eye(3), t=np.zeros(3))
+    camera = Camera("cam0", intr, ext)
+    interface = Interface(
+        normal=np.array([0.0, 0.0, -1.0]),
+        camera_distances={"cam0": GRID_HEIGHT_ABOVE_WATER},
+        n_air=1.0,
+        n_water=1.333,
+    )
+    w, h = intr.image_size
+    xs, ys = [], []
+    for px in [(0, 0), (w, 0), (0, h), (w, h)]:
+        origin, direction = refractive_back_project(camera, interface, np.array(px))
+        assert origin is not None, f"back-projection failed for pixel {px}"
+        t_param = (depth - origin[2]) / direction[2]
+        point = origin + t_param * direction
+        xs.append(point[0])
+        ys.append(point[1])
+    return max(xs) - min(xs), max(ys) - min(ys)
+
+
+def test_board_fits_in_frame_at_every_depth_in_grid_range():
+    """D-29's acceptance property: the 0.72 x 0.54 m board fits inside a
+    single camera's view footprint at the minimum, middle, and maximum of
+    GRID_DEPTH_RANGE -- a computation from the intrinsics and refractive
+    geometry, not a literal."""
+    board_width = GRID_BOARD_CONFIG.squares_x * GRID_BOARD_CONFIG.square_size
+    board_height = GRID_BOARD_CONFIG.squares_y * GRID_BOARD_CONFIG.square_size
+
+    lo, hi = GRID_DEPTH_RANGE
+    mid = (lo + hi) / 2
+    for depth in (lo, mid, hi):
+        view_width, view_height = _single_camera_view_footprint(depth)
+        assert board_width < view_width, (
+            f"board width {board_width} does not fit view width "
+            f"{view_width} at depth {depth}"
+        )
+        assert board_height < view_height, (
+            f"board height {board_height} does not fit view height "
+            f"{view_height} at depth {depth}"
+        )
+
+
+def _adjacent_overlap_fraction(
+    spacing: float, depth: float, height_above_water: float
+) -> float:
+    """Fraction of one camera's view footprint that overlaps its neighbor's,
+    for two cameras `spacing` apart along X, at `depth`, at
+    `height_above_water` above the water surface. Applied identically to
+    the OLD and NEW geometry below so the comparison is apples-to-apples
+    regardless of which absolute methodology GAP-CONTEXT's own review used
+    to produce its reported 27-55% figures."""
+
+    def _footprint_rect(cam_x: float) -> tuple[float, float, float, float]:
+        intr = generate_camera_intrinsics(
+            image_size=(1920, 1080), fov_horizontal_deg=60.0
+        )
+        ext = CameraExtrinsics(R=np.eye(3), t=np.array([-cam_x, 0.0, 0.0]))
+        camera = Camera("camX", intr, ext)
+        interface = Interface(
+            normal=np.array([0.0, 0.0, -1.0]),
+            camera_distances={"camX": height_above_water},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        w, h = intr.image_size
+        xs, ys = [], []
+        for px in [(0, 0), (w, 0), (0, h), (w, h)]:
+            origin, direction = refractive_back_project(camera, interface, np.array(px))
+            t_param = (depth - origin[2]) / direction[2]
+            point = origin + t_param * direction
+            xs.append(point[0])
+            ys.append(point[1])
+        return min(xs), max(xs), min(ys), max(ys)
+
+    r1 = _footprint_rect(0.0)
+    r2 = _footprint_rect(spacing)
+    ix0, iy0 = max(r1[0], r2[0]), max(r1[2], r2[2])
+    ix1, iy1 = min(r1[1], r2[1]), min(r1[3], r2[3])
+    if ix1 <= ix0 or iy1 <= iy0:
+        return 0.0
+    inter_area = (ix1 - ix0) * (iy1 - iy0)
+    self_area = (r1[1] - r1[0]) * (r1[3] - r1[2])
+    return inter_area / self_area
+
+
+def test_adjacent_camera_overlap_stays_comparable_to_old_geometry():
+    """D-29's redundancy property: adjacent-camera overlap at the new
+    GRID_SPACING/GRID_HEIGHT_ABOVE_WATER/GRID_DEPTH_RANGE stays within a
+    small tolerance of the overlap the OLD grid geometry (0.15 m height,
+    0.1 m spacing, (0.3, 0.6) m depth_range) achieves, using the SAME
+    footprint-intersection methodology for both -- so the comparison does
+    not depend on knowing which methodology GAP-CONTEXT's own review used
+    to arrive at its reported 27-55% figures. Old geometry values are
+    historical literals (this module's pre-D-29 defaults), not imports --
+    they must never be regenerated to make this test pass."""
+    old_height, old_spacing, old_depth_range = 0.15, 0.1, (0.3, 0.6)
+    new_height, new_spacing, new_depth_range = (
+        GRID_HEIGHT_ABOVE_WATER,
+        GRID_SPACING,
+        GRID_DEPTH_RANGE,
+    )
+
+    old_lo, old_hi = old_depth_range
+    old_depths = (old_lo, (old_lo + old_hi) / 2, old_hi)
+    new_lo, new_hi = new_depth_range
+    new_depths = (new_lo, (new_lo + new_hi) / 2, new_hi)
+
+    measured = []
+    for old_depth, new_depth in zip(old_depths, new_depths):
+        old_overlap = _adjacent_overlap_fraction(old_spacing, old_depth, old_height)
+        new_overlap = _adjacent_overlap_fraction(new_spacing, new_depth, new_height)
+        measured.append((old_depth, old_overlap, new_depth, new_overlap))
+        assert new_overlap == pytest.approx(old_overlap, abs=0.10), (
+            f"new-geometry overlap {new_overlap:.3f} at depth {new_depth} "
+            f"diverges from old-geometry overlap {old_overlap:.3f} at depth "
+            f"{old_depth} by more than the 0.10 tolerance -- measured: "
+            f"{measured}"
+        )
+
+
+def test_xy_extent_over_array_span_is_equal_across_layouts():
+    """D-28's acceptance property: xy_extent / array_span is the same for
+    grid, ring, and line at 12 cameras (equality is the point of the
+    change), and close to the realistic generator's ~0.54x ratio."""
+    ratios = {}
+    for layout in ("grid", "ring", "line"):
+        xy_extent = default_xy_extent_for_layout(
+            n_cameras=12, layout=layout, spacing=GRID_SPACING
+        )
+        _, extrinsics, _ = generate_camera_array(
+            n_cameras=12, layout=layout, spacing=GRID_SPACING, seed=0
+        )
+        camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+        span = _array_xy_span(camera_positions)
+        ratios[layout] = xy_extent / span
+
+    values = list(ratios.values())
+    assert max(values) - min(values) < 1e-9, ratios
+    assert values[0] == pytest.approx(GRID_XY_EXTENT_RATIO, abs=1e-9)
+    assert GRID_XY_EXTENT_RATIO == pytest.approx(0.54, abs=0.05)
+
+
+def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatch):
+    """The held-out trajectory built inside `run_grid_cell` must be built
+    from the SAME depth_range/xy_extent/camera_positions as the cell's own
+    calibration trajectory, differing only in seed. FAILS if `run_grid_cell`
+    reverts to calling `generate_board_trajectory` directly with bare
+    defaults, since that call would omit `depth_range`/`xy_extent`
+    entirely (captured as absent here) rather than matching the first
+    call's explicit D-28/D-29 values."""
+    calls: list[dict] = []
+    original = e4_grid_module.generate_board_trajectory
+
+    def _spy(*args, **kwargs):
+        calls.append(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(e4_grid_module, "generate_board_trajectory", _spy)
+
+    result = run_grid_cell(3, 4, seed=1, out_dir=tmp_path, force=True)
+    assert result["status"] == "ok", result
+
+    assert len(calls) == 2, "expected exactly one calibration + one holdout call"
+    calib_kwargs, holdout_kwargs = calls
+
+    assert "depth_range" in calib_kwargs and "depth_range" in holdout_kwargs
+    assert calib_kwargs["depth_range"] == holdout_kwargs["depth_range"]
+    assert "xy_extent" in calib_kwargs and "xy_extent" in holdout_kwargs
+    assert calib_kwargs["xy_extent"] == pytest.approx(holdout_kwargs["xy_extent"])
+
+    assert (
+        calib_kwargs["camera_positions"].keys()
+        == holdout_kwargs["camera_positions"].keys()
+    )
+    for cam in calib_kwargs["camera_positions"]:
+        # Camera XY positions are seed-independent (only per-camera roll and
+        # height jitter vary with seed), but C = R^T @ (-R @ pos) reintroduces
+        # ~1e-16 floating-point noise through a DIFFERENT random roll per
+        # seed -- assert_allclose at a tight tolerance, not exact equality.
+        np.testing.assert_allclose(
+            calib_kwargs["camera_positions"][cam],
+            holdout_kwargs["camera_positions"][cam],
+            atol=1e-12,
+        )
+
+    assert calib_kwargs["seed"] != holdout_kwargs["seed"]
