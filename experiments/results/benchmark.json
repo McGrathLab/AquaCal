@@ -8,7 +8,7 @@
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "f193d60bd13bd61eb51b1b86a9fb632951ca9940",
+    "git_sha": "77a1026adae2e7e3f6857f424c829ed762628975",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -16,6 +16,10 @@
     "python_version": "3.12.12",
     "ram_total_bytes": 16857190400,
     "scipy_version": "1.17.0"
+  },
+  "memory": {
+    "mode": "psutil_peak_wset",
+    "whole_run_peak_bytes": 10499325952
   },
   "problem_shape": {
     "n_cameras": 13,
@@ -27,9 +31,19 @@
     "interface_normal_fixed": false,
     "loss_scale": 1.0,
     "refine_intrinsics": true,
-    "robust_loss": "huber"
+    "robust_loss": "huber",
+    "seed": 42
   },
   "stages": {
+    "auxiliary_registration": {
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
+        "delta_bytes_since_previous_boundary": 0,
+        "mode": "psutil_peak_wset"
+      },
+      "seconds": 59.58103239999946,
+      "solver_diagnostics_reason": "aggregate boundary spanning 1 sub-stage(s) (auxiliary_registration_e3v8250); solver diagnostics are recorded per sub-stage, not at this aggregate boundary"
+    },
     "auxiliary_registration_e3v8250": {
       "cost": 12006.685524434677,
       "fd_reduction": null,
@@ -42,6 +56,8 @@
       "n_groups_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
       "n_params": null,
       "n_params_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "n_residuals": null,
+      "n_residuals_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
       "nfev": 20,
       "njev": 14,
       "optimality": 0.10346458882395382,
@@ -57,15 +73,22 @@
       "gtol": 1e-08,
       "max_nfev_effective": 126900,
       "max_nfev_source": "scipy_auto",
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 9621364736,
+        "delta_bytes_since_previous_boundary": 9167876096,
+        "mode": "psutil_peak_wset"
+      },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 13,
       "n_groups_reason": null,
       "n_params": 1269,
       "n_params_reason": null,
+      "n_residuals": 147950,
+      "n_residuals_reason": null,
       "nfev": 38,
       "njev": 28,
       "optimality": 0.10917011023249756,
-      "seconds": 5422.34750850001,
+      "seconds": 1276.9060307000009,
       "status": 2,
       "xtol": 1e-08
     },
@@ -76,17 +99,33 @@
       "gtol": 1e-08,
       "max_nfev_effective": 131700,
       "max_nfev_source": "scipy_auto",
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
+        "delta_bytes_since_previous_boundary": 877961216,
+        "mode": "psutil_peak_wset"
+      },
       "message": "`xtol` termination condition is satisfied.",
       "n_groups": 17,
       "n_groups_reason": null,
       "n_params": 1317,
       "n_params_reason": null,
+      "n_residuals": 147950,
+      "n_residuals_reason": null,
       "nfev": 26,
       "njev": 12,
       "optimality": 20813.590906684898,
-      "seconds": 768.1768726000009,
+      "seconds": 632.8864587999997,
       "status": 3,
       "xtol": 1e-08
+    },
+    "validation": {
+      "memory": {
+        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
+        "delta_bytes_since_previous_boundary": 0,
+        "mode": "psutil_peak_wset"
+      },
+      "seconds": 35.614183499999854,
+      "solver_diagnostics_reason": "no in-scope least_squares solver diagnostics were captured for this stage"
     }
   }
 }

@@ -549,10 +549,19 @@ class TestAssembleBenchmarkRecord:
 
 class TestCommittedBenchmarkRecordsUnaffectedByNResiduals:
     """T-19.2-05/EXP-08 inertness: adding n_residuals must not retroactively
-    alter any benchmark.json record already committed to the repository."""
+    alter any benchmark.json record already committed to the repository,
+    other than the one record plan 19.2-06 deliberately re-runs and refreshes.
+
+    `experiments/results/benchmark.json` is excluded here: plan 19.2-06 (D-26)
+    re-ran E2 against the release frameset specifically to populate
+    `n_residuals` (and `solver_config.seed`, and a `memory` block) in that
+    record, verified against the committed `real_rig_metrics.json` at 0.000%
+    delta on every section-3 number before the artifact was refreshed. Every
+    OTHER committed record (E1, E7) was not re-run and must still carry no
+    `n_residuals` key.
+    """
 
     COMMITTED_BENCHMARK_FILES = [
-        "experiments/results/benchmark.json",
         "experiments/results/e1_benchmark_refractive.json",
         "experiments/results/e1_benchmark_nonrefractive.json",
         "experiments/results/e7_benchmark_percamera_fixed.json",
