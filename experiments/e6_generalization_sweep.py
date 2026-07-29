@@ -36,6 +36,14 @@ keyed on `(axis, axis_value)`) plus one small per-configuration JSON under
 `--out/e6_configs/{config_key}.json`, written before the CSV is assembled, so
 an interrupted sweep resumes per configuration instead of restarting the
 longest sweep in the phase from zero (review M7).
+
+**Provenance (D-31, EXP-11).** `_run_full` also writes `e6_provenance.json`
+beside the CSV -- E3's minimal sidecar shape (`experiment`, `schema_version`,
+`seed`, `solver_config.seed`, `environment`) -- and every per-configuration
+checkpoint under `e6_configs/` is itself self-describing: `schema_version`,
+`environment`, `solver_config.seed`, and the full configuration identity that
+produced it. The `seed` column on `generalization_sweep.csv` is no longer the
+only provenance this experiment carries.
 """
 
 from __future__ import annotations
@@ -52,6 +60,7 @@ import pandas as pd
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets.pipelines import calibrate_synthetic, compute_per_camera_errors
 from aquacal.datasets.synthetic import generate_synthetic_detections
+from aquacal.io import capture_environment
 from aquacal.validation.evaluation import evaluate_calibration
 from experiments._io import (
     build_experiment_arg_parser,
@@ -409,6 +418,58 @@ def build_row(
 
 
 # ---------------------------------------------------------------------------
+# Provenance (D-31, EXP-11) and configuration-identity guard (WR-03)
+# ---------------------------------------------------------------------------
+
+
+def build_provenance_sidecar(seed: int) -> dict:
+    """Build E6's minimal provenance sidecar, in E3's exact shape (D-31).
+
+    E6 runs many small calibrations, none of which is a single canonical
+    "the" run whose `problem_shape`/`timings` `write_direct_call_benchmark`
+    expects -- exactly the situation E3's minimal sidecar exists for
+    (`experiments/e3_derived_quantities.py:build_provenance_sidecar`). This is
+    the only sidecar format E6 uses; do not invent a second one.
+
+    `solver_config: {"seed": seed}` deliberately duplicates the top-level
+    `seed` -- the generic provenance check
+    (`tests/unit/test_experiments_provenance.py::_record_seed`) reads
+    `solver_config["seed"]`, matching every `assemble_benchmark_record`-shaped
+    file, while the top-level `seed` remains for a reader of this sidecar
+    specifically.
+    """
+    return {
+        "experiment": "e6",
+        "schema_version": 1,
+        "seed": seed,
+        "solver_config": {"seed": seed},
+        "environment": capture_environment(),
+    }
+
+
+def _resolve_config_identity(config: dict) -> dict:
+    """The full configuration identity to record in a checkpoint: `config`
+    plus the resolved `normal_fixed` (every run uses the same
+    `GRID_NORMAL_FIXED`, but recording it keeps the identity self-contained)."""
+    return {**config, "normal_fixed": GRID_NORMAL_FIXED}
+
+
+def _config_identity_matches(config: dict, cached_config: object) -> bool:
+    """True if a checkpoint's recorded config identity matches the one
+    recomputed for `config` right now (WR-03, T-19.2-63).
+
+    Both sides are compared through a JSON round-trip so tuple/list
+    equivalence (e.g. `depth_range`, a tuple in-memory but a list once
+    written to and read back from JSON) never produces a false mismatch --
+    `cached_config` already went through exactly one such round-trip when it
+    was read off disk.
+    """
+    expected = json.loads(json.dumps(_resolve_config_identity(config), sort_keys=True))
+    actual = json.loads(json.dumps(cached_config, sort_keys=True))
+    return actual == expected
+
+
+# ---------------------------------------------------------------------------
 # Per-configuration runner (review M7: per-configuration checkpoint JSON)
 # ---------------------------------------------------------------------------
 
@@ -430,11 +491,34 @@ def run_configuration(
     baseline rows the same `config_key` (E6 is the largest sweep in the phase
     and the designated calendar-fallback casualty, so per-configuration
     resumability matters most here; review M7). This mirrors E4's per-cell
-    mechanism (`run_grid_cell`): when the checkpoint file already exists and
-    `force` is False, this returns `status="skipped_existing"` with null
-    metrics rather than re-running the calibration -- an interrupted sweep's
-    completed configurations are recorded, but a genuinely resumed CSV still
-    requires re-running with `force=True` to fill every metric column.
+    mechanism (`run_grid_cell`): when the checkpoint file already exists,
+    parses cleanly, and `force` is False, this returns the checkpoint's
+    RECORDED outcome -- status, status_reason, and metrics, exactly as
+    written -- rather than discarding them (CR-02, WR-08).
+
+    A checkpoint whose recorded `status` is `"failed"` is ALSO treated as a
+    skip candidate, not automatically retried: the skip path is one read site
+    for every status rather than a special case per status, and the recorded
+    `status_reason` survives the re-entry so the resulting row stays
+    explicable. To retry a known failure, re-run with `force=True`. (WR-08's
+    alternative -- never skip a failed configuration -- was considered and
+    rejected here in favor of this uniform skip path; either choice was
+    acceptable, this is the one taken.)
+
+    A checkpoint that exists but fails to parse (corrupt or truncated JSON,
+    e.g. from a process killed mid-write) is treated as absent: the
+    configuration is re-run below and a fresh checkpoint is written, rather
+    than raising out of the longest sweep in the phase.
+
+    Every checkpoint additionally carries `schema_version`, an `environment`
+    block, `solver_config: {"seed": seed}`, and the full configuration
+    identity that produced it (`config` plus the resolved `normal_fixed`) --
+    D-31, WR-03. The `schema_version` opts the file into
+    `tests/unit/test_experiments_provenance.py`'s environment/seed checks; the
+    recorded configuration identity lets `_reconstitute_row` (used by
+    `_run_check`) refuse a cached result whose configuration no longer
+    matches what would be recomputed for that `config_key` today (e.g. after
+    an axis-value list edit).
 
     The held-out detection set is generated from a SECOND call to
     `build_grid_scenario` at `seed + 1_000_000` (never a direct call to the
@@ -461,12 +545,29 @@ def run_configuration(
     config_path = Path(out_dir) / "e6_configs" / f"{config_key}.json"
 
     if config_path.exists() and not force:
-        logger.info(
-            "Skipping configuration %s: %s already exists (resumability).",
-            config_key,
-            config_path,
-        )
-        return {"status": "skipped_existing", "status_reason": "", "metrics": None}
+        try:
+            with open(config_path) as f:
+                cached = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "Checkpoint %s is corrupt or unreadable (%s: %s); re-running "
+                "configuration %s instead of skipping.",
+                config_path,
+                type(exc).__name__,
+                exc,
+                config_key,
+            )
+        else:
+            logger.info(
+                "Skipping configuration %s: %s already exists (resumability).",
+                config_key,
+                config_path,
+            )
+            return {
+                "status": cached.get("status", "failed"),
+                "status_reason": cached.get("status_reason", ""),
+                "metrics": cached.get("metrics"),
+            }
 
     try:
         scenario = build_grid_scenario(
@@ -524,10 +625,17 @@ def run_configuration(
         }
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint = {
+        **outcome,
+        "seed": seed,
+        "n_frames": n_frames,
+        "schema_version": 1,
+        "environment": capture_environment(),
+        "solver_config": {"seed": seed},
+        "config": _resolve_config_identity(config),
+    }
     with open(config_path, "w") as f:
-        json.dump(
-            {**outcome, "seed": seed, "n_frames": n_frames}, f, indent=2, sort_keys=True
-        )
+        json.dump(checkpoint, f, indent=2, sort_keys=True)
     return outcome
 
 
@@ -603,6 +711,60 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
 
+def _reconstitute_row(config: dict, configs_dir: Path, default_seed: int) -> dict:
+    """Rebuild one `--check` row from `configs_dir`'s checkpoint, or a failed
+    placeholder if no checkpoint exists for `config["config_key"]`.
+
+    Also the single enforcement site for WR-03 (T-19.2-63): when the cached
+    checkpoint carries a `config` identity (D-31; the twelve committed
+    checkpoints predate this and are only regenerated in wave 4, so their
+    absence of a `config` key is trusted rather than flagged), it is compared
+    against the configuration recomputed for this `config_key` right now. A
+    mismatch degrades the row to `status="failed"` with an explanatory reason
+    instead of silently trusting metrics that may belong to a different
+    configuration -- e.g. after an axis-value list edit.
+    """
+    config_path = configs_dir / f"{config['config_key']}.json"
+    if not config_path.exists():
+        return build_row(
+            config,
+            default_seed,
+            BASELINE_N_FRAMES,
+            None,
+            status="failed",
+            status_reason=(
+                "no checkpoint JSON found under e6_configs for this configuration"
+            ),
+        )
+
+    with open(config_path) as f:
+        cached = json.load(f)
+
+    status = cached.get("status", "failed")
+    status_reason = cached.get("status_reason", "")
+    metrics = cached.get("metrics")
+    cached_config = cached.get("config")
+    if cached_config is not None and not _config_identity_matches(
+        config, cached_config
+    ):
+        status = "failed"
+        status_reason = (
+            f"cached config for {config['config_key']} does not match the "
+            "recomputed configuration identity (WR-03) -- the checkpoint may "
+            "predate an axis-value edit; re-run with --force"
+        )
+        metrics = None
+
+    return build_row(
+        config,
+        cached.get("seed", default_seed),
+        cached.get("n_frames", BASELINE_N_FRAMES),
+        metrics,
+        status=status,
+        status_reason=status_reason,
+    )
+
+
 def _run_check(args: argparse.Namespace) -> int:
     """`--check`: reconstitute rows from existing `e6_configs/` JSON, compare to committed CSV.
 
@@ -628,36 +790,7 @@ def _run_check(args: argparse.Namespace) -> int:
         return 1
 
     configs = build_axis_configurations()
-    rows: list[dict] = []
-    for config in configs:
-        config_path = configs_dir / f"{config['config_key']}.json"
-        if config_path.exists():
-            with open(config_path) as f:
-                cached = json.load(f)
-            rows.append(
-                build_row(
-                    config,
-                    cached.get("seed", args.seed),
-                    cached.get("n_frames", BASELINE_N_FRAMES),
-                    cached.get("metrics"),
-                    status=cached.get("status", "failed"),
-                    status_reason=cached.get("status_reason", ""),
-                )
-            )
-        else:
-            rows.append(
-                build_row(
-                    config,
-                    args.seed,
-                    BASELINE_N_FRAMES,
-                    None,
-                    status="failed",
-                    status_reason=(
-                        "no checkpoint JSON found under e6_configs for this "
-                        "configuration"
-                    ),
-                )
-            )
+    rows = [_reconstitute_row(config, configs_dir, args.seed) for config in configs]
 
     df = pd.DataFrame(rows, columns=E6_COLUMNS)
     report = compare_experiment_csv(
@@ -676,11 +809,19 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
     )
+    with open(out_dir / "e6_provenance.json", "w") as f:
+        json.dump(build_provenance_sidecar(seed), f, indent=2, sort_keys=True)
 
-    # Exercise the skip-if-exists path end to end (review M7): re-run the
-    # first already-checkpointed configuration WITHOUT --force and confirm it
-    # is skipped rather than recomputed, so CI proves the resumability
-    # mechanism, not only the happy path.
+    # Exercise the skip-if-exists path end to end (review M7, CR-02): re-run
+    # the first already-checkpointed configuration WITHOUT --force and
+    # confirm the cached checkpoint comes back VERBATIM -- proving the resume
+    # path returns the recorded outcome (not a discarded/nulled one) and
+    # never rewrites the checkpoint it is skipping.
+    config_key = configs[0]["config_key"]
+    config_path = out_dir / "e6_configs" / f"{config_key}.json"
+    with open(config_path) as f:
+        cached_before = json.load(f)
+
     skip_probe = run_configuration(
         configs[0],
         seed,
@@ -689,15 +830,33 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
         refine_intrinsics=False,
         force=False,
     )
-    if skip_probe["status"] != "skipped_existing":
+    if (
+        skip_probe["status"] != cached_before.get("status")
+        or skip_probe["metrics"] != cached_before.get("metrics")
+        or skip_probe["status_reason"] != cached_before.get("status_reason", "")
+    ):
         logger.warning(
-            "smoke skip-path probe did not report skipped_existing: %s",
+            "smoke skip-path probe did not return the cached checkpoint verbatim: "
+            "got status=%s metrics=%s, expected status=%s metrics=%s",
             skip_probe["status"],
+            skip_probe["metrics"],
+            cached_before.get("status"),
+            cached_before.get("metrics"),
+        )
+        return 1
+
+    with open(config_path) as f:
+        cached_after = json.load(f)
+    if cached_after != cached_before:
+        logger.warning(
+            "smoke skip-path probe mutated the on-disk checkpoint for %s", config_key
         )
         return 1
 
     logger.info(
-        "smoke: %d rows, skip-path probe status=%s", len(df), skip_probe["status"]
+        "smoke: %d rows, skip-path probe status=%s (cached, not recomputed)",
+        len(df),
+        skip_probe["status"],
     )
     return 0
 
@@ -714,7 +873,8 @@ def _run_smoke(args: argparse.Namespace) -> int:
 
 
 def _run_full(args: argparse.Namespace) -> int:
-    """Run the full axis sweep and write `generalization_sweep.csv`."""
+    """Run the full axis sweep, write `generalization_sweep.csv`, and (D-31)
+    the `e6_provenance.json` sidecar beside it."""
     out_dir = resolve_out_dir(args.out)
     configs = build_axis_configurations()
     df = run_sweep(
@@ -731,6 +891,8 @@ def _run_full(args: argparse.Namespace) -> int:
         key_columns=E6_KEY_COLUMNS,
         force=args.force,
     )
+    with open(out_dir / "e6_provenance.json", "w") as f:
+        json.dump(build_provenance_sidecar(args.seed), f, indent=2, sort_keys=True)
     return 0
 
 
