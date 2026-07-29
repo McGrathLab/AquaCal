@@ -1,0 +1,560 @@
+"""E5: refractive-index sensitivity (EXP-09).
+
+**The question this experiment answers.** Reviewer point R2 worries that a small
+error in the assumed refractive index `n_water` could ruin a calibration. This
+experiment refutes that premise: because `n` and reconstructed depth are coupled
+(`delta_depth/depth ~= delta_n/n`), index error maps almost entirely into a small
+apparent-depth/scale bias rather than into reprojection residuals. The argument
+needs BOTH quantities together -- the point is that the bias moves while the
+residual does not.
+
+**Real-rig geometry, not a grid family (D-09).** E5 sweeps `n_assumed` on a
+scenario hand-assembled from `generate_real_rig_array()` /
+`generate_real_rig_trajectory()` -- the rig's actual camera positions and a
+board trajectory spanning the full tank footprint at oblique incidence angles,
+not a near-normal best case. The three fixed presets used elsewhere in this
+package have no preset for this geometry.
+
+**No library parameter was added for E5 (D-23).** Each sweep point is exactly
+`calibrate_synthetic(scenario, n_water=n_assumed)` as shipped:
+`scenario.n_water` is the TRUE index used to generate the ground-truth
+detections, and the `n_water` argument is the ASSUMED index the calibration
+runs at -- the same mechanism E1's non-refractive arm already uses.
+
+**Bias is expressed two ways (review M6):**
+  - Against the band's OWN Δn = 0 control row (`scale_bias_pct_control`,
+    `bias_over_control`) -- the internal comparison that isolates the index
+    effect: same geometry, same noise, same seed, same pipeline, differing
+    only in the assumed index.
+  - Against E2's real-rig held-out noise floor, read LIVE from
+    `experiments/results/real_rig_metrics.json` (`holdout_floor_pct`,
+    `scale_bias_over_floor`), never hardcoded (D-13).
+
+No column in `E5_COLUMNS` implies a pass/fail verdict -- the CSV reports
+magnitudes, not judgements.
+
+Invoked as `python -m experiments.e5_index_sensitivity`. Inherits the shared
+five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`)
+from `experiments._io.build_experiment_arg_parser` (D-21).
+
+Emits into `--out`: `index_sensitivity.csv`.
+
+**Scope note:** this module only defines the sweep machinery and is
+unit-tested here. The production band is run by plan 19.2-13, in a later
+wave, so E5's band never shares the machine with E4's benchmark grid
+(review H4).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import sys
+import tempfile
+from pathlib import Path
+
+import pandas as pd
+
+from aquacal.core.board import BoardGeometry
+from aquacal.datasets import calibrate_synthetic, generate_synthetic_detections
+from aquacal.datasets.synthetic import (
+    SyntheticScenario,
+    generate_real_rig_array,
+    generate_real_rig_trajectory,
+)
+from aquacal.validation.evaluation import evaluate_calibration
+from experiments._io import (
+    build_experiment_arg_parser,
+    resolve_out_dir,
+    validate_args,
+    write_experiment_csv,
+)
+from experiments.e1_refractive_comparison import compute_scale_bias
+from experiments.e4_benchmark_grid import GRID_BOARD_CONFIG
+
+logger = logging.getLogger(__name__)
+
+# Numeric tolerance, matching every other experiment script's declared
+# reproducibility contract (D-22).
+CHECK_RTOL = 1e-6
+
+# Pinned so `datasets/pipelines.py`'s `scenario.name != "calibration"` branch
+# (review L1) never accidentally selects the flat-1.0 initial_water_zs path --
+# this string must never equal "calibration".
+E5_SCENARIO_NAME = "e5_real_rig"
+
+# E5's whole yardstick is E2's held-out floor, and E2 ran under
+# CalibrationConfig.interface_normal_fixed = False (schema.py:333). Passing
+# this explicitly to every calibrate_synthetic call keeps E5 tilt-enabled like
+# E2, rather than silently comparing against the library's tilt-fixed default
+# (review H1).
+E5_NORMAL_FIXED = False
+
+# The true index used to generate every held-out and calibration detection
+# set. 1.333 is itself present in the band as the zero-Δn control row.
+N_TRUE = 1.333
+
+# Declared as a literal list, not a range()/arange() expression, so the swept
+# values are data rather than derived at runtime (P4) and appear verbatim in
+# the plan summary. Spans +/-0.01 around N_TRUE at ~0.002 steps (11 points).
+N_ASSUMED_BAND: list[float] = [
+    1.323,
+    1.325,
+    1.327,
+    1.329,
+    1.331,
+    1.333,
+    1.335,
+    1.337,
+    1.339,
+    1.341,
+    1.343,
+]
+
+E5_COLUMNS: list[str] = [
+    "seed",
+    "n_true",
+    "n_assumed",
+    "delta_n",
+    "delta_n_over_n",
+    "reprojection_rms_px",
+    "reconstruction_mae_mm",
+    "reconstruction_rmse_mm",
+    "signed_mean_mm",
+    "scale_bias_frac",
+    "scale_bias_pct",
+    "scale_bias_pct_control",
+    "bias_over_control",
+    "holdout_floor_pct",
+    "scale_bias_over_floor",
+    "num_comparisons",
+    "num_frames",
+]
+E5_KEY_COLUMNS = ["n_assumed"]
+
+# The real-rig board is the same literal the package's "realistic" preset
+# builds inline -- imported from E4's grid module (plan 19.2-07's output)
+# rather than declared a third time here.
+BOARD_CONFIG = GRID_BOARD_CONFIG
+
+# Distinct from the calibration-generation seed so the held-out set is never
+# drawn from the same noise realization as the frames the calibration itself
+# trained on.
+HOLDOUT_SEED_OFFSET = 100_000
+
+
+def build_real_rig_scenario(
+    n_frames: int, seed: int, n_true: float
+) -> SyntheticScenario:
+    """Build E5's scenario on the real rig's actual geometry.
+
+    Unlike E1/E7, which use the package's three fixed presets, E5's
+    scenario is hand-assembled from `generate_real_rig_array()` (12-camera
+    real-rig geometry) and `generate_real_rig_trajectory()` (a board
+    trajectory spanning the rig's full footprint at oblique incidence
+    angles). This geometry -- not a synthetic grid family -- is deliberate:
+    the R2 argument is about how index error maps into depth bias at
+    REALISTIC incidence angles across the full tank, not a near-normal best
+    case (D-09).
+
+    Args:
+        n_frames: Number of board poses to generate.
+        seed: Random seed for both camera-array idealization bookkeeping
+            (unused by `generate_real_rig_array`, which takes no seed) and
+            the board trajectory.
+        n_true: Refractive index recorded as this scenario's ground truth
+            (`scenario.n_water`). Detections are NOT generated here --
+            callers pass this same value to `generate_synthetic_detections`.
+
+    Returns:
+        A `SyntheticScenario` with `name=E5_SCENARIO_NAME`, pinned so
+        `datasets/pipelines.py`'s `scenario.name != "calibration"` branch
+        (review L1) never mistakes this scenario for the flat-1.0
+        initial_water_zs path.
+    """
+    intrinsics, extrinsics, water_zs = generate_real_rig_array()
+    board_poses = generate_real_rig_trajectory(
+        n_frames=n_frames, depth_range=(1.1, 2.0), seed=seed
+    )
+    return SyntheticScenario(
+        name=E5_SCENARIO_NAME,
+        board_config=BOARD_CONFIG,
+        intrinsics=intrinsics,
+        extrinsics=extrinsics,
+        water_zs=water_zs,
+        board_poses=board_poses,
+        noise_std=0.5,
+        description=(
+            "E5 index-sensitivity scenario: real 12-camera rig geometry "
+            "(generate_real_rig_array/generate_real_rig_trajectory), full-tank "
+            "oblique-incidence board trajectory"
+        ),
+        n_air=1.0,
+        n_water=n_true,
+        seed=seed,
+    )
+
+
+def load_holdout_floor_pct(metrics_path: Path, square_size_m: float) -> float | None:
+    """Read E2's held-out noise floor live and express it as a percentage (D-13).
+
+    Reads `inter_corner_rmse_mm` out of the committed `real_rig_metrics.json`
+    and divides by the board's own square size (in mm) -- the same
+    denominator `compute_scale_bias`/`scale_bias_pct` use, so the two
+    percentages are directly comparable. This value must NEVER be hardcoded:
+    it is E5's yardstick for how the sweep's bias compares to E2's real-rig
+    measurement floor.
+
+    Args:
+        metrics_path: Path to `real_rig_metrics.json`.
+        square_size_m: The ChArUco board's square size, in metres.
+
+    Returns:
+        The held-out noise floor as a percentage of the board square size, or
+        `None` if `metrics_path` does not exist (logged as a WARNING) --
+        never a fabricated value.
+    """
+    if not metrics_path.exists():
+        logger.warning(
+            "Held-out noise floor file not found at %s; holdout_floor_pct and "
+            "scale_bias_over_floor will be null.",
+            metrics_path,
+        )
+        return None
+    with open(metrics_path) as f:
+        metrics = json.load(f)
+    inter_corner_rmse_mm = metrics["inter_corner_rmse_mm"]
+    square_size_mm = square_size_m * 1000.0
+    return (inter_corner_rmse_mm / square_size_mm) * 100.0
+
+
+def build_row(
+    evaluation,
+    n_assumed: float,
+    n_true: float,
+    seed: int,
+    square_size_m: float,
+) -> dict:
+    """Build one E5 row from a held-out evaluation.
+
+    Returns exactly `E5_COLUMNS`, in order. The band-level columns
+    (`scale_bias_pct_control`, `bias_over_control`, `holdout_floor_pct`,
+    `scale_bias_over_floor`) cannot be computed from a single point -- they
+    are left `None` here and filled in afterward by `add_control_columns`/
+    `add_holdout_floor_columns` once the full band has run (D-13, review M6).
+
+    Args:
+        evaluation: A `HeldOutEvaluation` (or any object exposing the same
+            `.reprojection.rms`, `.reconstruction.{mean,rmse,signed_mean,
+            num_comparisons}`, `.num_frames` shape -- unit tests pass a
+            hand-built fixture rather than a real `HeldOutEvaluation`).
+        n_assumed: The refractive index the calibration assumed.
+        n_true: The refractive index the held-out detections were generated
+            at.
+        seed: The seed this point ran at (review H5 -- every row carries its
+            own seed).
+        square_size_m: The ChArUco board's square size, in metres.
+
+    Returns:
+        A dict with exactly `E5_COLUMNS` as keys, in `E5_COLUMNS` order.
+    """
+    signed_mean_m = evaluation.reconstruction.signed_mean
+    scale_bias_frac = compute_scale_bias(signed_mean_m, square_size_m)
+    scale_bias_pct = (scale_bias_frac - 1.0) * 100.0
+    delta_n = n_assumed - n_true
+
+    row = {
+        "seed": seed,
+        "n_true": n_true,
+        "n_assumed": n_assumed,
+        "delta_n": delta_n,
+        "delta_n_over_n": delta_n / n_true,
+        "reprojection_rms_px": evaluation.reprojection.rms,
+        "reconstruction_mae_mm": evaluation.reconstruction.mean * 1000.0,
+        "reconstruction_rmse_mm": evaluation.reconstruction.rmse * 1000.0,
+        "signed_mean_mm": signed_mean_m * 1000.0,
+        "scale_bias_frac": scale_bias_frac,
+        "scale_bias_pct": scale_bias_pct,
+        "scale_bias_pct_control": None,
+        "bias_over_control": None,
+        "holdout_floor_pct": None,
+        "scale_bias_over_floor": None,
+        "num_comparisons": evaluation.reconstruction.num_comparisons,
+        "num_frames": evaluation.num_frames,
+    }
+    return {col: row[col] for col in E5_COLUMNS}
+
+
+def add_control_columns(df: pd.DataFrame, n_true: float) -> pd.DataFrame:
+    """Fill `scale_bias_pct_control`/`bias_over_control` from the band's own Δn=0 row.
+
+    The band's `n_assumed == n_true` row is the correct internal control
+    (review M6): same geometry, same noise, same seed, same pipeline,
+    differing only in the assumed index. Computed AFTER the whole band has
+    run, from the band's own rows -- never from a hardcoded value, and never
+    from a partial band.
+
+    Args:
+        df: A DataFrame with (at least) `n_assumed` and `scale_bias_pct`
+            columns, covering the full swept band.
+        n_true: The true index -- selects the control row via
+            `n_assumed == n_true`.
+
+    Returns:
+        A copy of `df` with `scale_bias_pct_control` (identical on every
+        row) and `bias_over_control` (`abs(scale_bias_pct -
+        scale_bias_pct_control)`, `0.0` on the control row itself) filled
+        in.
+
+    Raises:
+        ValueError: If no row has `n_assumed == n_true` -- the control row
+            is mandatory, not optional.
+    """
+    control_rows = df.index[df["n_assumed"] == n_true]
+    if len(control_rows) == 0:
+        raise ValueError(
+            f"No row with n_assumed == n_true ({n_true}) found; the Δn=0 "
+            "control row is mandatory."
+        )
+    control_pct = float(df.loc[control_rows[0], "scale_bias_pct"])
+
+    out = df.copy()
+    out["scale_bias_pct_control"] = control_pct
+    out["bias_over_control"] = (out["scale_bias_pct"] - control_pct).abs()
+    return out
+
+
+def add_holdout_floor_columns(
+    df: pd.DataFrame, metrics_path: Path, square_size_m: float
+) -> pd.DataFrame:
+    """Fill `holdout_floor_pct`/`scale_bias_over_floor` from a live-read noise floor.
+
+    Args:
+        df: A DataFrame with (at least) a `scale_bias_pct` column.
+        metrics_path: Path to `real_rig_metrics.json`.
+        square_size_m: The ChArUco board's square size, in metres.
+
+    Returns:
+        A copy of `df` with `holdout_floor_pct` (identical on every row) and
+        `scale_bias_over_floor` (`abs(scale_bias_pct) / holdout_floor_pct`)
+        filled in. Both are `None`/NaN on every row if `metrics_path` is
+        missing.
+    """
+    floor_pct = load_holdout_floor_pct(metrics_path, square_size_m)
+    out = df.copy()
+    out["holdout_floor_pct"] = floor_pct
+    if floor_pct is None:
+        out["scale_bias_over_floor"] = None
+    else:
+        out["scale_bias_over_floor"] = out["scale_bias_pct"].abs() / floor_pct
+    return out
+
+
+def run_index_point(
+    n_assumed: float,
+    n_true: float,
+    n_frames: int,
+    seed: int,
+    refine_intrinsics: bool = False,
+) -> dict:
+    """Run one sweep point: calibrate at `n_assumed`, score against `n_true` ground truth.
+
+    Builds a fresh scenario at `n_true`, calibrates it via the shipped
+    `calibrate_synthetic(scenario, n_water=n_assumed, ...)` path (D-23 -- no
+    library parameter was added for E5), generates a SEPARATE held-out
+    detection set at `n_true` from a distinct board-pose set at a distinct
+    seed, and scores the calibration against it via `evaluate_calibration`
+    (never `evaluate_reconstruction`, which assumes rather than estimates
+    board poses -- see the interfaces block in the plan).
+
+    Args:
+        n_assumed: The refractive index the calibration assumes.
+        n_true: The refractive index the ground truth (both calibration
+            detections and the held-out set) is generated at.
+        n_frames: Number of calibration frames.
+        seed: Seed for the calibration scenario/detections. The held-out set
+            uses `seed + HOLDOUT_SEED_OFFSET` -- a distinct seed, distinct
+            board poses.
+        refine_intrinsics: Forwarded to `calibrate_synthetic`.
+
+    Returns:
+        A dict with exactly `E5_COLUMNS` as keys (band-level columns left
+        `None`, filled in by the caller after the whole band has run).
+    """
+    scenario = build_real_rig_scenario(n_frames, seed, n_true)
+    board = BoardGeometry(scenario.board_config)
+
+    result, _detections = calibrate_synthetic(
+        scenario,
+        n_water=n_assumed,
+        refine_intrinsics=refine_intrinsics,
+        seed=seed,
+        normal_fixed=E5_NORMAL_FIXED,
+    )
+
+    holdout_seed = seed + HOLDOUT_SEED_OFFSET
+    holdout_poses = generate_real_rig_trajectory(
+        n_frames=n_frames, depth_range=(1.1, 2.0), seed=holdout_seed
+    )
+    holdout_detections = generate_synthetic_detections(
+        intrinsics=scenario.intrinsics,
+        extrinsics=scenario.extrinsics,
+        water_zs=scenario.water_zs,
+        board=board,
+        board_poses=holdout_poses,
+        noise_std=scenario.noise_std,
+        n_air=1.0,
+        n_water=n_true,
+        seed=holdout_seed,
+    )
+
+    evaluation = evaluate_calibration(result, holdout_detections, board)
+
+    return build_row(
+        evaluation,
+        n_assumed=n_assumed,
+        n_true=n_true,
+        seed=seed,
+        square_size_m=scenario.board_config.square_size,
+    )
+
+
+def run_band(
+    band: list[float],
+    n_true: float,
+    n_frames: int,
+    seed: int,
+    metrics_path: Path,
+    refine_intrinsics: bool = False,
+) -> pd.DataFrame:
+    """Run every point in `band` and assemble the finished, control-and-floor-filled DataFrame.
+
+    Args:
+        band: The list of `n_assumed` values to sweep.
+        n_true: The true index every point's ground truth is generated at.
+        n_frames: Number of calibration frames per point.
+        seed: Seed for every point's calibration scenario/detections.
+        metrics_path: Path to `real_rig_metrics.json` for the live-read
+            noise floor.
+        refine_intrinsics: Forwarded to each `run_index_point` call.
+
+    Returns:
+        A DataFrame with exactly `E5_COLUMNS`, every row's `scale_bias_pct_control`/
+        `bias_over_control`/`holdout_floor_pct`/`scale_bias_over_floor` filled in.
+    """
+    rows = []
+    for n_assumed in band:
+        logger.info("Running n_assumed=%.4f (n_true=%.4f)...", n_assumed, n_true)
+        row = run_index_point(
+            n_assumed=n_assumed,
+            n_true=n_true,
+            n_frames=n_frames,
+            seed=seed,
+            refine_intrinsics=refine_intrinsics,
+        )
+        logger.info(
+            "  reprojection_rms_px=%.4f scale_bias_pct=%.4f",
+            row["reprojection_rms_px"],
+            row["scale_bias_pct"],
+        )
+        rows.append(row)
+
+    df = pd.DataFrame(rows, columns=E5_COLUMNS)
+    df = add_control_columns(df, n_true)
+    board = BoardGeometry(GRID_BOARD_CONFIG)
+    df = add_holdout_floor_columns(df, metrics_path, board.config.square_size)
+    return df[E5_COLUMNS]
+
+
+def _default_metrics_path() -> Path:
+    return Path("experiments/results/real_rig_metrics.json").resolve()
+
+
+def _run_full(args: argparse.Namespace) -> int:
+    """Run the full N_ASSUMED_BAND at a well-conditioned frame count."""
+    out_dir = resolve_out_dir(args.out)
+    df = run_band(
+        band=N_ASSUMED_BAND,
+        n_true=N_TRUE,
+        n_frames=30,
+        seed=args.seed,
+        metrics_path=_default_metrics_path(),
+    )
+    write_experiment_csv(
+        df,
+        out_dir / "index_sensitivity.csv",
+        key_columns=E5_KEY_COLUMNS,
+        force=args.force,
+    )
+    print("\nE5 run complete.")
+    return 0
+
+
+def _run_smoke_at(out_dir: Path, args: argparse.Namespace) -> int:
+    """Run 2 band points at a small frame count into an already-resolved `out_dir`."""
+    smoke_band = [N_TRUE, N_ASSUMED_BAND[-1]]
+    df = run_band(
+        band=smoke_band,
+        n_true=N_TRUE,
+        n_frames=4,
+        seed=args.seed,
+        metrics_path=_default_metrics_path(),
+        refine_intrinsics=False,
+    )
+    write_experiment_csv(
+        df,
+        out_dir / "index_sensitivity.csv",
+        key_columns=E5_KEY_COLUMNS,
+        force=True,
+    )
+    print(f"Smoke-wrote index_sensitivity.csv to {out_dir}")
+    return 0
+
+
+def _run_smoke(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Run 2 band points at a small frame count.
+
+    Honors an explicitly-passed `--out`; otherwise falls back to a throwaway
+    temp directory so a bare `--smoke` never pollutes the real
+    `experiments/results` output (matching E7's pattern).
+    """
+    if args.out == parser.get_default("out"):
+        with tempfile.TemporaryDirectory(prefix="e5_smoke_") as tmp:
+            out_dir = resolve_out_dir(Path(tmp))
+            return _run_smoke_at(out_dir, args)
+    out_dir = resolve_out_dir(args.out)
+    return _run_smoke_at(out_dir, args)
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Build E5's CLI parser: the shared five-flag contract, no extra flags."""
+    parser = argparse.ArgumentParser(
+        description=__doc__, parents=[build_experiment_arg_parser()]
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point for `python -m experiments.e5_index_sensitivity`."""
+    parser = build_arg_parser()
+    args = parser.parse_args(argv)
+    validate_args(parser, args)
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if args.check:
+        # E5's production band is written by plan 19.2-13, not this plan --
+        # there is no committed baseline yet for --check to compare against.
+        parser.error(
+            "--check is not supported by e5_index_sensitivity.py: the "
+            "production band is run by plan 19.2-13, which has not yet "
+            "committed a baseline CSV."
+        )
+    if args.smoke:
+        return _run_smoke(args, parser)
+    return _run_full(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

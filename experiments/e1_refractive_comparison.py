@@ -125,6 +125,28 @@ EXP3_COLUMNS = [
 SPATIAL_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m", "signed_error_mm"]
 
 
+def compute_scale_bias(signed_mean_m: float, square_size_m: float) -> float:
+    """Convert a signed reconstruction bias into a depth/scale bias factor.
+
+    This is the ONE origin of the scale-bias formula shared between E1's
+    `scale_factor` column (`exp2_depth_generalization.csv`) and E5's
+    `scale_bias_frac` column (`index_sensitivity.csv`) -- both quantities are
+    computed by this single function (review L3/T-19.2-32).
+
+    Args:
+        signed_mean_m: Mean signed 3D distance error, in metres (+ = the
+            reconstructed distance overestimates the true distance).
+        square_size_m: The ChArUco board's square size, in metres -- the
+            reference length the signed bias is expressed as a fraction of.
+
+    Returns:
+        A dimensionless scale factor: `1.0` means no bias, `> 1.0` means the
+        reconstruction overestimates distances, `< 1.0` means it
+        underestimates them.
+    """
+    return 1.0 + (signed_mean_m / square_size_m)
+
+
 def compute_xyz_errors(calibration, test_poses, test_detections, board):
     """Decompose triangulated corner error into XY (lateral) and Z (depth) components.
 
@@ -290,7 +312,9 @@ def _build_dataframes(scenario, results, seed, test_depths=None):
 
         for label, (result, _detections) in results.items():
             err = evaluate_reconstruction(result, board, test_detections)
-            scale = 1.0 + (err.signed_mean / scenario.board_config.square_size)
+            scale = compute_scale_bias(
+                err.signed_mean, scenario.board_config.square_size
+            )
             per_depth_results[label].append(
                 {
                     "depth": depth,
