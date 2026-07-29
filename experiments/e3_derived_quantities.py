@@ -8,7 +8,9 @@ CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`) from
 Emits, into `--out` (default `experiments/results/`):
     - `code_constants.csv` -- declared-vs-source value, with a pass/fail column (tier 1)
     - `newton_iterations.csv` -- Newton root-find iteration-count distribution over the
-      real rig's working volume (tier 2)
+      real rig's working volume, for BOTH shipped Newton loops -- `scalar` (per-point
+      termination, byte-comparable to the pre-D-32 baseline) and `batch` (the vectorized,
+      all-points-terminated loop production actually runs, D-32/CR-05) -- tier 2
     - `cpr_grouping.csv` -- P / groups / fd_reduction for all six `tab:cpr` configurations,
       in both interface modes (tier 3)
     - `cpr_grouping.tex` -- LaTeX fragment of the shared-interface `tab:cpr` rows (default),
@@ -57,7 +59,10 @@ from aquacal.config.schema import (
 from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
-from aquacal.core.refractive_geometry import refractive_project_newton_diagnostic
+from aquacal.core.refractive_geometry import (
+    refractive_project_batch_newton_diagnostic,
+    refractive_project_newton_diagnostic,
+)
 from aquacal.datasets import generate_real_rig_array
 from aquacal.datasets.synthetic import generate_real_rig_trajectory
 from aquacal.io import capture_environment
@@ -87,6 +92,7 @@ CODE_CONSTANTS_KEY_COLUMNS = ["key"]
 
 NEWTON_COLUMNS = [
     "camera",
+    "loop",
     "n_points",
     "iter_min",
     "iter_median",
@@ -96,7 +102,16 @@ NEWTON_COLUMNS = [
     "incidence_deg_max",
     "residual_max_m",
 ]
-NEWTON_KEY_COLUMNS = ["camera"]
+NEWTON_KEY_COLUMNS = ["camera", "loop"]
+
+# Fixed vocabulary for the `loop` column (D-32/CR-05). "scalar" rows come from
+# `refractive_project_newton_diagnostic` (per-point termination, `_solve_newton_r_p`) and
+# remain byte-comparable to the pre-D-32 committed baseline. "batch" rows come from
+# `refractive_project_batch_newton_diagnostic` -- the vectorized, all-points-terminated
+# loop the production residual path (`refractive_project_batch`) actually runs.
+NEWTON_LOOP_SCALAR = "scalar"
+NEWTON_LOOP_BATCH = "batch"
+NEWTON_LOOP_VALUES = (NEWTON_LOOP_SCALAR, NEWTON_LOOP_BATCH)
 
 # Same board config `create_scenario("realistic")` uses for the real-rig scenario
 # (aquacal.datasets.synthetic._create_scenario's default_board) -- matches real hardware.
@@ -231,11 +246,17 @@ def build_provenance_sidecar(seed: int) -> dict:
     }
 
 
-def _summarize_newton_records(camera_label: str, records: list[dict]) -> dict:
+def _summarize_newton_records(
+    camera_label: str, loop: str, records: list[dict]
+) -> dict:
     """Aggregate one camera's (or the pooled `ALL`) list of diagnostic dicts into one row.
 
-    `records` holds only the non-`None` `refractive_project_newton_diagnostic` returns --
-    the degenerate cases are skipped by the caller and never enter these statistics.
+    `records` holds only records over VALID points -- the degenerate cases are skipped by
+    the caller and never enter these statistics. `loop` identifies which of the two
+    shipped Newton loops (`NEWTON_LOOP_SCALAR` / `NEWTON_LOOP_BATCH`) these records were
+    measured from; each record dict has the same shape regardless of loop
+    (`n_iterations`, `converged`, `final_residual`, `r_p`, `incidence_angle_deg`) -- see
+    `_batch_diagnostic_to_records`.
     """
     n_iterations = [r["n_iterations"] for r in records]
     incidence = [r["incidence_angle_deg"] for r in records]
@@ -243,6 +264,7 @@ def _summarize_newton_records(camera_label: str, records: list[dict]) -> dict:
     n_not_converged = sum(1 for r in records if not r["converged"])
     return {
         "camera": camera_label,
+        "loop": loop,
         "n_points": len(records),
         "iter_min": int(np.min(n_iterations)),
         "iter_median": float(np.median(n_iterations)),
@@ -254,22 +276,56 @@ def _summarize_newton_records(camera_label: str, records: list[dict]) -> dict:
     }
 
 
+def _batch_diagnostic_to_records(diagnostics: dict) -> list[dict]:
+    """Convert one `refractive_project_batch_newton_diagnostic` call's per-point arrays
+    into one record dict per valid point, in the same shape
+    `refractive_project_newton_diagnostic` returns, so both loops feed
+    `_summarize_newton_records` unchanged.
+
+    A point's `n_iterations` is the iteration at which its OWN `|delta|` first fell below
+    tolerance (`converged_at_iteration`) if it converged; if it never did, `n_iterations`
+    is `n_iterations_executed` -- the number of loop iterations that actually ran, which
+    the batch diagnostic observed directly, not a value inferred from a residual
+    threshold.
+    """
+    n_executed = diagnostics["n_iterations_executed"]
+    records = []
+    for i in range(len(diagnostics["point_index"])):
+        converged = bool(diagnostics["converged"][i])
+        converged_at = int(diagnostics["converged_at_iteration"][i])
+        records.append(
+            {
+                "n_iterations": converged_at if converged else n_executed,
+                "converged": converged,
+                "final_residual": float(diagnostics["final_abs_delta"][i]),
+                "r_p": float(diagnostics["r_p"][i]),
+                "incidence_angle_deg": float(diagnostics["incidence_angle_deg"][i]),
+            }
+        )
+    return records
+
+
 def build_newton_iterations_df(n_frames: int, seed: int) -> pd.DataFrame:
     """Tier 2: measure the Newton root-find iteration distribution over the real rig's
-    working volume, through the shipped `refractive_project_newton_diagnostic` (D-19).
+    working volume, through BOTH shipped Newton loops (D-19, D-32/CR-05).
 
     Sweeps `generate_real_rig_trajectory`'s board poses (same substrate E5 uses, D-09/D-20)
-    against `generate_real_rig_array`'s 12-camera geometry, calling the diagnostic once per
-    board corner per pose per camera. `None` returns (the three degenerate cases) are
-    skipped and never enter the iteration statistics. Emits one row per camera plus one
-    pooled `ALL` row, the pooled row computed directly from the per-point records (not by
-    re-averaging the per-camera summaries).
+    against `generate_real_rig_array`'s 12-camera geometry, calling
+    `refractive_project_newton_diagnostic` (the scalar, per-point-terminated loop) once
+    per board corner per pose per camera, AND `refractive_project_batch_newton_diagnostic`
+    (the vectorized, all-points-terminated loop the production residual path actually
+    runs, D-32) once per pose per camera over that pose's corners. `None`/excluded returns
+    (the degenerate cases: camera at/below interface, point at/above interface, point
+    directly below the camera) are skipped and never enter either loop's iteration
+    statistics. Emits one row per camera per loop plus one pooled `ALL` row per loop (26
+    rows total for 12 cameras + ALL, over 2 loops), each pooled row computed directly from
+    that loop's per-point records (not by re-averaging the per-camera summaries).
 
-    Never re-implements the Newton loop and never infers an iteration count from a
-    residual -- the public diagnostic is the only source (D-19).
+    Never re-implements a Newton loop and never infers an iteration count from a residual
+    -- both public diagnostics are the only sources (D-19, D-32).
 
-    Does not assert or gate on the observed maximum: if it exceeds four, that is a finding
-    for the manuscript, not a failure (D-20).
+    Does not assert or gate on the observed maximum: if it exceeds the shipped
+    `max_iterations=10` cap, that is a finding for the manuscript, not a failure (D-20).
     """
     intrinsics, extrinsics, water_zs = generate_real_rig_array()
     board_poses = generate_real_rig_trajectory(
@@ -281,9 +337,11 @@ def build_newton_iterations_df(n_frames: int, seed: int) -> pd.DataFrame:
         normal=_INTERFACE_NORMAL, camera_distances=water_zs, n_air=1.0, n_water=1.333
     )
 
-    per_camera_records: dict[str, list[dict]] = {cam: [] for cam in cameras}
+    per_camera_scalar: dict[str, list[dict]] = {cam: [] for cam in cameras}
+    per_camera_batch: dict[str, list[dict]] = {cam: [] for cam in cameras}
     for pose in board_poses:
         world_corners = board.transform_corners(pose.rvec, pose.tvec)
+        corner_points = np.array(list(world_corners.values()), dtype=np.float64)
         for cam_name, camera in cameras.items():
             for point_3d in world_corners.values():
                 diagnostic = refractive_project_newton_diagnostic(
@@ -291,23 +349,50 @@ def build_newton_iterations_df(n_frames: int, seed: int) -> pd.DataFrame:
                 )
                 if diagnostic is None:
                     continue
-                per_camera_records[cam_name].append(diagnostic)
+                per_camera_scalar[cam_name].append(diagnostic)
+
+            batch_diagnostics = refractive_project_batch_newton_diagnostic(
+                camera, interface, corner_points
+            )
+            per_camera_batch[cam_name].extend(
+                _batch_diagnostic_to_records(batch_diagnostics)
+            )
 
     rows = []
-    pooled_records: list[dict] = []
+    pooled_scalar_records: list[dict] = []
+    pooled_batch_records: list[dict] = []
     for cam_name in sorted(cameras):
-        records = per_camera_records[cam_name]
-        pooled_records.extend(records)
-        rows.append(_summarize_newton_records(cam_name, records))
-    pooled_row = _summarize_newton_records("ALL", pooled_records)
-    rows.append(pooled_row)
+        scalar_records = per_camera_scalar[cam_name]
+        pooled_scalar_records.extend(scalar_records)
+        rows.append(
+            _summarize_newton_records(cam_name, NEWTON_LOOP_SCALAR, scalar_records)
+        )
+
+        batch_records = per_camera_batch[cam_name]
+        pooled_batch_records.extend(batch_records)
+        rows.append(
+            _summarize_newton_records(cam_name, NEWTON_LOOP_BATCH, batch_records)
+        )
+
+    pooled_scalar_row = _summarize_newton_records(
+        "ALL", NEWTON_LOOP_SCALAR, pooled_scalar_records
+    )
+    pooled_batch_row = _summarize_newton_records(
+        "ALL", NEWTON_LOOP_BATCH, pooled_batch_records
+    )
+    rows.append(pooled_scalar_row)
+    rows.append(pooled_batch_row)
 
     logger.info(
-        "Newton iterations (pooled, n=%d): min=%d median=%.1f max=%d",
-        pooled_row["n_points"],
-        pooled_row["iter_min"],
-        pooled_row["iter_median"],
-        pooled_row["iter_max"],
+        "Newton iterations (pooled, n=%d): scalar min=%d median=%.1f max=%d | "
+        "batch min=%d median=%.1f max=%d",
+        pooled_scalar_row["n_points"],
+        pooled_scalar_row["iter_min"],
+        pooled_scalar_row["iter_median"],
+        pooled_scalar_row["iter_max"],
+        pooled_batch_row["iter_min"],
+        pooled_batch_row["iter_median"],
+        pooled_batch_row["iter_max"],
     )
 
     return pd.DataFrame(rows, columns=NEWTON_COLUMNS)
@@ -654,8 +739,13 @@ def _write_tier3(out_dir: Path, include_per_camera: bool, force: bool) -> None:
     write_derived_values_latex(out_dir, cpr_df, force=force)
 
 
-def _run_check(out_dir: Path) -> int:
-    """`--check`: compare a fresh run against committed baselines, tier by tier."""
+def _run_check(out_dir: Path, seed: int) -> int:
+    """`--check`: compare a fresh run against committed baselines, tier by tier.
+
+    `seed` is the CLI's `--seed` (WR-05 closed): tier 2's recomputation uses the seed it
+    was actually given rather than a hardcoded `seed=42`, so `--check --seed 7` cannot
+    report a pass on a seed-42 recomputation it never ran.
+    """
     overall_passed = True
 
     code_constants_path = out_dir / "code_constants.csv"
@@ -678,7 +768,7 @@ def _run_check(out_dir: Path) -> int:
         print(f"No committed baseline at {newton_path} to check against.")
         overall_passed = False
     else:
-        fresh_newton = build_newton_iterations_df(n_frames=100, seed=42)
+        fresh_newton = build_newton_iterations_df(n_frames=100, seed=seed)
         report = compare_experiment_csv(
             fresh_newton, newton_path, key_columns=NEWTON_KEY_COLUMNS, rtol=CHECK_RTOL
         )
@@ -710,7 +800,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         out_dir = resolve_out_dir(args.out)
-        return _run_check(out_dir)
+        return _run_check(out_dir, seed=args.seed)
 
     if args.smoke:
         # Honor an explicitly-passed --out; otherwise fall back to a throwaway temp
