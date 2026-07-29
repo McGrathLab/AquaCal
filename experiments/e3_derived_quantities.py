@@ -24,11 +24,12 @@ that breaks first when a library default changes -- this script only turns the d
 table into a human-readable CSV. This module never re-declares a claim, source, or value.
 
 **Tier 3 owns every `tab:cpr` row (review H1).** The original design split `tab:cpr`
-across this file and E4's `benchmark_grid.csv` (D-16). That split does not hold: every
+across this file and E4's own per-cell grid CSV (D-16). That split does not hold: every
 `tab:cpr` row is a tilt-enabled (`normal_fixed=False`) configuration, and the rows
 previously assigned to E4 would have been produced by a run whose parameter vector is two
-tilt DOF smaller -- a wrong number that looks right. `benchmark_grid.csv` still reports
-CPR columns, but they describe E4's OWN configuration and do NOT feed `tab:cpr`.
+tilt DOF smaller -- a wrong number that looks right. E4's grid CSV still reports CPR
+columns, but they describe E4's OWN configuration and do NOT feed `tab:cpr`. This module
+never reads E4's grid CSV.
 """
 
 from __future__ import annotations
@@ -43,7 +44,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from aquacal.config.schema import BoardConfig
+from aquacal.calibration._optim_common import (
+    build_jacobian_sparsity,
+    build_structural_column_groups,
+)
+from aquacal.config.schema import (
+    BoardConfig,
+    Detection,
+    DetectionResult,
+    FrameDetections,
+)
 from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
@@ -58,6 +68,7 @@ from experiments._io import (
     validate_args,
     write_experiment_csv,
 )
+from experiments._render import write_latex_fragment
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +108,51 @@ _REAL_RIG_BOARD_CONFIG = BoardConfig(
     dictionary="DICT_5X5_100",
 )
 _INTERFACE_NORMAL = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+
+CPR_COLUMNS = [
+    "config_key",
+    "n_cameras",
+    "n_frames",
+    "normal_fixed",
+    "refine_intrinsics",
+    "shared_interface",
+    "n_params",
+    "n_groups",
+    "fd_reduction",
+    "record_source",
+]
+CPR_KEY_COLUMNS = ["config_key"]
+
+# The six published `tab:cpr` configurations (19.2-SOURCE-BRIEF.md Sec E3 Tier 3), as
+# (n_cameras, n_frames, normal_fixed, refine_intrinsics). `normal_fixed=False` on every
+# row is load-bearing (review H1): "tilt" in `tab:cpr` means tilt-ENABLED, matching
+# `CalibrationConfig.interface_normal_fixed`'s default and E2's real-rig run. A row built
+# at `normal_fixed=True` would report a P exactly 2 smaller and look entirely plausible.
+# tilt+intrinsics (13, 200, ...) -- shared row COPIED from E2's benchmark.json; the rest
+# (including its own per-camera row) are computed.
+CPR_CONFIGS: list[tuple[int, int, bool, bool]] = [
+    (3, 3, False, False),  # tilt
+    (16, 200, False, False),  # tilt
+    (8, 100, False, True),  # tilt+intrinsics
+    (12, 100, False, True),  # tilt+intrinsics
+    (13, 200, False, True),  # tilt+intrinsics
+    (16, 200, False, True),  # tilt+intrinsics
+]
+
+# The one (n_cameras, n_frames, normal_fixed, refine_intrinsics) whose shared-interface row
+# is copied from E2's committed record rather than computed here (D-16, review M1). The
+# matching per-camera row is still computed: E2 ran shared-interface only, so copying its
+# numbers into a shared_interface=False row would publish a fabricated per-camera value
+# (review M1).
+_COPIED_ROW_CONFIG = (13, 200, False, True)
+_COPIED_ROW_STAGE = "stage3_intrinsic_pass"
+
+# The committed E2 record tier 3's shared-interface 13/200 row copies from -- always this
+# fixed repo-relative location, independent of --out (the copy source is a checked-in
+# artifact, not a fresh run).
+_E2_BENCHMARK_JSON_PATH = (
+    Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
+)
 
 
 def _import_declared_constants():
@@ -248,6 +304,289 @@ def build_newton_iterations_df(n_frames: int, seed: int) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=NEWTON_COLUMNS)
 
 
+def _make_detections(
+    n_cams: int,
+    n_frames: int,
+    visibility: float = 1.0,
+    corners_per_view: int = 4,
+    seed: int = 0,
+) -> DetectionResult:
+    """Build a `DetectionResult` where each camera sees each frame with prob `visibility`.
+
+    Adapted from `tests/unit/test_optim_common.py` (per P3, `experiments/` imports from
+    `src/aquacal`, not from `tests/` -- tier 1's constants table is the single deliberate
+    exception, and it is not this). Structural-only: this exists to give
+    `build_jacobian_sparsity` a connectivity pattern to build a sparsity structure from, not
+    to model real detections. At `visibility=1.0` (tier 3's usage) every camera sees every
+    frame, matching `n_params`'s closed form (independent of visibility) and the theoretical
+    lower-bound group count `build_structural_column_groups`' own docstring documents.
+    """
+    rng = np.random.default_rng(seed)
+    camera_names = [f"cam{i}" for i in range(n_cams)]
+    corner_ids = np.arange(corners_per_view, dtype=np.int32)
+
+    frames = {}
+    for frame_idx in range(n_frames):
+        visible = [c for c in camera_names if rng.random() < visibility]
+        if not visible:
+            visible = [camera_names[rng.integers(n_cams)]]
+
+        detections = {
+            cam: Detection(
+                corner_ids=corner_ids.copy(),
+                corners_2d=rng.uniform(0.0, 1000.0, size=(corners_per_view, 2)),
+            )
+            for cam in visible
+        }
+        frames[frame_idx] = FrameDetections(frame_idx=frame_idx, detections=detections)
+
+    return DetectionResult(
+        frames=frames, camera_names=camera_names, total_frames=n_frames
+    )
+
+
+def _build_computed_cpr_row(
+    config_key: str,
+    n_cameras: int,
+    n_frames: int,
+    normal_fixed: bool,
+    refine_intrinsics: bool,
+    shared_interface: bool,
+) -> dict:
+    """Build one tier-3 CPR row by building a sparsity pattern and grouping it structurally.
+
+    Never hand-rolls a grouping and never uses scipy's generic FD column-grouping colorer
+    (`scipy.optimize._numdiff`'s greedy grouper) -- `n_params` and
+    `n_groups` are read straight off `build_jacobian_sparsity`/`build_structural_column_groups`,
+    the library's own functions.
+    """
+    detections = _make_detections(n_cameras, n_frames, visibility=1.0, seed=0)
+    camera_order = [f"cam{i}" for i in range(n_cameras)]
+    frame_order = list(range(n_frames))
+    jac_sparsity = build_jacobian_sparsity(
+        detections,
+        reference_camera="cam0",
+        camera_order=camera_order,
+        frame_order=frame_order,
+        min_corners=1,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
+    )
+    groups = build_structural_column_groups(
+        jac_sparsity,
+        n_cameras,
+        n_frames,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=normal_fixed,
+        shared_interface=shared_interface,
+    )
+    n_params = int(jac_sparsity.shape[1])
+    n_groups = int(groups.max()) + 1
+    return {
+        "config_key": config_key,
+        "n_cameras": n_cameras,
+        "n_frames": n_frames,
+        "normal_fixed": normal_fixed,
+        "refine_intrinsics": refine_intrinsics,
+        "shared_interface": shared_interface,
+        "n_params": n_params,
+        "n_groups": n_groups,
+        "fd_reduction": n_params / n_groups,
+        "record_source": "computed",
+    }
+
+
+def _build_copied_cpr_row(
+    config_key: str,
+    n_cameras: int,
+    n_frames: int,
+    normal_fixed: bool,
+    refine_intrinsics: bool,
+    benchmark_json_path: Path,
+) -> dict:
+    """Build the ONE shared-interface CPR row copied from E2's committed `benchmark.json`
+    (D-16, review M1) -- never re-derived. Reads `stages.stage3_intrinsic_pass` specifically,
+    since that is the pass `tab:cpr`'s "tilt+intrinsics" descriptor names (review M1 --
+    `stage3_interface_optimization` reports a different count for the same problem).
+
+    If the committed record is absent, emits null metrics with `record_source` set to
+    `missing_e2_benchmark` and logs a WARNING -- never raises.
+    """
+    if not benchmark_json_path.exists():
+        logger.warning(
+            "E2 benchmark record not found at %s; emitting null CPR metrics for %s "
+            "(record_source=missing_e2_benchmark).",
+            benchmark_json_path,
+            config_key,
+        )
+        return {
+            "config_key": config_key,
+            "n_cameras": n_cameras,
+            "n_frames": n_frames,
+            "normal_fixed": normal_fixed,
+            "refine_intrinsics": refine_intrinsics,
+            "shared_interface": True,
+            "n_params": None,
+            "n_groups": None,
+            "fd_reduction": None,
+            "record_source": "missing_e2_benchmark",
+        }
+
+    with open(benchmark_json_path) as f:
+        record = json.load(f)
+    stage = record["stages"][_COPIED_ROW_STAGE]
+    return {
+        "config_key": config_key,
+        "n_cameras": n_cameras,
+        "n_frames": n_frames,
+        "normal_fixed": normal_fixed,
+        "refine_intrinsics": refine_intrinsics,
+        "shared_interface": True,
+        "n_params": stage["n_params"],
+        "n_groups": stage["n_groups"],
+        "fd_reduction": stage["fd_reduction"],
+        "record_source": "copied_from_e2_benchmark",
+    }
+
+
+def _cpr_config_key(
+    n_cameras: int, n_frames: int, refine_intrinsics: bool, shared_interface: bool
+) -> str:
+    tilt_label = "tilt_intrinsics" if refine_intrinsics else "tilt"
+    interface_label = "shared" if shared_interface else "percamera"
+    return f"{n_cameras}cam_{n_frames}frame_{tilt_label}_{interface_label}"
+
+
+def build_cpr_grouping_df(benchmark_json_path: Path) -> pd.DataFrame:
+    """Tier 3: build all 12 `cpr_grouping.csv` rows (6 published configs x 2 interface
+    modes, D-21). Exactly one row -- the shared-interface 13-camera/200-frame
+    tilt+intrinsics row -- is copied from E2's `benchmark.json`; the rest are computed here.
+    """
+    rows = []
+    for n_cameras, n_frames, normal_fixed, refine_intrinsics in CPR_CONFIGS:
+        config = (n_cameras, n_frames, normal_fixed, refine_intrinsics)
+        for shared_interface in (True, False):
+            config_key = _cpr_config_key(
+                n_cameras, n_frames, refine_intrinsics, shared_interface
+            )
+            if config == _COPIED_ROW_CONFIG and shared_interface:
+                row = _build_copied_cpr_row(
+                    config_key,
+                    n_cameras,
+                    n_frames,
+                    normal_fixed,
+                    refine_intrinsics,
+                    benchmark_json_path,
+                )
+            else:
+                row = _build_computed_cpr_row(
+                    config_key,
+                    n_cameras,
+                    n_frames,
+                    normal_fixed,
+                    refine_intrinsics,
+                    shared_interface,
+                )
+            rows.append(row)
+    return pd.DataFrame(rows, columns=CPR_COLUMNS)
+
+
+def _select_cpr_rows_for_latex(
+    df: pd.DataFrame, include_per_camera: bool
+) -> pd.DataFrame:
+    """Default: shared-interface rows only (D-21 -- the supplement's sparsity table
+    describes the production configuration). `include_per_camera=True` emits both modes.
+    """
+    if include_per_camera:
+        return df
+    return df[df["shared_interface"]]
+
+
+def write_cpr_latex(
+    df: pd.DataFrame, out_dir: Path, include_per_camera: bool, force: bool
+) -> bool:
+    """Write `cpr_grouping.tex` via `experiments._render.write_latex_fragment` -- no second
+    LaTeX layer, no value recomputed at render time (P1).
+    """
+    path = out_dir / "cpr_grouping.tex"
+    if path.exists() and not force:
+        logger.info(
+            "Skipping write to %s: file already exists and --force was not given "
+            "(resumability).",
+            path,
+        )
+        return False
+    selected = _select_cpr_rows_for_latex(df, include_per_camera)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_latex_fragment(selected, path, CPR_COLUMNS)
+    return True
+
+
+def _find_cpr_row(
+    df: pd.DataFrame, n_cameras: int, n_frames: int, refine_intrinsics: bool
+) -> pd.Series:
+    """Look up one shared-interface `cpr_grouping.csv` row by its configuration.
+
+    Raises rather than falling back to a placeholder: a missing row means `CPR_CONFIGS` was
+    edited and the table is incomplete (no `\\TODO` branch, per Task 3's action).
+    """
+    match = df[
+        (df["n_cameras"] == n_cameras)
+        & (df["n_frames"] == n_frames)
+        & (df["refine_intrinsics"] == refine_intrinsics)
+        & df["shared_interface"]
+    ]
+    if match.empty:
+        raise ValueError(
+            f"cpr_grouping.csv is missing a shared-interface row for "
+            f"n_cameras={n_cameras}, n_frames={n_frames}, "
+            f"refine_intrinsics={refine_intrinsics} -- CPR_CONFIGS may have been edited."
+        )
+    return match.iloc[0]
+
+
+def build_derived_values_latex_content(cpr_df: pd.DataFrame) -> str:
+    """Regenerate the two derived prose asides (D-22) from `cpr_grouping.csv`'s own
+    shared-interface rows -- no dependency on E4's grid, no `\\TODO` placeholder.
+    """
+    row_13_200 = _find_cpr_row(cpr_df, 13, 200, True)
+    pose_params = 6 * int(row_13_200["n_frames"])
+    total_params = int(row_13_200["n_params"])
+    params_aside = f"{pose_params} of {total_params} parameters"
+
+    row_8 = _find_cpr_row(cpr_df, 8, 100, True)
+    row_12 = _find_cpr_row(cpr_df, 12, 100, True)
+    reduction_aside = (
+        f"{row_8['fd_reduction']:.1f}x to {row_12['fd_reduction']:.1f}x "
+        "from eight to twelve cameras"
+    )
+
+    lines = [
+        f"\\newcommand{{\\CPRParamsAside}}{{{params_aside}}}",
+        f"\\newcommand{{\\CPRReductionAside}}{{{reduction_aside}}}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def write_derived_values_latex(
+    out_dir: Path, cpr_df: pd.DataFrame, force: bool
+) -> bool:
+    """Write `cpr_derived_values.tex` -- two regenerated macro definitions, D-22."""
+    path = out_dir / "cpr_derived_values.tex"
+    if path.exists() and not force:
+        logger.info(
+            "Skipping write to %s: file already exists and --force was not given "
+            "(resumability).",
+            path,
+        )
+        return False
+    content = build_derived_values_latex_content(cpr_df)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    return True
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build E3's CLI parser, extending the shared five-flag contract (D-21)."""
     parser = argparse.ArgumentParser(
@@ -295,7 +634,15 @@ def _write_tier2(out_dir: Path, n_frames: int, seed: int, force: bool) -> None:
         key_columns=NEWTON_KEY_COLUMNS,
         force=force,
     )
-    # Tier 3 (Task 3) call site goes here.
+
+
+def _write_tier3(out_dir: Path, include_per_camera: bool, force: bool) -> None:
+    cpr_df = build_cpr_grouping_df(_E2_BENCHMARK_JSON_PATH)
+    write_experiment_csv(
+        cpr_df, out_dir / "cpr_grouping.csv", key_columns=CPR_KEY_COLUMNS, force=force
+    )
+    write_cpr_latex(cpr_df, out_dir, include_per_camera=include_per_camera, force=force)
+    write_derived_values_latex(out_dir, cpr_df, force=force)
 
 
 def _run_check(out_dir: Path) -> int:
@@ -329,7 +676,17 @@ def _run_check(out_dir: Path) -> int:
         print(f"newton_iterations.csv: {report.message}")
         overall_passed = overall_passed and report.passed
 
-    # Tier 3 (Task 3) --check comparison goes here.
+    cpr_path = out_dir / "cpr_grouping.csv"
+    if not cpr_path.exists():
+        print(f"No committed baseline at {cpr_path} to check against.")
+        overall_passed = False
+    else:
+        fresh_cpr = build_cpr_grouping_df(_E2_BENCHMARK_JSON_PATH)
+        report = compare_experiment_csv(
+            fresh_cpr, cpr_path, key_columns=CPR_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        print(f"cpr_grouping.csv: {report.message}")
+        overall_passed = overall_passed and report.passed
 
     return 0 if overall_passed else 1
 
@@ -354,18 +711,26 @@ def main(argv: list[str] | None = None) -> int:
                 out_dir = resolve_out_dir(Path(tmp))
                 _write_tier1_and_sidecar(out_dir, seed=args.seed, force=True)
                 _write_tier2(out_dir, n_frames=3, seed=args.seed, force=True)
-                # Tier 3 (Task 3) call site goes here.
+                _write_tier3(
+                    out_dir,
+                    include_per_camera=args.include_per_camera_latex,
+                    force=True,
+                )
         else:
             out_dir = resolve_out_dir(args.out)
             _write_tier1_and_sidecar(out_dir, seed=args.seed, force=True)
             _write_tier2(out_dir, n_frames=3, seed=args.seed, force=True)
-            # Tier 3 (Task 3) call site goes here.
+            _write_tier3(
+                out_dir, include_per_camera=args.include_per_camera_latex, force=True
+            )
         return 0
 
     out_dir = resolve_out_dir(args.out)
     _write_tier1_and_sidecar(out_dir, seed=args.seed, force=args.force)
     _write_tier2(out_dir, n_frames=100, seed=args.seed, force=args.force)
-    # Tier 3 (Task 3) call site goes here.
+    _write_tier3(
+        out_dir, include_per_camera=args.include_per_camera_latex, force=args.force
+    )
     return 0
 
 
