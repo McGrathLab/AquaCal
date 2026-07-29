@@ -1,0 +1,13 @@
+config_key,n_cameras,n_frames,normal_fixed,refine_intrinsics,shared_interface,n_params,n_groups,fd_reduction,record_source
+12cam_100frame_tilt_intrinsics_percamera,12,100,False,True,False,728,17,42.8235294117647,computed
+12cam_100frame_tilt_intrinsics_shared,12,100,False,True,True,717,17,42.1764705882353,computed
+13cam_200frame_tilt_intrinsics_percamera,13,200,False,True,False,1339,17,78.76470588235294,computed
+13cam_200frame_tilt_intrinsics_shared,13,200,False,True,True,1317,17,77.47058823529412,copied_from_e2_benchmark
+16cam_200frame_tilt_intrinsics_percamera,16,200,False,True,False,1372,17,80.70588235294117,computed
+16cam_200frame_tilt_intrinsics_shared,16,200,False,True,True,1357,17,79.82352941176471,computed
+16cam_200frame_tilt_percamera,16,200,False,False,False,1308,13,100.61538461538461,computed
+16cam_200frame_tilt_shared,16,200,False,False,True,1293,13,99.46153846153847,computed
+3cam_3frame_tilt_percamera,3,3,False,False,False,35,13,2.6923076923076925,computed
+3cam_3frame_tilt_shared,3,3,False,False,True,33,13,2.5384615384615383,computed
+8cam_100frame_tilt_intrinsics_percamera,8,100,False,True,False,684,17,40.23529411764706,computed
+8cam_100frame_tilt_intrinsics_shared,8,100,False,True,True,677,17,39.8235294117647,computed

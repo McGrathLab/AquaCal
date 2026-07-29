@@ -1,0 +1,10 @@
+key,claim,source,read_via,declared_value,source_value,pass_fail
+aux_registration_f_scale_px,"Huber robust loss, `f_scale = 1.0 px` (third site, hardcoded)",aquacal.calibration.interface_estimation.register_auxiliary_camera,source_regex,1.0,1.0,PASS
+dense_threshold_elements,`make_sparse_jacobian_func` returns a dense Jacobian below a ~4 GiB element-count threshold,aquacal.calibration._optim_common.make_sparse_jacobian_func,signature_default,500000000,500000000,PASS
+huber_f_scale_px,"Huber robust loss, `f_scale = 1.0 px`",aquacal.calibration.interface_estimation.optimize_interface;aquacal.calibration.refinement.joint_refinement,signature_default,"(1.0, 1.0)","(1.0, 1.0)",PASS
+invalid_tir_penalty_px,Invalid/TIR configurations take a fixed 100 px penalty,aquacal.calibration._optim_common.compute_residuals,source_regex,100.0,100.0,PASS
+newton_max_iterations,Newton root-find converges within `max_iterations = 10`,aquacal.core.refractive_geometry._refractive_project_newton,signature_default,10,10,PASS
+newton_tolerance_m,Newton root-find tolerance `1e-9 m`,aquacal.core.refractive_geometry._refractive_project_newton,signature_default,1e-09,1e-09,PASS
+refined_intrinsics_bounds_frac,refined intrinsics bounded to 50-200% of their nominal value,aquacal.calibration._optim_common.build_bounds,call,"(0.5, 2.0)","(0.5, 2.0)",PASS
+solver_tolerances,"termination tolerances of `1e-8` on the cost, parameters, and gradient",aquacal.calibration.interface_estimation.optimize_interface;aquacal.calibration.refinement.joint_refinement,call,"(1e-08, 1e-08, 1e-08)","(1e-08, 1e-08, 1e-08)",PASS
+water_z_bounds_m,"`water_z` bounded to `[0.01, 2.0] m`",aquacal.calibration._optim_common.build_bounds,call,"(0.01, 2.0)","(0.01, 2.0)",PASS
