@@ -66,6 +66,8 @@ from aquacal.datasets.synthetic import (
 from aquacal.validation.evaluation import evaluate_calibration
 from experiments._io import (
     build_experiment_arg_parser,
+    compare_experiment_csv,
+    exit_code_for,
     resolve_out_dir,
     validate_args,
     write_experiment_csv,
@@ -491,6 +493,35 @@ def _run_full(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_check(args: argparse.Namespace) -> int:
+    """Recompute the full band fresh and compare against the committed baseline (D-22).
+
+    Never writes. Reruns `run_band` at the same seed/frame count as
+    `_run_full` and compares the fresh DataFrame against the committed
+    `index_sensitivity.csv` at `CHECK_RTOL`, proving the production run
+    plan 19.2-13 committed is reproducible.
+
+    Unimplemented until plan 19.2-13 commits the first baseline -- there was
+    nothing to compare against before then.
+    """
+    out_dir = resolve_out_dir(args.out)
+    df = run_band(
+        band=N_ASSUMED_BAND,
+        n_true=N_TRUE,
+        n_frames=30,
+        seed=args.seed,
+        metrics_path=_default_metrics_path(),
+    )
+    report = compare_experiment_csv(
+        df,
+        out_dir / "index_sensitivity.csv",
+        key_columns=E5_KEY_COLUMNS,
+        rtol=CHECK_RTOL,
+    )
+    print(f"[index_sensitivity.csv] {report.message}")
+    return exit_code_for(report)
+
+
 def _run_smoke_at(out_dir: Path, args: argparse.Namespace) -> int:
     """Run 2 band points at a small frame count into an already-resolved `out_dir`."""
     smoke_band = [N_TRUE, N_ASSUMED_BAND[-1]]
@@ -544,13 +575,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.check:
-        # E5's production band is written by plan 19.2-13, not this plan --
-        # there is no committed baseline yet for --check to compare against.
-        parser.error(
-            "--check is not supported by e5_index_sensitivity.py: the "
-            "production band is run by plan 19.2-13, which has not yet "
-            "committed a baseline CSV."
-        )
+        return _run_check(args)
     if args.smoke:
         return _run_smoke(args, parser)
     return _run_full(args)
