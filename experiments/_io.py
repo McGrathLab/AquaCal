@@ -291,6 +291,30 @@ def compare_experiment_csv(
     ]
     non_float_columns = [c for c in fresh_columns if c not in float_columns]
 
+    # A column that is MOSTLY empty strings but carries at least one real
+    # string (e.g. E6's status_reason: 13 "" rows plus one genuine
+    # "KeyError: 'cam11'" row) never triggers the all-NaN-column branch
+    # above, because a column with a real string present is not classified
+    # as float-dtype by pandas on read-back -- it stays object/"str" dtype.
+    # But the "" cells still round-trip through CSV as an EMPTY FIELD
+    # indistinguishable from a genuinely missing value, so `pd.read_csv`
+    # reads them back as `NaN` (a float) sitting inside an otherwise
+    # string-dtype column. Comparing that NaN against fresh's "" via `!=`
+    # then reports every "" row as mismatched, even though "" and the
+    # round-tripped NaN mean the same thing here (review of 19.2-11: this
+    # is a DIFFERENT defect class from the all-NaN-column case above, not
+    # covered by it, and not benign -- fixed here rather than dismissed by
+    # analogy). Since every non-float column in this codebase's committed
+    # CSVs is a categorical/status string that is never legitimately
+    # missing, normalizing `NaN` -> `""` on both sides before the exact
+    # comparison is safe generally, not just for the E6 case that surfaced
+    # it.
+    for col in non_float_columns:
+        fresh_sorted[col] = fresh_sorted[col].where(fresh_sorted[col].notna(), "")
+        committed_sorted[col] = committed_sorted[col].where(
+            committed_sorted[col].notna(), ""
+        )
+
     # Non-float columns must compare exactly, regardless of rtol.
     mismatched_non_float: list[tuple[int, str]] = []
     for col in non_float_columns:

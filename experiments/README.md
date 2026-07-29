@@ -69,13 +69,86 @@ One row per artifact committed under `experiments/results/`. Every runtime below
 | Conditioning / singular-value spectrum, height-distance correlation | E7 | ″ | `interface_ablation_conditioning.json` (+ a gitignored `.npz` — 3.1 MB of dense correlation matrices, exceeds the repo's large-file gate; all scientific content is in the committed `.json`) | ″ | (same run) |
 | Per-arm optimizer convergence traces | E7 | ″ | `e7_trace_shared_fixed.csv`, `e7_trace_shared_refined.csv`, `e7_trace_percamera_fixed.csv`, `e7_trace_percamera_refined.csv` | ″ | (same run) |
 | E7's four per-arm direct-call provenance records | E7 | ″ | `e7_benchmark_shared_fixed.json`, `e7_benchmark_shared_refined.json`, `e7_benchmark_percamera_fixed.json`, `e7_benchmark_percamera_refined.json` | — (provenance only) | (same run) |
+| Supplement solver constants: bounds, `f_scale`, penalty, Newton tolerance (tier 1) | E3 | `python -m experiments.e3_derived_quantities` | `code_constants.csv` | table + CI assertion (declared in `tests/unit/test_experiments_e3_constants.py`, rendered here) | ~10 s (measured, 19.2-12) |
+| Supplement "converges … in N steps" (tier 2) | E3 | ″ | `newton_iterations.csv` | prose value | (same run) |
+| Supplement `tab:cpr` (all six rows, both interface modes) | E3 | ″ | `cpr_grouping.csv` | `cpr_grouping.tex` (E3's own LaTeX fragment IS its figure generator — no separate module) | (same run) |
+| Supplement `\CPRParamsAside`/`\CPRReductionAside` (D-22's two derived prose asides) | E3 | ″ | `cpr_derived_values.tex` | ″ (the fragment itself is the rendered output) | (same run) |
+| E3's environment-only provenance sidecar (tiers 1-2 never run a calibration, so there is no `benchmark.json` to reuse) | E3 | ″ | `e3_provenance.json` | — (provenance only) | (same run) |
+| **NEW** main-text runtime table + supplement full cameras-x-frames grid | E4 | `python -m experiments.e4_benchmark_grid` | `benchmark_grid.csv`, `benchmark_grid.tex` | new figure module (Phase 19.2) | ~27 min for the nine-cell grid (measured, 19.2-09-SUMMARY.md) |
+| E4's nine per-cell direct-call provenance records | E4 | ″ | `experiments/results/e4_cells/cameras_<n>_frames_<m>/benchmark.json` (nine files) | — (provenance only) | (same run) |
+| **NEW** R2 sensitivity panel (index-error band) | E5 | `python -m experiments.e5_index_sensitivity` | `index_sensitivity.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~22.5 min (measured, 19.2-13-SUMMARY.md) |
+| **NEW** R1.4 generalization table (index/layout/scale axes) | E6 | `python -m experiments.e6_generalization_sweep` | `generalization_sweep.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~33.5 min (measured, 19.2-11-SUMMARY.md) |
+| E6's twelve per-configuration checkpoints (resumability, not a provenance record in the `benchmark.json` sense) | E6 | ″ | `experiments/results/e6_configs/*.json` | — (checkpoint only) | (same run) |
 
-`e4_benchmark_grid.py` is present in this directory as a **relocated skeleton only**
-(D-03: it is `benchmarks/sweep_runner.py`, moved here by `git mv` and not rewritten in
-substance). **It is deliberately not run in this phase.** Running the cameras-x-frames
-grid is Phase 19.2 / EXP-08 — a single 13-camera calibration run already takes
-48-87 minutes (`CLAUDE.md`), so a real sweep is out of scope for this phase's automated
-verification.
+`e4_benchmark_grid.py` is now a **direct-call synthetic benchmark grid** (D-03/D-26): it
+builds `generate_camera_array` + `generate_board_trajectory` scenes and calibrates them via
+the same direct-call path E1/E7 use, rather than subsampling a real 13-camera YAML through
+the pipeline's config-driven entry point. A real 13-camera rig run already takes 48-87
+minutes (`CLAUDE.md`) and cannot reach 16 cameras (unreachable from a 13-camera rig), so a
+real cameras-x-frames sweep was out of scope for this phase's deadline. The nine-cell grid
+was run to completion in Phase 19.2 (all cells `status=ok`; see `19.2-09-SUMMARY.md`) and is
+now committed, alongside E2's real-rig row folded in as a tenth, separately-labeled point.
+
+Two columns exist specifically so a reader cannot compare the nine synthetic rows against
+E2's real-rig row as if they measured the same thing: `timing_scope` is `optimization_only`
+for the nine synthetic cells (Stage 3 wall-clock only) and `end_to_end` for the real-rig row
+(includes detection loading, auxiliary registration, and validation); `record_source` is
+`assembled` (built from a per-cell `benchmark.json` by this script) for the synthetic cells
+and `pipeline` (written directly by `run_calibration_from_config`) for the real-rig row.
+`benchmark_grid.tex` renders the real-rig row in its own labeled block, never as a tenth
+point on the nine-cell scaling curve.
+
+`python -m experiments.e4_benchmark_grid --check` re-aggregates the nine per-cell
+`benchmark.json` files already committed under `e4_cells/` and compares the result against
+the committed `benchmark_grid.csv` — it never re-runs a cell (a full re-run is ~27 minutes)
+and is not evidence the nine calibrations themselves reproduce, only that the aggregation and
+the committed CSV agree with the on-disk per-cell records. Because `_run_check` never re-runs
+a cell, its freshly-built comparison frame always reports `exit_code=None` for every cell,
+while the committed CSV carries the real per-run exit codes (`0`); `--check` against this
+committed CSV therefore always exits 1, with every mismatch confined to the `exit_code`
+column — this is a structural property of the check's re-aggregation design, not a data
+defect (19.2-09-SUMMARY.md).
+
+### `cpr_grouping.csv` is the sole origin of `tab:cpr`
+
+**`cpr_grouping.csv` supplies all six `tab:cpr` rows, in both interface modes** — every row
+is a tilt-enabled (`normal_fixed=False`) configuration, matching
+`CalibrationConfig.interface_normal_fixed`'s default and E2's real-rig run. Exactly one row
+(the shared-interface 13-camera/200-frame tilt+intrinsics row) is copied verbatim from E2's
+committed `benchmark.json`; the rest are computed by `experiments.e3_derived_quantities`
+directly against the library's own `build_jacobian_sparsity`/`build_structural_column_groups`.
+An earlier design split `tab:cpr` across this file and E4's own per-cell grid CSV; that split
+was withdrawn (review H1) because E4's cells run at a real, sparser scene (some frames have
+zero observing cameras and are dropped, changing the parameter count) rather than the
+idealized full-visibility fixture `tab:cpr`'s numbers describe — four of the six rows would
+have come from the wrong solver configuration. **`benchmark_grid.csv` also carries
+`n_params`/`n_groups`/`fd_reduction` columns, but they describe E4's own runs and feed no
+published table.** The `normal_fixed`/`shared_interface` columns present in both files are
+what let a reader tell a `cpr_grouping.csv` row from a `benchmark_grid.csv` cell apart.
+
+### Every cell in E4 and E6 runs tilt-enabled
+
+E4's nine cells and E6's sweep both run at `normal_fixed=False`
+(`experiments.e4_benchmark_grid.GRID_NORMAL_FIXED`, imported by E6 rather than restated),
+matching `CalibrationConfig.interface_normal_fixed`'s default and E2's real-rig run. This is
+why every synthetic-grid CSV in this directory carries a `normal_fixed` column — a reader
+comparing a row here against a differently-configured run elsewhere can check it rather than
+assume it.
+
+### The seed carve-out
+
+E1's and E7's Phase-19.1 records (`e1_benchmark_refractive.json`,
+`e1_benchmark_nonrefractive.json`, and E7's four `e7_benchmark_*.json` arms) predate
+`solver_config["seed"]`, which plan 19.2-02 added to the direct-call write path after these
+six records were already committed. They are not re-run to backfill it — re-running them
+costs roughly 90 minutes for records the manuscript already cites and produces no new
+information. The gap is named explicitly, not inferred: `tests/unit/test_experiments_
+provenance.py`'s `SEEDLESS_LEGACY_RECORDS` set exempts exactly these six files from the
+otherwise-universal "every committed record carries a seed" check, and a companion test
+fails the moment any of the six is regenerated with a seed (at which point the exemption
+must be removed by hand). Every record and CSV committed by Phase 19.2 itself — the nine E4
+cells, `benchmark_grid.csv`, `index_sensitivity.csv`, `generalization_sweep.csv`, and E2's
+refreshed `benchmark.json` — carries a seed.
 
 ## 3. E2 has two invocation paths — read this before citing a number
 
@@ -177,13 +250,39 @@ python -m experiments.e2_real_rig --config <path/to/release/config.yaml>
 
 # E7 — shared-vs-per-camera interface ablation (~7 min, four arms)
 python -m experiments.e7_interface_ablation --force
+
+# E3 — derived quantities and code constants (~10 s)
+python -m experiments.e3_derived_quantities --check   # compare fresh vs. committed
+python -m experiments.e3_derived_quantities --force   # regenerate the committed CSVs/fragments
+
+# E4 — cameras x frames synthetic benchmark grid (~27 min, nine cells)
+python -m experiments.e4_benchmark_grid --check   # re-aggregate committed per-cell records
+python -m experiments.e4_benchmark_grid --force   # re-run all nine cells
+
+# E5 — refractive-index sensitivity band on real-rig geometry (~22.5 min)
+python -m experiments.e5_index_sensitivity --check
+python -m experiments.e5_index_sensitivity --force
+
+# E6 — index/layout/scale generalization sweep (~33.5 min)
+python -m experiments.e6_generalization_sweep --check
+python -m experiments.e6_generalization_sweep --force
 ```
 
 Every committed result has a `benchmark.json`-shaped provenance record next to it
 (`schema_version: 1`) carrying its seed, AquaCal version, git SHA, and the Python/NumPy/
 SciPy/OS environment it ran under — either the genuine pipeline-written record (E2, via
 `run_calibration_from_config`) or a direct-call record assembled from the same pure
-`aquacal.io.assemble_benchmark_record` (E1, E7 — both call `calibrate_synthetic`
-directly and never touch the pipeline's own config-driven entry point, so there is no
-pipeline `benchmark.json` for them to reuse). No experiment invents a second sidecar
-format.
+`aquacal.io.assemble_benchmark_record` (E1, E7, E4's nine cells — all call `calibrate_
+synthetic` directly and never touch the pipeline's own config-driven entry point, so there
+is no pipeline `benchmark.json` for them to reuse). E3's tiers 1-2 never run a calibration
+at all, so they use a separate minimal sidecar (`e3_provenance.json`) carrying the same
+seed/version/git-SHA/environment fields without a `stages` block. `index_sensitivity.csv`
+and `generalization_sweep.csv` have no benchmark.json sidecar behind them; their own `seed`
+column is their seed provenance (`tests/unit/test_experiments_provenance.py`'s `CSV_TO_
+RECORD` names the covering record for every committed CSV, including these two). No
+experiment invents a second sidecar format beyond these two documented exceptions.
+
+Every committed result's provenance is asserted mechanically, not by inspection, in
+`tests/unit/test_experiments_provenance.py` — the six Phase-19.1 records that predate the
+seed key are named there explicitly (see "The seed carve-out" above), and a CSV committed
+without an entry in that test's `CSV_TO_RECORD` mapping fails CI.

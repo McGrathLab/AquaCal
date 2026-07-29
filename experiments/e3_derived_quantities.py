@@ -213,11 +213,20 @@ def build_provenance_sidecar(seed: int) -> dict:
 
     Tiers 1 and 2 never run a calibration, so there is no `benchmark.json` to reuse (unlike
     E1/E7's `write_direct_call_benchmark`). This is the only sidecar format E3 uses.
+
+    `solver_config: {"seed": seed}` is a deliberate, minimal duplicate of the top-level
+    `seed` key (19.2-12, EXP-11 provenance close-out): the general "every committed
+    benchmark-shaped record carries a seed" check reads `solver_config["seed"]`, matching
+    every `assemble_benchmark_record`-produced file. E3's sidecar predates and does not use
+    that assembler, but publishing the same seed at both the top level (for readers of this
+    sidecar specifically) and inside `solver_config` (for the generic provenance check) is
+    cheaper and less surprising than teaching every consumer this one file's exception.
     """
     return {
         "experiment": "e3",
         "schema_version": 1,
         "seed": seed,
+        "solver_config": {"seed": seed},
         "environment": capture_environment(),
     }
 

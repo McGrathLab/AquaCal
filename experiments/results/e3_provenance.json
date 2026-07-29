@@ -3,7 +3,7 @@
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "1ae80e6377507368ed2d9f424d19817fe5a723fc",
+    "git_sha": "ac75e35a45fa919a87bce9980f1a401bb031e119",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -14,5 +14,8 @@
   },
   "experiment": "e3",
   "schema_version": 1,
-  "seed": 42
+  "seed": 42,
+  "solver_config": {
+    "seed": 42
+  }
 }

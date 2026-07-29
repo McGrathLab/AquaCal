@@ -173,6 +173,65 @@ class TestCheckComparator:
         assert report.passed is False
         assert "extra_column" in report.message or "Header mismatch" in report.message
 
+    def test_check_passes_on_mixed_empty_and_real_string_column(self, tmp_path):
+        """Regression for 19.2-11/19.2-12 (review H upstream finding 2): a
+        `status_reason`-shaped column with MOSTLY empty strings but at least
+        one real string (E6's actual shape: 13 "ok" rows + 1
+        `KeyError: 'cam11'` row) must not be misclassified as mismatched.
+
+        This is a DIFFERENT defect class from the all-empty-string column
+        19.2-09 fixed (which round-trips to an all-NaN float64 column): a
+        column with at least one real string stays object/str-dtype on
+        read-back, but its "" cells still round-trip through CSV as an empty
+        field indistinguishable from a missing value, so pandas reads them
+        back as `NaN` sitting inside an otherwise string-dtype column. A
+        naive `!=` compare then reports every "" row as mismatched against a
+        `NaN`, even though they mean the same thing here.
+        """
+        committed = pd.DataFrame(
+            {
+                "axis": ["index", "layout"],
+                "axis_value": ["1.333", "line"],
+                "status_reason": ["", "KeyError: 'cam11'"],
+            }
+        )
+        committed_path = tmp_path / "generalization_sweep.csv"
+        committed.to_csv(committed_path, index=False)
+
+        # Read back what write_experiment_csv's own round-trip would produce
+        # for `fresh` -- constructed directly (not re-read from CSV) so this
+        # test exercises the exact fresh-DataFrame shape run_sweep() builds.
+        fresh = committed.copy()
+
+        report = compare_experiment_csv(
+            fresh, committed_path, key_columns=["axis", "axis_value"], rtol=CHECK_RTOL
+        )
+        assert report.passed is True
+        assert exit_code_for(report) == 0
+
+    def test_check_still_fails_when_mixed_string_column_genuinely_differs(
+        self, tmp_path
+    ):
+        """The mixed-column NaN/"" normalization must not mask a real mismatch."""
+        committed = pd.DataFrame(
+            {
+                "axis": ["index", "layout"],
+                "axis_value": ["1.333", "line"],
+                "status_reason": ["", "KeyError: 'cam11'"],
+            }
+        )
+        committed_path = tmp_path / "generalization_sweep.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.copy()
+        fresh.loc[1, "status_reason"] = "KeyError: 'cam99'"
+
+        report = compare_experiment_csv(
+            fresh, committed_path, key_columns=["axis", "axis_value"], rtol=CHECK_RTOL
+        )
+        assert report.passed is False
+        assert "status_reason" in report.worst_cell
+
     def test_check_never_writes(self, tmp_path):
         committed = _exp1_frame()
         committed_path = tmp_path / "exp1_parameter_errors.csv"
