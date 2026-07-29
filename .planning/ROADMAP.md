@@ -291,7 +291,7 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 12/14 plans executed
+**Plans:** 13/14 plans executed
 changes land and are proven inert before any experiment yielding a publishable result)
 
 Plans:
@@ -307,7 +307,7 @@ Plans:
 - [x] 19.2-10-PLAN.md — wave 4 — E6 `experiments/e6_generalization_sweep.py`: three one-dimensional axes through E4's 12-camera baseline at E4's own tilt configuration (D-11, D-12; review M2/M4/M5/M7)
 - [x] 19.2-09-PLAN.md — wave 5 — E4 production run, **alone on the box**: one measured probe cell, then nine cells plus E2's tenth point, `benchmark_grid.csv` + LaTeX
 - [x] 19.2-13-PLAN.md — wave 6 — E5 production run and `index_sensitivity.csv` (split out of 19.2-08 so it never shares the machine with E4's grid — review H4)
-- [ ] 19.2-11-PLAN.md — wave 7 — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep), with a baseline cross-check against E4's 12/100 cell
+- [x] 19.2-11-PLAN.md — wave 7 — E6 production run and `generalization_sweep.csv` (sequenced last; the compressible sweep), with a baseline cross-check against E4's 12/100 cell
 - [ ] 19.2-12-PLAN.md — wave 8 — EXP-11 close-out: provenance key-presence and seed tests with an explicit six-member legacy carve-out (E2's refreshed record is NOT exempt), README table completion, CI smoke wiring, derived-values verification
 
 ### Phase 20: Refractive Index Helper
@@ -386,7 +386,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 12/14 | In Progress|  |
+| 19.2 Experiment Execution and Provenance | v1.9 | 13/14 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
