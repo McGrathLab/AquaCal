@@ -35,8 +35,11 @@ from experiments.e4_benchmark_grid import (
     GRID_COLUMNS,
     GRID_SCENARIO_NAME,
     MEMORY_CEILING_FRACTION,
+    MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
+    MEMORY_PRESSURE_NEAR_CEILING,
     SKIPPED_EXIT_CODE,
+    _classify_memory_pressure,
     _invoke_subprocess_with_status_mapping,
     _preflight_ceiling_reason,
     build_grid_dataframe,
@@ -657,3 +660,101 @@ def test_smoke_cell_reports_clean_memory_pressure(tmp_path):
     with open(cell_path) as f:
         record = json.load(f)
     assert record["problem_shape"]["memory_pressure"] == MEMORY_PRESSURE_CLEAN
+
+
+# ---------------------------------------------------------------------------
+# _classify_memory_pressure threshold logic (D-33 gap 3)
+#
+# `test_smoke_cell_reports_clean_memory_pressure` above runs a tiny cell and
+# asserts "clean" -- which passes identically whether the comparison here is
+# correct, inverted, or the constant is wrong by an order of magnitude. These
+# tests pin the branch that actually matters. The classifier is a pure
+# dict -> str function, so proving it needs no memory pressure, no subprocess,
+# and no exclusive access to the machine: what remains deferred to the wave-3
+# production run is whether a REAL thrashing cell trips it, not whether the
+# threshold is right.
+# ---------------------------------------------------------------------------
+
+
+_RAM_TOTAL = 16 * 1024**3
+
+
+def _reading(commit_peak: int | None = None, **overrides) -> dict:
+    """One `capture_peak_memory()`-shaped boundary reading."""
+    reading = {
+        "peak_bytes": 1024,
+        "mode": "psutil_peak_wset",
+        "commit_current_bytes": commit_peak,
+        "commit_peak_bytes": commit_peak,
+        "ram_total_bytes": _RAM_TOTAL,
+    }
+    reading.update(overrides)
+    return reading
+
+
+def test_classify_memory_pressure_flags_a_reading_above_the_near_ceiling_fraction():
+    """The branch D-33 gap 3 exists for: a cell that COMPLETED but whose peak
+    approached the physical limit must not be reported as a clean
+    measurement."""
+    hot = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL) + 1
+    memory = {"stage3_interface_optimization": _reading(commit_peak=hot)}
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_NEAR_CEILING
+
+
+def test_classify_memory_pressure_is_clean_below_the_near_ceiling_fraction():
+    """A comfortable peak stays clean -- the flag must discriminate, not fire
+    on everything."""
+    cool = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL) - 1
+    memory = {"stage3_interface_optimization": _reading(commit_peak=cool)}
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_CLEAN
+
+
+def test_classify_memory_pressure_treats_the_exact_fraction_as_near_ceiling():
+    """Pins the boundary as inclusive (`>=`), so a future refactor cannot
+    silently flip the comparison and pass the two tests above."""
+    exact = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL)
+    memory = {"stage3_interface_optimization": _reading(commit_peak=exact)}
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_NEAR_CEILING
+
+
+def test_classify_memory_pressure_uses_the_worst_boundary_not_the_last():
+    """One hot boundary among several cool ones must still flag the cell --
+    Stage 3 is where the peak lands, and it is not the final boundary."""
+    cool = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL) - 1
+    hot = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL) + 1
+    memory = {
+        "stage1_intrinsics": _reading(commit_peak=cool),
+        "stage3_interface_optimization": _reading(commit_peak=hot),
+        "stage3_second_pass": _reading(commit_peak=cool),
+    }
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_NEAR_CEILING
+
+
+def test_classify_memory_pressure_falls_back_to_peak_bytes_without_commit_figures():
+    """Off Windows, `commit_peak_bytes` is None-but-present; the resident
+    `peak_bytes` must still be classified rather than read as zero."""
+    hot = int(MEMORY_NEAR_CEILING_FRACTION * _RAM_TOTAL) + 1
+    memory = {
+        "stage3_interface_optimization": _reading(commit_peak=None, peak_bytes=hot)
+    }
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_NEAR_CEILING
+
+
+def test_classify_memory_pressure_degrades_to_clean_without_ram_total():
+    """Absence of the measurement is not evidence of pressure -- a platform
+    that cannot report physical RAM yields clean, not a false flag."""
+    memory = {
+        "stage3_interface_optimization": _reading(
+            commit_peak=10 * 1024**3, ram_total_bytes=None
+        )
+    }
+    assert _classify_memory_pressure(memory) == MEMORY_PRESSURE_CLEAN
+
+
+def test_classify_memory_pressure_degrades_to_clean_with_no_readings():
+    """An empty or non-dict memory block must not raise mid-aggregation after
+    a cell has already solved."""
+    assert _classify_memory_pressure({}) == MEMORY_PRESSURE_CLEAN
+    assert _classify_memory_pressure({"stage1_intrinsics": None}) == (
+        MEMORY_PRESSURE_CLEAN
+    )
