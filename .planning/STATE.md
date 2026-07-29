@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: gaps_found
-stopped_at: Phase 19.2 verification found gaps (EXP-11 provenance, CR-05 Newton path)
-last_updated: "2026-07-29T01:30:04.528Z"
-last_activity: 2026-07-29 -- Phase 19.2 execution started
+stopped_at: Phase 19.2 gaps planned (19.2-15..25) — none executed yet
+last_updated: "2026-07-29T14:50:30.788Z"
+last_activity: 2026-07-29 -- Phase 19.2 planning complete
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 48
+  total_plans: 59
   completed_plans: 48
-  percent: 64
+  percent: 56
 ---
 
 # Project State
@@ -47,12 +47,12 @@ Plan: 1 of 14
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 19.2
+Status: Ready to execute
   Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-29 -- Phase 19.2 execution started
+Last activity: 2026-07-29 -- Phase 19.2 planning complete
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
