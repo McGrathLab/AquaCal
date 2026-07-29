@@ -592,6 +592,9 @@ class TestBenchmarkJsonIntegration:
             "cumulative_peak_bytes_as_of_stage_end",
             "delta_bytes_since_previous_boundary",
             "mode",
+            "commit_current_bytes_as_of_stage_end",
+            "commit_peak_bytes_as_of_stage_end",
+            "ram_total_bytes",
         }
         assert record["memory"]["whole_run_peak_bytes"] > 0
         assert "memory" in record["stages"]["validation"]

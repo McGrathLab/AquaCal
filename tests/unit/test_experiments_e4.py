@@ -1,32 +1,48 @@
 """Unit tests for `experiments/e4_benchmark_grid.py` (EXP-08).
 
-Fast unit tests only: hand-built `benchmark.json` fixtures written directly
-via `write_direct_call_benchmark`, no calibration solve of any kind is
-invoked, and no real subprocess is spawned (`test_subprocess_status_mapping`
-monkeypatches `subprocess.run`). None of these tests are marked slow --
-that is `--smoke` and production-run territory (plan 19.2-09).
+Most tests here are fast: hand-built `benchmark.json` fixtures written
+directly via `write_direct_call_benchmark`, no calibration solve of any
+kind. `test_subprocess_status_mapping` monkeypatches `subprocess.run` to
+prove the status-mapping LOGIC in isolation; the
+`TestRealChildProcess` class (D-33 gap 1) additionally spawns GENUINE
+`python -c ...` child processes (no monkeypatching) through the exact same
+`_invoke_subprocess_with_status_mapping` helper, so the mapping is proven
+against a real process this machine actually runs, not only against a
+`_FakeCompletedProcess`. None of these tests are marked slow -- the real
+children are trivial one-liners that exit in well under a second, and the
+smoke-cell calibration (`test_smoke_cell_reports_clean_memory_pressure`)
+matches the timing of the module's own `--smoke` path (a few seconds).
 """
 
 from __future__ import annotations
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+import experiments.e4_benchmark_grid as e4_grid_module
 from aquacal.calibration._observability import SolverDiagnostics
 from experiments._io import write_direct_call_benchmark
 from experiments.e4_benchmark_grid import (
+    _NULL_METRICS,
     DECLARED_CELLS,
+    E2_BENCHMARK_PATH,
     GRID_BOARD_CONFIG,
     GRID_COLUMNS,
     GRID_SCENARIO_NAME,
+    MEMORY_CEILING_FRACTION,
+    MEMORY_PRESSURE_CLEAN,
     SKIPPED_EXIT_CODE,
+    _invoke_subprocess_with_status_mapping,
+    _preflight_ceiling_reason,
     build_grid_dataframe,
     build_grid_scenario,
     run_cell_subprocess,
+    run_grid_cell,
     write_grid_latex,
 )
 from experiments.e4_benchmark_grid import subprocess as e4_subprocess
@@ -302,6 +318,157 @@ def test_grid_solver_config_is_self_describing(full_grid_dir):
     assert ok_synthetic["seed"].notna().all()
 
 
+def test_e2_benchmark_path_is_absolute():
+    """CR-03: E2_BENCHMARK_PATH must be anchored to __file__, never cwd-relative
+    (module-level constant already resolved at import time)."""
+    assert E2_BENCHMARK_PATH.is_absolute()
+
+
+def test_skipped_existing_cell_with_on_disk_record_keeps_its_metrics(full_grid_dir):
+    """CR-01: a `skipped_existing` cell whose record IS on disk must keep the
+    metric columns `aggregate()` just read successfully -- the resume path
+    (D-24) exists precisely so a resumed run publishes what it already
+    computed. This FAILS on EXPECTED_BASE, where the nulling rule fires on
+    any non-"ok" status regardless of whether a record was actually read."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    resumed_cell = DECLARED_CELLS[0]
+
+    statuses = []
+    for n, f in DECLARED_CELLS:
+        if (n, f) == resumed_cell:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "skipped_existing",
+                    "status_reason": "",
+                    "exit_code": SKIPPED_EXIT_CODE,
+                }
+            )
+        else:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "ok",
+                    "status_reason": "",
+                    "exit_code": 0,
+                }
+            )
+
+    df = build_grid_dataframe(out_dir, statuses, e2_path)
+
+    resumed_key = f"cameras_{resumed_cell[0]}_frames_{resumed_cell[1]}"
+    resumed_row = df[df["cell_key"] == resumed_key].iloc[0]
+    assert resumed_row["status"] == "skipped_existing"
+    assert not pd.isna(resumed_row["reprojection_rms"])
+    assert resumed_row["reprojection_rms"] == 0.5
+    assert not pd.isna(resumed_row["n_params_stage3_interface_optimization"])
+    assert resumed_row["n_params_stage3_interface_optimization"] == 50
+
+
+def test_failed_cell_nulls_metrics_even_with_a_stale_on_disk_record(full_grid_dir):
+    """A "failed" cell must null every metric column and preserve
+    status_reason/exit_code, even when a (stale) benchmark.json happens to
+    exist on disk for it -- unlike "skipped_existing", "failed" is never a
+    legitimate resume outcome."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    failed_cell = DECLARED_CELLS[1]
+
+    statuses = []
+    for n, f in DECLARED_CELLS:
+        if (n, f) == failed_cell:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "failed",
+                    "status_reason": "OOM during Stage 3",
+                    "exit_code": 137,
+                }
+            )
+        else:
+            statuses.append(
+                {
+                    "n_cameras": n,
+                    "n_frames": f,
+                    "status": "ok",
+                    "status_reason": "",
+                    "exit_code": 0,
+                }
+            )
+
+    df = build_grid_dataframe(out_dir, statuses, e2_path)
+
+    failed_key = f"cameras_{failed_cell[0]}_frames_{failed_cell[1]}"
+    failed_row = df[df["cell_key"] == failed_key].iloc[0]
+    assert failed_row["status"] == "failed"
+    assert failed_row["status_reason"] == "OOM during Stage 3"
+    assert failed_row["exit_code"] == 137
+    for metric_col in _NULL_METRICS:
+        if metric_col in ("timing_scope", "record_source"):
+            continue
+        assert pd.isna(failed_row[metric_col])
+
+
+def test_missing_e2_benchmark_degrades_to_null_row_no_exception(full_grid_dir):
+    """CR-03: a missing E2 benchmark.json must not raise after all nine
+    cells have solved -- it costs a null real-rig row with a named
+    record_source, not the entire run's CSV/LaTeX."""
+    out_dir, cell_statuses, _ = full_grid_dir
+    missing_e2_path = out_dir / "does_not_exist" / "benchmark.json"
+
+    df = build_grid_dataframe(out_dir, cell_statuses, missing_e2_path)
+
+    assert len(df) == 10
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+    assert pd.isna(real_rig_row["n_params_stage3_interface_optimization"])
+    # The nine synthetic cells are unaffected by the missing real-rig record.
+    assert len(df[df["record_source"] == "assembled"]) == 9
+
+
+def test_unreadable_e2_benchmark_degrades_to_null_row_no_exception(
+    full_grid_dir, tmp_path
+):
+    """CR-03: an unparseable E2 benchmark.json (corrupt JSON) must degrade
+    the same way a missing file does, not raise `json.JSONDecodeError`."""
+    out_dir, cell_statuses, _ = full_grid_dir
+    corrupt_e2_path = tmp_path / "corrupt_benchmark.json"
+    corrupt_e2_path.write_text("{not valid json")
+
+    df = build_grid_dataframe(out_dir, cell_statuses, corrupt_e2_path)
+
+    assert len(df) == 10
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+
+
+def test_aggregate_refusal_degrades_instead_of_losing_the_whole_run(
+    full_grid_dir,
+):
+    """CR-03: if aggregate() refuses a record it does not recognize (e.g. a
+    schema_version mismatch on one cell), build_grid_dataframe must not lose
+    benchmark_grid.csv/.tex for every OTHER cell that already solved."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    bad_cell = DECLARED_CELLS[2]
+    bad_cell_path = (
+        out_dir
+        / "e4_cells"
+        / f"cameras_{bad_cell[0]}_frames_{bad_cell[1]}"
+        / "benchmark.json"
+    )
+    record = json.loads(bad_cell_path.read_text())
+    record["schema_version"] = 999
+    bad_cell_path.write_text(json.dumps(record))
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    assert len(df) == 10
+
+
 class _FakeCompletedProcess:
     def __init__(self, returncode: int, stderr: str = "") -> None:
         self.returncode = returncode
@@ -366,3 +533,127 @@ def test_latex_fragment_separates_real_rig(full_grid_dir, tmp_path):
     # The real-rig row's key must not appear before its own labeled block --
     # i.e. it is not folded into the earlier nine-cell blocks.
     assert real_rig_key_rendered not in text[:real_rig_marker]
+
+
+class TestRealChildProcess:
+    """D-33 gap 1: a real child process, not a monkeypatched `subprocess.run`.
+
+    `test_subprocess_status_mapping` above proves the status MAPPING; these
+    tests prove the same mapping against a genuine `python -c ...` child
+    this machine actually spawns and terminates, via the exact
+    `_invoke_subprocess_with_status_mapping` helper `run_cell_subprocess`
+    calls in production.
+    """
+
+    def test_real_child_nonzero_exit_is_recorded_not_raised(self):
+        cmd = [sys.executable, "-c", "import sys; sys.exit(1)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=30
+        )
+        assert status == "failed"
+        assert exit_code == 1
+        assert reason
+        assert elapsed >= 0
+
+    def test_real_child_timeout_is_recorded_not_raised_and_is_distinguishable(self):
+        """A child that sleeps past a short timeout: `status="failed"` with
+        a reason distinguishable from a non-zero exit, `exit_code=None`
+        (there was no exit), and no exception propagates."""
+        cmd = [sys.executable, "-c", "import time; time.sleep(30)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=0.5
+        )
+        assert status == "failed"
+        assert exit_code is None
+        assert "timeout" in reason.lower()
+        assert "exit_code=" not in reason
+
+    def test_real_child_allocating_until_it_dies_is_recorded(self):
+        """A real child that allocates until it dies.
+
+        Bounded per this environment's concurrency-safety rule (other
+        executor agents run in parallel worktrees on this box): rather than
+        growing memory incrementally toward the 15.7 GB physical ceiling
+        (which the environment rules explicitly forbid attempting here),
+        this spawns a child that requests a SINGLE allocation so large
+        (10**20 bytes, far beyond any real address space) that CPython
+        refuses it immediately -- observed here as an uncaught
+        `OverflowError` ("cannot fit 'int' into an index-sized integer"),
+        not `MemoryError`, because CPython's `bytearray()` constructor
+        checks the requested size against `Py_ssize_t` before ever asking
+        the allocator for memory. The child exits with code 1 in ~15 ms; no
+        real memory or pagefile pressure is placed on the shared box. This
+        proves `run_cell_subprocess`'s contract (a dying, memory-related
+        child produces a RECORDED row, not a hang or a raised exception in
+        the parent) without exercising the slow-paging incremental-growth
+        scenario D-33 describes -- that scenario is deliberately deferred to
+        the actual wave-3 production run, and the summary records this as an
+        explicit, honest limitation.
+        """
+        cmd = [sys.executable, "-c", "bytearray(10**20)"]
+        status, reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
+            cmd, timeout=30
+        )
+        assert status == "failed"
+        assert exit_code == 1
+        assert reason
+
+
+def test_preflight_ceiling_refuses_cell_before_calibration(monkeypatch, tmp_path):
+    """D-33 gap 3: a fabricated problem shape whose projected Stage-3 peak
+    vastly exceeds any real machine's RAM must be refused BEFORE
+    calibrate_synthetic is ever called, as a recorded status="failed" row
+    naming both the projection and the ceiling."""
+    calls: list[int] = []
+
+    def _must_not_be_called(*args, **kwargs):
+        calls.append(1)
+        raise AssertionError(
+            "calibrate_synthetic must not be called for a pre-flight-refused cell"
+        )
+
+    monkeypatch.setattr(e4_grid_module, "calibrate_synthetic", _must_not_be_called)
+
+    # 1000 cameras x 1000 frames projects an astronomically large Jacobian --
+    # guaranteed to exceed MEMORY_CEILING_FRACTION of any real machine's RAM
+    # without needing to monkeypatch psutil/ram_total_bytes.
+    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
+
+    assert calls == []
+    assert row["status"] == "failed"
+    assert "projected" in row["status_reason"]
+    assert "GiB" in row["status_reason"]
+    assert f"{MEMORY_CEILING_FRACTION:.0%}" in row["status_reason"]
+
+
+def test_preflight_ceiling_reason_is_none_for_a_tiny_cell():
+    """A comfortably-sized cell must not be refused pre-flight."""
+    assert _preflight_ceiling_reason(3, 3) is None
+
+
+def test_preflight_ceiling_refusal_names_the_refused_preflight_condition(
+    monkeypatch, tmp_path
+):
+    """The pre-flight-refused row's memory_pressure is the dedicated
+    vocabulary member, distinguishable from a clean or near-ceiling run --
+    D-33 gap 3's measurement condition, never a pass/fail verdict."""
+    monkeypatch.setattr(
+        e4_grid_module,
+        "calibrate_synthetic",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")),
+    )
+    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
+    assert row["memory_pressure"] == e4_grid_module.MEMORY_PRESSURE_REFUSED_PREFLIGHT
+
+
+def test_smoke_cell_reports_clean_memory_pressure(tmp_path):
+    """A comfortably-sized smoke cell reports the clean memory-pressure
+    value (D-33 gap 3) -- exercised through the real subprocess hop, the
+    same path production cells run."""
+    row = run_cell_subprocess(3, 3, seed=1, out_dir=tmp_path, force=True, timeout=60)
+    assert row["status"] == "ok"
+
+    cell_path = tmp_path / "e4_cells" / "cameras_3_frames_3" / "benchmark.json"
+    with open(cell_path) as f:
+        record = json.load(f)
+    assert record["problem_shape"]["memory_pressure"] == MEMORY_PRESSURE_CLEAN

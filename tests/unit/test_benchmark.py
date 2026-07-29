@@ -103,16 +103,30 @@ class TestCaptureEnvironment:
         assert env["aquacal_version"] != ""
 
 
+_EXPECTED_PEAK_MEMORY_KEYS = {
+    "peak_bytes",
+    "mode",
+    "commit_current_bytes",
+    "commit_peak_bytes",
+    "ram_total_bytes",
+}
+
+
 class TestCapturePeakMemory:
-    def test_returns_dict_with_exactly_two_keys(self):
+    def test_returns_dict_with_expected_keys(self):
         reading = capture_peak_memory()
-        assert set(reading.keys()) == {"peak_bytes", "mode"}
+        assert set(reading.keys()) == _EXPECTED_PEAK_MEMORY_KEYS
 
     def test_windows_dev_machine_reports_peak_wset(self):
         reading = capture_peak_memory()
         if sys.platform.startswith("win"):
             assert reading["mode"] == "psutil_peak_wset"
             assert reading["peak_bytes"] > 0
+            # D-33 gap 3: commit/virtual figures must be populated (not None)
+            # on this Windows dev box, alongside the unchanged resident peak.
+            assert reading["commit_current_bytes"] > 0
+            assert reading["commit_peak_bytes"] > 0
+            assert reading["ram_total_bytes"] > 0
 
     def test_linux_mocked_reads_proc_status_vmhwm(self, monkeypatch, tmp_path):
         import platform
@@ -132,7 +146,13 @@ class TestCapturePeakMemory:
         monkeypatch.setattr("aquacal.io.benchmark.open", _fake_open, raising=False)
 
         reading = capture_peak_memory()
-        assert reading == {"peak_bytes": 123456 * 1024, "mode": "proc_status_vmhwm"}
+        assert reading == {
+            "peak_bytes": 123456 * 1024,
+            "mode": "proc_status_vmhwm",
+            "commit_current_bytes": None,
+            "commit_peak_bytes": None,
+            "ram_total_bytes": None,
+        }
 
     def test_darwin_mocked_with_psutil_uses_rss_sampled(self, monkeypatch):
         import platform
@@ -143,6 +163,10 @@ class TestCapturePeakMemory:
         reading = capture_peak_memory()
         assert reading["mode"] == "psutil_rss_sampled"
         assert reading["peak_bytes"] > 0
+        # Additive fields are present-and-None off Windows, never absent.
+        assert reading["commit_current_bytes"] is None
+        assert reading["commit_peak_bytes"] is None
+        assert reading["ram_total_bytes"] is None
 
     def test_psutil_unavailable_falls_back_to_tracemalloc(self, monkeypatch):
         import platform
@@ -153,6 +177,9 @@ class TestCapturePeakMemory:
         reading = capture_peak_memory()
         assert reading["mode"] == "tracemalloc_python_heap"
         assert reading["peak_bytes"] >= 0
+        assert reading["commit_current_bytes"] is None
+        assert reading["commit_peak_bytes"] is None
+        assert reading["ram_total_bytes"] is None
 
     def test_tracemalloc_fallback_does_not_restart_existing_trace(self, monkeypatch):
         import platform
@@ -195,7 +222,13 @@ class TestCapturePeakMemory:
 
         monkeypatch.setattr(platform, "system", _raise)
         reading = capture_peak_memory()
-        assert reading == {"peak_bytes": None, "mode": "unavailable"}
+        assert reading == {
+            "peak_bytes": None,
+            "mode": "unavailable",
+            "commit_current_bytes": None,
+            "commit_peak_bytes": None,
+            "ram_total_bytes": None,
+        }
 
 
 # --- Fixtures for real, NumPy-typed SolverDiagnostics (Task 2) ---
@@ -423,9 +456,17 @@ class TestAssembleBenchmarkRecord:
             "cumulative_peak_bytes_as_of_stage_end",
             "delta_bytes_since_previous_boundary",
             "mode",
+            "commit_current_bytes_as_of_stage_end",
+            "commit_peak_bytes_as_of_stage_end",
+            "ram_total_bytes",
         }
         assert "peak_bytes" not in stage3_memory
         assert stage3_memory["delta_bytes_since_previous_boundary"] == 500
+        # Readings built without the new fields (as this fixture does) degrade
+        # to None per-boundary, never KeyError -- the addition is additive.
+        assert stage3_memory["commit_current_bytes_as_of_stage_end"] is None
+        assert stage3_memory["commit_peak_bytes_as_of_stage_end"] is None
+        assert stage3_memory["ram_total_bytes"] is None
 
         validation_memory = record["stages"]["validation"]["memory"]
         assert validation_memory["delta_bytes_since_previous_boundary"] == 300
@@ -438,6 +479,43 @@ class TestAssembleBenchmarkRecord:
         assert record["memory"]["mode"] == "psutil_peak_wset"
 
         assert "_baseline" not in record["stages"]
+
+    def test_memory_attribution_propagates_commit_and_ram_fields(
+        self, real_solver_diagnostics
+    ):
+        """D-33 gap 3: the new commit/virtual/ram_total fields reach
+        `record["stages"][...]["memory"]`, not just the reading returned by
+        `capture_peak_memory()` -- a key that never leaves the function is
+        not provenance."""
+        memory_readings = {
+            "_baseline": {
+                "peak_bytes": 1000,
+                "mode": "psutil_peak_wset",
+                "commit_current_bytes": 1200,
+                "commit_peak_bytes": 1200,
+                "ram_total_bytes": 16_000_000_000,
+            },
+            "stage3": {
+                "peak_bytes": 1500,
+                "mode": "psutil_peak_wset",
+                "commit_current_bytes": 1800,
+                "commit_peak_bytes": 2000,
+                "ram_total_bytes": 16_000_000_000,
+            },
+        }
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={"stage3": 1.0},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            memory_readings=memory_readings,
+        )
+        stage3_memory = record["stages"]["stage3"]["memory"]
+        assert stage3_memory["commit_current_bytes_as_of_stage_end"] == 1800
+        assert stage3_memory["commit_peak_bytes_as_of_stage_end"] == 2000
+        assert stage3_memory["ram_total_bytes"] == 16_000_000_000
 
     def test_stage_present_in_diagnostics_but_absent_from_memory_readings_has_no_memory_key(
         self, real_solver_diagnostics
