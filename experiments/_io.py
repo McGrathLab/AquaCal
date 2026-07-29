@@ -226,11 +226,22 @@ def compare_experiment_csv(
 ) -> ComparisonReport:
     """Compare a freshly produced DataFrame against a committed baseline CSV (D-22).
 
-    Never writes to `committed_path` or anywhere else. Sorts both frames by
-    `key_columns` before comparing (RESEARCH Pitfall 5: a committed CSV whose
-    rows are shuffled relative to the fresh frame must still compare as
-    passed). Float columns compare at `rtol`; non-float (object/string/int)
-    columns must compare exactly.
+    Never writes to `committed_path` or anywhere else. Aligns the two frames
+    on `key_columns` before comparing (RESEARCH Pitfall 5: a committed CSV
+    whose rows are shuffled relative to the fresh frame must still compare as
+    passed) rather than by row position. Float columns compare at `rtol`;
+    non-float (object/string/int) columns must compare exactly.
+
+    Totality contract: this function returns a `ComparisonReport` for every
+    `(fresh, committed_path, key_columns, rtol)` whose committed file is
+    readable as a CSV, including a row-count mismatch, a key-set mismatch, a
+    duplicate key, and a non-numeric cell inside a column pandas classified
+    as float. The only exceptions it may propagate are I/O errors reading
+    `committed_path` (e.g. the file does not exist or is not valid CSV). A
+    caller extending this function is extending a total function, not adding
+    a new special case to a partial one -- see the CR-04 history in the
+    body below (`ee8af31`, `ac75e35`, and the key-alignment fix that replaced
+    positional sort-and-compare).
 
     Args:
         fresh: The freshly computed `DataFrame` to check.
@@ -240,9 +251,10 @@ def compare_experiment_csv(
         rtol: Relative tolerance applied to float columns only.
 
     Returns:
-        A `ComparisonReport` describing the outcome. On a header mismatch,
-        `passed` is False and `message` names the offending column(s) rather
-        than reporting a tolerance failure.
+        A `ComparisonReport` describing the outcome. On a header mismatch, a
+        row-count mismatch, a key-set mismatch, or a duplicate key, `passed`
+        is False and `message` names the offending structural difference
+        rather than reporting a tolerance failure or raising.
     """
     committed = pd.read_csv(committed_path)
 
@@ -262,6 +274,68 @@ def compare_experiment_csv(
             message=message,
         )
 
+    # Align on key_columns explicitly, and classify the structural outcome
+    # BEFORE any cell-level comparison. Sorting both frames and comparing
+    # positionally (the prior approach) raises `ValueError: Can only compare
+    # identically-labeled Series objects` the moment the two frames differ in
+    # length, and silently mis-pairs row i of one frame against row i of the
+    # other whenever the key sets merely happen to have equal length (WR-10)
+    # -- e.g. a row-count mismatch, or two frames whose keys differ but whose
+    # counts coincide.
+    fresh_keys = list(fresh.set_index(key_columns).index)
+    committed_keys = list(committed.set_index(key_columns).index)
+    fresh_key_set = set(fresh_keys)
+    committed_key_set = set(committed_keys)
+
+    if fresh_key_set != committed_key_set:
+        fresh_only = sorted(map(str, fresh_key_set - committed_key_set))
+        committed_only = sorted(map(str, committed_key_set - fresh_key_set))
+        _MAX_SHOWN = 10
+        message = (
+            f"Key set mismatch on {key_columns} (committed file: "
+            f"{committed_path}): {len(fresh_only)} key(s) only in fresh "
+            f"{fresh_only[:_MAX_SHOWN]}"
+            f"{'...' if len(fresh_only) > _MAX_SHOWN else ''}, "
+            f"{len(committed_only)} key(s) only in committed "
+            f"{committed_only[:_MAX_SHOWN]}"
+            f"{'...' if len(committed_only) > _MAX_SHOWN else ''}"
+        )
+        return ComparisonReport(
+            passed=False,
+            worst_cell=message,
+            worst_rtol=float("inf"),
+            n_mismatched_cells=max(len(fresh_only) + len(committed_only), 1),
+            message=message,
+        )
+
+    if len(fresh_keys) != len(fresh_key_set) or len(committed_keys) != len(
+        committed_key_set
+    ):
+        # Same key set (by unique value) but a different row count means at
+        # least one side has a duplicate key -- key-based alignment cannot
+        # pair rows unambiguously in that case.
+        message = (
+            f"Duplicate key(s) on {key_columns} (committed file: "
+            f"{committed_path}): fresh has {len(fresh_keys)} row(s) / "
+            f"{len(fresh_key_set)} unique key(s), committed has "
+            f"{len(committed_keys)} row(s) / {len(committed_key_set)} "
+            "unique key(s)."
+        )
+        return ComparisonReport(
+            passed=False,
+            worst_cell=message,
+            worst_rtol=float("inf"),
+            n_mismatched_cells=max(
+                abs(len(fresh_keys) - len(fresh_key_set))
+                + abs(len(committed_keys) - len(committed_key_set)),
+                1,
+            ),
+            message=message,
+        )
+
+    # Key sets are equal and each key is unique on both sides: align by key
+    # (not row position) so every subsequent comparison names the true
+    # counterpart row.
     fresh_sorted = fresh.sort_values(by=key_columns, kind="stable").reset_index(
         drop=True
     )
