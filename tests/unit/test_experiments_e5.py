@@ -9,18 +9,32 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
+from aquacal.io import capture_environment
 from experiments.e1_refractive_comparison import compute_scale_bias
 from experiments.e5_index_sensitivity import (
     E5_COLUMNS,
+    E5_N_FRAMES,
+    E5_NORMAL_FIXED,
+    E5_REFINE_INTRINSICS,
+    HOLDOUT_SEED_OFFSET,
+    N_ASSUMED_BAND,
+    N_TRUE,
     add_control_columns,
     add_holdout_floor_columns,
+    build_provenance_sidecar,
     build_row,
     load_holdout_floor_pct,
+)
+from tests.unit.test_experiments_provenance import (
+    REQUIRED_ENVIRONMENT_KEYS,
+    _record_seed,
 )
 
 SQUARE_SIZE_M = 0.060
@@ -199,3 +213,107 @@ def test_no_pass_fail_column():
     """E5_COLUMNS contains no column whose name implies a verdict."""
     verdict_pattern = re.compile(r"pass|fail|verdict|acceptable", re.IGNORECASE)
     assert not any(verdict_pattern.search(c) for c in E5_COLUMNS)
+
+
+class TestProvenanceSidecar:
+    """Task 1: `build_provenance_sidecar` carries the four EXP-11 fields plus
+    the run configuration WR-04 says index_sensitivity.csv cannot
+    reconstruct on its own."""
+
+    def test_sidecar_carries_the_four_exp11_fields(self):
+        sidecar = build_provenance_sidecar(seed=42)
+        assert sidecar["experiment"] == "e5"
+        assert "schema_version" in sidecar
+        assert sidecar["seed"] == 42
+        assert sidecar["solver_config"]["seed"] == 42
+        expected_keys = set(capture_environment().keys())
+        assert set(sidecar["environment"].keys()) == expected_keys
+        missing = REQUIRED_ENVIRONMENT_KEYS - set(sidecar["environment"])
+        assert not missing, f"sidecar environment missing keys {missing}"
+
+    def test_sidecar_carries_the_run_configuration_matching_module_constants(self):
+        """Every configuration value in the sidecar equals the value the
+        module itself uses, read from the module -- not restated as a
+        literal in this test (per the plan's acceptance criteria)."""
+        sidecar = build_provenance_sidecar(seed=7)
+        assert sidecar["refine_intrinsics"] == E5_REFINE_INTRINSICS
+        assert sidecar["normal_fixed"] == E5_NORMAL_FIXED
+        assert sidecar["n_frames"] == E5_N_FRAMES
+        assert sidecar["n_assumed_band"] == list(N_ASSUMED_BAND)
+        assert sidecar["n_true"] == N_TRUE
+        assert sidecar["holdout_seed_offset"] == HOLDOUT_SEED_OFFSET
+
+    def test_sidecar_passes_the_provenance_suites_own_checks(self, tmp_path):
+        """Write the sidecar to tmp_path and assert it would pass
+        TestEnvironmentPresence and TestSeedProvenance exactly as those
+        checks are written in test_experiments_provenance.py."""
+        sidecar = build_provenance_sidecar(seed=99)
+        sidecar_path = tmp_path / "e5_provenance.json"
+        sidecar_path.write_text(json.dumps(sidecar, sort_keys=True))
+
+        record = json.loads(sidecar_path.read_text())
+
+        # TestEnvironmentPresence.test_every_benchmark_record_has_environment
+        assert "environment" in record
+        missing = REQUIRED_ENVIRONMENT_KEYS - set(record["environment"])
+        assert not missing
+
+        # TestSeedProvenance.test_every_benchmark_record_carries_a_seed
+        assert _record_seed(record) is not None
+
+    def test_refine_intrinsics_defaulted_false_for_the_production_band(self):
+        """The production band ran with intrinsics pinned at ground truth --
+        the sidecar must record that value, not silently change it."""
+        assert E5_REFINE_INTRINSICS is False
+
+
+class TestDefaultMetricsPathAnchoring:
+    """Task 2 (WR-06): `_default_metrics_path` must not depend on cwd."""
+
+    def test_resolves_to_the_same_path_from_two_different_working_directories(
+        self, tmp_path, monkeypatch
+    ):
+        from experiments.e5_index_sensitivity import _default_metrics_path
+
+        original_cwd = Path.cwd()
+
+        monkeypatch.chdir(tmp_path)
+        path_from_tmp = _default_metrics_path()
+
+        monkeypatch.chdir(original_cwd)
+        path_from_original = _default_metrics_path()
+
+        assert path_from_tmp == path_from_original
+        assert path_from_tmp.is_absolute()
+
+    def test_resolves_to_an_existing_file_from_a_foreign_directory(
+        self, tmp_path, monkeypatch
+    ):
+        """Invoked from a directory OTHER than the repository root (a fresh
+        tmp_path), the resolved path must still be absolute and exist."""
+        from experiments.e5_index_sensitivity import _default_metrics_path
+
+        monkeypatch.chdir(tmp_path)
+        resolved = _default_metrics_path()
+        assert resolved.is_absolute()
+        assert resolved.exists(), resolved
+
+
+class TestCheckGuardsMissingBaseline:
+    """Task 2 (WR-12): `--check` must not re-run the band when there is no
+    committed baseline to compare against."""
+
+    def test_run_check_reports_missing_baseline_without_running_the_band(
+        self, tmp_path
+    ):
+        from argparse import Namespace
+
+        from experiments.e5_index_sensitivity import _run_check
+
+        args = Namespace(out=tmp_path, seed=42, force=False, smoke=False, check=True)
+
+        with patch("experiments.e5_index_sensitivity.run_band") as mock_run_band:
+            exit_code = _run_check(args)
+
+        assert exit_code != 0
+        mock_run_band.assert_not_called()
