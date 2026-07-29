@@ -1,0 +1,42 @@
+% E4 compact summary (nine synthetic cells, main-text table)
+\begin{tabular}{|l|l|l|l|l|l|l|}
+\hline
+cell\_key & n\_cameras & n\_frames & seconds\_stage3\_interface\_optimization & seconds\_stage3\_intrinsic\_pass & peak\_bytes\_stage3\_intrinsic\_pass & reprojection\_rms \\
+\hline
+cameras\_8\_frames\_50 & 8 & 50 & 18.411910899998475 & 7.692370499997196 & 253599744 & 0.7046050643959275 \\
+cameras\_8\_frames\_100 & 8 & 100 & 30.18418290000045 & 18.467743800003518 & 630001664 & 0.7062349633480514 \\
+cameras\_8\_frames\_200 & 8 & 200 & 112.40870329999962 & 40.11848729999838 & 1799163904 & 0.7038660944771904 \\
+cameras\_12\_frames\_50 & 12 & 50 & 39.2357688000011 & 10.328452700003254 & 322723840 & 0.7110435994940553 \\
+cameras\_12\_frames\_100 & 12 & 100 & 79.50419770000008 & 26.29952779999803 & 900546560 & 0.7081386647719251 \\
+cameras\_12\_frames\_200 & 12 & 200 & 236.94106979999924 & 58.57109250000212 & 2573770752 & 0.7060971885667151 \\
+cameras\_16\_frames\_50 & 16 & 50 & 39.65269700000135 & 13.432531799997378 & 403746816 & 0.714603004995379 \\
+cameras\_16\_frames\_100 & 16 & 100 & 103.68295149999904 & 34.49092229999951 & 1213464576 & 0.7108372434444429 \\
+cameras\_16\_frames\_200 & 16 & 200 & 157.0815150999988 & 77.35763939999742 & 3554770944 & 0.7074228938081065 \\
+\hline
+\end{tabular}
+
+% E4 full grid (nine synthetic cells, supplement table)
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+cell\_key & n\_cameras & n\_frames & seed & status & status\_reason & exit\_code & timing\_scope & record\_source & normal\_fixed & shared\_interface & n\_observations & seconds\_stage3\_interface\_optimization & seconds\_stage3\_intrinsic\_pass & peak\_bytes\_baseline & peak\_bytes\_stage3\_interface\_optimization & peak\_bytes\_stage3\_intrinsic\_pass & memory\_mode & n\_params\_stage3\_interface\_optimization & n\_groups\_stage3\_interface\_optimization & fd\_reduction\_stage3\_interface\_optimization & n\_residuals\_stage3\_interface\_optimization & jacobian\_elements\_stage3\_interface\_optimization & n\_params\_stage3\_intrinsic\_pass & n\_groups\_stage3\_intrinsic\_pass & fd\_reduction\_stage3\_intrinsic\_pass & n\_residuals\_stage3\_intrinsic\_pass & jacobian\_elements\_stage3\_intrinsic\_pass & nfev\_stage3\_interface\_optimization & njev\_stage3\_interface\_optimization & optimality\_stage3\_interface\_optimization & reprojection\_rms & validation\_3d\_error\_mean & validation\_3d\_error\_std \\
+\hline
+cameras\_8\_frames\_50 & 8 & 50 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 187.0 & 18.411910899998475 & 7.692370499997196 & 119648256.0 & 240271360 & 253599744 & psutil\_peak\_wset & 273 & 13 & 21.0 & 6490 & 1771770 & 305 & 17 & 17.941176470588236 & 6490 & 1979450 & 15 & 11 & 0.013590685921371914 & 0.7046050643959275 & 8.365162362031404e-06 & 0.0002258098297440368 \\
+cameras\_8\_frames\_100 & 8 & 100 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 412.0 & 30.18418290000045 & 18.467743800003518 & 120066048.0 & 601423872 & 630001664 & psutil\_peak\_wset & 519 & 13 & 39.92307692307692 & 14928 & 7747632 & 551 & 17 & 32.411764705882355 & 14928 & 8225328 & 13 & 7 & 0.0034970725850484996 & 0.7062349633480514 & 7.123331591527906e-06 & 0.00020711276819471454 \\
+cameras\_8\_frames\_200 & 8 & 200 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 775.0 & 112.40870329999962 & 40.11848729999838 & 120197120.0 & 1742159872 & 1799163904 & psutil\_peak\_wset & 951 & 13 & 73.15384615384616 & 28240 & 26856240 & 983 & 17 & 57.8235294117647 & 28240 & 27759920 & 18 & 12 & 0.009109174142395204 & 0.7038660944771904 & 8.61899276594436e-06 & 0.00020372593615126093 \\
+cameras\_12\_frames\_50 & 12 & 50 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 249.0 & 39.2357688000011 & 10.328452700003254 & 119758848.0 & 295116800 & 322723840 & psutil\_peak\_wset & 297 & 13 & 22.846153846153847 & 8924 & 2650428 & 345 & 17 & 20.294117647058822 & 8924 & 3078780 & 22 & 18 & 0.0025017476205087927 & 0.7110435994940553 & 2.398877391137528e-07 & 0.00016290697632864373 \\
+cameras\_12\_frames\_100 & 12 & 100 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 576.0 & 79.50419770000008 & 26.29952779999803 & 119590912.0 & 835903488 & 900546560 & psutil\_peak\_wset & 543 & 13 & 41.76923076923077 & 21754 & 11812422 & 591 & 17 & 34.76470588235294 & 21754 & 12856614 & 17 & 14 & 0.010634861889229796 & 0.7081386647719251 & 3.168179800203658e-06 & 0.00016537597787459444 \\
+cameras\_12\_frames\_200 & 12 & 200 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 1084.0 & 236.94106979999924 & 58.57109250000212 & 120619008.0 & 2508562432 & 2573770752 & psutil\_peak\_wset & 975 & 13 & 75.0 & 41222 & 40191450 & 1023 & 17 & 60.1764705882353 & 41222 & 42170106 & 25 & 18 & 0.007523304582491619 & 0.7060971885667151 & 1.6594031698878533e-06 & 0.0001712666756095854 \\
+cameras\_16\_frames\_50 & 16 & 50 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 322.0 & 39.65269700000135 & 13.432531799997378 & 119914496.0 & 356352000 & 403746816 & psutil\_peak\_wset & 321 & 13 & 24.692307692307693 & 11698 & 3755058 & 385 & 17 & 22.647058823529413 & 11698 & 4503730 & 19 & 14 & 0.003864997167056572 & 0.714603004995379 & 6.458963459724154e-06 & 0.00018656983940230448 \\
+cameras\_16\_frames\_100 & 16 & 100 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 737.0 & 103.68295149999904 & 34.49092229999951 & 120262656.0 & 1102954496 & 1213464576 & psutil\_peak\_wset & 567 & 13 & 43.61538461538461 & 28948 & 16413516 & 631 & 17 & 37.11764705882353 & 28948 & 18266188 & 17 & 14 & 0.0083512005362536 & 0.7108372434444429 & 4.1600025109379145e-06 & 0.00017068983714194162 \\
+cameras\_16\_frames\_200 & 16 & 200 & 42 & ok &  & 0.0 & optimization\_only & assembled & False & True & 1395.0 & 157.0815150999988 & 77.35763939999742 & 120913920.0 & 3343204352 & 3554770944 & psutil\_peak\_wset & 1005 & 13 & 77.3076923076923 & 54460 & 54732300 & 1069 & 17 & 62.88235294117647 & 54460 & 58217740 & 12 & 9 & 0.0071294578631295735 & 0.7074228938081065 & 5.508844018505512e-06 & 0.00016263625430778454 \\
+\hline
+\end{tabular}
+
+% E4 real-rig anchor row (pipeline-written, end-to-end; see D-02)
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+cell\_key & n\_cameras & n\_frames & seed & status & status\_reason & exit\_code & timing\_scope & record\_source & normal\_fixed & shared\_interface & n\_observations & seconds\_stage3\_interface\_optimization & seconds\_stage3\_intrinsic\_pass & peak\_bytes\_baseline & peak\_bytes\_stage3\_interface\_optimization & peak\_bytes\_stage3\_intrinsic\_pass & memory\_mode & n\_params\_stage3\_interface\_optimization & n\_groups\_stage3\_interface\_optimization & fd\_reduction\_stage3\_interface\_optimization & n\_residuals\_stage3\_interface\_optimization & jacobian\_elements\_stage3\_interface\_optimization & n\_params\_stage3\_intrinsic\_pass & n\_groups\_stage3\_intrinsic\_pass & fd\_reduction\_stage3\_intrinsic\_pass & n\_residuals\_stage3\_intrinsic\_pass & jacobian\_elements\_stage3\_intrinsic\_pass & nfev\_stage3\_interface\_optimization & njev\_stage3\_interface\_optimization & optimality\_stage3\_interface\_optimization & reprojection\_rms & validation\_3d\_error\_mean & validation\_3d\_error\_std \\
+\hline
+real\_rig\_13cam\_200fr & 13 & 200 & 42 & ok &  &  & end\_to\_end & pipeline & False &  &  & 1276.9060307000009 & 632.8864587999997 &  & 9621364736 & 10499325952 & psutil\_peak\_wset & 1269 & 13 & 97.61538461538461 & 147950 & 187748550 & 1317 & 17 & 77.47058823529412 & 147950 & 194850150 & 38 & 28 & 0.10917011023249756 & 1.019136036829683 & 0.0002681549146013648 & 0.0006184407124629633 \\
+\hline
+\end{tabular}
