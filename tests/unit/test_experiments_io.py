@@ -315,6 +315,69 @@ class TestCheckComparator:
         assert "cam1" in report.worst_cell
         assert exit_code_for(report) == 1
 
+    def test_check_worst_cell_loop_tolerates_nonnumeric_in_float_column(self, tmp_path):
+        """Regression for CR-04 case 2: a column that is all-NaN float in
+        `fresh` and carries a real string in `committed` in exactly ONE row
+        out of several (e.g. `status_reason` in `generalization_sweep.csv`:
+        13 empty rows + 1 `KeyError: 'cam11'` row) lands in `float_columns`
+        (classified by dtype in EITHER frame), fails the frame-level
+        assert_frame_equal as intended, but must not raise inside the
+        worst-cell loop when it calls `to_numpy(dtype=float)`. This FAILS on
+        EXPECTED_BASE with `ValueError: could not convert string to float:
+        "KeyError: 'cam11'"`.
+        """
+        committed = pd.DataFrame(
+            {
+                "axis": ["index", "layout", "layout"],
+                "axis_value": ["1.333", "grid", "line"],
+                "status_reason": ["", "", "KeyError: 'cam11'"],
+            }
+        )
+        committed_path = tmp_path / "generalization_sweep.csv"
+        committed.to_csv(committed_path, index=False)
+
+        # fresh's status_reason column is all-NaN float (e.g. every cell
+        # unset because the fresh run never populated a reason) -- the shape
+        # that triggers CR-04 case 2 rather than case 1 (which is
+        # all-empty-string in fresh, already handled).
+        fresh = pd.DataFrame(
+            {
+                "axis": ["index", "layout", "layout"],
+                "axis_value": ["1.333", "grid", "line"],
+                "status_reason": [float("nan"), float("nan"), float("nan")],
+            }
+        )
+
+        report = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=["axis", "axis_value"],
+            rtol=CHECK_RTOL,
+        )
+        assert report.passed is False
+        assert "status_reason" in report.message
+
+    def test_check_numeric_mismatch_worst_rtol_unchanged_by_coercion(self, tmp_path):
+        """The to_numeric coercion in the worst-cell loop must not change the
+        worst_rtol value for a purely numeric mismatch -- pinned against the
+        EXPECTED_BASE value for this exact fixture (10x rtol offset on
+        row 1's reprojection_rms_px, matching
+        test_check_fails_outside_rtol_and_names_worst_cell)."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.copy()
+        fresh.loc[1, "reprojection_rms_px"] = fresh.loc[1, "reprojection_rms_px"] * (
+            1 + 10 * CHECK_RTOL
+        )
+
+        report = compare_experiment_csv(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        assert report.passed is False
+        assert report.worst_rtol == pytest.approx(10 * CHECK_RTOL, rel=1e-3)
+
     def test_check_never_writes(self, tmp_path):
         committed = _exp1_frame()
         committed_path = tmp_path / "exp1_parameter_errors.csv"
