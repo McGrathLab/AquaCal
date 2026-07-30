@@ -12,6 +12,7 @@ from aquacal.config.schema import (
     CameraIntrinsics,
     ConnectivityError,
     ConvergenceError,
+    DegenerateObservationWarning,
     Detection,
     DetectionResult,
     DiagnosticsData,
@@ -44,4 +45,5 @@ __all__ = [
     "InsufficientDataError",
     "ConvergenceError",
     "ConnectivityError",
+    "DegenerateObservationWarning",
 ]

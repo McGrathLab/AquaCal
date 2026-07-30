@@ -7,8 +7,10 @@ This module OWNS the declared-constants table for E3 tier 1. `experiments/e3_der
 letting the supplement's prose silently drift out of sync with the shipped code.
 
 Every declared value below is checked against a value read LIVE from the library -- by calling
-a function, by reading a signature default, or (for the two literals that expose neither) by an
-anchored regex over the function's own source text. No row is ever compared against a hardcoded
+a function, by reading a module-level constant, by reading a signature default, or (for the one
+literal that exposes none of those) by an anchored regex over the function's own source text.
+Prefer the strongest surface available: a regex over source text is used only where the value
+is a bare literal inside a function body. No row is ever compared against a hardcoded
 source line number (19.2-RESEARCH.md Pitfall 1): line numbers shift on every unrelated edit and
 would silently stop verifying anything.
 
@@ -36,8 +38,8 @@ from aquacal.calibration._observability import (
     build_parameter_labels,
 )
 from aquacal.calibration._optim_common import (
+    INVALID_PROJECTION_PENALTY_PX,
     build_bounds,
-    compute_residuals,
     make_sparse_jacobian_func,
 )
 from aquacal.calibration.interface_estimation import (
@@ -126,16 +128,21 @@ def _aux_registration_f_scale() -> float:
     return float(match.group(1))
 
 
-def _invalid_tir_penalty() -> float:
-    """The 100 px invalid/TIR penalty inside `compute_residuals`.
+def _invalid_projection_penalty() -> float:
+    """The flat 100 px penalty for an observation with no continuous extension.
 
-    No callable or signature surface exposes this value -- it is a bare assignment to a local
-    array -- so it is read by an anchored regex over the function's own source text.
+    Read live off the module-level constant. This value NO LONGER applies to every invalid
+    projection. `compute_residuals` continues an observation the refractive model cannot
+    project (a corner at or above the interface, a camera at or below it, or a total-internal-
+    reflection failure) with the plain pinhole projection, which is the unique continuous
+    extension of the refractive model across the interface. The flat penalty survives only for
+    a point BEHIND the camera, where no extension is defined.
+
+    Substituting a constant for an invalid projection makes the objective flat in every
+    parameter there -- zero Jacobian entries and no gradient out of the invalid region -- which
+    is why the constant's domain was narrowed to the one case that admits no alternative.
     """
-    source = inspect.getsource(compute_residuals)
-    match = re.search(r"diff\[invalid\]\s*=\s*(\d+\.?\d*)", source)
-    assert match is not None, "diff[invalid] = literal not found in compute_residuals"
-    return float(match.group(1))
+    return float(INVALID_PROJECTION_PENALTY_PX)
 
 
 def _newton_tolerance() -> float:
@@ -246,7 +253,7 @@ class DeclaredConstant(NamedTuple):
             the source worklist).
         source: A dotted module path plus symbol. Never a line number.
         declared_value: The value the supplement asserts.
-        read_via: One of `"call"`, `"signature_default"`, or `"source_regex"`.
+        read_via: One of `"call"`, `"attribute"`, `"signature_default"`, or `"source_regex"`.
         live: A zero-argument callable returning the current value from the library.
     """
 
@@ -296,11 +303,16 @@ DECLARED_CONSTANTS: tuple[DeclaredConstant, ...] = (
     ),
     DeclaredConstant(
         key="invalid_tir_penalty_px",
-        claim="Invalid/TIR configurations take a fixed 100 px penalty",
-        source="aquacal.calibration._optim_common.compute_residuals",
+        claim=(
+            "a projection with no continuous extension -- the point lies behind the camera -- "
+            "takes a fixed 100 px penalty; every other unprojectable observation (corner at or "
+            "above the interface, camera at or below it, total internal reflection) is "
+            "continued with the plain pinhole projection instead"
+        ),
+        source="aquacal.calibration._optim_common.INVALID_PROJECTION_PENALTY_PX",
         declared_value=100.0,
-        read_via="source_regex",
-        live=_invalid_tir_penalty,
+        read_via="attribute",
+        live=_invalid_projection_penalty,
     ),
     DeclaredConstant(
         key="newton_tolerance_m",
@@ -376,14 +388,22 @@ class TestDeclaredConstantsTableStructure:
         for entry in DECLARED_CONSTANTS:
             assert re.search(r":\d+", entry.source) is None, entry.key
 
-    def test_declaration_read_via_values_are_valid_and_source_regex_count_is_two(self):
-        allowed = {"call", "signature_default", "source_regex"}
+    def test_declaration_read_via_values_are_valid_and_source_regex_count_is_one(self):
+        """Source-text reads are capped, so a live surface is never bypassed lazily.
+
+        The cap was 2 until `compute_residuals`' bare `diff[invalid] = 100.0` literal was
+        promoted to the module-level `INVALID_PROJECTION_PENALTY_PX`. That row now has a live
+        attribute surface, so the ceiling tightens to 1: `register_auxiliary_camera`'s
+        `f_scale=` literal remains the only value with no callable, attribute or signature
+        surface. Raise this number only by demonstrating a new value has none either.
+        """
+        allowed = {"call", "attribute", "signature_default", "source_regex"}
         for entry in DECLARED_CONSTANTS:
             assert entry.read_via in allowed, entry.key
         source_regex_count = sum(
             1 for entry in DECLARED_CONSTANTS if entry.read_via == "source_regex"
         )
-        assert source_regex_count == 2
+        assert source_regex_count == 1
 
 
 class TestDeclaredConstantsRowsAreWellFormed:

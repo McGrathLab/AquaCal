@@ -23,6 +23,60 @@ from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project_batch
 from aquacal.utils.transforms import matrix_to_rvec, rvec_to_matrix
 
+#: Residual (pixels) assigned to an observation whose projection cannot be
+#: extended at all -- the point lies behind the camera, so not even the pinhole
+#: limit is defined. This is the historical flat penalty, now confined to the
+#: one case where no continuous extension exists.
+INVALID_PROJECTION_PENALTY_PX = 100.0
+
+
+def _extend_invalid_projections(
+    camera: Camera,
+    points_3d: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """
+    Continuously extend the refractive projection to points it cannot handle.
+
+    :func:`~aquacal.core.refractive_geometry.refractive_project_batch` returns
+    NaN when a point is at or above the interface (``h_q <= 0``), when the
+    camera itself is at or below the interface, or when the refraction point
+    falls behind the camera. Substituting a *constant* residual for those
+    observations makes the objective flat in every parameter there: the
+    corresponding Jacobian entries are exactly zero, so a frame whose
+    observations are all invalid contributes an exact 6-dimensional null space,
+    and -- worse -- the invalid region becomes absorbing, since there is no
+    gradient pointing back out of it.
+
+    The plain pinhole projection is the unique continuous extension. As a point
+    approaches the interface from below, the refraction point converges to the
+    point itself, so the refractive projection converges to the pinhole
+    projection; evaluating the pinhole model above the interface therefore
+    continues the refractive model across it without a jump.
+
+    No extra above-interface penalty term is added. A hinge such as
+    ``max(0, water_z - Q_z)`` would make the residual C0 but not C1 at the
+    interface, so first-order optimality could not reach zero at any solution
+    that parks an observation there -- destroying the convergence diagnostic
+    this library reports. The restoring gradient that pushes a lifted board
+    back underwater is supplied by the pinhole continuation itself.
+
+    Args:
+        camera: Camera whose (possibly non-pinhole) projection model is used.
+        points_3d: World-frame points that failed to project, shape (N, 3).
+
+    Returns:
+        Pixel coordinates from the pinhole extension, shape (N, 2). Entries
+        are NaN for points behind the camera, where no extension exists.
+    """
+    n = len(points_3d)
+    pixels = np.full((n, 2), np.nan, dtype=np.float64)
+    for i in range(n):
+        projected = camera.project(points_3d[i], apply_distortion=True)
+        if projected is not None:
+            pixels[i] = projected
+
+    return pixels
+
 
 def pack_params(
     extrinsics: dict[str, CameraExtrinsics],
@@ -559,6 +613,7 @@ def compute_residuals(
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
     shared_interface: bool = True,
+    invalid_count_out: list[int] | None = None,
 ) -> NDArray[np.float64]:
     """
     Compute reprojection residuals for all observations.
@@ -587,6 +642,10 @@ def compute_residuals(
             filled for all cameras. If False, N per-camera water_z values are
             unpacked. MUST match the shared_interface used to pack ``params``,
             or the whole vector past the water_z block is misaligned.
+        invalid_count_out: Optional list to append the number of observations
+            whose refractive projection failed and had to be continued by
+            :func:`_extend_invalid_projections`. Purely observational; has no
+            effect on the returned residuals. Default None records nothing.
 
     Returns:
         1D array of residuals [r0_x, r0_y, r1_x, r1_y, ...] in pixels.
@@ -604,6 +663,7 @@ def compute_residuals(
     )
 
     residuals = []
+    n_invalid = 0
 
     for frame_idx in frame_order:
         if frame_idx not in detections.frames:
@@ -634,11 +694,23 @@ def compute_residuals(
             points_3d = np.array([corners_3d[cid] for cid in detection.corner_ids])
             projected_batch = refractive_project_batch(camera, interface, points_3d)
 
-            # Compute residuals: NaN entries get penalty of 100px
+            # Compute residuals. An observation the refractive model cannot
+            # project is continued with the pinhole extension, so it keeps a
+            # gradient (see _extend_invalid_projections). Only points behind the
+            # camera, where no extension exists, fall back to a flat penalty.
             diff = projected_batch - detection.corners_2d
             invalid = np.isnan(diff).any(axis=1)
-            diff[invalid] = 100.0
+            if invalid.any():
+                n_invalid += int(invalid.sum())
+                extended = _extend_invalid_projections(camera, points_3d[invalid])
+                diff_invalid = extended - detection.corners_2d[invalid]
+                unextendable = np.isnan(diff_invalid).any(axis=1)
+                diff_invalid[unextendable] = INVALID_PROJECTION_PENALTY_PX
+                diff[invalid] = diff_invalid
             residuals.append(diff.ravel())
+
+    if invalid_count_out is not None:
+        invalid_count_out.append(n_invalid)
 
     if residuals:
         return np.concatenate(residuals).astype(np.float64)

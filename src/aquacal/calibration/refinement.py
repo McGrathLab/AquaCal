@@ -5,6 +5,8 @@ all parameters from Stage 3, with the option to also refine camera intrinsics
 (focal length and principal point).
 """
 
+import warnings
+
 import numpy as np
 from scipy.optimize import least_squares
 
@@ -28,6 +30,7 @@ from aquacal.config.schema import (
     CameraExtrinsics,
     CameraIntrinsics,
     ConvergenceError,
+    DegenerateObservationWarning,
     DetectionResult,
     Vec3,
 )
@@ -299,6 +302,23 @@ def joint_refinement(
 
     if result.status <= 0:
         raise ConvergenceError(f"Optimization failed: {result.message}")
+
+    # Degeneracy guard -- see the matching block in interface_estimation.
+    invalid_counts: list[int] = []
+    compute_residuals(result.x, *cost_args, invalid_count_out=invalid_counts)
+    n_invalid = invalid_counts[0] if invalid_counts else 0
+    if n_invalid > 0:
+        warnings.warn(
+            f"Stage 3's intrinsic pass finished with {n_invalid} observation(s) "
+            f"the refractive model could not project (corners at or above the "
+            f"water surface, or behind a camera). These were continued with a "
+            f"pinhole extension. First-order optimality is "
+            f"{getattr(result, 'optimality', float('nan')):.4g} and termination "
+            f"status is {result.status}; judge convergence on optimality, not "
+            f"on the reprojection RMS.",
+            DegenerateObservationWarning,
+            stacklevel=2,
+        )
 
     if observer is not None:
         observer.on_solution(result)

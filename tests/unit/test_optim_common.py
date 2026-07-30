@@ -854,3 +854,194 @@ class TestMakeSparseJacobianFunc:
 
         # Both paths should produce identical results
         np.testing.assert_allclose(J_dense, J_sparse_dense, atol=1e-10)
+
+
+class TestInvalidProjectionKeepsGradient:
+    """A board pose above the water surface must not flatten the objective.
+
+    Regression guard for the Stage-3 divergence traced to `compute_residuals`
+    substituting a CONSTANT 100.0 px for every observation the refractive model
+    could not project. A constant has identically zero derivative, so a frame
+    whose observations were all invalid contributed an exact 6-dimensional null
+    space: rank 339/345, sv_min 2.1e-12, cond 4.1e16, `xtol` termination at
+    first-order optimality 4.3e4 behind a 14 px RMS. Worse, the flat region was
+    ABSORBING -- with no gradient there was no force to push the pose back below
+    the interface, so an ordinary bad initialization became unrecoverable.
+
+    These tests pin the two properties that fix depends on: an unprojectable
+    observation still varies with the parameters, and the fact that it happened
+    is reported rather than silently absorbed.
+    """
+
+    @staticmethod
+    def _scene():
+        """A 3-camera scene whose frame 1 board sits ABOVE the water surface."""
+        from aquacal.config.schema import BoardConfig, CameraIntrinsics
+        from aquacal.core.board import BoardGeometry
+
+        K = np.array([[500, 0, 320], [0, 500, 240], [0, 0, 1]], dtype=np.float64)
+        cams = ("cam0", "cam1", "cam2")
+        intrinsics = {
+            cam: CameraIntrinsics(
+                K=K.copy(),
+                dist_coeffs=np.zeros(5, dtype=np.float64),
+                image_size=(640, 480),
+            )
+            for cam in cams
+        }
+        extrinsics = {
+            "cam0": CameraExtrinsics(R=np.eye(3), t=np.zeros(3)),
+            "cam1": CameraExtrinsics(R=np.eye(3), t=np.array([0.1, 0.0, 0.0])),
+            "cam2": CameraExtrinsics(R=np.eye(3), t=np.array([0.0, 0.1, 0.0])),
+        }
+        board = BoardGeometry(
+            BoardConfig(
+                squares_x=6,
+                squares_y=5,
+                square_size=0.04,
+                marker_size=0.03,
+                dictionary="DICT_4X4_50",
+            )
+        )
+        water_z = 0.15
+        # All three frames are generated underwater so detections exist for each.
+        poses = [
+            BoardPose(
+                frame_idx=i,
+                rvec=np.array([0.05 * i, 0.05, 0.0]),
+                tvec=np.array([0.02 * (i - 1), 0.0, 0.40]),
+            )
+            for i in range(3)
+        ]
+        return intrinsics, extrinsics, board, water_z, poses, list(cams)
+
+    def _packed(self, lift_frame1_above_water):
+        """Build (params, cost_args) with frame 1 optionally lifted above water."""
+        import sys
+
+        sys.path.insert(0, ".")
+        from tests.synthetic.ground_truth import generate_synthetic_detections
+
+        intrinsics, extrinsics, board, water_z, poses, cams = self._scene()
+        np.random.seed(7)
+        detections = generate_synthetic_detections(
+            intrinsics,
+            extrinsics,
+            {c: water_z for c in cams},
+            board,
+            poses,
+            noise_std=0.0,
+            min_corners=4,
+        )
+        # Perturb the *parameter vector*, not the data: frame 1's board is moved
+        # to Z = 0.05 < water_z = 0.15, i.e. entirely above the interface. Its
+        # detections still exist, so the residual loop keeps all its rows.
+        solve_poses = {
+            p.frame_idx: BoardPose(
+                frame_idx=p.frame_idx,
+                rvec=p.rvec.copy(),
+                tvec=(
+                    np.array([p.tvec[0], p.tvec[1], 0.05])
+                    if (lift_frame1_above_water and p.frame_idx == 1)
+                    else p.tvec.copy()
+                ),
+            )
+            for p in poses
+        }
+        frame_order = sorted(solve_poses)
+        params = pack_params(
+            extrinsics, water_z, solve_poses, "cam0", cams, frame_order
+        )
+        cost_args = (
+            detections,
+            intrinsics,
+            board,
+            "cam0",
+            extrinsics["cam0"],
+            np.array([0.0, 0.0, -1.0]),
+            1.0,
+            1.333,
+            cams,
+            frame_order,
+            4,
+        )
+        return params, cost_args, cams, frame_order
+
+    def test_above_water_frame_has_no_zero_jacobian_columns(self):
+        """The lifted frame's 6 pose columns must all carry a nonzero derivative.
+
+        Under the old flat penalty every one of these columns was exactly 0.0.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, cams, frame_order = self._packed(True)
+        jac_sparsity = build_jacobian_sparsity(
+            cost_args[0], "cam0", cams, frame_order, 4
+        )
+        jac_func = make_sparse_jacobian_func(
+            compute_residuals,
+            cost_args,
+            jac_sparsity,
+            build_bounds(cams, frame_order, "cam0"),
+            groups=build_structural_column_groups(
+                jac_sparsity, len(cams), len(frame_order)
+            ),
+        )
+        J = jac_func(params, *cost_args)
+        J = J.toarray() if hasattr(J, "toarray") else np.asarray(J)
+
+        # Sanity: the scenario really does exercise the invalid branch.
+        counts = []
+        compute_residuals(params, *cost_args, invalid_count_out=counts)
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+
+        pose_block_start = 6 * (len(cams) - 1) + 1  # normal_fixed, shared water_z
+        lifted = pose_block_start + frame_order.index(1) * 6
+        column_magnitudes = np.abs(J[:, lifted : lifted + 6]).max(axis=0)
+        assert np.all(column_magnitudes > 0.0), (
+            "board-pose columns of an above-water frame are exactly zero; the "
+            f"objective is flat there. Column magnitudes: {column_magnitudes}"
+        )
+        assert not np.any(np.abs(J).max(axis=0) == 0.0), (
+            "some parameter has an identically-zero Jacobian column"
+        )
+
+    def test_valid_scene_reports_no_invalid_projections(self):
+        """With every board underwater the invalid branch is never entered.
+
+        This is the bit-identity argument: the continuous-extension code runs
+        only when at least one projection fails, so any configuration that
+        converged before is numerically untouched.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(False)
+        counts = []
+        compute_residuals(params, *cost_args, invalid_count_out=counts)
+        assert counts == [0]
+
+    def test_cost_grows_with_height_above_interface(self):
+        """The residual must increase as the board rises further above water.
+
+        A monotone response is what supplies the gradient that pushes the pose
+        back underwater; the old constant penalty was flat in this direction.
+        The restoring force comes from the pinhole continuation itself -- there
+        is deliberately no extra above-interface penalty term, because a hinge
+        would make the residual C0-but-not-C1 and stop first-order optimality
+        from ever reaching zero at the interface.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, cams, frame_order = self._packed(True)
+        pose_block_start = 6 * (len(cams) - 1) + 1
+        z_index = pose_block_start + frame_order.index(1) * 6 + 5
+
+        costs = []
+        for z in (0.10, 0.05, 0.0):
+            p = params.copy()
+            p[z_index] = z
+            r = compute_residuals(p, *cost_args)
+            costs.append(float(r @ r))
+        assert costs[0] < costs[1] < costs[2], (
+            f"cost is not monotone in height above the interface: {costs}"
+        )

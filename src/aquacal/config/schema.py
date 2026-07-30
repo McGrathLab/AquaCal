@@ -602,3 +602,19 @@ class ConnectivityError(CalibrationError):
     """Raised when pose graph is not connected (cameras cannot be linked)."""
 
     pass
+
+
+class DegenerateObservationWarning(UserWarning):
+    """Warns that observations could not be projected by the refractive model.
+
+    Emitted by Stage 3 when the solution contains board corners the refractive
+    model cannot project -- typically corners lying at or above the water
+    surface, which is physically impossible for a submerged target. Such
+    observations are continued with a pinhole extension so the solve keeps a
+    gradient, but their presence means part of the data is not explained by the
+    refractive model, and the reported reprojection RMS can look acceptable
+    while the solve has not actually converged. Check first-order optimality,
+    not RMS, when this fires.
+    """
+
+    pass

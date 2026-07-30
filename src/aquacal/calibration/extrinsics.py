@@ -136,8 +136,19 @@ def refractive_solve_pnp(
         n_water: Refractive index of water (default 1.333)
 
     Returns:
-        Tuple of (rvec, tvec) representing board pose in camera frame,
-        or None if PnP fails.
+        Tuple of (rvec, tvec) representing board pose in camera frame, or None
+        if PnP fails or if the refined pose does not explain its own data (see
+        note below).
+
+    Note:
+        ``cv2.solvePnP`` reports ``success=True`` for degenerate configurations
+        -- a near-minimal, nearly collinear corner set can return a translation
+        of order 1e12 m. The returned pose is self-checked here and rejected if
+        the refractive model cannot project a single one of the corners the
+        pose was fitted to. That is a threshold-free test: a pose which explains
+        none of its own observations is not a pose. Returning None lets the
+        caller fall back to another observation, which every call site in this
+        module already handles.
     """
     # Get initial guess from standard PnP
     result = estimate_board_pose(intrinsics, corners_2d, corner_ids, board)
@@ -188,8 +199,20 @@ def refractive_solve_pnp(
 
     result_opt = least_squares(residuals, x0, method="lm", max_nfev=200)
 
+    if not np.all(np.isfinite(result_opt.x)):
+        return None
+
     rvec_out = result_opt.x[:3].astype(np.float64)
     tvec_out = result_opt.x[3:].astype(np.float64)
+
+    # Self-check: reject a pose that explains none of its own data. A degenerate
+    # solvePnP result places the board where the refractive model cannot project
+    # any corner at all, so every residual above was the flat invalid penalty --
+    # the fit was blind. A merely imprecise pose still projects all its corners.
+    pts_cam = (rvec_to_matrix(rvec_out) @ object_points.T).T + tvec_out
+    if not any(refractive_project(camera, interface, pt) is not None for pt in pts_cam):
+        return None
+
     return rvec_out, tvec_out
 
 
