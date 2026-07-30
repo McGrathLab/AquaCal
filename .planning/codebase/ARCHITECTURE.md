@@ -314,7 +314,11 @@ Entry point: `compare_calibrations()` in `comparison.py`
 
 5. **Projection failures** (handled gracefully):
    - `refractive_project()` returns `None` on TIR or no intersection
-   - Downstream: Cost function assigns high residual (100.0 px)
+   - Downstream: cost function continues the projection with the plain pinhole
+     model (the unique continuous extension across the interface), so the
+     residual keeps a gradient. Only a point behind the camera, where no
+     extension exists, gets the flat 100.0 px penalty. Stage 3 warns
+     (`DegenerateObservationWarning`) if any remain at the solution.
    - Reprojection/triangulation: Skip observation, accumulate only valid ones
 
 6. **Optimization convergence**:

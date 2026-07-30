@@ -53,7 +53,7 @@ The parameter vector is laid out as:
 [tilt_rx, tilt_ry (0 or 2)] | [rvec, tvec] × (N−1) | water_z | [rvec, tvec] × F
 ```
 
-**Cost function**: For each (camera, frame) observation pair, all detected corner positions on the board are transformed to 3D world coordinates via the current board pose, then projected through the refractive model to pixel coordinates. Residuals are the difference between projected and observed pixel positions. Failed projections (e.g., due to total internal reflection) receive a 100 px penalty to steer the optimizer away from physically impossible configurations.
+**Cost function**: For each (camera, frame) observation pair, all detected corner positions on the board are transformed to 3D world coordinates via the current board pose, then projected through the refractive model to pixel coordinates. Residuals are the difference between projected and observed pixel positions. A projection the refractive model cannot produce (corner at or above the interface, camera below it, or total internal reflection) is continued with the plain pinhole projection — the unique continuous extension across the interface, which keeps the residual differentiable in every parameter. Only a point behind the camera, where no extension exists, falls back to a flat 100 px penalty. A constant penalty was used for all such cases before 2026-07-30; because a constant has zero derivative it made the invalid region absorbing, which caused Stage 3 to diverge on plausible geometries (see `.planning/debug/stage3-diverges-new-geometry.md`).
 
 **Optimizer**: `scipy.optimize.least_squares` with the Trust Region Reflective (TRF) method, Huber robust loss (f_scale = 1.0), and bound constraints (water_z ∈ [0.01, 2.0] m; optional tilt ∈ [−0.2, 0.2] rad).
 

@@ -49,8 +49,16 @@
 ### water_z is unobservable in non-refractive mode (n_air == n_water)
 **Context**: When running calibration with n_air=n_water=1.0 as a comparison baseline, water_z moves significantly (1.0 -> 0.35 -> 0.47) despite having zero analytical gradient.
 **Insight**: With equal refractive indices, the projected pixel is exactly independent of water_z (Newton-Raphson converges in 0 iterations to the pinhole solution; the interface point lies on the C-to-Q ray, so perspective division cancels). Stage 3 movement is caused by the `h_q <= 0` boundary penalty driving water_z below all board corners. Stage 4 drift is accumulated numerical noise in a flat cost valley. The final water_z value is arbitrary and meaningless; all other parameters (extrinsics, intrinsics, board poses) are unaffected.
-**References**: `_refractive_project_newton` line 357 (h_q guard), `compute_residuals` line 486 (100px penalty), `dev/tasks/water_z_nonrefractive_report.md`.
+**References**: `_refractive_project_newton` line 357 (h_q guard), `compute_residuals` (invalid-projection handling), `dev/tasks/water_z_nonrefractive_report.md`.
 **Added**: 2026-02-13
+**UPDATED 2026-07-30**: the stated mechanism no longer exists. The flat 100 px
+penalty this entry blames for "driving water_z below all board corners" was
+removed — invalid projections are now continued with the pinhole extension, which
+is differentiable, so that spurious driver is gone. The CONCLUSION (water_z is
+analytically unobservable when n_air == n_water, and its final value is
+meaningless) still holds and is independent of the penalty. The explanation for
+the observed *movement* has NOT been re-measured since the change and should be
+re-derived before being cited. See `.planning/debug/stage3-diverges-new-geometry.md`.
 
 ### Fronto-parallel board views leave focal length degenerate
 **Context**: One camera on a 13-camera rig solved 15 cm out of the rig plane with 2.9 px reprojection error, while its intrinsics passed every `validate_intrinsics()` check. Its fx was 1367.9 against ~1578 for eleven identical-lens peers.
