@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Completed 19.2-20-PLAN.md (gap wave 2 — planned pause point)
-last_updated: "2026-07-29T14:55:57.361Z"
-last_activity: 2026-07-29 -- Phase 19.2 execution started
+stopped_at: Executing 19.2-21-PLAN.md (gap wave 3 — E4 nine-cell production re-run)
+last_updated: "2026-07-30T12:09:06.492Z"
+last_activity: 2026-07-30 -- Phase 19.2 execution started
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 59
-  completed_plans: 48
+  completed_plans: 54
   percent: 56
 ---
 
@@ -37,7 +37,18 @@ Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
   direct-call grid runner. Both interrupted by a power outage mid-wave and resumed in place from
   their worktrees with no lost commits. E3 surfaced MF-01 (see .planning/MANUSCRIPT-FINDINGS.md):
   the supplement's "two to four steps" Newton claim matches the median but misses a tail of 7.
-  **Next: wave 4 (19.2-08 + 19.2-10).**
+  **All 14 original plans are COMPLETE (01-14).**
+
+  **GAP CLOSURE is now the live sequence: 11 plans 19.2-15..25 in 6 waves (`gap_closure: true`).**
+  Its wave numbers COLLIDE with the original plans' waves in this same directory, so always
+  execute with `--gaps-only --wave N`. Gap waves 1-2 (plans 15/16/17, then 18/19/20) COMPLETE
+  2026-07-29, merged at `621a4ef`, tracking `e550e18`; fast suite 1106 passed / 6 skipped.
+  Gap wave 2 was the declared pause point.
+  **IN PROGRESS 2026-07-30: gap wave 3 = plan 19.2-21 only** — E4's nine-cell
+  {8,12,16} x {50,100,200} grid re-run on the geometry redesigned by plan 19.2-18. It runs
+  ALONE on the box (review H4): no other experiment, no `--smoke`, no pytest during the sweep.
+  16x200 is PRE-AUTHORISED to fail as a recorded row. Remaining after it: wave 4 (22),
+  wave 5 (23), wave 6 (24 + 25).
   New plan 19.2-14 adds seed to pipeline.py solver_config (EXP-11).
   Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
   one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
@@ -52,7 +63,7 @@ Status: Executing Phase 19.2
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-29 -- Phase 19.2 execution started
+Last activity: 2026-07-30 -- Phase 19.2 execution started
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
