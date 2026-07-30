@@ -1,0 +1,32 @@
+{
+  "auxiliary_reprojection_px": {
+    "e3v8250": 15.134314706895728
+  },
+  "camera_height_range_m": [
+    1.0082839060819992,
+    1.0815275632132504
+  ],
+  "inter_corner_mae_mm": 0.26815491460133334,
+  "inter_corner_rmse_mm": 0.6740741599086391,
+  "mean_per_camera_reprojection_px": 0.8786339665321746,
+  "mean_relative_error_pct": 0.44692485766888895,
+  "mean_reprojection_px": 1.019136036829683,
+  "n_comparisons": 7762,
+  "provenance": {
+    "auxiliary_reprojection_px": "result.diagnostics.reprojection_error_per_camera, keyed by each auxiliary camera's name",
+    "camera_height_range_m": "min/max of cc.water_z - cc.extrinsics.C[2] over primary cameras; identical to camera_parameters.csv's h_c_m column",
+    "inter_corner_mae_mm": "mean(abs(signed_errors)) from output_dir/spatial_measurements.csv (load_spatial_measurements), converted to mm",
+    "inter_corner_rmse_mm": "sqrt(mean(signed_errors**2)) from output_dir/spatial_measurements.csv (load_spatial_measurements), converted to mm",
+    "mean_per_camera_reprojection_px": "mean of result.diagnostics.reprojection_error_per_camera over primary (non-auxiliary) cameras -- this IS the \u00a73 quantity (release diagnostics.json: 0.8786 px, quoted as 0.88)",
+    "mean_relative_error_pct": "inter_corner_mae_mm / (result.board.square_size * 1000) * 100",
+    "mean_reprojection_px": "result.diagnostics.reprojection_error_rms -- the POOLED RMS over all observations. This is NOT the quantity the manuscript's \u00a73 calls 'mean reprojection error'; see mean_per_camera_reprojection_px.",
+    "n_comparisons": "len(signed_errors) from output_dir/spatial_measurements.csv",
+    "reprojection_range_px": "min/max of result.diagnostics.reprojection_error_per_camera over primary (non-auxiliary) cameras",
+    "water_z_m": "cc.water_z (shared across all cameras under shared_interface); identical to camera_parameters.csv's water_z_m column"
+  },
+  "reprojection_range_px": [
+    0.5393762736907708,
+    2.4078753984550487
+  ],
+  "water_z_m": 1.030554775
+}
