@@ -290,23 +290,36 @@ calibrated value, that sentence needs the same correction the source comments re
 
 ## MF-05 — E7's shared-vs-per-camera claim IS supported, but only as a comparison
 
-**Status:** open — needs a prose edit, **and a decision on D-36's criterion (see the box)**
+**Status:** open — needs a prose edit. **D-36's criterion is DECIDED (see the box); MF-05 is
+provisional only until seeds 47–51 land.**
 **Found:** 2026-07-31, plan 19.2-24 + D-36 five-seed sweep (10/10 runs succeeded)
 **Source of truth:** `Desktop/Aqua/AquaCal/seed_sweep_19_2/e7_interface_ablation/seed_{42..46}/`;
 analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
 **Where the prose is:** wherever the shared-vs-per-camera interface comparison is claimed
 
-> **⚠ This entry rests on a criterion that differs from D-36 as written, and that difference
-> changes the answer. It needs the author's decision before being relied on.**
+> **D-36's criterion: AMENDED to the paired difference — user decision, 2026-07-31.**
 >
-> D-36 says: *"If the shared-vs-per-camera gap is smaller than the spread, E7 does not support a
-> directional conclusion."* Applied literally — gap between the arms' means versus their marginal
-> spreads — **both pairings fail**, and E7 would support nothing.
+> D-36 as written says: *"If the shared-vs-per-camera gap is smaller than the spread, E7 does not
+> support a directional conclusion."* Applied literally — gap between the arms' means versus their
+> **marginal** spreads — both pairings fail and E7 would support nothing.
 >
-> That test is wrong for this design. **The seeds are paired**: one seed builds one scenario and
-> both arms are evaluated on it, so the marginal spread contains scenario variation common to both
-> arms that cancels in the comparison. Measured: the refined arms correlate at **r = +0.98** across
-> seeds — a bad seed makes both arms bad together. The correct test is on the per-seed difference.
+> That reading misfires on this design. **The seeds are paired**: one seed builds one scenario and
+> both arms are evaluated on it, so the marginal spread is mostly *scenario difficulty*, which is
+> common to both arms and cancels in the comparison. Measured: the refined arms correlate at
+> **r = +0.98** — seed 43 draws a hard scene and both arms land at 11.6/12.4 mm; seed 45 draws an
+> easy one and both land at 0.45/3.08. Comparing a within-seed gap against a between-seed spread
+> asks whether the effect is large relative to variation the design already controls for. The
+> criterion is therefore the **per-seed difference**, not the marginal spread.
+>
+> **The cost of that amendment, recorded honestly.** At n = 5 the sign test's floor is
+> 2⁻⁵ = 0.031, so 5/5 is the *only* outcome that could have cleared 0.05. The p-value says
+> "unanimous", not "unanimous by a wide margin", and the design has no power to spare. The effect
+> is also modest against the levels: ~1.2 mm on arms spanning 11 mm.
+>
+> **Therefore seeds 47–51 are queued** (~5–6 min/seed, after E6's sweep). If unanimity holds 10/10,
+> p goes 0.031 → 0.001 and the claim stops resting on the smallest sample that could have produced
+> it. **Until those land, MF-05 is provisional.** If unanimity breaks, that is the finding and this
+> entry is rewritten — the extra seeds are a real test, not a confirmation exercise.
 
 ### Per-arm spread — what bounds any ABSOLUTE claim
 
