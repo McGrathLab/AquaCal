@@ -2069,71 +2069,94 @@ class TestBuildInterfaceSpreadReport:
 
 
 class TestSolverConfigSeedIsInert:
-    """D-26 zero-numerical-change guard for plan 19.2-14 (EXP-11).
+    """Frozen-anchor regression guard for `run_calibration_from_config` (EXP-11).
 
-    Proves that adding `solver_config["seed"]` to `run_calibration_from_config`
-    changed no calibration number. The frozen constants below were captured
-    from `src/aquacal/calibration/pipeline.py` as it existed at commit
-    e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477 -- the commit immediately BEFORE
-    the Task 1 edit (`877634a`) that added the `seed` key. Capture procedure:
-    the pre-change file was loaded via `importlib.util.spec_from_file_location`
-    from a `git show <sha>:...` blob and run once through the same
-    `run_calibration_from_config` entry point exercised below, with only the
-    video-decode boundary mocked. These constants must NEVER be regenerated
-    to make a failing test pass -- a mismatch here means the addition was not
-    inert and is a finding to report, not a tolerance to loosen.
+    **The no-regeneration rule still stands. It was superseded ONCE, on
+    2026-07-31, with a recorded cause. Read this before touching the constants.**
+
+    Originally (plan 19.2-14, D-26) these constants proved that adding
+    `solver_config["seed"]` changed no calibration number. They were captured
+    from `pipeline.py` as it existed at commit
+    e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477 -- immediately BEFORE the edit
+    (`877634a`) that added the `seed` key -- by loading the pre-change file via
+    `importlib.util.spec_from_file_location` from a `git show <sha>:...` blob.
+
+    **Why they were regenerated.** `d5d9dde` (plan 19.2-18, D-27) changed
+    `generate_board_trajectory` to centre its sampled volume on the camera
+    centroid rather than the origin. That commit declares itself *"deliberately
+    non-inert for the grid family (ideal/minimal presets, E4/E6)"* -- and this
+    test runs the **ideal** preset. The ideal array's camera centres are
+    (0,0), (0.1,0), (0,0.1), (0.1,0.1), so the centroid is (0.05, 0.05): the
+    board volume moved 7.07 cm. `R` and `t` still matched exactly because the
+    preset is noiseless and recovers ground truth wherever the board sits; only
+    `water_z` moved, by 2 ULP, reflecting a different optimisation path. The
+    small delta was NOT evidence of a small change.
+
+    Plan 19.2-18 proved containment for the *realistic* path with its own frozen
+    anchors but never updated this one, and `@pytest.mark.slow` plus `-m "not
+    slow"` gates kept the failure invisible. Bisected 2026-07-31: `7ae7ff6`
+    PASS -> `d5d9dde` FAIL. `7e0cb90` (the degenerate-PnP guard) was checked and
+    EXONERATED -- the test already failed at its parent `35d76a6`.
+
+    **What this class proves now, and what it no longer proves.** The seed-key
+    inertness proof is historical: it held when it was run, and it lives in git
+    history and `19.2-26-SUMMARY.md`, not in these numbers. What the constants
+    guard going forward is that the ideal-preset pipeline stays bit-stable
+    against future unintended change.
+
+    **The rule, restated.** A mismatch here is a finding to REPORT, never a
+    tolerance to loosen and never a reason to regenerate. Regeneration is
+    legitimate only when a deliberate, documented, already-reviewed change is
+    proven by bisection to be the cause -- and the cause must be recorded here,
+    as above. "The test was failing" is not a cause.
     """
 
-    # Frozen anchor, scenario "ideal" (4 cameras, 20 frames, 0 noise), seed=99,
-    # captured at commit e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477.
+    # Frozen anchor, scenario "ideal" (4 cameras, 20 frames, 0 noise), seed=99.
+    # Regenerated 2026-07-31 at `e4bce72` after D-27 (`d5d9dde`) invalidated the
+    # original e1d6548 capture -- see the class docstring. Captured from a tree
+    # with `git status --porcelain src/ tests/` empty, so these values predate
+    # plan 19.2-26's discard counters; that plan's changes must reproduce them
+    # exactly, which is an independent check of its own inertness claim.
     _ANCHOR_CAMERAS = {
         "cam0": {
-            "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "R": [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
             "t": [0.0, 0.0, 0.0],
-            "water_z": 0.15000000000000047,
+            "water_z": 0.1500000000000007,
         },
         "cam1": {
             "R": [
-                [0.9984993371509613, -0.054763799257274454, -9.217086465271786e-17],
-                [0.054763799257274454, 0.9984993371509613, -2.422545075173034e-16],
-                [1.0529932447921676e-16, 2.3684333844864933e-16, 1.0],
+                [0.9984993371509613, -0.054763799257274454, -1.211077928477896e-16],
+                [0.054763799257274454, 0.9984993371509613, -1.0573862003794593e-16],
+                [1.2671669944383292e-16, 9.894761916313868e-17, 1.0],
             ],
-            "t": [
-                -0.09984993371509608,
-                -0.005476379925727421,
-                -1.184025295478873e-17,
-            ],
-            "water_z": 0.15000000000000047,
+            "t": [-0.09984993371509612, -0.005476379925727438, -2.2261557267801757e-17],
+            "water_z": 0.1500000000000007,
         },
         "cam2": {
             "R": [
-                [0.9974292528492325, -0.07165811580429554, 2.1964919671058154e-16],
-                [0.07165811580429554, 0.9974292528492325, -2.559759473441722e-16],
-                [-2.0074178008606616e-16, 2.7105754548107973e-16, 1.0],
+                [0.9974292528492325, -0.07165811580429562, -2.302295289416684e-16],
+                [0.07165811580429562, 0.9974292528492325, -3.656866704574182e-17],
+                [2.3225810881409154e-16, 1.997684400265586e-17, 1.0],
             ],
-            "t": [
-                0.007165811580429521,
-                -0.09974292528492322,
-                -2.1668899675048093e-18,
-            ],
-            "water_z": 0.15000000000000047,
+            "t": [0.007165811580429558, -0.09974292528492326, 1.2031028413381547e-17],
+            "water_z": 0.1500000000000007,
         },
         "cam3": {
             "R": [
-                [0.996707967334501, 0.08107544543156972, -6.4662664298548575e-18],
-                [-0.08107544543156972, 0.996707967334501, -2.757665631684116e-16],
-                [-1.5912917674467915e-17, 2.753829860654885e-16, 1.0],
+                [0.996707967334501, 0.08107544543156975, -3.517926485858191e-17],
+                [-0.08107544543156975, 0.996707967334501, 1.0134706264043221e-16],
+                [4.328021181627338e-17, -9.816125023130288e-17, 1.0],
             ],
-            "t": [
-                -0.10777834127660704,
-                -0.09156325219029311,
-                1.0739560128998414e-17,
-            ],
-            "water_z": 0.15000000000000047,
+            "t": [-0.10777834127660713, -0.09156325219029318, 6.037744971294463e-17],
+            "water_z": 0.1500000000000007,
         },
     }
-    _ANCHOR_REPROJECTION_RMS = 2.1586323025826994e-13
-    _ANCHOR_VALIDATION_3D_ERROR_MEAN = 1.9506001752094764e-16
+    _ANCHOR_REPROJECTION_RMS = 2.3911368601594613e-13
+    _ANCHOR_VALIDATION_3D_ERROR_MEAN = 1.7486012637846215e-16
 
     @staticmethod
     def _run_ideal_pipeline(tmp_path):
@@ -2217,10 +2240,13 @@ class TestSolverConfigSeedIsInert:
 
     @pytest.mark.slow
     def test_matches_pre_change_anchor(self, tmp_path):
-        """The current (post-edit) code's numbers exactly match the frozen
-        pre-change anchor captured at commit
-        e1d6548dbe807eb0abc0d0e8f8c1f9c0065d7477 -- proving the added
-        solver_config["seed"] key moved no calibration number."""
+        """The ideal-preset pipeline's numbers exactly match the frozen anchor.
+
+        The anchor was regenerated at `e4bce72` on 2026-07-31 after D-27
+        (`d5d9dde`) legitimately invalidated the original e1d6548 capture; see
+        the class docstring for the bisection and the cause. A mismatch here is
+        a finding to report, not a tolerance to loosen.
+        """
         cameras, accuracy = self._run_ideal_pipeline(tmp_path)
 
         assert cameras.keys() == self._ANCHOR_CAMERAS.keys()
