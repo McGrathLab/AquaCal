@@ -1,14 +1,14 @@
 {
   "accuracy": {
-    "reprojection_rms": 1.019136036829683,
-    "validation_3d_error_mean": 0.0002681549146013648,
-    "validation_3d_error_std": 0.0006184407124629633
+    "reprojection_rms": 0.9276607330387148,
+    "validation_3d_error_mean": 0.00025817717557395474,
+    "validation_3d_error_std": 0.0005726278222075551
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "77a1026adae2e7e3f6857f424c829ed762628975",
+    "git_sha": "6c7f930bb56b019067b8eb7ac1f2c84d37be645e",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -19,7 +19,7 @@
   },
   "memory": {
     "mode": "psutil_peak_wset",
-    "whole_run_peak_bytes": 10499325952
+    "whole_run_peak_bytes": 11016843264
   },
   "problem_shape": {
     "n_cameras": 13,
@@ -37,15 +37,18 @@
   "stages": {
     "auxiliary_registration": {
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
+        "commit_current_bytes_as_of_stage_end": 1537314816,
+        "commit_peak_bytes_as_of_stage_end": 12815396864,
+        "cumulative_peak_bytes_as_of_stage_end": 11016843264,
         "delta_bytes_since_previous_boundary": 0,
-        "mode": "psutil_peak_wset"
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
-      "seconds": 59.58103239999946,
+      "seconds": 67.88535129999946,
       "solver_diagnostics_reason": "aggregate boundary spanning 1 sub-stage(s) (auxiliary_registration_e3v8250); solver diagnostics are recorded per sub-stage, not at this aggregate boundary"
     },
     "auxiliary_registration_e3v8250": {
-      "cost": 12006.685524434677,
+      "cost": 13417.383794580148,
       "fd_reduction": null,
       "ftol": 1e-08,
       "gtol": 1e-08,
@@ -58,25 +61,28 @@
       "n_params_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
       "n_residuals": null,
       "n_residuals_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
-      "nfev": 20,
-      "njev": 14,
-      "optimality": 0.10346458882395382,
+      "nfev": 21,
+      "njev": 16,
+      "optimality": 0.057121370919048786,
       "seconds": null,
       "seconds_reason": "per-camera wall time is not measured separately; see the auxiliary_registration aggregate boundary",
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_interface_optimization": {
-      "cost": 32429.426134435133,
+      "cost": 32429.426134429148,
       "fd_reduction": 97.61538461538461,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 126900,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 9621364736,
-        "delta_bytes_since_previous_boundary": 9167876096,
-        "mode": "psutil_peak_wset"
+        "commit_current_bytes_as_of_stage_end": 1531228160,
+        "commit_peak_bytes_as_of_stage_end": 12396216320,
+        "cumulative_peak_bytes_as_of_stage_end": 11016843264,
+        "delta_bytes_since_previous_boundary": 10568245248,
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 13,
@@ -85,46 +91,52 @@
       "n_params_reason": null,
       "n_residuals": 147950,
       "n_residuals_reason": null,
-      "nfev": 38,
-      "njev": 28,
-      "optimality": 0.10917011023249756,
-      "seconds": 1276.9060307000009,
+      "nfev": 44,
+      "njev": 35,
+      "optimality": 0.10189957507438407,
+      "seconds": 1591.4336815999995,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 23692.00510777319,
+      "cost": 20232.45623470722,
       "fd_reduction": 77.47058823529412,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 131700,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
-        "delta_bytes_since_previous_boundary": 877961216,
-        "mode": "psutil_peak_wset"
+        "commit_current_bytes_as_of_stage_end": 1537314816,
+        "commit_peak_bytes_as_of_stage_end": 12815396864,
+        "cumulative_peak_bytes_as_of_stage_end": 11016843264,
+        "delta_bytes_since_previous_boundary": 0,
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
-      "message": "`xtol` termination condition is satisfied.",
+      "message": "`ftol` termination condition is satisfied.",
       "n_groups": 17,
       "n_groups_reason": null,
       "n_params": 1317,
       "n_params_reason": null,
       "n_residuals": 147950,
       "n_residuals_reason": null,
-      "nfev": 26,
-      "njev": 12,
-      "optimality": 20813.590906684898,
-      "seconds": 632.8864587999997,
-      "status": 3,
+      "nfev": 15,
+      "njev": 14,
+      "optimality": 18.378891813771048,
+      "seconds": 700.2261913999992,
+      "status": 2,
       "xtol": 1e-08
     },
     "validation": {
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 10499325952,
+        "commit_current_bytes_as_of_stage_end": 1537314816,
+        "commit_peak_bytes_as_of_stage_end": 12815396864,
+        "cumulative_peak_bytes_as_of_stage_end": 11016843264,
         "delta_bytes_since_previous_boundary": 0,
-        "mode": "psutil_peak_wset"
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
-      "seconds": 35.614183499999854,
+      "seconds": 36.81454669999948,
       "solver_diagnostics_reason": "no in-scope least_squares solver diagnostics were captured for this stage"
     }
   }
