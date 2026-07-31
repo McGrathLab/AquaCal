@@ -30,12 +30,17 @@ repos:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         # Generated artifacts whose provenance fields are high-entropy by design:
-        # notebook outputs, and the committed experiment results under
+        # notebook outputs, the committed experiment results under
         # experiments/results/ (benchmark.json carries `git_sha`, calibration.json
         # carries `config_hash` -- both are recorded deliberately, and both are
         # regenerated with new values on every run, so a baseline entry cannot
-        # hold. Neither file type is a place credentials belong.
-        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results/.*)$
+        # hold), and the frozen numerical anchors under tests/fixtures/, whose
+        # `provenance.sha` is the 40-hex commit the anchor was captured at. That
+        # field is the whole point of the file -- it is what proves the anchor
+        # predates the change it guards -- and it takes a new value on every
+        # legitimate regeneration, so it has the same baseline problem.
+        # None of these file types is a place credentials belong.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results/.*|tests/fixtures/.*\.json)$
 
   - repo: local
     hooks:
