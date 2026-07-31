@@ -1,18 +1,48 @@
 {
+  "config": {
+    "axis": "layout",
+    "axis_value": "ring",
+    "config_key": "layout_ring",
+    "depth_range": null,
+    "is_baseline": false,
+    "layout": "ring",
+    "n_cameras": 12,
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "spacing": null,
+    "xy_extent": null
+  },
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "3d0aa3e4a7e61f0d3fb34b5fdd52a629a625f813",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
   "metrics": {
-    "focal_error_pct_mean": -0.07492737403334498,
-    "num_comparisons": 4050,
-    "num_frames": 86,
-    "reconstruction_mae_mm": 0.13640653061790592,
-    "reconstruction_rmse_mm": 0.21216282465583292,
-    "reprojection_rms_px": 0.7084561354114997,
-    "signed_mean_mm": 0.004902370381273857,
-    "water_z_error_mm_mean": 3.47962742522169,
-    "xy_position_error_mm_mean": 0.05680866017836192,
-    "z_position_error_mm_mean": 0.1844170072602552
+    "focal_error_pct_mean": 0.0909975878537559,
+    "num_comparisons": 11577,
+    "num_frames": 99,
+    "reconstruction_mae_mm": 0.48510010403324344,
+    "reconstruction_rmse_mm": 0.7174362293619683,
+    "reprojection_rms_px": 0.7049592871719614,
+    "signed_mean_mm": 0.05912628259734004,
+    "water_z_error_mm_mean": 3.568004831446703,
+    "xy_position_error_mm_mean": 0.22429286092434134,
+    "z_position_error_mm_mean": 0.8915054030343802
   },
   "n_frames": 100,
+  "schema_version": 1,
   "seed": 42,
+  "solver_config": {
+    "seed": 42
+  },
   "status": "ok",
   "status_reason": ""
 }

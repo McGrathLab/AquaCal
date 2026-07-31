@@ -1,0 +1,21 @@
+{
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "3d0aa3e4a7e61f0d3fb34b5fdd52a629a625f813",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "experiment": "e6",
+  "schema_version": 1,
+  "seed": 42,
+  "solver_config": {
+    "seed": 42
+  }
+}
