@@ -44,7 +44,6 @@ from experiments.e4_benchmark_grid import (
     GRID_SCENARIO_NAME,
     GRID_SPACING,
     GRID_XY_EXTENT_RATIO,
-    MEMORY_CEILING_FRACTION,
     MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
     MEMORY_PRESSURE_NEAR_CEILING,
@@ -52,7 +51,6 @@ from experiments.e4_benchmark_grid import (
     _array_xy_span,
     _classify_memory_pressure,
     _invoke_subprocess_with_status_mapping,
-    _preflight_ceiling_reason,
     build_grid_dataframe,
     build_grid_scenario,
     default_xy_extent_for_layout,
@@ -614,51 +612,43 @@ class TestRealChildProcess:
         assert reason
 
 
-def test_preflight_ceiling_refuses_cell_before_calibration(monkeypatch, tmp_path):
-    """D-33 gap 3: a fabricated problem shape whose projected Stage-3 peak
-    vastly exceeds any real machine's RAM must be refused BEFORE
-    calibrate_synthetic is ever called, as a recorded status="failed" row
-    naming both the projection and the ceiling."""
-    calls: list[int] = []
+def test_oversized_cell_is_measured_not_predicted(monkeypatch, tmp_path):
+    """A cell too large for the machine must NOT be refused from its problem
+    shape alone.
 
-    def _must_not_be_called(*args, **kwargs):
-        calls.append(1)
-        raise AssertionError(
-            "calibrate_synthetic must not be called for a pre-flight-refused cell"
-        )
+    The removed pre-flight guard projected residuals as
+    `2 * n_cameras * n_frames * MAX_CORNERS_PER_VIEW` -- every camera seeing
+    every corner in every frame -- which over-estimated by ~3.76x against
+    measurement and refused the entire n_frames=200 column of cells that
+    measurement says fit. Calibrating that assumption to an observed
+    visibility fraction would bake this rig's optics into a rig-agnostic
+    library, so the projection was removed outright rather than retuned.
 
-    monkeypatch.setattr(e4_grid_module, "calibrate_synthetic", _must_not_be_called)
+    What replaces it is downstream and measured, not predicted: a genuine OOM
+    kills only the cell's own child process and is mapped to a recorded
+    `status="failed"` row with its exit code, and a thrashing cell is bounded
+    by the per-cell timeout. This test pins the removal: `calibrate_synthetic`
+    MUST now be reached for a cell that the old projection would have refused.
+    """
+    reached: list[tuple[int, int]] = []
 
-    # 1000 cameras x 1000 frames projects an astronomically large Jacobian --
-    # guaranteed to exceed MEMORY_CEILING_FRACTION of any real machine's RAM
-    # without needing to monkeypatch psutil/ram_total_bytes.
-    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
+    def _record_and_stop(scenario, *a, **k):
+        reached.append((len(scenario.intrinsics), len(scenario.board_poses)))
+        raise MemoryError("simulated allocation failure inside Stage 3")
 
-    assert calls == []
-    assert row["status"] == "failed"
-    assert "projected" in row["status_reason"]
-    assert "GiB" in row["status_reason"]
-    assert f"{MEMORY_CEILING_FRACTION:.0%}" in row["status_reason"]
+    monkeypatch.setattr(e4_grid_module, "calibrate_synthetic", _record_and_stop)
 
+    # 16x200 projected 39.80 GiB under the old worst-case rule and was refused
+    # outright; measurement puts it near 12.5 GiB. It must now be attempted.
+    row = run_grid_cell(16, 200, seed=1, out_dir=tmp_path, force=True)
 
-def test_preflight_ceiling_reason_is_none_for_a_tiny_cell():
-    """A comfortably-sized cell must not be refused pre-flight."""
-    assert _preflight_ceiling_reason(3, 3) is None
-
-
-def test_preflight_ceiling_refusal_names_the_refused_preflight_condition(
-    monkeypatch, tmp_path
-):
-    """The pre-flight-refused row's memory_pressure is the dedicated
-    vocabulary member, distinguishable from a clean or near-ceiling run --
-    D-33 gap 3's measurement condition, never a pass/fail verdict."""
-    monkeypatch.setattr(
-        e4_grid_module,
-        "calibrate_synthetic",
-        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")),
+    assert reached, (
+        "calibrate_synthetic was not reached -- a shape-only refusal survives"
     )
-    row = run_grid_cell(1000, 1000, seed=1, out_dir=tmp_path, force=True)
-    assert row["memory_pressure"] == e4_grid_module.MEMORY_PRESSURE_REFUSED_PREFLIGHT
+    assert reached[0] == (16, 200)
+    # And the failure it hit is still a recorded row, never a halt (D-04).
+    assert row["status"] == "failed"
+    assert row["status_reason"]
 
 
 def test_smoke_cell_reports_clean_memory_pressure(tmp_path):

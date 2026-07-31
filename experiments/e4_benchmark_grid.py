@@ -35,9 +35,10 @@ via pagefile with an inflated wall-clock and an understated *resident*
 peak. Each cell records commit/virtual memory alongside `peak_wset`
 (`aquacal.io.benchmark.capture_peak_memory`'s additive fields), classifies
 itself with a `memory_pressure` measurement CONDITION (never a pass/fail
-verdict -- D-12 stands), and is refused BEFORE Stage 3 as a recorded row if
-its problem shape alone projects a peak beyond `MEMORY_CEILING_FRACTION` of
-this machine's physical RAM (`_preflight_ceiling_reason`).
+verdict -- D-12 stands). A cell too large for the machine is not predicted:
+it runs, and its failure is recorded from what actually happened -- an OOM
+kills only that cell's child process and yields a `status="failed"` row with
+its exit code, and a thrashing cell is bounded by the per-cell timeout.
 
 **Every declared cell emits a row unconditionally** (D-04): `status` is one
 of `ok`, `failed`, `skipped_existing`; a cell with no `benchmark.json` still
@@ -99,7 +100,6 @@ from aquacal.datasets.synthetic import (
     generate_camera_array,
     generate_synthetic_detections,
 )
-from aquacal.io.benchmark import capture_peak_memory
 from aquacal.validation.evaluation import evaluate_calibration
 from experiments._io import (
     build_experiment_arg_parser,
@@ -226,11 +226,9 @@ GRID_XY_EXTENT_RATIO = 0.54
 GRID_XY_EXTENT_FLOOR = 0.05  # meters
 
 # ---------------------------------------------------------------------------
-# D-33: per-cell timeout, memory-pressure vocabulary, and a pre-flight
-# ceiling that refuses a cell rather than letting the OS page it.
+# D-33: per-cell timeout and memory-pressure vocabulary. A cell too large
+# for the machine is measured, not predicted -- see run_grid_cell.
 # ---------------------------------------------------------------------------
-
-_GIB = 1024**3
 
 # Per-cell subprocess timeout (D-33 gap 2). Exists to bound a THRASHING cell,
 # not to enforce a schedule -- sized generously above any expected healthy
@@ -245,30 +243,7 @@ _GIB = 1024**3
 # one well short of the real-rig floor.
 CELL_TIMEOUT_SECONDS = 20 * 60
 
-# The interior-corner count of GRID_BOARD_CONFIG (12x9 squares -> 11x8
-# interior ChArUco corners) -- the theoretical per-view maximum used as a
-# deliberately conservative (over-estimating) input to the pre-flight
-# projection below; a pre-flight guard should err toward refusing rather
-# than admitting a thrashing cell.
-MAX_CORNERS_PER_VIEW = (GRID_BOARD_CONFIG.squares_x - 1) * (
-    GRID_BOARD_CONFIG.squares_y - 1
-)
-
-# Plan 19.2-06's measured real-rig Stage-3 peak was 9.78 GiB whole-run
-# against a 1.40 GiB dense Jacobian (~7x), because scipy's trf.py:481-482
-# holds J, J_h = J * d, the SVD input copy, U, and the LAPACK gesdd
-# workspace simultaneously. JACOBIAN_MEMORY_MULTIPLIER scales a projected
-# Jacobian footprint up to a projected WHOLE-RUN peak.
-JACOBIAN_MEMORY_MULTIPLIER = 7.0
-
-# Pre-flight refusal threshold (D-33 gap 3): a cell whose projected Stage-3
-# peak exceeds this fraction of physical RAM is refused as a recorded
-# status="failed" row BEFORE Stage 3 runs, rather than left for Windows (no
-# OOM killer) to page. A deliberate recorded failure is a better datum than
-# a paged success whose timings silently measure pagefile thrash.
-MEMORY_CEILING_FRACTION = 0.75
-
-# Below MEMORY_CEILING_FRACTION but still worth flagging: a cell that
+# Below the physical ceiling but still worth flagging: a cell that
 # COMPLETED but whose observed peak approached the physical limit. This is
 # purely informational (a measurement CONDITION, not a verdict -- D-12
 # stands; no pass/fail column exists anywhere in this module's output).
@@ -277,10 +252,9 @@ MEMORY_NEAR_CEILING_FRACTION = 0.5
 # memory_pressure vocabulary (D-33 gap 3) -- a fixed, small enumeration.
 # NOT a pass/fail verdict column: it describes the CONDITION under which a
 # measurement was taken, so a reader can distinguish a clean measurement
-# from one taken close to the physical ceiling, or one refused outright.
+# from one taken close to the physical ceiling.
 MEMORY_PRESSURE_CLEAN = "clean"
 MEMORY_PRESSURE_NEAR_CEILING = "near_physical_ceiling"
-MEMORY_PRESSURE_REFUSED_PREFLIGHT = "refused_preflight"
 
 GRID_KEY_COLUMNS = ["cell_key"]
 
@@ -573,76 +547,8 @@ def build_grid_scenario(
 
 
 # ---------------------------------------------------------------------------
-# D-33 gap 3: pre-flight memory ceiling and post-hoc pressure classification
+# D-33 gap 3: post-hoc memory-pressure classification
 # ---------------------------------------------------------------------------
-
-
-def _project_stage3_memory_bytes(n_cameras: int, n_frames: int) -> int:
-    """Project Stage-3's dense-Jacobian memory from problem shape alone.
-
-    Deliberately computed BEFORE any scenario or detections are built --
-    the whole point is to refuse a cell before spending time generating a
-    scene it should never solve.
-
-    `n_residuals` is projected as 2 (u, v) x `n_cameras` x `n_frames` x
-    `MAX_CORNERS_PER_VIEW` -- the worst case where every camera sees every
-    board corner in every frame. `n_params` is projected from the
-    shared-interface packing layout (`_optim_common.pack_params`): 6
-    extrinsic DOF per non-reference camera, 1 shared `water_z`, 6 pose DOF
-    per frame, plus 4 intrinsic DOF per camera (every grid cell runs with
-    `refine_intrinsics=True`). Both are deliberate over-estimates: a
-    pre-flight guard should err toward refusing rather than admitting a
-    thrashing cell.
-
-    The projected dense Jacobian (`n_residuals * n_params * 8` bytes, one
-    `float64` element) is then scaled by `JACOBIAN_MEMORY_MULTIPLIER` to
-    project a projected WHOLE-RUN peak, not just the Jacobian's own
-    footprint (see that constant's docstring for the measurement this
-    multiplier is derived from).
-
-    Returns:
-        Projected whole-run peak memory, in bytes.
-    """
-    n_residuals = 2 * n_cameras * n_frames * MAX_CORNERS_PER_VIEW
-    n_params = 6 * (n_cameras - 1) + 1 + 6 * n_frames + 4 * n_cameras
-    jacobian_bytes = n_residuals * n_params * 8
-    return int(jacobian_bytes * JACOBIAN_MEMORY_MULTIPLIER)
-
-
-def _preflight_ceiling_reason(n_cameras: int, n_frames: int) -> str | None:
-    """Return a refusal reason if this cell's projected peak is too large.
-
-    Compares `_project_stage3_memory_bytes` against `MEMORY_CEILING_FRACTION`
-    of this machine's physical RAM (read via `capture_peak_memory`'s
-    Windows-only `ram_total_bytes` field). Returns `None` (proceed) when the
-    projection is unavailable (e.g. `ram_total_bytes` is `None` off Windows)
-    or comfortably under the ceiling -- a missing measurement must never
-    itself become a refusal.
-
-    Args:
-        n_cameras: Camera count for this cell.
-        n_frames: Frame count for this cell.
-
-    Returns:
-        A human-readable reason naming both the projection and the ceiling,
-        or `None` if the cell should proceed.
-    """
-    ram_total_bytes = capture_peak_memory().get("ram_total_bytes")
-    if ram_total_bytes is None:
-        return None
-
-    projected_bytes = _project_stage3_memory_bytes(n_cameras, n_frames)
-    ceiling_bytes = MEMORY_CEILING_FRACTION * ram_total_bytes
-    if projected_bytes <= ceiling_bytes:
-        return None
-
-    return (
-        f"pre-flight refusal (D-33 gap 3): projected Stage-3 peak "
-        f"{projected_bytes / _GIB:.2f} GiB exceeds "
-        f"{MEMORY_CEILING_FRACTION:.0%} of physical RAM "
-        f"({ceiling_bytes / _GIB:.2f} GiB of {ram_total_bytes / _GIB:.2f} GiB "
-        "total); refused before Stage 3 rather than left for the OS to page"
-    )
 
 
 def _classify_memory_pressure(memory: dict) -> str:
@@ -742,24 +648,22 @@ def run_grid_cell(
             "status_reason": "",
         }
 
-    preflight_reason = _preflight_ceiling_reason(n_cameras, n_frames)
-    if preflight_reason is not None:
-        logger.warning("Cell %s refused pre-flight: %s", cell_key, preflight_reason)
-        return {
-            "cell_key": cell_key,
-            "n_cameras": n_cameras,
-            "n_frames": n_frames,
-            "status": "failed",
-            "status_reason": preflight_reason,
-            # Informational only -- no benchmark.json is ever written for a
-            # pre-flight-refused cell (calibrate_synthetic was never called),
-            # so this never reaches build_grid_dataframe's memory_pressure
-            # column (a "failed" row nulls every metric regardless, CR-01).
-            # It documents the refusal's nature for a caller inspecting this
-            # dict directly.
-            "memory_pressure": MEMORY_PRESSURE_REFUSED_PREFLIGHT,
-        }
-
+    # No pre-flight memory refusal. The projection this once used assumed
+    # every camera saw all MAX_CORNERS_PER_VIEW corners in every frame, which
+    # over-estimated residuals by ~3.76x against measurement (16x100: projected
+    # 281,600, actual 74,810) and refused three cells -- the whole n_frames=200
+    # column -- that measurement says fit comfortably. Calibrating that
+    # assumption against an observed visibility fraction was rejected: every
+    # rig's visibility differs, so a constant fitted to this one would be a
+    # hidden hardware assumption in a library that must stay rig-agnostic.
+    #
+    # The failure modes it guarded are already covered downstream, by
+    # measurement rather than projection: a true OOM kills only this cell's
+    # child process and is recorded as status="failed" with its exit code
+    # (D-04); a thrashing cell is bounded by the per-cell timeout; and a cell
+    # that completed under memory pressure is named by _classify_memory_pressure
+    # from its own readings. A cell that cannot fit now reports THAT it did not
+    # fit, instead of a projection asserting it would not have.
     try:
         scenario = build_grid_scenario(n_cameras, n_frames, seed)
         board = BoardGeometry(GRID_BOARD_CONFIG)
