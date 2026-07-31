@@ -1,14 +1,14 @@
 {
   "accuracy": {
-    "reprojection_rms": 0.7046050643959275,
-    "validation_3d_error_mean": 8.365162362031404e-06,
-    "validation_3d_error_std": 0.0002258098297440368
+    "reprojection_rms": 0.7100347294886028,
+    "validation_3d_error_mean": 4.646127842744452e-05,
+    "validation_3d_error_std": 0.0004719827816944408
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "124594a9c2cfa5e6753ac3c0cb33b83fc5d37743",
+    "git_sha": "c511429e3fcd6b4e052a1362f44965d1c12f7f33",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -19,15 +19,16 @@
   },
   "memory": {
     "mode": "psutil_peak_wset",
-    "whole_run_peak_bytes": 253599744
+    "whole_run_peak_bytes": 793350144
   },
   "problem_shape": {
+    "memory_pressure": "clean",
     "n_cameras": 8,
-    "n_cameras_observing_per_frame_median": 4.5,
+    "n_cameras_observing_per_frame_median": 6.0,
     "n_cameras_observing_per_frame_min": 2,
     "n_frames": 50,
-    "n_observations": 187,
-    "peak_bytes_baseline": 119648256
+    "n_observations": 266,
+    "peak_bytes_baseline": 120193024
   },
   "schema_version": 1,
   "solver_config": {
@@ -40,54 +41,60 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 789.133081377775,
-      "fd_reduction": 21.0,
+      "cost": 3683.9414388432215,
+      "fd_reduction": 26.53846153846154,
       "ftol": 1e-08,
       "gtol": 1e-08,
-      "max_nfev_effective": 27300,
+      "max_nfev_effective": 34500,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 240271360,
-        "delta_bytes_since_previous_boundary": 120623104,
-        "mode": "psutil_peak_wset"
+        "commit_current_bytes_as_of_stage_end": 1441120256,
+        "commit_peak_bytes_as_of_stage_end": 2048577536,
+        "cumulative_peak_bytes_as_of_stage_end": 741359616,
+        "delta_bytes_since_previous_boundary": 621166592,
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 13,
       "n_groups_reason": null,
-      "n_params": 273,
+      "n_params": 345,
       "n_params_reason": null,
-      "n_residuals": 6490,
+      "n_residuals": 29860,
       "n_residuals_reason": null,
-      "nfev": 15,
-      "njev": 11,
-      "optimality": 0.013590685921371914,
-      "seconds": 18.411910899998475,
+      "nfev": 107,
+      "njev": 85,
+      "optimality": 0.0009103499015736816,
+      "seconds": 471.54956980000134,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 784.2249342636067,
-      "fd_reduction": 17.941176470588236,
+      "cost": 3677.0873062676956,
+      "fd_reduction": 22.176470588235293,
       "ftol": 1e-08,
       "gtol": 1e-08,
-      "max_nfev_effective": 30500,
+      "max_nfev_effective": 37700,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "cumulative_peak_bytes_as_of_stage_end": 253599744,
-        "delta_bytes_since_previous_boundary": 13328384,
-        "mode": "psutil_peak_wset"
+        "commit_current_bytes_as_of_stage_end": 1441210368,
+        "commit_peak_bytes_as_of_stage_end": 2099544064,
+        "cumulative_peak_bytes_as_of_stage_end": 793350144,
+        "delta_bytes_since_previous_boundary": 51990528,
+        "mode": "psutil_peak_wset",
+        "ram_total_bytes": 16857190400
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 17,
       "n_groups_reason": null,
-      "n_params": 305,
+      "n_params": 377,
       "n_params_reason": null,
-      "n_residuals": 6490,
+      "n_residuals": 29860,
       "n_residuals_reason": null,
       "nfev": 4,
       "njev": 4,
-      "optimality": 0.0023296894351005903,
-      "seconds": 7.692370499997196,
+      "optimality": 0.047614765408411586,
+      "seconds": 26.243451900001673,
       "status": 2,
       "xtol": 1e-08
     }
