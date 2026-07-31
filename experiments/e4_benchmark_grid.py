@@ -230,18 +230,29 @@ GRID_XY_EXTENT_FLOOR = 0.05  # meters
 # for the machine is measured, not predicted -- see run_grid_cell.
 # ---------------------------------------------------------------------------
 
-# Per-cell subprocess timeout (D-33 gap 2). Exists to bound a THRASHING cell,
-# not to enforce a schedule -- sized generously above any expected healthy
-# cell. Derivation: the previous (unrealistic-geometry) nine-cell grid ran
-# in ~27 minutes total (~3 min/cell); D-29's most demanding projected cell
-# (16 cameras x 200 frames, corner-density rise up to 4.5x) projects to
-# ~12 minutes of Stage-3 wall time alone (19.2-GAP-CONTEXT.md D-29 table).
-# A real-rig, real-video end-to-end calibration (13 cameras x 200 frames)
-# takes 48-87 minutes, so a single SYNTHETIC cell running anywhere near that
-# long is thrashing, not merely slow. 20 minutes leaves roughly 60%
-# headroom over the worst projected healthy cell while stopping a thrashing
-# one well short of the real-rig floor.
-CELL_TIMEOUT_SECONDS = 20 * 60
+# Per-cell subprocess timeout (D-33 gap 2). `None` means a cell runs to
+# completion, however long that takes.
+#
+# This was 20 * 60, derived from the OLD unrealistic-geometry grid: it ran nine
+# cells in ~27 minutes (~3 min/cell), and 20 minutes left "roughly 60% headroom
+# over the worst projected healthy cell". Measurement on the D-29 geometry
+# falsifies that premise -- healthy cells now take 4-16 minutes each (8x100 =
+# 948 s, 16x100 = 955 s), so 8x100 already sits at 80% of the old bound, and
+# scaling the measured 50->100 frame step (~2.3x per frame doubling) puts every
+# n_frames=200 cell at 26-37 minutes. The bound would therefore have killed
+# healthy cells and lost the entire 200-frame column a second time -- the same
+# outcome the removed pre-flight memory guard produced, by a different route.
+#
+# A cell is still bounded by what it actually does rather than by a prediction:
+# it runs in its own child process, so an OOM kills only that cell and is
+# recorded as status="failed" with its exit code (D-04), and _classify_memory_
+# pressure names a cell that completed under pressure. What is NOT bounded is a
+# cell that pages indefinitely without dying; on an unattended run that is a
+# real exposure, and the operator accepted it deliberately rather than restore a
+# bound whose stated derivation no longer holds. If a future run must be bounded
+# again, derive the value from measured per-cell times, not from the superseded
+# ~3 min/cell figure above.
+CELL_TIMEOUT_SECONDS = None
 
 # Below the physical ceiling but still worth flagging: a cell that
 # COMPLETED but whose observed peak approached the physical limit. This is
