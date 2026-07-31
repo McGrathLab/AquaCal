@@ -850,6 +850,7 @@ def save_diagnostic_report(
     auxiliary_reprojection: ReprojectionErrors | None = None,
     timings: dict[str, object] | None = None,
     frame_rejection: dict[str, object] | None = None,
+    discard_stats: dict[str, int] | None = None,
 ) -> dict[str, Path]:
     """
     Save diagnostic report to disk.
@@ -872,6 +873,10 @@ def save_diagnostic_report(
             ``{"seconds_per_stage": {...}, "total_seconds": 123.4}``) to embed
             under the top-level ``"timings"`` key in ``diagnostics.json``.
             When ``None``, the key is omitted (backward compatible).
+        discard_stats: Optional discard-counter totals (plan 19.2-26). Stored
+            under the top-level ``"discard_stats"`` key in ``diagnostics.json``.
+            This is how the degenerate-PnP guard's rejection count becomes
+            auditable after a run -- the guard is otherwise silent.
         frame_rejection: Optional automatic per-frame outlier-rejection summary
             (e.g. ``{"enabled": True, "rejected_frames": [...], ...}``) to embed
             under the top-level ``"frame_rejection"`` key in ``diagnostics.json``.
@@ -936,6 +941,8 @@ def save_diagnostic_report(
     # Add automatic frame-rejection summary if provided
     if frame_rejection is not None:
         json_data["frame_rejection"] = frame_rejection
+    if discard_stats is not None:
+        json_data["discard_stats"] = discard_stats
 
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2)

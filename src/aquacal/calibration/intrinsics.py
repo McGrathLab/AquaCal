@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from aquacal.calibration._observability import _bump
 from aquacal.config.schema import CameraIntrinsics
 from aquacal.core.board import BoardGeometry
 from aquacal.io.detection import _create_frame_source, detect_charuco
@@ -265,6 +266,7 @@ def calibrate_intrinsics_single(
     frame_step: int = 1,
     rational_model: bool = False,
     fisheye: bool = False,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[CameraIntrinsics, float]:
     """
     Calibrate intrinsics for a single camera from in-air video.
@@ -306,6 +308,7 @@ def calibrate_intrinsics_single(
         for frame_idx, frames in vs.iterate_frames(step=frame_step):
             frame = frames[video_path.stem]
             if frame is None:
+                _bump(discard_stats_out, "video_frame_unreadable")
                 continue
 
             # Capture image size from first frame
@@ -530,6 +533,7 @@ def calibrate_intrinsics_all(
     frame_step: int = 1,
     rational_model_cameras: list[str] | None = None,
     fisheye_cameras: list[str] | None = None,
+    discard_stats_out: dict[str, int] | None = None,
     progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, tuple[CameraIntrinsics, float]]:
     """
@@ -578,6 +582,7 @@ def calibrate_intrinsics_all(
             frame_step=frame_step,
             rational_model=rational,
             fisheye=use_fisheye,
+            discard_stats_out=discard_stats_out,
         )
         results[name] = (intrinsics, error)
 

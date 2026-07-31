@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
+from aquacal.calibration._observability import _bump
 from aquacal.config.schema import (
     CameraExtrinsics,
     CameraIntrinsics,
@@ -62,6 +63,7 @@ def estimate_board_pose(
     corners_2d: NDArray[np.float64],
     corner_ids: NDArray[np.int32],
     board: BoardGeometry,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]] | None:
     """
     Estimate board pose relative to camera using PnP.
@@ -71,6 +73,10 @@ def estimate_board_pose(
         corners_2d: Detected corner positions, shape (N, 2)
         corner_ids: Corner IDs corresponding to corners_2d, shape (N,)
         board: Board geometry for 3D corner positions
+        discard_stats_out: Optional counter dict, populated in place. When None
+            (the default) no accounting happens and behaviour is unchanged.
+            Counts `pnp_attempts_nonrefractive`, `pnp_too_few_corners` and
+            `pnp_solve_failed`.
 
     Returns:
         Tuple of (rvec, tvec) representing board pose in camera frame,
@@ -78,12 +84,23 @@ def estimate_board_pose(
         - rvec: Rodrigues rotation vector, shape (3,)
         - tvec: Translation vector, shape (3,)
 
+    Note:
+        `refractive_solve_pnp` calls this for its initial guess but deliberately
+        does NOT pass `discard_stats_out` down -- doing so would count a refractive
+        attempt in the non-refractive branch and break the denominator
+        decomposition `check_discard_invariants` enforces. That inner failure is
+        counted there as `pnp_initial_guess_failed` instead.
+
     Example:
         >>> result = estimate_board_pose(intrinsics, corners, ids, board)
         >>> if result is not None:
         ...     rvec, tvec = result
     """
+    _bump(discard_stats_out, "pnp_attempts_total")
+    _bump(discard_stats_out, "pnp_attempts_nonrefractive")
+
     if len(corner_ids) < 4:
+        _bump(discard_stats_out, "pnp_too_few_corners")
         return None
 
     # Get 3D points in board frame
@@ -100,6 +117,7 @@ def estimate_board_pose(
     )
 
     if not success:
+        _bump(discard_stats_out, "pnp_solve_failed")
         return None
 
     return rvec.flatten().astype(np.float64), tvec.flatten().astype(np.float64)
@@ -114,6 +132,7 @@ def refractive_solve_pnp(
     interface_normal: NDArray[np.float64] | None = None,
     n_air: float = 1.0,
     n_water: float = 1.333,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]] | None:
     """
     Estimate board pose with refractive correction using LM refinement.
@@ -134,6 +153,10 @@ def refractive_solve_pnp(
         interface_normal: Interface normal vector. If None, uses [0, 0, -1].
         n_air: Refractive index of air (default 1.0)
         n_water: Refractive index of water (default 1.333)
+        discard_stats_out: Optional counter dict, populated in place. When None
+            (the default) no accounting happens and behaviour is unchanged.
+            Counts `pnp_attempts_refractive`, `pnp_initial_guess_failed`,
+            `pnp_nonfinite_refinement` and `pnp_guard_rejected`.
 
     Returns:
         Tuple of (rvec, tvec) representing board pose in camera frame, or None
@@ -150,9 +173,16 @@ def refractive_solve_pnp(
         caller fall back to another observation, which every call site in this
         module already handles.
     """
-    # Get initial guess from standard PnP
+    _bump(discard_stats_out, "pnp_attempts_total")
+    _bump(discard_stats_out, "pnp_attempts_refractive")
+
+    # Get initial guess from standard PnP. `discard_stats_out` is deliberately NOT
+    # threaded into this call -- see estimate_board_pose's Note. This attempt is
+    # already counted as refractive above; counting it again in the non-refractive
+    # branch would break the denominator decomposition.
     result = estimate_board_pose(intrinsics, corners_2d, corner_ids, board)
     if result is None:
+        _bump(discard_stats_out, "pnp_initial_guess_failed")
         return None
 
     rvec_init, tvec_init = result
@@ -200,6 +230,7 @@ def refractive_solve_pnp(
     result_opt = least_squares(residuals, x0, method="lm", max_nfev=200)
 
     if not np.all(np.isfinite(result_opt.x)):
+        _bump(discard_stats_out, "pnp_nonfinite_refinement")
         return None
 
     rvec_out = result_opt.x[:3].astype(np.float64)
@@ -211,6 +242,7 @@ def refractive_solve_pnp(
     # the fit was blind. A merely imprecise pose still projects all its corners.
     pts_cam = (rvec_to_matrix(rvec_out) @ object_points.T).T + tvec_out
     if not any(refractive_project(camera, interface, pt) is not None for pt in pts_cam):
+        _bump(discard_stats_out, "pnp_guard_rejected")
         return None
 
     return rvec_out, tvec_out
@@ -379,6 +411,7 @@ def _refine_poses_multi_frame(
     interface_normal: NDArray[np.float64] | None = None,
     n_air: float = 1.0,
     n_water: float = 1.333,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[dict[str, tuple[NDArray, NDArray]], dict[int, tuple[NDArray, NDArray]]]:
     """Refine poses via one pass of multi-frame averaging.
 
@@ -419,6 +452,7 @@ def _refine_poses_multi_frame(
                 continue
             obs_maybe = obs_index.get((cam_name, frame_idx))
             if obs_maybe is None:
+                _bump(discard_stats_out, "observation_absent")
                 continue
             obs = obs_maybe
 
@@ -433,12 +467,18 @@ def _refine_poses_multi_frame(
                     interface_normal,
                     n_air,
                     n_water,
+                    discard_stats_out=discard_stats_out,
                 )
             else:
                 result = estimate_board_pose(
-                    intrinsics[cam_name], obs.corners_2d, obs.corner_ids, board
+                    intrinsics[cam_name],
+                    obs.corners_2d,
+                    obs.corner_ids,
+                    board,
+                    discard_stats_out=discard_stats_out,
                 )
             if result is None:
+                _bump(discard_stats_out, "pose_discarded_by_consumer")
                 continue
 
             rvec_bc, tvec_bc = result
@@ -476,6 +516,7 @@ def _refine_poses_multi_frame(
                 continue
             obs_maybe = obs_index.get((cam_name, frame_idx))
             if obs_maybe is None:
+                _bump(discard_stats_out, "observation_absent")
                 continue
             obs = obs_maybe
 
@@ -490,12 +531,18 @@ def _refine_poses_multi_frame(
                     interface_normal,
                     n_air,
                     n_water,
+                    discard_stats_out=discard_stats_out,
                 )
             else:
                 result = estimate_board_pose(
-                    intrinsics[cam_name], obs.corners_2d, obs.corner_ids, board
+                    intrinsics[cam_name],
+                    obs.corners_2d,
+                    obs.corner_ids,
+                    board,
+                    discard_stats_out=discard_stats_out,
                 )
             if result is None:
+                _bump(discard_stats_out, "pose_discarded_by_consumer")
                 continue
 
             rvec_bc, tvec_bc = result
@@ -529,6 +576,7 @@ def estimate_extrinsics(
     n_air: float = 1.0,
     n_water: float = 1.333,
     progress_callback: Callable[[str, int, int], None] | None = None,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> dict[str, CameraExtrinsics]:
     """
     Estimate camera extrinsics by chaining poses through the graph.
@@ -640,6 +688,7 @@ def estimate_extrinsics(
                     continue
                 obs_maybe = obs_index.get((cam_name, frame_idx))
                 if obs_maybe is None:
+                    _bump(discard_stats_out, "observation_absent")
                     continue
                 frame_neighbors.append((frame_idx, obs_maybe))
 
@@ -657,12 +706,18 @@ def estimate_extrinsics(
                         interface_normal,
                         n_air,
                         n_water,
+                        discard_stats_out=discard_stats_out,
                     )
                 else:
                     result = estimate_board_pose(
-                        intrinsics[cam_name], obs.corners_2d, obs.corner_ids, board
+                        intrinsics[cam_name],
+                        obs.corners_2d,
+                        obs.corner_ids,
+                        board,
+                        discard_stats_out=discard_stats_out,
                     )
                 if result is None:
+                    _bump(discard_stats_out, "pose_discarded_by_consumer")
                     continue
 
                 rvec_bc, tvec_bc = result  # board in camera frame
@@ -696,6 +751,7 @@ def estimate_extrinsics(
                     continue
                 obs_maybe = obs_index.get((cam_name, frame_idx))
                 if obs_maybe is None:
+                    _bump(discard_stats_out, "observation_absent")
                     continue
                 cam_neighbors.append((cam_name, obs_maybe))
 
@@ -713,12 +769,18 @@ def estimate_extrinsics(
                         interface_normal,
                         n_air,
                         n_water,
+                        discard_stats_out=discard_stats_out,
                     )
                 else:
                     result = estimate_board_pose(
-                        intrinsics[cam_name], obs.corners_2d, obs.corner_ids, board
+                        intrinsics[cam_name],
+                        obs.corners_2d,
+                        obs.corner_ids,
+                        board,
+                        discard_stats_out=discard_stats_out,
                     )
                 if result is None:
+                    _bump(discard_stats_out, "pose_discarded_by_consumer")
                     continue
 
                 rvec_bc, tvec_bc = result  # board in camera frame
@@ -749,6 +811,7 @@ def estimate_extrinsics(
         interface_normal,
         n_air,
         n_water,
+        discard_stats_out=discard_stats_out,
     )
 
     # Convert to CameraExtrinsics

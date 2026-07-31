@@ -33,6 +33,156 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Discard accounting (plan 19.2-26)
+# ---------------------------------------------------------------------------
+#
+# The calibration path drops observations, poses and video frames at a number of
+# sites. Before this, every one of those was silent: a bare `return None` or
+# `continue`, with no counter and no log anywhere in the module. A discard that no
+# artifact records cannot be audited after the fact, so a change in what the solve
+# sees became a change in a published number with no trace.
+#
+# Counting is opt-in through an out-parameter that defaults to None, matching the
+# `memory_out` pattern established by plan 19.2-01. When it is None -- the default,
+# and what every existing caller gets -- `_bump` does one `is not None` test and
+# returns, so behaviour is byte-for-byte what it was.
+#
+# NOTHING HERE MAY BE CALLED FROM A PER-POINT OR PER-RESIDUAL LOOP. Every site
+# instrumented is per-(camera, frame) or per-video-frame. `benchmark.json`'s
+# wall-clock is published and E4's nine-cell grid is already committed at 5b17cd4;
+# a counter in the projection hot path would move those numbers. The three
+# total-internal-reflection branches in core/refractive_geometry.py are silent for
+# exactly this reason and are deliberately left so.
+
+#: Every counter key this module may emit. `diagnostics.json` consumers can rely on
+#: the vocabulary being closed -- an unknown key means someone added a site without
+#: declaring it here.
+DISCARD_KEYS: tuple[str, ...] = (
+    # Denominators.
+    "pnp_attempts_total",
+    "pnp_attempts_refractive",
+    "pnp_attempts_nonrefractive",
+    # Producer-side failures, one per distinct failure mode. These are deliberately
+    # NOT merged: they carry different diagnoses, and plan 19.2-06's gate reads
+    # `pnp_guard_rejected` specifically.
+    "pnp_too_few_corners",
+    "pnp_solve_failed",
+    "pnp_initial_guess_failed",
+    "pnp_nonfinite_refinement",
+    "pnp_guard_rejected",
+    # Consumer side -- the same events counted where they are used. Redundant on
+    # purpose: the two sides must agree, which is a cross-check no single counter
+    # can provide. See `check_discard_invariants`.
+    "pose_discarded_by_consumer",
+    # Other discards, none of which are PnP failures.
+    "observation_absent",
+    "frame_no_camera_meets_min_corners",
+    "interface_pnp_failed",
+    "video_frame_unreadable",
+)
+
+#: Producer-side failure keys whose total must equal `pose_discarded_by_consumer`.
+_PRODUCER_FAILURE_KEYS: tuple[str, ...] = (
+    "pnp_too_few_corners",
+    "pnp_solve_failed",
+    "pnp_initial_guess_failed",
+    "pnp_nonfinite_refinement",
+    "pnp_guard_rejected",
+)
+
+
+def _bump(stats: dict[str, int] | None, key: str, n: int = 1) -> None:
+    """Increment a discard counter, or do nothing when accounting is off.
+
+    Args:
+        stats: The caller's counter dict, or None to disable accounting. When None
+            this is a single identity test -- the inert default path.
+        key: One of `DISCARD_KEYS`.
+        n: Amount to add. Defaults to 1.
+    """
+    if stats is None:
+        return
+    stats[key] = stats.get(key, 0) + n
+
+
+def check_discard_invariants(stats: dict[str, int]) -> list[str]:
+    """Check the cross-checks that make the redundant counters worth carrying.
+
+    **Scope: this is a WHOLE-RUN check.** Relation 1 below holds only when every
+    producer was reached through a consumer site, which is true of a pipeline run
+    and false of a direct unit-test call to `estimate_board_pose` or
+    `refractive_solve_pnp`. Calling this on counters from a bare producer call will
+    report a spurious producer/consumer mismatch -- use `check_denominator_only`
+    there instead. Relation 2 holds unconditionally.
+
+    Two independent relations must hold for any complete run. Both are cheap and
+    both catch a whole class of instrumentation bug that no single counter can:
+
+    1. Producer/consumer agreement (WHOLE-RUN ONLY -- see Scope). Every pose
+       rejected by a producer is discarded by exactly one consumer, so the consumer
+       total equals the producer total. A mismatch means a site was instrumented on
+       one side only.
+    2. Denominator decomposition. `pnp_attempts_total` is the sum of the refractive
+       and non-refractive branch counts. A denominator that silently counts one
+       branch is the failure mode that would send plan 19.2-06's differing-
+       denominator halt into an input diagnosis (wrong frameset) for what is
+       actually a counter-scoping bug.
+
+    Args:
+        stats: A populated counter dict.
+
+    Returns:
+        A list of human-readable violation strings, empty when all invariants hold.
+    """
+    violations: list[str] = []
+
+    consumed = stats.get("pose_discarded_by_consumer", 0)
+    produced = sum(stats.get(k, 0) for k in _PRODUCER_FAILURE_KEYS)
+    if consumed != produced:
+        violations.append(
+            f"producer/consumer mismatch: pose_discarded_by_consumer={consumed} "
+            f"but producer failures sum to {produced} "
+            f"({ {k: stats.get(k, 0) for k in _PRODUCER_FAILURE_KEYS} })"
+        )
+
+    total = stats.get("pnp_attempts_total", 0)
+    split = stats.get("pnp_attempts_refractive", 0) + stats.get(
+        "pnp_attempts_nonrefractive", 0
+    )
+    if total != split:
+        violations.append(
+            f"denominator mismatch: pnp_attempts_total={total} but "
+            f"refractive+nonrefractive={split}"
+        )
+
+    unknown = sorted(set(stats) - set(DISCARD_KEYS))
+    if unknown:
+        violations.append(f"undeclared counter keys: {unknown}")
+
+    return violations
+
+
+def check_denominator_only(stats: dict[str, int]) -> list[str]:
+    """Check the invariants that hold for ANY counter dict, run-scoped or not.
+
+    The denominator decomposition and the closed-vocabulary check are true of a
+    single producer call as much as of a whole run. Producer/consumer agreement is
+    not -- see `check_discard_invariants`'s Scope note.
+
+    Args:
+        stats: A counter dict, possibly from a single direct producer call.
+
+    Returns:
+        A list of human-readable violation strings, empty when all hold.
+    """
+    return [
+        v
+        for v in check_discard_invariants(stats)
+        if not v.startswith("producer/consumer mismatch")
+    ]
+
+
 TRACE_CSV_HEADER = [
     "iteration",
     "n_fev",

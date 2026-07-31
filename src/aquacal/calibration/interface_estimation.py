@@ -13,6 +13,7 @@ from scipy.optimize import least_squares
 from aquacal.calibration._observability import (
     OptimizerObserver,
     SolverDiagnostics,
+    _bump,
     build_parameter_labels,
     capture_solver_diagnostics,
 )
@@ -55,6 +56,7 @@ def _compute_initial_board_poses(
     interface_normal: NDArray[np.float64] | None = None,
     n_air: float = 1.0,
     n_water: float = 1.333,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> dict[int, BoardPose]:
     """
     Compute initial board poses via refractive PnP for each frame.
@@ -93,6 +95,7 @@ def _compute_initial_board_poses(
                 best_count = det.num_corners
 
         if best_cam is None:
+            _bump(discard_stats_out, "frame_no_camera_meets_min_corners")
             continue
 
         det = frame_det.detections[best_cam]
@@ -148,6 +151,7 @@ def optimize_interface(
     observer: OptimizerObserver | None = None,
     shared_interface: bool = True,
     diagnostics_out: SolverDiagnostics | None = None,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -238,6 +242,7 @@ def optimize_interface(
         interface_normal=interface_normal,
         n_air=n_air,
         n_water=n_water,
+        discard_stats_out=discard_stats_out,
     )
 
     # Filter to frames with valid board poses
@@ -452,6 +457,7 @@ def _multi_frame_pnp_init(
     n_water: float,
     top_n: int = 10,
     outlier_threshold: float = 0.5,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]] | None:
     """Multi-frame PnP initialization for robust camera pose estimation.
 
@@ -490,9 +496,11 @@ def _multi_frame_pnp_init(
             interface_normal,
             n_air,
             n_water,
+            discard_stats_out=discard_stats_out,
         )
 
         if pnp_result is None:
+            _bump(discard_stats_out, "interface_pnp_failed")
             continue
 
         rvec_bc, tvec_bc = pnp_result
@@ -568,6 +576,7 @@ def register_auxiliary_camera(
     refine_intrinsics: bool = False,
     verbose: int = 0,
     diagnostics_out: SolverDiagnostics | None = None,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> (
     tuple[CameraExtrinsics, float, float]
     | tuple[CameraExtrinsics, float, float, CameraIntrinsics]
@@ -649,6 +658,7 @@ def register_auxiliary_camera(
         interface_normal,
         n_air,
         n_water,
+        discard_stats_out=discard_stats_out,
     )
 
     if pnp_result is None:

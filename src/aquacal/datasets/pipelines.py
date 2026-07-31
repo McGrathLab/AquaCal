@@ -34,6 +34,7 @@ def calibrate_synthetic(
     timings_out: dict[str, float] | None = None,
     memory_out: dict[str, dict] | None = None,
     normal_fixed: bool = True,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[CalibrationResult, DetectionResult]:
     """Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
@@ -125,6 +126,7 @@ def calibrate_synthetic(
         interface_normal=interface_normal,
         n_air=1.0,
         n_water=n_water,
+        discard_stats_out=discard_stats_out,
     )
 
     # Stage 3: Joint refractive optimization
@@ -154,6 +156,7 @@ def calibrate_synthetic(
         min_corners=4,
         diagnostics_out=stage3_diagnostics_out,
         normal_fixed=normal_fixed,
+        discard_stats_out=discard_stats_out,
     )
     if timings_out is not None:
         timings_out["stage3_interface_optimization"] = time.perf_counter() - _t0

@@ -17,7 +17,11 @@ import cv2
 import numpy as np
 import yaml
 
-from aquacal.calibration._observability import OptimizerObserver, SolverDiagnostics
+from aquacal.calibration._observability import (
+    OptimizerObserver,
+    SolverDiagnostics,
+    check_discard_invariants,
+)
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
 from aquacal.calibration.frame_rejection import (
     compute_per_frame_rms,
@@ -81,6 +85,7 @@ def calibrate_from_detections(
     loss_scale: float = 1.0,
     min_corners: int = 4,
     verbose: int = 0,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[CalibrationResult, dict[int, BoardPose]]:
     """Run Stages 2-3 on pre-computed detections and return a CalibrationResult.
 
@@ -147,6 +152,7 @@ def calibrate_from_detections(
         loss_scale=loss_scale,
         min_corners=min_corners,
         verbose=verbose,
+        discard_stats_out=discard_stats_out,
     )
     board_poses = {bp.frame_idx: bp for bp in opt_poses_list}
 
@@ -808,6 +814,12 @@ def run_calibration_from_config(
     # are simply absent from this dict.
     timings: dict[str, float] = {}
 
+    # Accumulator for discard counts (plan 19.2-26). Always on: a handful of
+    # integer increments at per-(camera, frame) granularity, never in a hot loop.
+    # A discard that no artifact records cannot be audited after the fact -- the
+    # degenerate-PnP guard was entirely silent before this.
+    discard_stats: dict[str, int] = {}
+
     # Accumulator for per-stage solver diagnostics (BENCH-01/BENCH-04), keyed
     # by benchmark.json stage name. Populated unconditionally (cheap; no
     # extra least_squares calls), consumed only if config.save_benchmark.
@@ -848,6 +860,7 @@ def run_calibration_from_config(
             frame_step=config.frame_step,
             rational_model_cameras=config.rational_model_cameras or None,
             fisheye_cameras=config.fisheye_cameras or None,
+            discard_stats_out=discard_stats,
             progress_callback=lambda name, cur, total: print(
                 f"  Calibrating {name} ({cur}/{total})..."
             ),
@@ -954,6 +967,7 @@ def run_calibration_from_config(
                 if cam == "_averaging"
                 else f"  Located {cam} ({cur}/{total})"
             ),
+            discard_stats_out=discard_stats,
         )
     print(f"  Initialized {len(extrinsics)} camera poses")
 
@@ -1069,6 +1083,7 @@ def run_calibration_from_config(
             observer=observer,
             shared_interface=config.shared_interface,
             diagnostics_out=diagnostics_out,
+            discard_stats_out=discard_stats,
         )
 
     # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
@@ -1144,6 +1159,7 @@ def run_calibration_from_config(
             interface_normal,
             config.n_air,
             config.n_water,
+            discard_stats_out=discard_stats,
         )
         rej_independent_poses = _estimate_validation_poses(
             optim_detections,
@@ -1474,6 +1490,7 @@ def run_calibration_from_config(
                         diagnostics_out=solver_diagnostics.setdefault(
                             f"auxiliary_registration_{aux_cam}", SolverDiagnostics()
                         ),
+                        discard_stats_out=discard_stats,
                     )
 
                     # Handle variable-length return
@@ -1657,8 +1674,23 @@ def run_calibration_from_config(
         auxiliary_reprojection=aux_reproj,
         timings=timings_payload,
         frame_rejection=frame_rejection_info,
+        discard_stats=dict(discard_stats),
     )
     print(f"  Saved diagnostics to {config.output_dir}")
+
+    # ONE summary line, after the counts are final -- never one per event. These
+    # sites fire thousands of times on a real rig; per-event logging would both
+    # drown the log and cost wall-clock that benchmark.json publishes.
+    if discard_stats:
+        _violations = check_discard_invariants(discard_stats)
+        print(
+            "  Discards: "
+            + ", ".join(f"{k}={discard_stats[k]}" for k in sorted(discard_stats))
+        )
+        if _violations:
+            # Not raised: this is an accounting self-check, and a broken counter
+            # must never take down a calibration that is otherwise fine.
+            print(f"  WARNING: discard-counter invariant violated: {_violations}")
 
     # --- Build Final Result ---
     # Merge primary + auxiliary per-camera errors so all cameras appear in diagnostics
