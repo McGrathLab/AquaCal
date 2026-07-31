@@ -192,10 +192,21 @@ E2_BENCHMARK_PATH = (
 # reader can see, in one place, what the grid family assumes and why.
 # ---------------------------------------------------------------------------
 
-# Matches generate_real_rig_array's calibrated WATER_Z (1.031 m) so the grid
-# family's cameras sit at the same height above water the real rig does,
-# rather than the unrealistic 0.15 m the underlying generator otherwise
-# defaults to (19.2-GAP-CONTEXT.md D-29).
+# Matches generate_real_rig_array's WATER_Z (1.031 m) so the grid family's
+# cameras sit at a REPRESENTATIVE height above water, rather than the
+# unrealistic 0.15 m the underlying generator otherwise defaults to
+# (19.2-GAP-CONTEXT.md D-29).
+#
+# Reworded 2026-07-31. This previously said "the same height above water the
+# real rig does", and that is no longer true: the real rig's interface
+# re-measures at 1.0738 m. WATER_Z is now a frozen design constant rather than
+# a calibrated value -- see its provenance note in datasets/synthetic.py. The
+# coupling asserted here is to that constant, NOT to whatever the current
+# calibration reports, and the two are not expected to agree. The synthetic
+# grid approximates the real rig; it does not reproduce it.
+#
+# Keep this in step with WATER_Z if that ever changes -- but note that doing so
+# invalidates the committed nine-cell grid, so neither is a cheap edit.
 GRID_HEIGHT_ABOVE_WATER = 1.031
 
 # Matches generate_real_rig_trajectory's own default depth_range, so the

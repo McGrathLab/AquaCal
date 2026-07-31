@@ -237,13 +237,43 @@ def generate_real_rig_array() -> tuple[
     - All optical axes aligned to world +Z (looking straight down); real
       cameras deviate < 5 deg.
     - XY positions preserved from the real calibration.
-    - Common ``water_z = 1.031 m`` (the calibrated value).
+    - Common ``water_z = 1.031 m`` -- a FROZEN DESIGN CONSTANT, not a live
+      measurement. See ``WATER_Z`` below before changing or "updating" it.
+
+    This rig is an **approximation** of the real hardware, not a replica. No
+    claim of numerical correspondence is made or intended, and none should be
+    added: the idealizations above (common intrinsics, Z = 0, axes aligned to
+    +Z) already depart from the real array by more than any plausible drift in
+    the interface height.
 
     Returns:
         Tuple of ``(intrinsics, extrinsics, water_zs)`` dicts keyed by
         camera name (cam0 … cam11).
     """
     IMAGE_SIZE = (1600, 1200)
+
+    # FROZEN DESIGN CONSTANT -- do NOT re-derive from a calibration.
+    #
+    # Provenance: this value came from an early calibration of the real rig,
+    # which has since been SUPERSEDED. The 2026-07-31 re-run of that rig, on
+    # code carrying the degenerate-PnP guard, puts its interface at 1.0738 m --
+    # and the run it originally came from is now known not to have converged
+    # (its Stage-3 intrinsic pass sat at first-order optimality 2.08e4, where
+    # the re-run reaches 18.4).
+    #
+    # It is deliberately NOT updated to 1.0738, and must not be updated to
+    # whatever the next calibration reports. The exact value is IMMATERIAL:
+    # the synthetic rig approximates the real one, it does not reproduce it,
+    # and ~1 m of air gap is what the geometry needs to be representative.
+    # Tracking a measured quantity here is what created the problem -- every
+    # bug fix that improved the calibration silently invalidated this constant
+    # and, through it, every experiment built on the scenario.
+    #
+    # Changing it is a real cost, not a cosmetic edit: E4 and E6's grid family
+    # is deliberately coupled to this value (D-29,
+    # experiments/e4_benchmark_grid.py GRID_HEIGHT_ABOVE_WATER), so a change
+    # here invalidates the committed nine-cell benchmark grid as well as every
+    # realistic-path experiment (E1, E3, E5, E7).
     WATER_Z = 1.031
 
     # Averaged intrinsics across 12 real cameras
