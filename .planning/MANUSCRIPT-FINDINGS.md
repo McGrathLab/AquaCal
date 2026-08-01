@@ -502,3 +502,71 @@ this removes the evidence that the fix is harmful; it does not prove the fix is 
      E4 grid was re-measured 2026-07-30 (`5b17cd4`); MF-02's E4 figures predate that and are
      superseded - see the staleness notice in that entry. Its 16x200 cell now peaks at 10.45 GiB,
      not the 3.31 GiB MF-02 quotes. -->
+
+## MF-07 — Three E6 configurations did not converge, and were published as `status="ok"`
+
+**Status:** OPEN — needs an author decision on whether the affected rows can support E6's
+manuscript comparisons. **This entry records the question; it does not answer it.**
+**Found:** 2026-08-01, plan 19.2-28, on the first run of the optimality capture plan 19.2-27 added
+**Source of truth:** `experiments/results/generalization_sweep.csv`,
+`experiments/results/e6_configs/*.json`; full analysis in `19.2-28-SUMMARY.md`
+**Where the prose is:** wherever E6's index / layout / scale comparisons are claimed
+
+WR-02 was recorded as a blind spot: E6 captured no solver diagnostics, so nothing in any committed
+record distinguished a diverged solve from a converged one. Plan 27 closed it. On the very first run
+it exposed this:
+
+| axis | axis_value | RMS px | optimality (interface) | optimality (intrinsic) |
+|---|---|---|---|---|
+| index | **1.42** | 0.789 | **51.92** | 0.054 |
+| scale | **half_scale** | 1.007 | **27.32** | **140.31** |
+| layout | **ring** | 0.705 | 0.0016 | **4.20** |
+| the other eleven | | 0.70–0.78 | 0.0016–0.035 | 0.002–0.117 |
+
+**Three of fourteen sit 3–4 orders of magnitude above the rest, and every one was published under
+`status="ok"` behind an entirely plausible reprojection RMS.** This is the third instance of that
+failure in this milestone, after E4's 12×100 cell (0.79 px RMS on optimality 6.4e9) and MF-04's §3
+record.
+
+### The accuracy evidence says the answers are fine
+
+| group | n | reconstruction RMSE mean | max |
+|---|---|---|---|
+| high-optimality | 3 | 0.5938 mm | 0.7174 |
+| healthy | 11 | 0.5622 mm | 0.7516 |
+
+Indistinguishable — and `half_scale`, the worst-converged row, has the **best** reconstruction
+accuracy in the table (0.4935 mm), while the **worst** reconstruction belongs to `double_scale`,
+which is healthy on optimality. These are synthetic scenarios scored against ground truth, so
+reconstruction error is the direct measure of correctness.
+
+### Diagnosed cause: board corners protrude through the water surface
+
+Measured on the baseline scenario: **61 of 8800 corners (0.69%)** sit at or above the interface,
+worst protrusion **66 mm**, because `GRID_DEPTH_RANGE` starts at 1.100 m while the board needs
+~1.18 m of depth to stay submerged at the default 15° tilt. Those observations fall outside the
+refractive model's domain and are continued with a pinhole extension, which is C0-but-not-C1 — and
+optimality is a max-norm, so a handful of kinks dominates it.
+`corr(degenerate count, optimality) = 0.646`.
+
+**The kink is real physics, not a modelling artifact** — above the surface there is no water, so the
+straight line IS the correct projection, and a flat interface genuinely gives a derivative
+discontinuity. The fix is to stop putting corners on the interface (a real calibration keeps the
+board underwater), NOT to blend the two models with an arbitrary width.
+
+### What may and may not be said
+
+**May:** that E6's sweep now records the convergence evidence for every configuration, and that
+eleven of fourteen converge cleanly.
+
+**May NOT, pending the decision:** quote the `index=1.42`, `scale=half_scale`, or `layout=ring` rows
+as converged results without stating their optimality. Note these are load-bearing — one of three
+scale rows, one of eight index rows, and one of three layout rows, the layout axis being the one
+plan 19.2-22 reported as unconfounded for the first time.
+
+**Never:** quote optimality to more than one significant figure. It varies ~2× between runs of
+identical code (measured, `19.2-28-SUMMARY.md`); it supports an order-of-magnitude reading
+(1e-3 healthy vs 1e1–1e9 broken) and nothing finer.
+
+**Fix owner:** phase 19.3 (`.planning/phases/19.3-scenario-geometry-and-convergence/19.3-SEED.md`),
+which will re-run E1/E4/E5/E6/E7 on corrected geometry. E2 is real data and unaffected.

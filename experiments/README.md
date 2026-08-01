@@ -93,6 +93,27 @@ pre-run estimate.
 | E6's environment-only provenance sidecar (the record covering `generalization_sweep.csv` itself) | E6 | ″ | `e6_provenance.json` | — (provenance only) | (same run) |
 | E6's twelve per-configuration checkpoints — since plan 19.2-16 (WR-03) each one also carries `schema_version`, a four-field `environment` block, and `seed`, so these are provenance records that double as resumability checkpoints, not checkpoints alone | E6 | ″ | `experiments/results/e6_configs/*.json` | — (provenance + checkpoint) | (same run) |
 
+> ### ⚠ Three `generalization_sweep.csv` rows did not converge — read before citing E6
+>
+> Since plan 19.2-27, E6 records `optimality_stage3_interface_optimization` and
+> `optimality_stage3_intrinsic_pass` per configuration. On the first run carrying them
+> (`19.2-28-SUMMARY.md`), **three of fourteen rows came back 3–4 orders of magnitude above the other
+> eleven — and all three are published under `status="ok"` with a plausible reprojection RMS**:
+> `index=1.42` (optimality 51.9), `scale=half_scale` (27.3 / 140.3), and `layout=ring` (4.20 on the
+> intrinsic pass), against 0.0016–0.117 for the rest.
+>
+> **Accuracy appears unaffected** — reconstruction RMSE is indistinguishable between the flagged and
+> healthy groups, and the worst reconstruction in the table belongs to a *healthy* configuration.
+> The diagnosed cause is that board corners protrude through the water surface (61/8800 = 0.69% of
+> corners), so those observations leave the refractive model's domain and are continued with a
+> pinhole extension whose derivative discontinuity inflates a max-norm gradient.
+>
+> **Consequences for anyone using this table.** Do not quote those three rows as converged results
+> without stating their optimality — see **MF-07** in `.planning/MANUSCRIPT-FINDINGS.md`, where the
+> decision is recorded as OPEN. And never quote optimality to more than one significant figure: it
+> varies ~2x between runs of identical code, so it supports an order-of-magnitude reading and
+> nothing finer. Phase 19.3 owns the fix and will re-run E1/E4/E5/E6/E7 on corrected geometry.
+
 `e4_benchmark_grid.py` is now a **direct-call synthetic benchmark grid** (D-03/D-26): it
 builds `generate_camera_array` + `generate_board_trajectory` scenes and calibrates them via
 the same direct-call path E1/E7 use, rather than subsampling a real 13-camera YAML through
