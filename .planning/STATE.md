@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Completed 19.2 gap wave 7 (plan 27) — code fixes landed, E6/E5 re-runs pending (plans 28, 29)
+stopped_at: Phase 19.2 COMPLETE — all 29 plans have summaries; next is 19.3 (scenario geometry)
 last_updated: "2026-08-01T16:24:08.352Z"
 last_activity: 2026-08-01 -- Phase 19.2 execution started
 progress:
