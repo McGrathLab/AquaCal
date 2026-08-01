@@ -14,64 +14,103 @@ measured data rather than against this summary.
 
 ## MF-01 — Newton iteration count: the supplement understates the tail
 
-**Status:** open — needs a prose edit, **and its source is under review (see caveat below)**
+**Status:** RESOLVED (2026-08-01, phase 19.2 plan 19.2-25) — the provenance caveat is closed;
+a prose edit is still needed, and the required framing has changed (see below)
 **Found:** 2026-07-29, phase 19.2 plan 19.2-05 (E3 tier 2, per D-20)
-**Source of truth:** `experiments/results/newton_iterations.csv`
+**Resolved by:** D-32 option (c) — instrumenting the production batch path directly, decided
+2026-07-29 (`19.2-GAP-CONTEXT.md` § D-32), implemented in plan 19.2-20, regenerated with
+provenance by plan 19.2-23
+**Source of truth:** `experiments/results/newton_iterations.csv` — now carries a `loop` column
+with two values, `scalar` and `batch`, for every camera and the pooled `ALL` row
 **Where the prose is:** supplement, the refractive-projection convergence claim
 
-> **⚠ Provenance caveat added 2026-07-29 (phase 19.2 code review CR-05, confirmed in source).**
-> `newton_iterations.csv` is produced by `refractive_project_newton_diagnostic`, which routes
-> through the shared `_solve_newton_r_p` helper. But production residual evaluation does **not**
-> use that path: `calibration/_optim_common.py:635` projects via `refractive_project_batch` →
-> `_refractive_project_newton_batch`, a separately inlined Newton loop that never calls
-> `_solve_newton_r_p` and terminates on `np.all(np.abs(delta) < tolerance)` — all points at once,
-> with no per-point convergence flag.
+> **RESOLUTION.** `newton_iterations.csv` now reports both shipped Newton loops. The `scalar`
+> rows describe `_solve_newton_r_p` via `refractive_project_newton_diagnostic` — unchanged from
+> the original measurement. The `batch` rows are new: they describe the loop production
+> actually runs, `calibration/_optim_common.py:635` → `refractive_project_batch` →
+> `_refractive_project_newton_batch`, instrumented through an opt-in `return_diagnostics` flag
+> that is off by default and proven bit-identical to pre-D-32 production output when unset
+> (`19.2-20-SUMMARY.md`).
 >
-> Two consequences for the numbers below. (1) `not converged = 0` is measured for a loop the
-> optimizer never runs. (2) The per-point iteration counts do not transfer: under all-points
-> termination every point in a batch iterates until the *slowest* converges, so production
-> per-point cost behaves like the tail, not the median — which if anything sharpens this entry's
-> "understates the tail" conclusion, but on different evidence than what is tabulated here.
->
-> **Resolve before citing.** Either migrate `_refractive_project_newton_batch` onto
-> `_solve_newton_r_p` and regenerate, or correct the diagnostic's docstring and restate the CSV's
-> scope as the scalar path. The measured distribution below is not known to be wrong — it is
-> known to describe a different loop than the one the prose is about.
+> **Why option (c), and not (a) or (b) — both considered and rejected, recorded so they are not
+> silently reopened** (`19.2-GAP-CONTEXT.md` § D-32):
+> - **(a) Migrate the batch loop onto the shared `_solve_newton_r_p` helper.** Rejected: the
+>   helper is scalar, so calling it per-point would destroy vectorization in the hottest loop of
+>   every residual evaluation, and switching the batch to per-point termination stops iterating
+>   earlier — shifting results at ~1e-16 and propagating through the bundle adjustment, which
+>   risks moving a §3 number (a D-08 hard stop). Retained as a desirable code-quality follow-up,
+>   explicitly out of scope here.
+> - **(b) Correct the diagnostic's docstring and restate the CSV's scope as the scalar path.**
+>   Rejected: zero risk and cheap, but it documents the mismatch rather than fixing it — the
+>   published convergence number would still not describe what production runs.
+> - **(c) Instrument the batch path itself (chosen).** Makes the published number actually
+>   describe the loop production runs, touches production numerics not at all (the diagnostic
+>   flag is off by default and proven inert), and yields the one quantity the batch previously
+>   could not report — per-point convergence.
 
 The supplement says the Newton solve for the refraction point converges in **"two to four
-steps."** Measured over the real rig's full working volume (104,052 points, 12 cameras):
+steps."** Measured over the real rig's full working volume (104,052 points, 12 cameras), both
+loops, from `newton_iterations.csv`'s pooled `ALL` rows:
 
-| quantity | value |
-|---|---|
-| iterations, min | 2 |
-| iterations, **median** | **4.0** (identical on every camera) |
-| iterations, **max** | **7** (6-7 per camera) |
-| not converged | **0** |
-| incidence angle range | 0.13 deg - 62.92 deg |
-| max residual | ~1e-9 m (at tolerance) |
+| quantity | scalar | batch |
+|---|---|---|
+| iterations, min | 2 | 2 |
+| iterations, **median** | **4.0** (identical on every camera) | **4.0** (identical on every camera) |
+| iterations, **max** | **7** (6-7 per camera) | **7** (6-7 per camera) |
+| not converged | **0** | **0** |
+| incidence angle range | 0.13 deg - 62.92 deg | 0.13 deg - 62.92 deg |
+| max residual | ~1.0e-9 m (at tolerance) | ~1.0e-9 m (at tolerance) |
 
-**The claim is right about typical behavior and wrong about the tail.** Min 2 / median 4 matches
-"two to four steps" exactly. What it misses is that the distribution runs to 7 at high incidence
-angles. Convergence itself is never in question: zero points failed to converge and every residual
-sits at the solver tolerance.
+The two loops' *per-point* convergence-iteration distributions are effectively identical (the
+tiny residual differences, e.g. `9.989e-10` vs `9.999e-10`, are the two implementations' own
+arithmetic, not a scope difference) — each point still takes the same number of Newton steps to
+reach its own root regardless of which loop finds it.
 
-So this is not a correctness problem in the library, and it is not grounds for weakening any
-accuracy claim. It is a prose accuracy problem: a reader sizing a compute budget or reimplementing
-the solver from the paper would under-provision the iteration cap.
+**The median/max framing must be restated against the batch loop's actual termination rule, and
+this SHARPENS the entry's original conclusion rather than replacing it.** The per-point
+iteration counts above describe *when each point's own delta would cross tolerance if it
+terminated independently* — but the production batch loop does not terminate per point: it
+runs `np.all(np.abs(delta) < tolerance)`, so **every point in a batch keeps iterating until the
+slowest point in that batch converges.** A point whose own root would be found in 2 steps still
+pays for however many steps the batch's hardest point needs, up to the measured max of 7. So the
+production **per-point cost is the batch's max, not its median** — a reader sizing a compute
+budget from "typically four steps" would under-provision by nearly 2x, not merely fail to see an
+occasional tail case. This is stronger than the original entry's "misses that the distribution
+runs to 7" framing, and it rests on the batch measurement now committed rather than on the
+scalar table alone.
 
-**Suggested framing for the edit** (wording is the author's call): report the median with the
-observed maximum, e.g. "typically four steps (median 4, range 2-7 over the calibrated volume,
-with the upper tail at high incidence angles)."
+Convergence itself is never in question in either loop: zero points failed to converge and every
+residual sits at the solver tolerance in both `scalar` and `batch` rows. So this remains a prose
+accuracy problem, not a correctness problem in the library — the computed refraction points are
+not known to be wrong, and this finding does not weaken any accuracy claim. It is a provenance
+correction, now completed, layered under a prose correction that still needs the author's edit.
 
-**Do not** silently change the number to 7 — the median genuinely is 4, and 7 is the tail. Quoting
-only the max would overstate typical cost as badly as "two to four" understates the tail.
+**Suggested framing for the edit** (wording is the author's call, and has changed from the
+original entry): do not lead with the median. State the effective per-point cost under
+production's all-points termination — "every point costs up to the batch's slowest point, up to
+7 steps over the calibrated volume (individual points would converge in as few as 2, median 4,
+if evaluated independently)" — rather than "typically four steps." The batch's own median/max
+are worth reporting as characterizing the *individual* root-find difficulty, but they no longer
+describe the batch's *per-point wall-clock cost*, which the all-points termination rule
+equalizes upward toward the tail.
+
+**Do not** silently change the number to 7 as if it were now "the" iteration count. The
+per-point root-find genuinely converges in a median of 4 steps; what changed is which quantity
+that number describes. Quoting 7 without the batch-termination explanation above would overstate
+typical *individual* root-find cost as badly as "two to four" understates *production's*
+per-point cost — the fix is to report both quantities and say which is which, not to swap one
+number for the other.
 
 ---
 
 ## MF-02 — E4's memory curve does not bound a real deployment of the same camera count
 
-**Status:** ⚠ **SUPERSEDED as to its numbers — see the staleness notice below.** The mechanism it
-identifies still holds; its headline comparison does not.
+**Status:** RESOLVED (2026-08-01, phase 19.2 plan 19.2-25) — re-measured against the current
+grid; still needs a prose edit, and the edit's direction has reversed from the original entry.
+The original entry's numbers are **SUPERSEDED**, preserved below with a staleness notice rather
+than overwritten (same discipline as `code_constants.csv` in plan 23). The mechanism the entry
+identifies (peak memory tracks residual count, not camera count) still holds; its headline
+comparison does not.
 **Found:** 2026-07-29, phase 19.2 (orchestrator analysis of the committed E4 grid vs E2's record)
 **Source of truth:** `experiments/results/benchmark_grid.csv` (all values below are columns in it)
 **Where the prose is:** wherever `benchmark_grid.csv`'s cameras × frames scaling is discussed
@@ -100,6 +139,20 @@ identifies still holds; its headline comparison does not.
 > **Numbers retained, not corrected, deliberately** — the same reasoning that keeps
 > `code_constants.csv` stale for plan 23. Rewriting them in place would erase the evidence that
 > the grid moved. Re-derive from the current CSV before citing anything here.
+>
+> **Resolution (2026-08-01, plan 19.2-25): the gap INVERTED, not narrowed or closed.** The
+> original entry warned a reader would under-provision by ~3× if they sized a real deployment
+> off the E4 grid. That warning **no longer applies in its original direction** — E4's 16×200
+> cell (10.45 GiB overall peak) now exceeds E2's 13-camera real rig (9.78 GiB), so a reader
+> using the grid as a sizing guide today would, if anything, slightly **over**-provision for a
+> same-or-larger real deployment, not under-provision. The 16-vs-13-camera comparison is still
+> not apples-to-apples (E4's cell has fewer cameras and more residuals, for the reasons given
+> above), so neither figure should be read as a tight bound in either direction — but the
+> specific, quantified 3× under-provisioning risk this entry existed to warn about is gone.
+> **The suggested framing below (present the grid as a scaling curve in problem size, not a
+> per-camera-count capacity table) is unaffected by the inversion and remains the recommended
+> edit** — it was already about not treating camera count as the sizing variable, and the
+> inversion is further evidence for that, not against it.
 
 E4's 16-camera × 200-frame cell peaks at **3.31 GiB**, while E2's real rig at **13** cameras ×
 200 frames peaks at **9.78 GiB** — fewer cameras, ~3× the memory. Both numbers are correct. A
