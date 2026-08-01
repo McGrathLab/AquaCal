@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Executing 19.2 gap wave 6 (plans 24 + 25 — final wave)
+stopped_at: Completed 19.2 gap wave 6 (plans 24 + 25) — all 26 plans have summaries
 last_updated: "2026-08-01T16:24:08.352Z"
 last_activity: 2026-08-01 -- Phase 19.2 execution started
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 60
-  completed_plans: 58
+  completed_plans: 60
   percent: 56
 ---
 
