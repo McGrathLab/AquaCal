@@ -12,7 +12,25 @@
     "ram_total_bytes": 16857190400,
     "scipy_version": "1.17.0"
   },
-  "experiment": "e3",
+  "experiment": "e5",
+  "holdout_seed_offset": 100000,
+  "n_assumed_band": [
+    1.323,
+    1.325,
+    1.327,
+    1.329,
+    1.331,
+    1.333,
+    1.335,
+    1.337,
+    1.339,
+    1.341,
+    1.343
+  ],
+  "n_frames": 30,
+  "n_true": 1.333,
+  "normal_fixed": false,
+  "refine_intrinsics": false,
   "schema_version": 1,
   "seed": 42,
   "solver_config": {
