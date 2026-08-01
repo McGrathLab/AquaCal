@@ -291,7 +291,7 @@ imports; E4's real-rig grid point reuses E2's `benchmark.json`)
      sidecar for E3's tiers 1-2 which never run a calibration.
   6. `experiments/README.md`'s provenance table is complete: every paper artifact maps to its
      producing script, its data file, and its figure generator.
-**Plans:** 26/26 plans complete
+**Plans:** 27/29 plans executed
 (D-26: all `src` changes land and are proven contained before any experiment yielding a publishable
 result — see `19.2-GAP-CONTEXT.md` § "D-26 reconciliation")
 
@@ -400,7 +400,7 @@ behavior the published artifacts actually reflect.
 | 18. Documentation Corrections & Stage-Model Reconciliation | v1.9 | 8/8 | Complete    | 2026-07-24 |
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
-| 19.2 Experiment Execution and Provenance | v1.9 | 26/26 | Complete   | 2026-08-01 |
+| 19.2 Experiment Execution and Provenance | v1.9 | 27/29 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
