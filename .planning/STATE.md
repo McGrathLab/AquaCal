@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Executing 19.2-21-PLAN.md (gap wave 3 — E4 nine-cell production re-run)
-last_updated: "2026-07-30T12:09:06.492Z"
-last_activity: 2026-07-30 -- Phase 19.2 execution started
+stopped_at: Executing 19.2 gap wave 6 (plans 24 + 25 — final wave)
+last_updated: "2026-08-01T16:24:08.352Z"
+last_activity: 2026-08-01 -- Phase 19.2 execution started
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 59
-  completed_plans: 54
+  total_plans: 60
+  completed_plans: 58
   percent: 56
 ---
 
@@ -78,7 +78,7 @@ Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
   Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
   one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
   Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
-Plan: 1 of 25
+Plan: 1 of 26
   **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
   it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
   discuss→plan chain stopped before execute at the user's explicit request; restore it with
@@ -88,7 +88,7 @@ Status: Executing Phase 19.2
   gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
   (stage3.seconds always null) and code review caught a false "no least_squares" label
   (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-07-30 -- Phase 19.2 execution started
+Last activity: 2026-08-01 -- Phase 19.2 execution started
   Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
 Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
   Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
