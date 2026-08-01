@@ -439,22 +439,40 @@ class TestBuildNewtonIterationsDfBothLoops:
         counts = df.groupby("camera")["loop"].nunique()
         assert (counts == 2).all()
 
+    # Frozen literal of the pre-D-32 `newton_iterations.csv` header (D-32/CR-05
+    # added the `loop` column to NEWTON_COLUMNS; this is NEWTON_COLUMNS minus
+    # `loop`). Anchored here instead of read from the live committed CSV
+    # because plan 19.2-23 was written to regenerate that file with the NEW
+    # (post-D-32) schema -- the committed copy stopped being "pre-D-32" the
+    # moment that regeneration landed and will never be pre-D-32 again. A
+    # baseline that lives in a file every plan is entitled to regenerate is
+    # not a baseline; freezing it as a literal is the fix that survives the
+    # next regeneration too. (An archived pre-D-32 copy under
+    # experiments/archive/ was considered and rejected: it would still be an
+    # external file another cleanup pass could move or delete without any
+    # test failing to notice -- a literal in the test itself cannot drift.)
+    _PRE_D32_NEWTON_HEADER = [
+        "camera",
+        "n_points",
+        "iter_min",
+        "iter_median",
+        "iter_max",
+        "n_not_converged",
+        "incidence_deg_min",
+        "incidence_deg_max",
+        "residual_max_m",
+    ]
+
     def test_scalar_rows_unchanged_columns_and_semantics_vs_committed_baseline(self):
-        """Scalar rows' column names/semantics match the header of the committed
-        pre-D-32 baseline (`experiments/results/newton_iterations.csv`, minus the new
-        `loop` column), and the loop column uses the fixed vocabulary."""
+        """Scalar rows' column names/semantics match the FROZEN pre-D-32 header
+        (see `_PRE_D32_NEWTON_HEADER`'s docstring for why this is a literal and not
+        read from the committed CSV), and the loop column uses the fixed vocabulary."""
         from experiments.e3_derived_quantities import (
             NEWTON_LOOP_SCALAR,
             build_newton_iterations_df,
         )
 
-        baseline_path = (
-            Path(__file__).resolve().parents[2]
-            / "experiments"
-            / "results"
-            / "newton_iterations.csv"
-        )
-        baseline_header = pd.read_csv(baseline_path, nrows=0).columns.tolist()
+        baseline_header = self._PRE_D32_NEWTON_HEADER
 
         df = build_newton_iterations_df(n_frames=2, seed=42)
         scalar_df = df[df["loop"] == NEWTON_LOOP_SCALAR]
