@@ -49,8 +49,19 @@ separately by unit tests, not by `--check` runs against a moving baseline.
 
 ## 2. Provenance table
 
-One row per artifact committed under `experiments/results/`. Every runtime below is a
-**measured** value from this phase's wave-3/4 execution, not a pre-run estimate.
+One row per artifact committed under `experiments/results/`. Every artifact below now has a
+genuine four-field provenance record behind it — seed, AquaCal version, git SHA, and the
+Python/NumPy/SciPy/OS environment — whether that record is a `benchmark.json`-shaped file
+(E1, E2, E4, E7), a minimal calibration-free sidecar (E3's `e3_provenance.json`), or the
+provenance sidecars wave 5 added for E5 and E6 (`e5_provenance.json`, `e6_provenance.json`).
+This is a change from earlier in the phase: before wave 5 (plans 19.2-16/19), E5 and E6
+carried only a `seed` column with no version/SHA/environment fields, and this section's
+opening claim narrowed for them a few paragraphs down without saying so. See §2's closing
+paragraph (below the table) for exactly which record covers which artifact, asserted
+mechanically by `tests/unit/test_experiments_provenance.py`.
+
+Every runtime below is a **measured** value from this phase's wave-3/4/5 execution, not a
+pre-run estimate.
 
 | Paper artifact | Experiment | Command | Output file(s) | Figure generator | Runtime |
 |---|---|---|---|---|---|
@@ -74,11 +85,13 @@ One row per artifact committed under `experiments/results/`. Every runtime below
 | Supplement `tab:cpr` (all six rows, both interface modes) | E3 | ″ | `cpr_grouping.csv` | `cpr_grouping.tex` (E3's own LaTeX fragment IS its figure generator — no separate module) | (same run) |
 | Supplement `\CPRParamsAside`/`\CPRReductionAside` (D-22's two derived prose asides) | E3 | ″ | `cpr_derived_values.tex` | ″ (the fragment itself is the rendered output) | (same run) |
 | E3's environment-only provenance sidecar (tiers 1-2 never run a calibration, so there is no `benchmark.json` to reuse) | E3 | ″ | `e3_provenance.json` | — (provenance only) | (same run) |
-| **NEW** main-text runtime table + supplement full cameras-x-frames grid | E4 | `python -m experiments.e4_benchmark_grid` | `benchmark_grid.csv`, `benchmark_grid.tex` | new figure module (Phase 19.2) | ~27 min for the nine-cell grid (measured, 19.2-09-SUMMARY.md) |
+| **NEW** main-text runtime table + supplement full cameras-x-frames grid | E4 | `python -m experiments.e4_benchmark_grid` | `benchmark_grid.csv`, `benchmark_grid.tex` | new figure module (Phase 19.2) | ~3.15 h summed per-cell wall-clock across the nine re-measured cells (~3.5 h including one killed-and-resumed launch; measured, 19.2-21-SUMMARY.md — re-run on the D-29 grid geometry after fixing two library defects, superseding the earlier ~27 min figure from a since-discarded grid) |
 | E4's nine per-cell direct-call provenance records | E4 | ″ | `experiments/results/e4_cells/cameras_<n>_frames_<m>/benchmark.json` (nine files) | — (provenance only) | (same run) |
-| **NEW** R2 sensitivity panel (index-error band) | E5 | `python -m experiments.e5_index_sensitivity` | `index_sensitivity.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~22.5 min (measured, 19.2-13-SUMMARY.md) |
-| **NEW** R1.4 generalization table (index/layout/scale axes) | E6 | `python -m experiments.e6_generalization_sweep` | `generalization_sweep.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~33.5 min (measured, 19.2-11-SUMMARY.md) |
-| E6's twelve per-configuration checkpoints (resumability, not a provenance record in the `benchmark.json` sense) | E6 | ″ | `experiments/results/e6_configs/*.json` | — (checkpoint only) | (same run) |
+| **NEW** R2 sensitivity panel (index-error band) | E5 | `python -m experiments.e5_index_sensitivity` | `index_sensitivity.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~21.1 min (1264 s, measured, 19.2-23-SUMMARY.md — re-run to add `e5_provenance.json`; superseded the earlier ~22.5 min figure) |
+| E5's environment-only provenance sidecar (E5 has no per-row `benchmark.json`; this is the four-field record — seed, version, git SHA, environment — covering `index_sensitivity.csv`) | E5 | ″ | `e5_provenance.json` | — (provenance only) | (same run) |
+| **NEW** R1.4 generalization table (index/layout/scale axes) | E6 | `python -m experiments.e6_generalization_sweep` | `generalization_sweep.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/` — a downstream handoff (X5, a different repository; no AquaCal phase produces this module) | ~107 min (measured, 19.2-22-SUMMARY.md — a 3.2x increase over the earlier ~33.5 min figure, expected: the D-29 geometry puts the board at realistic distance with more observations per frame) |
+| E6's environment-only provenance sidecar (the record covering `generalization_sweep.csv` itself) | E6 | ″ | `e6_provenance.json` | — (provenance only) | (same run) |
+| E6's twelve per-configuration checkpoints — since plan 19.2-16 (WR-03) each one also carries `schema_version`, a four-field `environment` block, and `seed`, so these are provenance records that double as resumability checkpoints, not checkpoints alone | E6 | ″ | `experiments/results/e6_configs/*.json` | — (provenance + checkpoint) | (same run) |
 
 `e4_benchmark_grid.py` is now a **direct-call synthetic benchmark grid** (D-03/D-26): it
 builds `generate_camera_array` + `generate_board_trajectory` scenes and calibrates them via
@@ -86,8 +99,12 @@ the same direct-call path E1/E7 use, rather than subsampling a real 13-camera YA
 the pipeline's config-driven entry point. A real 13-camera rig run already takes 48-87
 minutes (`CLAUDE.md`) and cannot reach 16 cameras (unreachable from a 13-camera rig), so a
 real cameras-x-frames sweep was out of scope for this phase's deadline. The nine-cell grid
-was run to completion in Phase 19.2 (all cells `status=ok`; see `19.2-09-SUMMARY.md`) and is
-now committed, alongside E2's real-rig row folded in as a tenth, separately-labeled point.
+was re-measured in Phase 19.2 wave 6 on the D-29 grid geometry, after fixing two library
+defects (a flat NaN clamp with a zero-derivative absorbing region, and an unvalidated
+`cv2.solvePnP` success flag) that had left four of the first attempt's six completed cells
+not converged; all nine cells now converge (`status=ok`, first-order optimality between
+9.1e-4 and 3.5e-2 on every cell — see `19.2-21-SUMMARY.md`) and the CSV is now committed,
+alongside E2's real-rig row folded in as a tenth, separately-labeled point.
 
 Two columns exist specifically so a reader cannot compare the nine synthetic rows against
 E2's real-rig row as if they measured the same thing: `timing_scope` is `optimization_only`
@@ -100,14 +117,50 @@ point on the nine-cell scaling curve.
 
 `python -m experiments.e4_benchmark_grid --check` re-aggregates the nine per-cell
 `benchmark.json` files already committed under `e4_cells/` and compares the result against
-the committed `benchmark_grid.csv` — it never re-runs a cell (a full re-run is ~27 minutes)
-and is not evidence the nine calibrations themselves reproduce, only that the aggregation and
-the committed CSV agree with the on-disk per-cell records. Because `_run_check` never re-runs
-a cell, its freshly-built comparison frame always reports `exit_code=None` for every cell,
-while the committed CSV carries the real per-run exit codes (`0`); `--check` against this
-committed CSV therefore always exits 1, with every mismatch confined to the `exit_code`
-column — this is a structural property of the check's re-aggregation design, not a data
-defect (19.2-09-SUMMARY.md).
+the committed `benchmark_grid.csv` — it never re-runs a cell (a full re-run is now ~3.15 h,
+summed across the nine re-measured cells) and is not evidence the nine calibrations
+themselves reproduce, only that the aggregation and the committed CSV agree with the on-disk
+per-cell records. Because `_run_check` never re-runs a cell, its freshly-built comparison
+frame always reports `exit_code=None` for every cell, while the committed CSV carries the
+real per-run exit codes (`0`); `--check` against this committed CSV therefore always exits 1,
+with every mismatch confined to the `exit_code` column — this is a structural property of
+the check's re-aggregation design, not a data defect, confirmed again on the re-measured
+grid (19.2-21-SUMMARY.md).
+
+### Which committed artifacts are pre- and which are post-D-27
+
+D-27 (plan 19.2-18) changed `generate_board_trajectory`'s sampling volume to center on the
+camera array's centroid rather than the origin — a deliberate, **non-inert** change for the
+grid family (E4, E6), which calls `generate_board_trajectory` directly through
+`build_grid_scenario`. It never fires for the "realistic" family (E1, E2, E3, E5, E7), which
+builds its scenes through `generate_real_rig_trajectory` or the real video frameset instead —
+a structurally different code path that D-27 never touches.
+
+- **Structurally unaffected, and proven so mechanically, not asserted:** E1, E2, E3, E5, E7.
+  Plan 19.2-18 backs this with three independent proofs — two frozen-anchor exact-equality
+  tests (`generate_real_rig_trajectory` and `create_scenario("realistic")` bit-identical
+  pre/post D-27), a source-scanning grep-gate (no realistic-path caller — `create_scenario`,
+  `e3_derived_quantities.py`, `e5_index_sensitivity.py` — ever passes an explicit `center`
+  override), and four passing `--check` reproductions (E1, E3, E5, E7) against the still-
+  committed baselines, all recorded in `19.2-18-SUMMARY.md` § Task 3. Wave 5 (plan 19.2-23)
+  regenerated E3's and E5's artifacts for an unrelated reason (adding provenance sidecars) and
+  found them unchanged in substance — E3's `code_constants.csv` passes with exactly the one
+  declared, D-27-unrelated exemption, and `cpr_grouping.csv` is byte-for-byte identical — which
+  is a second, independent confirmation that D-27 left the realistic family alone. E2 never
+  runs a synthetic scenario generator at all. E1's and E7's committed CSVs did move in this
+  phase, but for a documented, unrelated reason (the degenerate-PnP guard, `7e0cb90`) — see
+  `MANUSCRIPT-FINDINGS.md` MF-06 and MF-05, which regenerate them across multiple seeds rather
+  than `--check` them, precisely because that non-D-27 change is not inert and a stale-baseline
+  `--check` would fail on a non-defect. **Correction to an earlier draft of this section:** the
+  two `e1_refractive_comparison --check` / `e7_interface_ablation --check` runs originally
+  planned as final-tree confirmation (19.2-24-PLAN.md's original Task 2) were withdrawn under
+  D-35 in favor of that full regeneration, which the plan's own reasoning calls the stronger
+  evidence — they are not part of the citable record and are not cited here.
+- **Regenerated after D-27, on the redesigned geometry:** E4 (`19.2-21-SUMMARY.md`, the
+  nine-cell grid re-run) and E6 (`19.2-22-SUMMARY.md`, the three-axis sweep re-run). Both
+  committed artifacts postdate D-27 by construction — there is no pre-D-27 baseline for either
+  to be compared against, because D-27 is bundled with D-28/D-29's geometry rescale in the same
+  commits (`d5d9dde`, `a2b244d`) that this wave's grid and sweep runs are built on.
 
 ### `cpr_grouping.csv` is the sole origin of `tab:cpr`
 
@@ -268,19 +321,29 @@ python -m experiments.e6_generalization_sweep --check
 python -m experiments.e6_generalization_sweep --force
 ```
 
-Every committed result has a `benchmark.json`-shaped provenance record next to it
-(`schema_version: 1`) carrying its seed, AquaCal version, git SHA, and the Python/NumPy/
-SciPy/OS environment it ran under — either the genuine pipeline-written record (E2, via
-`run_calibration_from_config`) or a direct-call record assembled from the same pure
-`aquacal.io.assemble_benchmark_record` (E1, E7, E4's nine cells — all call `calibrate_
-synthetic` directly and never touch the pipeline's own config-driven entry point, so there
-is no pipeline `benchmark.json` for them to reuse). E3's tiers 1-2 never run a calibration
-at all, so they use a separate minimal sidecar (`e3_provenance.json`) carrying the same
-seed/version/git-SHA/environment fields without a `stages` block. `index_sensitivity.csv`
-and `generalization_sweep.csv` have no benchmark.json sidecar behind them; their own `seed`
-column is their seed provenance (`tests/unit/test_experiments_provenance.py`'s `CSV_TO_
-RECORD` names the covering record for every committed CSV, including these two). No
-experiment invents a second sidecar format beyond these two documented exceptions.
+Every committed result has a provenance record next to it carrying its seed, AquaCal
+version, git SHA, and the Python/NumPy/SciPy/OS environment it ran under. This is now true
+without exception — as of wave 5 (plans 19.2-16/19), it no longer narrows for E5 or E6.
+There are three shapes of record, not one:
+
+- A `benchmark.json`-shaped record (`schema_version: 1`, a `stages` block) — either the
+  genuine pipeline-written record (E2, via `run_calibration_from_config`) or a direct-call
+  record assembled from the same pure `aquacal.io.assemble_benchmark_record` (E1, E7, E4's
+  nine cells — all call `calibrate_synthetic` directly and never touch the pipeline's own
+  config-driven entry point, so there is no pipeline `benchmark.json` for them to reuse).
+- E3's tiers 1–2 never run a calibration at all, so they use a separate minimal sidecar
+  (`e3_provenance.json`) carrying the same seed/version/git-SHA/environment fields without a
+  `stages` block.
+- `index_sensitivity.csv` and `generalization_sweep.csv` are backed by `e5_provenance.json`
+  and `e6_provenance.json` respectively — the same minimal, `stages`-free shape as E3's
+  sidecar, added by plans 19.2-16 and 19.2-19. Before those plans, these two CSVs carried
+  only a `seed` column and no version/SHA/environment fields; that gap is what this
+  paragraph used to describe, and it is closed. E6's twelve `e6_configs/*.json` checkpoints
+  carry the same fields individually, per-configuration, in addition to `e6_provenance.json`
+  covering the CSV as a whole.
+
+`tests/unit/test_experiments_provenance.py`'s `CSV_TO_RECORD` names the covering record for
+every committed CSV. No experiment invents a fourth sidecar shape beyond the three above.
 
 Every committed result's provenance is asserted mechanically, not by inspection, in
 `tests/unit/test_experiments_provenance.py` — the six Phase-19.1 records that predate the
