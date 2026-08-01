@@ -290,8 +290,9 @@ calibrated value, that sentence needs the same correction the source comments re
 
 ## MF-05 — E7's shared-vs-per-camera claim IS supported, but only as a comparison
 
-**Status:** open — needs a prose edit. **D-36's criterion is DECIDED (see the box); MF-05 is
-provisional only until seeds 47–51 land.**
+**Status:** open — needs a prose edit. **D-36's criterion is DECIDED; seeds 47–51 LANDED
+2026-08-01 and CHANGED THE CONCLUSION from "always" to "usually" — see the paired-difference
+section, which supersedes the five-seed claim.**
 **Found:** 2026-07-31, plan 19.2-24 + D-36 five-seed sweep (10/10 runs succeeded)
 **Source of truth:** `Desktop/Aqua/AquaCal/seed_sweep_19_2/e7_interface_ablation/seed_{42..46}/`;
 analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
@@ -316,10 +317,18 @@ analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
 > "unanimous", not "unanimous by a wide margin", and the design has no power to spare. The effect
 > is also modest against the levels: ~1.2 mm on arms spanning 11 mm.
 >
-> **Therefore seeds 47–51 are queued** (~5–6 min/seed, after E6's sweep). If unanimity holds 10/10,
-> p goes 0.031 → 0.001 and the claim stops resting on the smallest sample that could have produced
-> it. **Until those land, MF-05 is provisional.** If unanimity breaks, that is the finding and this
-> entry is rewritten — the extra seeds are a real test, not a confirmation exercise.
+> **Seeds 47–51 ran 2026-08-01 and unanimity BROKE — 9/10, not 10/10.** This entry was rewritten
+> accordingly. The extra seeds were commissioned as a real test rather than a confirmation
+> exercise, and they earned that framing: at 5/5 the honest-looking conclusion was "shared is
+> always better", which is false.
+>
+> **What survived and what did not.** The sign test *improved* (p 0.031 → 0.0107), so the
+> tendency is better evidenced than before. But the common-mode justification for amending D-36
+> holds only for the `refined` pairing (r = +0.961); at ten seeds the `fixed` arms are nearly
+> uncorrelated (r = +0.199), so the five-seed correlation that motivated the amendment was itself
+> a small-sample artifact there. The amendment remains the right criterion — a per-seed
+> difference is still the correct question — but it is carried by the sign test, not by
+> correlation, for `fixed`.
 
 ### Per-arm spread — what bounds any ABSOLUTE claim
 
@@ -332,31 +341,69 @@ mean `|camera_height_drift_mm|`, by seed:
 | `shared_refined` | 1.213 | 11.550 | 4.462 | 0.450 | 0.996 | 3.734 | **11.101** |
 | `percamera_refined` | 2.194 | 12.437 | 4.637 | 3.082 | 2.330 | 4.936 | **10.243** |
 
-### Paired difference — what supports the COMPARISON
+**Extended to ten seeds (2026-08-01), seeds 47–51 added:**
 
-`percamera − shared`, so positive means shared is better:
+| arm | min | max | **range** |
+|---|---|---|---|
+| `shared_fixed` | 0.149 | 1.633 | 1.484 |
+| `percamera_fixed` | 1.207 | 2.480 | 1.273 |
+| `shared_refined` | 0.450 | 11.550 | **11.101** |
+| `percamera_refined` | 1.522 | 12.437 | **10.915** |
 
-| pairing | 42 | 43 | 44 | 45 | 46 | shared better in | crosses zero | sign test |
-|---|---|---|---|---|---|---|---|---|
-| fixed | +1.251 | +1.269 | +0.349 | +1.474 | +0.287 | **5/5** | no | p = 0.031 |
-| refined | +0.981 | +0.887 | +0.176 | +2.632 | +1.334 | **5/5** | no | p = 0.031 |
+The refined arms' 11 mm swing is confirmed at ten seeds, not a five-seed artifact. Note
+`shared_fixed` reaches as low as 0.149 mm and `percamera_fixed` never goes below 1.207 mm —
+the fixed arms barely overlap, which is why the fixed pairing survives on the sign test despite
+its near-zero between-arm correlation.
 
-**The levels wander by 11 mm; the difference never changes sign.**
+### Paired difference — UPDATED to ten seeds, 2026-08-01. **Unanimity BROKE.**
+
+> **The five-seed version of this section claimed 5/5 with no sign change in either pairing, and
+> concluded that this "retires the Phase 19.1 worry that E7 once showed per-camera beating
+> shared." Seeds 47–51 falsified that.** Both statements are withdrawn. The extra seeds were
+> commissioned as a genuine test of unanimity, and unanimity is what they broke.
+
+`percamera − shared`, so positive means shared is better. Seeds 42–46 then 47–51:
+
+| pairing | shared better in | paired diff mean | range | crosses zero | sign test | between-arm r |
+|---|---|---|---|---|---|---|
+| fixed | **9/10** | +1.001 | [−0.020, +1.777] | **yes** (seed 49) | p = 0.0107 | +0.199 |
+| refined | **9/10** | +0.980 | [−1.000, +2.632] | **yes** (seed 48) | p = 0.0107 | +0.961 |
+
+**The two exceptions are not equivalent.** `fixed`'s exception (seed 49, −0.020 mm) is a tie:
+its magnitude is 1/50th of the mean effect and it is better read as "no difference on that
+scenario" than as a reversal. `refined`'s exception (seed 48, **−1.000 mm**) is a *real*
+reversal whose magnitude equals the mean effect itself (+0.980 mm) — on that scenario,
+per-camera genuinely won by about as much as shared usually wins by.
+
+**The evidence for the tendency got STRONGER even as unanimity broke.** 9/10 at n = 10 gives an
+exact one-tailed sign test of p = 0.0107, against 5/5 at n = 5 giving p = 0.031. Five extra
+seeds bought more power than the reversal cost.
+
+**But the pairing justification now applies to only one arm.** The amendment to D-36 rested on
+the arms being highly correlated so that marginal spread is common-mode. At ten seeds that holds
+for `refined` (r = +0.961) and **fails for `fixed` (r = +0.199)** — the fixed arms are nearly
+uncorrelated, so pairing buys little there, and the five-seed correlation that motivated the
+amendment was itself a small-sample artifact for that pairing. The `fixed` result stands on the
+sign test alone, not on common-mode cancellation.
 
 ### What may and may not be claimed
 
-**May:** the directional result. A shared interface produces less camera-height drift than
-per-camera interfaces, consistently across five seeds, on both fixed and refined arms. Quote the
-paired difference *with its range* — fixed +0.926 mm [+0.287, +1.474], refined +1.202 mm
-[+0.176, +2.632].
+**May:** a *tendency*, quantified and qualified. A shared interface produces less camera-height
+drift than per-camera interfaces on 9 of 10 scenarios, mean paired difference ~+1.0 mm
+(p = 0.0107 one-tailed, both pairings). State the exception count and that one refined reversal
+was of full effect size.
 
-**May not:** any absolute refined-arm number as a point estimate. `shared_refined` ranges
-0.450–11.550 mm across seeds. D-36's underlying concern was entirely justified — it applies to
-absolute values, not to the comparison.
+**May NOT:**
+- **"Shared is better," unqualified.** It is better usually, not always, and the counterexample
+  is not negligible.
+- Any absolute refined-arm number as a point estimate — `shared_refined` still spans
+  0.450–11.550 mm.
+- That E7 no longer ever shows per-camera beating shared. **It does, at seed 48.** The Phase
+  19.1 concern is live, not retired.
 
-**Caveats that belong in the prose:** n = 5, so p = 0.031 one-tailed is suggestive rather than
-decisive; this is one metric; and it bounds scenario-generator seed variation only, not real-data
-variation.
+**Caveats that belong in the prose:** one metric; scenario-generator seed variation only, not
+real-data variation; and the effect size (~1 mm) is comparable in magnitude to both the
+counterexample and to run-to-run variation in the refined arms.
 
 **This also retires the Phase 19.1 worry** that E7 once showed per-camera beating shared. Across
 five seeds it does not, in either pairing.
