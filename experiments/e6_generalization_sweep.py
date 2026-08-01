@@ -532,9 +532,38 @@ def _resolve_config_identity(config: dict) -> dict:
     return {**config, "normal_fixed": GRID_NORMAL_FIXED}
 
 
+# The fields that determine which SCENE `run_configuration` builds (WR-03).
+# Deliberately excludes `axis`, `axis_value`, `is_baseline`, and `config_key`
+# -- those only LABEL which row a configuration illustrates and do not change
+# what gets computed. The three `is_baseline` configurations (`index/1.333`,
+# `layout/grid`, `scale/default`) are, by `build_axis_configurations`'
+# construction, the SAME scene under three different labels; comparing full
+# identity (including the label fields) guaranteed a mismatch no correct run
+# could avoid. Comparing only this set is a fix at the cause, not a loosened
+# guard: every field that actually changes the scene is still compared, so a
+# checkpoint that predates an axis-value edit (e.g. a changed `n_water`,
+# `layout`, or scale geometry) still degrades to `status="failed"` below.
+_SCENARIO_IDENTITY_KEYS: tuple[str, ...] = (
+    "n_cameras",
+    "layout",
+    "n_water",
+    "depth_range",
+    "xy_extent",
+    "spacing",
+    "normal_fixed",
+)
+
+
+def _scenario_identity(identity: dict) -> dict:
+    """Restrict a full configuration identity to `_SCENARIO_IDENTITY_KEYS`."""
+    return {key: identity.get(key) for key in _SCENARIO_IDENTITY_KEYS}
+
+
 def _config_identity_matches(config: dict, cached_config: object) -> bool:
     """True if a checkpoint's recorded config identity matches the one
-    recomputed for `config` right now (WR-03, T-19.2-63).
+    recomputed for `config` right now, on the fields that determine the
+    SCENE (WR-03, T-19.2-63; scope narrowed from full-identity to
+    `_SCENARIO_IDENTITY_KEYS`).
 
     Both sides are compared through a JSON round-trip so tuple/list
     equivalence (e.g. `depth_range`, a tuple in-memory but a list once
@@ -544,7 +573,9 @@ def _config_identity_matches(config: dict, cached_config: object) -> bool:
     """
     expected = json.loads(json.dumps(_resolve_config_identity(config), sort_keys=True))
     actual = json.loads(json.dumps(cached_config, sort_keys=True))
-    return actual == expected
+    if not isinstance(actual, dict):
+        return False
+    return _scenario_identity(actual) == _scenario_identity(expected)
 
 
 # ---------------------------------------------------------------------------

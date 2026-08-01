@@ -537,6 +537,99 @@ def test_config_identity_matches_helper():
     assert not m._config_identity_matches(config, mutated)
 
 
+def test_baseline_configs_match_despite_differing_axis_labels():
+    """Plan 19.2-27 Task 2 (WR-03 collision fix): the three `is_baseline`
+    configurations (`index/1.333`, `layout/grid`, `scale/default`) are the
+    SAME scene under three different `axis`/`axis_value` labels
+    (`build_axis_configurations`' own docstring). A checkpoint recorded from
+    ANY ONE of them must match all three -- comparing full identity
+    (including the label fields) previously guaranteed a mismatch no
+    correct run could avoid, since `axis`/`axis_value` necessarily differ
+    across the three. This is the failure `--check` could not pass for any
+    baseline row (19.2-22-SUMMARY.md § `--check`)."""
+    configs = m.build_axis_configurations()
+    baseline_configs = [c for c in configs if c["is_baseline"]]
+    assert len(baseline_configs) == 3
+    assert {c["axis"] for c in baseline_configs} == {"index", "layout", "scale"}
+
+    # A checkpoint identity recorded from the FIRST baseline config (the
+    # "index" axis's row) -- exactly what `run_configuration` would write
+    # after computing this shared scene once.
+    recorded = json.loads(json.dumps(m._resolve_config_identity(baseline_configs[0])))
+
+    for config in baseline_configs:
+        assert m._config_identity_matches(config, recorded), (
+            f"baseline config axis={config['axis']!r} axis_value="
+            f"{config['axis_value']!r} did not match the identity recorded "
+            f"from axis={baseline_configs[0]['axis']!r}"
+        )
+
+
+def test_scenario_field_mutation_still_trips_wr03_after_the_restriction(tmp_path):
+    """The restricted (scenario-only) identity comparison still catches a
+    checkpoint that predates a SCENARIO change -- proving Task 2 fixed the
+    collision at its cause rather than loosening the guard into a no-op.
+    Mutates `layout` (not `n_water`, to exercise a different
+    scenario-determining field than `test_reconstitute_row_flags_mismatched_
+    config` already covers) on one of the three baseline configurations,
+    which under the OLD full-identity comparison would ALSO have tripped --
+    the discriminating claim here is that it STILL trips under the NEW
+    restricted comparison, i.e. `layout` was not accidentally dropped from
+    `_SCENARIO_IDENTITY_KEYS`."""
+    config = [c for c in m.build_axis_configurations() if c["is_baseline"]][0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    identity = json.loads(json.dumps(m._resolve_config_identity(config)))
+    assert identity["layout"] == "grid"
+    mutated = {**identity, "layout": "ring"}
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "config": mutated,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    row = m._reconstitute_row(config, configs_dir, default_seed=42)
+
+    assert row["status"] == "failed"
+    assert "does not match" in row["status_reason"]
+    for col in m._METRIC_COLUMNS:
+        assert row[col] is None
+
+
+def test_axis_label_mutation_alone_does_not_trip_wr03(tmp_path):
+    """The mirror case: mutating ONLY a presentational field (`axis_value`)
+    -- not a scenario field -- must NOT degrade the row, since it changes no
+    property of the scene that was actually computed. This is the specific
+    behavior the Task 2 fix adds; on EXPECTED_BASE (full-identity
+    comparison) this test fails."""
+    config = [c for c in m.build_axis_configurations() if c["is_baseline"]][0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    identity = json.loads(json.dumps(m._resolve_config_identity(config)))
+    # axis_value is a string on every config (build_axis_configurations casts
+    # even the float index values via str()); mutate it to another axis's
+    # label while leaving every scenario-determining field untouched.
+    relabeled = {**identity, "axis": "layout", "axis_value": "grid"}
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "config": relabeled,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    row = m._reconstitute_row(config, configs_dir, default_seed=42)
+
+    assert row["status"] == "ok"
+    assert row["reprojection_rms_px"] is not None
+
+
 def test_reconstitute_row_flags_mismatched_config(tmp_path):
     """_run_check's row reconstitution refuses a cached checkpoint whose
     recorded config does not match the recomputed configuration (WR-03,
