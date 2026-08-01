@@ -109,11 +109,11 @@ Phase 19.1 (consolidation + the two risk-carrying runs):
 
 Phase 19.2 (the remaining new results and the provenance close-out):
 
-- [ ] **EXP-07**: E3 emits `code_constants.csv` (declared vs source value with pass/fail), `newton_iterations.csv`, and `cpr_grouping.csv` covering the six existing `tab:cpr` rows plus per-camera-mode rows, validating the *P* formula against live `pack_params` length; tier 1's constants are also asserted in the test suite so CI breaks when a default changes
+- [x] **EXP-07**: E3 emits `code_constants.csv` (declared vs source value with pass/fail), `newton_iterations.csv`, and `cpr_grouping.csv` covering the six existing `tab:cpr` rows plus per-camera-mode rows, validating the *P* formula against live `pack_params` length; tier 1's constants are also asserted in the test suite so CI breaks when a default changes
 - [x] **EXP-08**: E4 runs the cameras {8,12,16} × frames {50,100,200} grid plus E2's real rig as a tenth point, all on one machine, reporting only what `benchmark.json` recorded
-- [ ] **EXP-09**: E5 sweeps `n_assumed` in a fine band around 1.333 on the real rig's geometry and reports depth/scale bias and held-out RMSE against Δn, showing the bias moves while the reprojection residual does not
-- [ ] **EXP-10**: E6 sweeps refractive index (1.33→1.55), layout (grid/ring/line), and scale one axis at a time through a common baseline, emitting tidy long-format rows carrying which axis varied
-- [ ] **EXP-11**: Every committed result across E1–E7 carries its seed, AquaCal version, git SHA, and environment — reusing `benchmark.json` rather than hand-rolling a sidecar, with a minimal sidecar for E3's tiers 1–2 which never run a calibration — and `experiments/README.md`'s provenance table maps every paper artifact to its script, data file, and figure generator
+- [x] **EXP-09**: E5 sweeps `n_assumed` in a fine band around 1.333 on the real rig's geometry and reports depth/scale bias and held-out RMSE against Δn, showing the bias moves while the reprojection residual does not
+- [x] **EXP-10**: E6 sweeps refractive index (1.33→1.55), layout (grid/ring/line), and scale one axis at a time through a common baseline, emitting tidy long-format rows carrying which axis varied
+- [x] **EXP-11**: Every committed result across E1–E7 carries its seed, AquaCal version, git SHA, and environment — reusing `benchmark.json` rather than hand-rolling a sidecar, with a minimal sidecar for E3's tiers 1–2 which never run a calibration — and `experiments/README.md`'s provenance table maps every paper artifact to its script, data file, and figure generator
 
 **Deliberately not requirements here.** X4 (demoting notebook 02 to `RIG_SIZE="small"`) is
 Phase 21 work, landing with the tutorial re-execution under DATA-03. X5 (the three new figure
@@ -222,11 +222,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EXP-04 | Phase 19.1 | Complete |
 | EXP-05 | Phase 19.1 | Complete |
 | EXP-06 | Phase 19.1 | Complete |
-| EXP-07 | Phase 19.2 | Pending |
+| EXP-07 | Phase 19.2 | Complete |
 | EXP-08 | Phase 19.2 | Complete |
-| EXP-09 | Phase 19.2 | Pending |
-| EXP-10 | Phase 19.2 | Pending |
-| EXP-11 | Phase 19.2 | Pending |
+| EXP-09 | Phase 19.2 | Complete |
+| EXP-10 | Phase 19.2 | Complete |
+| EXP-11 | Phase 19.2 | Complete |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
