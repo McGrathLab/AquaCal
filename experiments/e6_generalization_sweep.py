@@ -500,7 +500,7 @@ def build_row(
 # ---------------------------------------------------------------------------
 
 
-def build_provenance_sidecar(seed: int) -> dict:
+def build_provenance_sidecar(seed: int, environment: dict | None = None) -> dict:
     """Build E6's minimal provenance sidecar, in E3's exact shape (D-31).
 
     E6 runs many small calibrations, none of which is a single canonical
@@ -515,13 +515,23 @@ def build_provenance_sidecar(seed: int) -> dict:
     `solver_config["seed"]`, matching every `assemble_benchmark_record`-shaped
     file, while the top-level `seed` remains for a reader of this sidecar
     specifically.
+
+    Args:
+        seed: The run seed.
+        environment: A pre-captured `capture_environment()` block to reuse --
+            `_run_full`/`_run_smoke_configs` pass the SAME block used to
+            stamp every per-configuration checkpoint, so the sidecar names
+            the same commit as the sweep it describes -- or `None` to
+            capture fresh here (e.g. a standalone caller/test).
     """
     return {
         "experiment": "e6",
         "schema_version": 1,
         "seed": seed,
         "solver_config": {"seed": seed},
-        "environment": capture_environment(),
+        "environment": environment
+        if environment is not None
+        else capture_environment(),
     }
 
 
@@ -591,6 +601,7 @@ def run_configuration(
     *,
     refine_intrinsics: bool = True,
     force: bool = False,
+    environment: dict | None = None,
 ) -> dict:
     """Run (or skip, if already cached) one distinct scene, checkpointing to JSON.
 
@@ -645,6 +656,16 @@ def run_configuration(
             `out_dir/e6_configs/`.
         refine_intrinsics: Forwarded to `calibrate_synthetic`.
         force: Overwrite an existing checkpoint instead of skipping it.
+        environment: A pre-captured `capture_environment()` block to stamp
+            this checkpoint with, or `None` to capture fresh here. `run_sweep`
+            captures ONCE per sweep and passes the same block to every call
+            so one sweep names one commit (measured 2026-07-31:
+            `capture_environment()` shells out to `git rev-parse` per call,
+            so a commit landing mid-sweep previously split `git_sha` across
+            the artifact set -- `baseline.json` recorded `3d5c3e6`, the other
+            eleven `3d0aa3e`). `None` remains supported so a direct,
+            standalone call (as several unit tests make) still produces a
+            complete, self-describing checkpoint.
 
     Returns:
         A dict with `status` (one of `STATUS_VALUES`), `status_reason`, and
@@ -747,7 +768,9 @@ def run_configuration(
         "seed": seed,
         "n_frames": n_frames,
         "schema_version": 1,
-        "environment": capture_environment(),
+        "environment": environment
+        if environment is not None
+        else capture_environment(),
         "solver_config": {"seed": seed},
         "config": _resolve_config_identity(config),
     }
@@ -764,6 +787,7 @@ def run_sweep(
     *,
     refine_intrinsics: bool = True,
     force: bool = False,
+    environment: dict | None = None,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -772,6 +796,12 @@ def run_sweep(
     rows in `configs` reuse one computed result, satisfying "computed ONCE
     and reused for all three baseline rows" without duplicating I/O.
 
+    The environment is captured ONCE -- here if the caller did not already
+    capture one, otherwise the caller's own block is reused -- and the same
+    block is stamped on every checkpoint this call writes, not once per
+    configuration, so one sweep names one commit (see `run_configuration`'s
+    `environment` parameter docstring).
+
     Args:
         configs: `build_axis_configurations()` or `build_smoke_configurations()`.
         seed: Seed forwarded to every configuration.
@@ -779,10 +809,14 @@ def run_sweep(
         out_dir: Root output directory forwarded to `run_configuration`.
         refine_intrinsics: Forwarded to `calibrate_synthetic`.
         force: Forwarded to `run_configuration`.
+        environment: A pre-captured `capture_environment()` block to reuse
+            (e.g. so a caller can stamp the same block on this sweep's
+            provenance sidecar), or `None` to capture fresh here.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
     """
+    environment = environment if environment is not None else capture_environment()
     cache: dict[str, dict] = {}
     rows: list[dict] = []
     for config in configs:
@@ -795,6 +829,7 @@ def run_sweep(
                 out_dir,
                 refine_intrinsics=refine_intrinsics,
                 force=force,
+                environment=environment,
             )
         outcome = cache[config_key]
         row = build_row(
@@ -919,15 +954,27 @@ def _run_check(args: argparse.Namespace) -> int:
 
 def _run_smoke_configs(out_dir: Path, seed: int) -> int:
     """Run the reduced smoke config set, then probe the skip-if-exists path (review M7)."""
+    environment = capture_environment()
     configs = build_smoke_configurations()
     df = run_sweep(
-        configs, seed, _SMOKE_N_FRAMES, out_dir, refine_intrinsics=False, force=True
+        configs,
+        seed,
+        _SMOKE_N_FRAMES,
+        out_dir,
+        refine_intrinsics=False,
+        force=True,
+        environment=environment,
     )
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
-        json.dump(build_provenance_sidecar(seed), f, indent=2, sort_keys=True)
+        json.dump(
+            build_provenance_sidecar(seed, environment=environment),
+            f,
+            indent=2,
+            sort_keys=True,
+        )
 
     # Exercise the skip-if-exists path end to end (review M7, CR-02): re-run
     # the first already-checkpointed configuration WITHOUT --force and
@@ -991,8 +1038,16 @@ def _run_smoke(args: argparse.Namespace) -> int:
 
 def _run_full(args: argparse.Namespace) -> int:
     """Run the full axis sweep, write `generalization_sweep.csv`, and (D-31)
-    the `e6_provenance.json` sidecar beside it."""
+    the `e6_provenance.json` sidecar beside it.
+
+    Captures the environment ONCE, here, and passes it to both `run_sweep`
+    (which stamps every per-configuration checkpoint from it) and the
+    provenance sidecar, so the whole artifact set -- checkpoints and sidecar
+    alike -- names one commit rather than whatever was HEAD when each piece
+    happened to be written.
+    """
     out_dir = resolve_out_dir(args.out)
+    environment = capture_environment()
     configs = build_axis_configurations()
     df = run_sweep(
         configs,
@@ -1001,6 +1056,7 @@ def _run_full(args: argparse.Namespace) -> int:
         out_dir,
         refine_intrinsics=True,
         force=args.force,
+        environment=environment,
     )
     write_experiment_csv(
         df,
@@ -1009,7 +1065,12 @@ def _run_full(args: argparse.Namespace) -> int:
         force=args.force,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
-        json.dump(build_provenance_sidecar(args.seed), f, indent=2, sort_keys=True)
+        json.dump(
+            build_provenance_sidecar(args.seed, environment=environment),
+            f,
+            indent=2,
+            sort_keys=True,
+        )
     return 0
 
 

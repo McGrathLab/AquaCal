@@ -513,6 +513,90 @@ def test_provenance_sidecar_shape():
     assert REQUIRED_ENVIRONMENT_KEYS <= set(sidecar["environment"])
 
 
+def test_provenance_sidecar_reuses_a_passed_environment():
+    """build_provenance_sidecar stamps the CALLER's environment block when
+    given one, rather than capturing a second, potentially different, one."""
+    fixed_environment = {
+        "aquacal_version": "x",
+        "git_sha": "fixed-sha",
+        "python_version": "y",
+        "numpy_version": "z",
+        "scipy_version": "w",
+    }
+    sidecar = m.build_provenance_sidecar(seed=42, environment=fixed_environment)
+    assert sidecar["environment"] == fixed_environment
+
+
+# ---------------------------------------------------------------------------
+# Provenance (D-31, EXP-11): environment captured ONCE per sweep, not once
+# per configuration (plan 19.2-27 Task 3)
+# ---------------------------------------------------------------------------
+
+
+def test_run_sweep_captures_environment_once(tmp_path, monkeypatch):
+    """Every checkpoint written within one run_sweep call carries an
+    IDENTICAL git_sha, and capture_environment is called exactly once for
+    the whole sweep -- not once per configuration.
+
+    Measured cause (2026-07-31): `capture_environment()` shells out to `git
+    rev-parse` per call, so a commit landing mid-sweep previously split
+    `git_sha` across the artifact set (`baseline.json` recorded one sha, the
+    other eleven checkpoints recorded another). On EXPECTED_BASE (before
+    this fix), `run_configuration` calls `capture_environment()` itself for
+    every configuration, so this test's call-count assertion fails there.
+    """
+    call_count = {"n": 0}
+
+    def _fake_capture_environment():
+        call_count["n"] += 1
+        return {
+            "aquacal_version": "x",
+            "git_sha": f"sha-{call_count['n']}",
+            "python_version": "y",
+            "numpy_version": "z",
+            "scipy_version": "w",
+        }
+
+    monkeypatch.setattr(m, "capture_environment", _fake_capture_environment)
+
+    def _fail_fast(**kwargs):
+        raise RuntimeError("keep this test fast -- fail before any real solve")
+
+    monkeypatch.setattr(m, "build_grid_scenario", _fail_fast)
+
+    configs = m.build_axis_configurations()
+    # Three distinct config_keys, each a separate run_configuration call
+    # (and therefore a separate checkpoint write): the shared "baseline" key
+    # plus two of the non-baseline index-axis entries.
+    selected = [
+        c
+        for c in configs
+        if c["config_key"] in {"baseline", "index_1.36", "index_1.39"}
+    ]
+    assert {c["config_key"] for c in selected} == {
+        "baseline",
+        "index_1.36",
+        "index_1.39",
+    }
+
+    m.run_sweep(selected, seed=42, n_frames=10, out_dir=tmp_path, force=True)
+
+    assert call_count["n"] == 1, (
+        f"capture_environment was called {call_count['n']} times for one "
+        "sweep of 3 distinct configurations; expected exactly 1"
+    )
+
+    configs_dir = tmp_path / "e6_configs"
+    written = sorted(configs_dir.glob("*.json"))
+    assert len(written) == 3
+    git_shas = set()
+    for path in written:
+        with open(path) as f:
+            checkpoint = json.load(f)
+        git_shas.add(checkpoint["environment"]["git_sha"])
+    assert len(git_shas) == 1, f"checkpoints disagree on git_sha: {git_shas}"
+
+
 def test_e6_columns_count():
     """generalization_sweep.csv's header carries 30 columns: the original 28
     (unchanged by the provenance work, plan 19.2-23) plus the two optimality
