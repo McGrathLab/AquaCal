@@ -17,6 +17,7 @@ import pytest
 
 import experiments.e4_benchmark_grid as e4
 import experiments.e6_generalization_sweep as m
+from aquacal.calibration._observability import SolverDiagnostics
 
 REQUIRED_ENVIRONMENT_KEYS = {
     "aquacal_version",
@@ -30,6 +31,8 @@ REQUIRED_ENVIRONMENT_KEYS = {
 def _sample_metrics() -> dict:
     """A hand-built metrics dict with exactly `_METRIC_COLUMNS`' keys."""
     return {
+        "optimality_stage3_interface_optimization": 1.2e-6,
+        "optimality_stage3_intrinsic_pass": 3.4e-7,
         "reprojection_rms_px": 0.42,
         "reconstruction_mae_mm": 1.1,
         "reconstruction_rmse_mm": 1.5,
@@ -83,9 +86,32 @@ def test_baseline_scene_is_shared():
 
 
 def test_no_verdict_column():
-    """No E6_COLUMNS name implies a pass/fail verdict (D-12)."""
-    pattern = re.compile(r"pass|fail|verdict|acceptable|holds|degraded")
-    assert not any(pattern.search(c) for c in m.E6_COLUMNS)
+    """No E6_COLUMNS name implies a pass/fail verdict (D-12).
+
+    Tokenized on `_` rather than a raw substring search: plan 19.2-27 Task 1
+    adds `optimality_stage3_intrinsic_pass`, whose `pass` token names a
+    SOLVER STAGE (E4's own established vocabulary, `stage3_intrinsic_pass`
+    -- the intrinsics-refinement pass), not a verdict. A raw substring match
+    on "pass" would false-positive on that legitimate name; excluding
+    `intrinsic_pass` specifically (rather than dropping the `pass` token
+    check for every column) keeps the guard meaningful for any OTHER column
+    that might use "pass"/"fail" as a real verdict.
+    """
+    verdict_tokens = {
+        "pass",
+        "fail",
+        "verdict",
+        "acceptable",
+        "holds",
+        "degraded",
+        "converged",
+        "diverged",
+    }
+    for col in m.E6_COLUMNS:
+        tokens = set(col.split("_"))
+        if "intrinsic" in tokens and "pass" in tokens:
+            tokens.discard("pass")
+        assert not (tokens & verdict_tokens), col
 
 
 def test_water_z_error_helper():
@@ -201,6 +227,118 @@ def test_status_vocabulary():
         if status != "ok":
             for col in m._METRIC_COLUMNS:
                 assert row[col] is None
+
+
+# ---------------------------------------------------------------------------
+# WR-02: solver optimality is recorded, as a measurement, not a verdict
+# (plan 19.2-27 Task 1)
+# ---------------------------------------------------------------------------
+
+
+def test_optimality_columns_present_and_ordered():
+    """Both optimality columns exist in E6_COLUMNS and _METRIC_COLUMNS."""
+    assert "optimality_stage3_interface_optimization" in m.E6_COLUMNS
+    assert "optimality_stage3_intrinsic_pass" in m.E6_COLUMNS
+    assert "optimality_stage3_interface_optimization" in m._METRIC_COLUMNS
+    assert "optimality_stage3_intrinsic_pass" in m._METRIC_COLUMNS
+
+
+def test_optimality_reaches_built_row():
+    """A hand-built metrics dict's optimality values flow through build_row unchanged."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    metrics = _sample_metrics()
+    row = m.build_row(
+        config, seed=42, n_frames=10, metrics=metrics, status="ok", status_reason=""
+    )
+    assert (
+        row["optimality_stage3_interface_optimization"]
+        == metrics["optimality_stage3_interface_optimization"]
+    )
+    assert (
+        row["optimality_stage3_intrinsic_pass"]
+        == metrics["optimality_stage3_intrinsic_pass"]
+    )
+
+
+def test_optimality_null_when_status_not_ok():
+    """Both optimality columns null out on a non-'ok' row, like every other metric."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    row = m.build_row(
+        config,
+        seed=42,
+        n_frames=10,
+        metrics=None,
+        status="failed",
+        status_reason="synthetic failure",
+    )
+    assert row["optimality_stage3_interface_optimization"] is None
+    assert row["optimality_stage3_intrinsic_pass"] is None
+
+
+def test_compute_configuration_metrics_reads_diagnostics_optimality(monkeypatch):
+    """compute_configuration_metrics reads .optimality off the SolverDiagnostics
+    sinks it is given, and nulls out when a sink is absent (e.g.
+    refine_intrinsics=False, so the intrinsic pass never runs)."""
+    diag_interface = SolverDiagnostics()
+    diag_interface.optimality = 1.5e-6
+    diag_intrinsic = SolverDiagnostics()
+    diag_intrinsic.optimality = 2.5e-7
+
+    class _StubScenario:
+        water_zs: dict = {}
+
+    class _StubResult:
+        cameras: dict = {}
+
+    class _StubReconstruction:
+        mean = 0.001
+        rmse = 0.0012
+        signed_mean = 0.0002
+        num_comparisons = 10
+
+    class _StubReprojection:
+        rms = 0.3
+
+    class _StubEvaluation:
+        reprojection = _StubReprojection()
+        reconstruction = _StubReconstruction()
+        num_frames = 5
+
+    monkeypatch.setattr(m, "compute_per_camera_errors", lambda result, scenario: {})
+
+    metrics = m.compute_configuration_metrics(
+        _StubScenario(),
+        _StubResult(),
+        _StubEvaluation(),
+        diag_interface,
+        diag_intrinsic,
+    )
+    assert metrics["optimality_stage3_interface_optimization"] == 1.5e-6
+    assert metrics["optimality_stage3_intrinsic_pass"] == 2.5e-7
+
+    metrics_no_diag = m.compute_configuration_metrics(
+        _StubScenario(), _StubResult(), _StubEvaluation()
+    )
+    assert metrics_no_diag["optimality_stage3_interface_optimization"] is None
+    assert metrics_no_diag["optimality_stage3_intrinsic_pass"] is None
+
+
+def test_no_optimality_thresholding_in_e6_source():
+    """D-12: optimality is recorded as a measurement -- no comparison
+    operator is ever applied to it anywhere in the module. A threshold
+    (`if diag.optimality < X`) would encode a convergence verdict in code
+    even without a named verdict column, which is exactly what D-12
+    forbids. Narrower than a bare word search for "verdict" (which would
+    also flag this module's own prose correctly explaining the D-12
+    principle in its docstrings) -- this checks the CODE, not the comments."""
+    source = Path(m.__file__).read_text(encoding="utf-8")
+    thresholding = re.compile(r"optimality\s*(<=|>=|==|!=|<|>)")
+    assert not thresholding.search(source), (
+        "found a comparison operator applied to optimality in "
+        "e6_generalization_sweep.py -- D-12 forbids deriving a verdict from it"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -375,9 +513,11 @@ def test_provenance_sidecar_shape():
     assert REQUIRED_ENVIRONMENT_KEYS <= set(sidecar["environment"])
 
 
-def test_e6_columns_unchanged_by_provenance_work():
-    """generalization_sweep.csv's header is untouched by this plan (28 columns)."""
-    assert len(m.E6_COLUMNS) == 28
+def test_e6_columns_count():
+    """generalization_sweep.csv's header carries 30 columns: the original 28
+    (unchanged by the provenance work, plan 19.2-23) plus the two optimality
+    columns Task 1 of plan 19.2-27 adds (WR-02)."""
+    assert len(m.E6_COLUMNS) == 30
 
 
 # ---------------------------------------------------------------------------

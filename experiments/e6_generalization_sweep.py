@@ -57,6 +57,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from aquacal.calibration._observability import SolverDiagnostics
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets.pipelines import calibrate_synthetic, compute_per_camera_errors
 from aquacal.datasets.synthetic import generate_synthetic_detections
@@ -185,6 +186,15 @@ E6_COLUMNS: list[str] = [
     "spacing",
     "status",
     "status_reason",
+    # WR-02: the first-order solver optimality that distinguishes a converged
+    # solve from a diverged one -- e.g. the `double_scale` row that published
+    # 1536 px RMS / 1.33 km reconstruction RMSE under status="ok" with nothing
+    # in the record to flag it (19.2-22-SUMMARY.md). A MEASUREMENT (D-12): no
+    # converged/diverged verdict is derived from it anywhere in this module.
+    # Null whenever status != "ok"; optimality_stage3_intrinsic_pass is also
+    # null whenever refine_intrinsics=False, since that pass never runs.
+    "optimality_stage3_interface_optimization",
+    "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
     "reconstruction_mae_mm",
     "reconstruction_rmse_mm",
@@ -196,12 +206,14 @@ E6_COLUMNS: list[str] = [
     "num_comparisons",
     "num_frames",
 ]
-assert len(E6_COLUMNS) == 28 and len(set(E6_COLUMNS)) == 28
+assert len(E6_COLUMNS) == 30 and len(set(E6_COLUMNS)) == 30
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
 # Columns whose value is null for any row whose status is not "ok".
 _METRIC_COLUMNS: list[str] = [
+    "optimality_stage3_interface_optimization",
+    "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
     "reconstruction_mae_mm",
     "reconstruction_rmse_mm",
@@ -350,7 +362,13 @@ def compute_water_z_error_mm_mean(
     return float(np.mean(errors_mm))
 
 
-def compute_configuration_metrics(scenario, result, evaluation) -> dict:
+def compute_configuration_metrics(
+    scenario,
+    result,
+    evaluation,
+    diag_stage3_interface_optimization: SolverDiagnostics | None = None,
+    diag_stage3_intrinsic_pass: SolverDiagnostics | None = None,
+) -> dict:
     """Build one configuration's metric-only fields from a completed run.
 
     Pure computation over already-produced objects -- no calibration is run
@@ -364,6 +382,14 @@ def compute_configuration_metrics(scenario, result, evaluation) -> dict:
         result: The `CalibrationResult` returned by `calibrate_synthetic`.
         evaluation: The `HeldOutEvaluation` returned by `evaluate_calibration`
             on a held-out detection set.
+        diag_stage3_interface_optimization: The `SolverDiagnostics` sink
+            passed to `calibrate_synthetic`'s `diagnostics_out` for the
+            interface-optimization solve (WR-02), or `None` if the caller
+            did not capture diagnostics -- `optimality` is then null rather
+            than fabricated.
+        diag_stage3_intrinsic_pass: The `SolverDiagnostics` sink for the
+            intrinsic pass, or `None`. Also carries `optimality=None` when
+            `refine_intrinsics=False`, since that pass never runs.
 
     Returns:
         A dict with exactly the keys in `_METRIC_COLUMNS`.
@@ -376,6 +402,16 @@ def compute_configuration_metrics(scenario, result, evaluation) -> dict:
 
     reconstruction = evaluation.reconstruction
     return {
+        "optimality_stage3_interface_optimization": (
+            diag_stage3_interface_optimization.optimality
+            if diag_stage3_interface_optimization is not None
+            else None
+        ),
+        "optimality_stage3_intrinsic_pass": (
+            diag_stage3_intrinsic_pass.optimality
+            if diag_stage3_intrinsic_pass is not None
+            else None
+        ),
         "reprojection_rms_px": float(evaluation.reprojection.rms),
         "reconstruction_mae_mm": (
             float(reconstruction.mean * 1000.0) if reconstruction is not None else None
@@ -622,12 +658,18 @@ def run_configuration(
             spacing=config["spacing"],
             n_water=config["n_water"],
         )
+        diag_stage3 = SolverDiagnostics()
+        diag_intrinsic_pass = SolverDiagnostics()
         result, _detections = calibrate_synthetic(
             scenario,
             n_water=scenario.n_water,
             refine_intrinsics=refine_intrinsics,
             seed=seed,
             normal_fixed=GRID_NORMAL_FIXED,
+            diagnostics_out={
+                "stage3_interface_optimization": diag_stage3,
+                "stage3_intrinsic_pass": diag_intrinsic_pass,
+            },
         )
 
         board = BoardGeometry(scenario.board_config)
@@ -654,7 +696,9 @@ def run_configuration(
             seed=holdout_seed,
         )
         evaluation = evaluate_calibration(result, holdout_detections, board)
-        metrics = compute_configuration_metrics(scenario, result, evaluation)
+        metrics = compute_configuration_metrics(
+            scenario, result, evaluation, diag_stage3, diag_intrinsic_pass
+        )
         outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
     except Exception as exc:
         logger.warning(
