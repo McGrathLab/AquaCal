@@ -24,7 +24,11 @@ import pathlib
 import pandas as pd
 import pytest
 
-RESULTS_DIR = pathlib.Path("experiments/results")
+# Anchored to the repository root via this file's own location, not the
+# process working directory -- a gate that resolves relative to cwd can
+# vanish from a run silently just because pytest was invoked from elsewhere
+# (WR-06). tests/unit/test_experiments_provenance.py -> parents[2] == repo root.
+RESULTS_DIR = pathlib.Path(__file__).resolve().parents[2] / "experiments" / "results"
 
 # The subset of capture_environment()'s live key names (src/aquacal/io/
 # benchmark.py) covering library version, git SHA, and the Python/NumPy/SciPy
@@ -43,11 +47,13 @@ REQUIRED_ENVIRONMENT_KEYS = frozenset(
 
 # Committed JSON files that carry their OWN schema rather than
 # assemble_benchmark_record's (no `schema_version` key at all), each with a
-# one-line comment naming what covers its provenance instead. Both are
+# one-line comment naming what covers its provenance instead. All three are
 # excluded from the schema_version-keyed checks below by construction (they
-# have no schema_version to trigger those checks on) -- listed here anyway so
-# a reader can see the full set of exceptions in one place rather than
-# inferring it from what the glob happens not to catch.
+# have no schema_version to trigger those checks on) -- listed here so a
+# reader can see the full set of exceptions in one place rather than
+# inferring it from what the glob happens not to catch. This set is verified
+# to be exact (not just a superset) by
+# TestSelfDescribingJson.test_schema_versionless_json_set_equals_self_describing_json.
 SELF_DESCRIBING_JSON = frozenset(
     {
         # real_rig_metrics.json: E2's own schema, carries a `provenance` dict
@@ -59,6 +65,12 @@ SELF_DESCRIBING_JSON = frozenset(
         # (`per_arm` singular-value/correlation data), covered by the four
         # e7_benchmark_*.json records produced by the same E7 run.
         "interface_ablation_conditioning.json",
+        # calibration.json: E2's raw calibration artifact, copied verbatim
+        # from the same pipeline run that also wrote the sibling
+        # benchmark.json (same directory, same run, per the README's
+        # provenance table) -- that sibling file is this one's provenance
+        # record too.
+        "calibration.json",
     }
 )
 
@@ -124,13 +136,14 @@ CSV_TO_RECORD: dict[str, str] = {
         "e1_benchmark_nonrefractive.json (same E1 run)"
     ),
     "generalization_sweep.csv": (
-        "self (own seed column); no benchmark.json backs it -- "
+        "experiments/results/e6_provenance.json (E6's run-level sidecar, "
+        "plan 19.2-16) -- also carries its own seed column; the twelve "
         "experiments/results/e6_configs/*.json are per-configuration "
-        "checkpoints, not schema_version-carrying provenance records"
+        "checkpoints with their own schema_version and provenance"
     ),
     "index_sensitivity.csv": (
-        "self (own seed column); no benchmark.json backs it (E5 has no "
-        "per-row JSON sidecar)"
+        "experiments/results/e5_provenance.json (E5's run-level sidecar, "
+        "plan 19.2-19) -- also carries its own seed column"
     ),
     "interface_ablation.csv": (
         "experiments/results/e7_benchmark_shared_fixed.json + "
@@ -215,12 +228,24 @@ class TestEnvironmentPresence:
         assert not missing, f"{path}: environment block missing keys {missing}"
 
     def test_environment_presence_check_rejects_a_mutated_record(self, tmp_path):
-        """Guard: prove the checker actually rejects a record with no
-        environment block, not only records that already pass."""
-        mutated = tmp_path / "mutated_benchmark.json"
-        mutated.write_text(json.dumps({"schema_version": 1}))
-        record = _load_json(mutated)
-        assert "environment" not in record
+        """Guard: prove the checker rejects a REAL record with its
+        environment block removed -- not only a hand-built dict that was
+        never going to pass anyway. The negative control this replaces was a
+        tautology: it wrote {"schema_version": 1} and asserted "environment"
+        not in it, which exercises no project code and cannot fail. Mirrors
+        how the genuine seed guard below mutates a real E4 cell record."""
+        source = RESULTS_DIR / "e4_cells" / "cameras_8_frames_50" / "benchmark.json"
+        if not source.exists():
+            pytest.skip("no E4 cell record present (fresh clone)")
+        record = _load_json(source)
+        assert "environment" in record, (
+            "fixture record unexpectedly missing environment"
+        )
+        del record["environment"]
+        mutated_path = tmp_path / "mutated.json"
+        mutated_path.write_text(json.dumps(record))
+        mutated = _load_json(mutated_path)
+        assert "environment" not in mutated
 
 
 class TestE4CellProvenance:
@@ -303,32 +328,103 @@ class TestSeedProvenance:
         mutated = _load_json(mutated_path)
         assert _record_seed(mutated) is None
 
-    def test_new_phase_csvs_carry_a_seed_column(self):
-        """benchmark_grid.csv, index_sensitivity.csv, and generalization_sweep.csv
-        have no benchmark.json behind every row, so their own `seed` column IS
-        their seed provenance."""
-        for name in (
-            "benchmark_grid.csv",
-            "index_sensitivity.csv",
-            "generalization_sweep.csv",
-        ):
-            path = RESULTS_DIR / name
-            if not path.exists():
-                pytest.skip(f"{name} not present (fresh clone)")
-            df = pd.read_csv(path)
-            assert "seed" in df.columns, f"{name} has no seed column"
-            assert df["seed"].notna().all(), f"{name} has a null seed in some row"
+    # CSV name -> the sidecar record that now covers it end-to-end (plans
+    # 19.2-16 and 19.2-19 gave each a real run-level sidecar; previously
+    # neither had one and the only check was the CSV's own `seed` column).
+    _CSV_FULL_PROVENANCE_SIDECAR: dict[str, str] = {
+        "index_sensitivity.csv": "e5_provenance.json",
+        "generalization_sweep.csv": "e6_provenance.json",
+    }
 
-    def test_e1_and_e7_records_already_comply_on_environment(self):
+    @pytest.mark.parametrize(
+        "csv_name,sidecar_name",
+        sorted(_CSV_FULL_PROVENANCE_SIDECAR.items()),
+        ids=[f"{k}->{v}" for k, v in sorted(_CSV_FULL_PROVENANCE_SIDECAR.items())],
+    )
+    def test_new_phase_csvs_carry_full_provenance(self, csv_name, sidecar_name):
+        """index_sensitivity.csv and generalization_sweep.csv are each backed
+        by a real sidecar record that must carry ALL FOUR EXP-11 fields --
+        seed, aquacal_version, git_sha, and a complete environment block --
+        not only a seed. This replaces a check that verified one field of
+        four while its docstring read as if it verified all of them
+        (19.2-VERIFICATION.md gap 1); a seed-only artifact now fails here.
+        Each CSV is its own parametrized case: one missing file skips only
+        that case (WR-11)."""
+        csv_path = RESULTS_DIR / csv_name
+        sidecar_path = RESULTS_DIR / sidecar_name
+        if not csv_path.exists() or not sidecar_path.exists():
+            pytest.skip(f"{csv_name} or {sidecar_name} not present (fresh clone)")
+
+        df = pd.read_csv(csv_path)
+        assert "seed" in df.columns, f"{csv_name} has no seed column"
+        assert df["seed"].notna().all(), f"{csv_name} has a null seed in some row"
+
+        record = _load_json(sidecar_path)
+        seed = _record_seed(record)
+        assert seed is not None, f"{sidecar_name} carries no solver_config['seed']"
+        env = record.get("environment", {})
+        assert env.get("aquacal_version"), f"{sidecar_name}: missing aquacal_version"
+        assert env.get("git_sha"), f"{sidecar_name}: missing git_sha"
+        missing = REQUIRED_ENVIRONMENT_KEYS - set(env)
+        assert not missing, f"{sidecar_name}: environment missing keys {missing}"
+
+    def test_benchmark_grid_carries_a_seed_column(self):
+        """benchmark_grid.csv has no single sidecar (backed by nine
+        e4_cells/*/benchmark.json records plus benchmark.json for the
+        real-rig row, per CSV_TO_RECORD); its own `seed` column is its seed
+        provenance, and the full four-field check on those backing records
+        is already covered by TestE4CellProvenance and
+        TestOneMachineConsistency."""
+        path = RESULTS_DIR / "benchmark_grid.csv"
+        if not path.exists():
+            pytest.skip("benchmark_grid.csv not present (fresh clone)")
+        df = pd.read_csv(path)
+        assert "seed" in df.columns, "benchmark_grid.csv has no seed column"
+        assert df["seed"].notna().all(), (
+            "benchmark_grid.csv has a null seed in some row"
+        )
+
+    @pytest.mark.parametrize(
+        "name", sorted(SEEDLESS_LEGACY_RECORDS), ids=sorted(SEEDLESS_LEGACY_RECORDS)
+    )
+    def test_e1_and_e7_records_already_comply_on_environment(self, name):
         """E1's two and E7's four committed records pass the same environment
-        key-presence check as everything else -- verified, not re-run."""
-        for name in SEEDLESS_LEGACY_RECORDS:
-            path = RESULTS_DIR / name
-            if not path.exists():
-                pytest.skip(f"{name} not present (fresh clone)")
-            record = _load_json(path)
-            missing = REQUIRED_ENVIRONMENT_KEYS - set(record.get("environment", {}))
-            assert not missing, f"{name}: environment missing keys {missing}"
+        key-presence check as everything else -- verified, not re-run. Each
+        record is its own parametrized case so one missing file skips only
+        its own case (WR-11), not its siblings."""
+        path = RESULTS_DIR / name
+        if not path.exists():
+            pytest.skip(f"{name} not present (fresh clone)")
+        record = _load_json(path)
+        missing = REQUIRED_ENVIRONMENT_KEYS - set(record.get("environment", {}))
+        assert not missing, f"{name}: environment missing keys {missing}"
+
+
+class TestSchemaVersionedDiscoveryCoverage:
+    def test_discovery_includes_e5_e6_and_e6_config_checkpoints_by_name(self):
+        """Widening the checks is not enough on its own -- confirm the new
+        artifacts are actually IN the discovered set those checks iterate
+        over, so a future write that drops schema_version fails loudly here
+        instead of quietly leaving the gate uncovered (T-19.2-94)."""
+        e6_configs_dir = RESULTS_DIR / "e6_configs"
+        if not (RESULTS_DIR / "e5_provenance.json").exists():
+            pytest.skip("e5/e6 provenance not present (fresh clone)")
+
+        discovered = {_pytest_id(p) for p in _SCHEMA_JSON_FILES}
+        assert "e5_provenance.json" in discovered
+        assert "e6_provenance.json" in discovered
+
+        checkpoint_names = sorted(p.name for p in e6_configs_dir.glob("*.json"))
+        assert len(checkpoint_names) == 12, (
+            "expected twelve e6_configs/*.json checkpoints, found "
+            f"{len(checkpoint_names)}: {checkpoint_names}"
+        )
+        for name in checkpoint_names:
+            expected_id = f"e6_configs/{name}"
+            assert expected_id in discovered, (
+                f"{expected_id} exists on disk but is not in the "
+                "schema-versioned discovery set"
+            )
 
 
 class TestCsvProvenanceMap:
@@ -362,9 +458,10 @@ class TestOneMachineConsistency:
         reference = _load_json(reference_path)["environment"]
 
         phase_records = list(_E4_CELL_FILES)
-        e3_sidecar = RESULTS_DIR / "e3_provenance.json"
-        if e3_sidecar.exists():
-            phase_records.append(e3_sidecar)
+        for name in ("e3_provenance.json", "e5_provenance.json", "e6_provenance.json"):
+            sidecar = RESULTS_DIR / name
+            if sidecar.exists():
+                phase_records.append(sidecar)
 
         mismatched = []
         for path in phase_records:
@@ -392,3 +489,18 @@ class TestSelfDescribingJson:
                 "assemble_benchmark_record schema, but now carries schema_version "
                 "-- it may need to move into the general checks instead."
             )
+
+    def test_schema_versionless_json_set_equals_self_describing_json(self):
+        """SELF_DESCRIBING_JSON claims to list the FULL set of exceptions in
+        one place -- enforce that claim exactly, not just verify each named
+        member (the test above), so an untracked exception can no longer
+        exist silently."""
+        if not RESULTS_DIR.exists() or not any(RESULTS_DIR.iterdir()):
+            pytest.skip("experiments/results/ not present (fresh clone)")
+        versionless = {
+            p.name for p in _JSON_FILES if "schema_version" not in _load_json(p)
+        }
+        assert versionless == set(SELF_DESCRIBING_JSON), (
+            f"schema_version-less committed JSON files {versionless} do not "
+            f"match SELF_DESCRIBING_JSON {set(SELF_DESCRIBING_JSON)} exactly"
+        )
