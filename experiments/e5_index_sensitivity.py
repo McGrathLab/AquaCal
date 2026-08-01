@@ -239,7 +239,9 @@ def load_holdout_floor_pct(metrics_path: Path, square_size_m: float) -> float | 
     return (inter_corner_rmse_mm / square_size_mm) * 100.0
 
 
-def build_provenance_sidecar(seed: int) -> dict:
+def build_provenance_sidecar(
+    seed: int, discard_stats: dict[str, int] | None = None
+) -> dict:
     """Build E5's provenance sidecar in E3's exact shape (D-31, WR-04).
 
     Beyond the four EXP-11 fields (seed, AquaCal version, git SHA, environment),
@@ -259,11 +261,21 @@ def build_provenance_sidecar(seed: int) -> dict:
 
     Args:
         seed: The seed the production band ran at (`args.seed`).
+        discard_stats: The band-summed discard counters (plan 19.2-26's
+            `discard_stats_out`, `run_band`'s own summation), or `None` if
+            accounting was never requested for this call. `None` is kept
+            distinguishable from a populated-but-all-zero dict: `None`
+            means "never asked" (e.g. this sidecar was built for `--smoke`
+            or `--check`, neither of which requests accounting), a
+            populated dict means "asked, and this is what the run's own
+            output counted" -- which is what plan 19.2-23's attribution
+            gate (`discard_stats.pnp_guard_rejected > 0` "in the run's own
+            output") needs to be runnable at all.
 
     Returns:
         A dict with `experiment == "e5"`, `schema_version`, `seed`,
-        `solver_config["seed"]`, an `environment` block, and the run
-        configuration described above.
+        `solver_config["seed"]`, an `environment` block, the run
+        configuration described above, and `discard_stats`.
     """
     return {
         "experiment": "e5",
@@ -277,6 +289,7 @@ def build_provenance_sidecar(seed: int) -> dict:
         "n_assumed_band": list(N_ASSUMED_BAND),
         "n_true": N_TRUE,
         "holdout_seed_offset": HOLDOUT_SEED_OFFSET,
+        "discard_stats": discard_stats,
     }
 
 
@@ -408,6 +421,7 @@ def run_index_point(
     n_frames: int,
     seed: int,
     refine_intrinsics: bool = False,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> dict:
     """Run one sweep point: calibrate at `n_assumed`, score against `n_true` ground truth.
 
@@ -428,6 +442,10 @@ def run_index_point(
             uses `seed + HOLDOUT_SEED_OFFSET` -- a distinct seed, distinct
             board poses.
         refine_intrinsics: Forwarded to `calibrate_synthetic`.
+        discard_stats_out: Forwarded to `calibrate_synthetic`'s
+            `discard_stats_out` sink (plan 19.2-26's counters). `None`
+            (the default) disables accounting for this point, matching
+            `calibrate_synthetic`'s own inert-when-omitted default.
 
     Returns:
         A dict with exactly `E5_COLUMNS` as keys (band-level columns left
@@ -442,6 +460,7 @@ def run_index_point(
         refine_intrinsics=refine_intrinsics,
         seed=seed,
         normal_fixed=E5_NORMAL_FIXED,
+        discard_stats_out=discard_stats_out,
     )
 
     holdout_seed = seed + HOLDOUT_SEED_OFFSET
@@ -478,6 +497,7 @@ def run_band(
     seed: int,
     metrics_path: Path,
     refine_intrinsics: bool = False,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> pd.DataFrame:
     """Run every point in `band` and assemble the finished, control-and-floor-filled DataFrame.
 
@@ -489,6 +509,16 @@ def run_band(
         metrics_path: Path to `real_rig_metrics.json` for the live-read
             noise floor.
         refine_intrinsics: Forwarded to each `run_index_point` call.
+        discard_stats_out: If given, accumulates every point's per-point
+            `discard_stats` counters SUMMED into this caller-owned dict
+            (plan 19.2-23's attribution gate reads `pnp_guard_rejected` off
+            the run's own output; E5 previously emitted nothing). Summed
+            across the whole band rather than kept per-point: every point
+            shares the same rig geometry and only `n_assumed` differs, so
+            the attribution question -- did the guard activate anywhere in
+            this run -- is answered at the band level, not per index value.
+            `None` (the default) disables accounting entirely, matching
+            `calibrate_synthetic`'s own inert-when-omitted default.
 
     Returns:
         A DataFrame with exactly `E5_COLUMNS`, every row's `scale_bias_pct_control`/
@@ -497,13 +527,20 @@ def run_band(
     rows = []
     for n_assumed in band:
         logger.info("Running n_assumed=%.4f (n_true=%.4f)...", n_assumed, n_true)
+        point_stats: dict[str, int] | None = (
+            {} if discard_stats_out is not None else None
+        )
         row = run_index_point(
             n_assumed=n_assumed,
             n_true=n_true,
             n_frames=n_frames,
             seed=seed,
             refine_intrinsics=refine_intrinsics,
+            discard_stats_out=point_stats,
         )
+        if discard_stats_out is not None and point_stats:
+            for key, value in point_stats.items():
+                discard_stats_out[key] = discard_stats_out.get(key, 0) + value
         logger.info(
             "  reprojection_rms_px=%.4f scale_bias_pct=%.4f",
             row["reprojection_rms_px"],
@@ -541,8 +578,14 @@ def _default_metrics_path() -> Path:
 
 
 def _run_full(args: argparse.Namespace) -> int:
-    """Run the full N_ASSUMED_BAND at a well-conditioned frame count."""
+    """Run the full N_ASSUMED_BAND at a well-conditioned frame count.
+
+    Requests discard-stats accounting (plan 19.2-26's counters, summed by
+    `run_band` across the whole band) so `e5_provenance.json` carries the
+    evidence plan 19.2-23's attribution gate reads.
+    """
     out_dir = resolve_out_dir(args.out)
+    discard_stats: dict[str, int] = {}
     df = run_band(
         band=N_ASSUMED_BAND,
         n_true=N_TRUE,
@@ -550,6 +593,7 @@ def _run_full(args: argparse.Namespace) -> int:
         seed=args.seed,
         metrics_path=_default_metrics_path(),
         refine_intrinsics=E5_REFINE_INTRINSICS,
+        discard_stats_out=discard_stats,
     )
     write_experiment_csv(
         df,
@@ -560,7 +604,7 @@ def _run_full(args: argparse.Namespace) -> int:
 
     sidecar_path = out_dir / "e5_provenance.json"
     if args.force or not sidecar_path.exists():
-        sidecar = build_provenance_sidecar(args.seed)
+        sidecar = build_provenance_sidecar(args.seed, discard_stats=discard_stats)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
         with open(sidecar_path, "w") as f:
             json.dump(sidecar, f, indent=2, sort_keys=True)

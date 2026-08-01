@@ -2,7 +2,10 @@
 
 Fast, hand-built-fixture tests only (matching `test_experiments_e1.py`'s
 discipline): no `create_scenario`, no `calibrate_synthetic`/
-`optimize_interface`, nothing marked slow.
+`optimize_interface`, nothing marked slow -- with one deliberate exception
+(plan 19.2-27 Task 5's inertness proof, which runs the package's cheap
+'minimal' preset once with and once without `discard_stats_out`; still not
+marked slow).
 """
 
 from __future__ import annotations
@@ -13,9 +16,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
+import experiments.e5_index_sensitivity as e5mod
+from aquacal.datasets import create_scenario
+from aquacal.datasets.pipelines import calibrate_synthetic
 from aquacal.io import capture_environment
 from experiments.e1_refractive_comparison import compute_scale_bias
 from experiments.e5_index_sensitivity import (
@@ -31,6 +38,8 @@ from experiments.e5_index_sensitivity import (
     build_provenance_sidecar,
     build_row,
     load_holdout_floor_pct,
+    run_band,
+    run_index_point,
 )
 from tests.unit.test_experiments_provenance import (
     REQUIRED_ENVIRONMENT_KEYS,
@@ -317,3 +326,216 @@ class TestCheckGuardsMissingBaseline:
 
         assert exit_code != 0
         mock_run_band.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Plan 19.2-27 Task 4: E5 emits discard_stats so plan 19.2-23's attribution
+# gate is runnable against evidence E5 actually produces.
+# ---------------------------------------------------------------------------
+
+
+class TestDiscardStatsProvenance:
+    """`build_provenance_sidecar` carries `discard_stats`, and `None`
+    (accounting never requested) is distinguishable from a populated dict
+    whose counters happen to all be zero (accounting requested, nothing
+    discarded)."""
+
+    def test_sidecar_discard_stats_absent_by_default_is_none(self):
+        sidecar = build_provenance_sidecar(seed=1)
+        assert sidecar["discard_stats"] is None
+
+    def test_sidecar_carries_a_populated_discard_stats_dict(self):
+        sidecar = build_provenance_sidecar(
+            seed=1, discard_stats={"pnp_guard_rejected": 3, "pnp_attempts_total": 40}
+        )
+        assert sidecar["discard_stats"] == {
+            "pnp_guard_rejected": 3,
+            "pnp_attempts_total": 40,
+        }
+
+    def test_absent_is_distinguishable_from_populated_zero(self):
+        """`None` (never requested) != `{}` (requested, nothing discarded) --
+        the exact distinction WR-04/D-14's absent-metric convention
+        requires: absence must never be silently coerced into a zero."""
+        absent = build_provenance_sidecar(seed=1)
+        zero = build_provenance_sidecar(seed=1, discard_stats={})
+        assert absent["discard_stats"] is None
+        assert zero["discard_stats"] == {}
+        assert absent["discard_stats"] != zero["discard_stats"]
+
+
+def test_run_band_sums_discard_stats_across_points(monkeypatch):
+    """run_band SUMS each point's discard_stats into the caller's dict -- the
+    chosen aggregation shape (plan 19.2-27 Task 4). Every point in the band
+    shares the same rig geometry and calibration frame count; only
+    `n_assumed` differs. The attribution question plan 19.2-23's gate asks
+    ("did the PnP guard activate anywhere in this run?") is a band-level
+    question, not a per-index-value one, so summing rather than keeping a
+    per-point breakdown is the more faithful shape here.
+
+    `run_index_point` is monkeypatched so this stays a fast unit test of the
+    aggregation logic, not a real calibration."""
+    call_sinks: list[dict | None] = []
+
+    def _fake_run_index_point(
+        n_assumed,
+        n_true,
+        n_frames,
+        seed,
+        refine_intrinsics=False,
+        discard_stats_out=None,
+    ):
+        call_sinks.append(discard_stats_out)
+        if discard_stats_out is not None:
+            discard_stats_out["pnp_attempts_total"] = 4
+            if n_assumed == n_true:
+                discard_stats_out["pnp_guard_rejected"] = 1
+        evaluation = _make_evaluation()
+        return build_row(
+            evaluation,
+            n_assumed=n_assumed,
+            n_true=n_true,
+            seed=seed,
+            square_size_m=SQUARE_SIZE_M,
+        )
+
+    monkeypatch.setattr(e5mod, "run_index_point", _fake_run_index_point)
+
+    band = [1.323, N_TRUE, 1.343]
+    discard_stats: dict = {}
+    df = run_band(
+        band=band,
+        n_true=N_TRUE,
+        n_frames=4,
+        seed=42,
+        metrics_path=Path("does-not-exist.json"),
+        refine_intrinsics=False,
+        discard_stats_out=discard_stats,
+    )
+
+    assert len(df) == 3
+    # 3 points x 4 pnp_attempts_total = 12; exactly one point (the n_true
+    # control) recorded a guard rejection.
+    assert discard_stats == {"pnp_attempts_total": 12, "pnp_guard_rejected": 1}
+    # Every point got its OWN empty dict, never the caller's accumulator
+    # directly -- otherwise a point that raised partway through would leave
+    # the accumulator holding a partial, unsummed write.
+    assert all(sink is not None and sink is not discard_stats for sink in call_sinks)
+
+
+def test_run_band_discard_stats_out_none_disables_accounting(monkeypatch):
+    """discard_stats_out=None (the default) is forwarded to every point as
+    None -- accounting stays off, matching calibrate_synthetic's own
+    inert-when-omitted default (plan 19.2-26)."""
+    received: list[dict | None] = []
+
+    def _fake_run_index_point(
+        n_assumed,
+        n_true,
+        n_frames,
+        seed,
+        refine_intrinsics=False,
+        discard_stats_out=None,
+    ):
+        received.append(discard_stats_out)
+        evaluation = _make_evaluation()
+        return build_row(
+            evaluation,
+            n_assumed=n_assumed,
+            n_true=n_true,
+            seed=seed,
+            square_size_m=SQUARE_SIZE_M,
+        )
+
+    monkeypatch.setattr(e5mod, "run_index_point", _fake_run_index_point)
+
+    run_band(
+        band=[N_TRUE],
+        n_true=N_TRUE,
+        n_frames=4,
+        seed=1,
+        metrics_path=Path("does-not-exist.json"),
+    )
+
+    assert received == [None]
+
+
+def test_run_index_point_forwards_discard_stats_out(monkeypatch):
+    """run_index_point passes its discard_stats_out straight through to
+    calibrate_synthetic -- proven by a monkeypatched calibrate_synthetic
+    that records the kwarg it received, never a real solve."""
+    received_kwargs: dict = {}
+
+    def _fake_calibrate_synthetic(scenario, **kwargs):
+        received_kwargs.update(kwargs)
+
+        class _Cam:
+            water_z = scenario.n_water
+
+        class _Result:
+            cameras = {"cam0": _Cam()}
+
+        return _Result(), object()
+
+    def _fake_evaluate_calibration(result, detections, board):
+        return _make_evaluation()
+
+    monkeypatch.setattr(e5mod, "calibrate_synthetic", _fake_calibrate_synthetic)
+    monkeypatch.setattr(e5mod, "evaluate_calibration", _fake_evaluate_calibration)
+
+    stats: dict = {}
+    row = run_index_point(
+        n_assumed=1.335, n_true=N_TRUE, n_frames=4, seed=1, discard_stats_out=stats
+    )
+
+    assert received_kwargs.get("discard_stats_out") is stats
+    assert row["n_assumed"] == 1.335
+
+
+# ---------------------------------------------------------------------------
+# Plan 19.2-27 Task 5: discard_stats_out is numerically inert
+# ---------------------------------------------------------------------------
+
+
+def test_discard_stats_out_sink_is_numerically_inert():
+    """Passing `discard_stats_out` through `calibrate_synthetic` does not
+    perturb any returned value -- matches E5's own call shape
+    (`normal_fixed=E5_NORMAL_FIXED`, `refine_intrinsics=E5_REFINE_
+    INTRINSICS`). Uses the package's cheap 'minimal' preset so this stays in
+    the fast suite; a passivity proof, not a convergence study (plan 26's
+    pattern)."""
+    scenario = create_scenario("minimal", seed=1)
+    kwargs = dict(
+        n_water=1.0,
+        refine_intrinsics=E5_REFINE_INTRINSICS,
+        seed=1,
+        normal_fixed=E5_NORMAL_FIXED,
+    )
+
+    omitted, _ = calibrate_synthetic(scenario, **kwargs)
+
+    stats: dict[str, int] = {}
+    instrumented, _ = calibrate_synthetic(scenario, **kwargs, discard_stats_out=stats)
+
+    assert (
+        omitted.diagnostics.reprojection_error_rms
+        == instrumented.diagnostics.reprojection_error_rms
+    )
+    assert sorted(omitted.cameras) == sorted(instrumented.cameras)
+    for cam in omitted.cameras:
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.R,
+            instrumented.cameras[cam].extrinsics.R,
+        )
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.t,
+            instrumented.cameras[cam].extrinsics.t,
+        )
+        assert omitted.cameras[cam].water_z == instrumented.cameras[cam].water_z
+
+    # The instrumented run must have actually populated the sink -- every
+    # PnP attempt bumps pnp_attempts_total unconditionally on entry
+    # (_observability.py), so a clean minimal run still leaves the sink
+    # non-empty even with zero discards. A vacuous (never-populated) sink
+    # would make the inertness proof above meaningless.
+    assert stats, "discard_stats_out was supplied but never populated"

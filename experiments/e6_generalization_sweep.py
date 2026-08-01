@@ -57,6 +57,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from aquacal.calibration._observability import SolverDiagnostics
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets.pipelines import calibrate_synthetic, compute_per_camera_errors
 from aquacal.datasets.synthetic import generate_synthetic_detections
@@ -185,6 +186,15 @@ E6_COLUMNS: list[str] = [
     "spacing",
     "status",
     "status_reason",
+    # WR-02: the first-order solver optimality that distinguishes a converged
+    # solve from a diverged one -- e.g. the `double_scale` row that published
+    # 1536 px RMS / 1.33 km reconstruction RMSE under status="ok" with nothing
+    # in the record to flag it (19.2-22-SUMMARY.md). A MEASUREMENT (D-12): no
+    # converged/diverged verdict is derived from it anywhere in this module.
+    # Null whenever status != "ok"; optimality_stage3_intrinsic_pass is also
+    # null whenever refine_intrinsics=False, since that pass never runs.
+    "optimality_stage3_interface_optimization",
+    "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
     "reconstruction_mae_mm",
     "reconstruction_rmse_mm",
@@ -196,12 +206,14 @@ E6_COLUMNS: list[str] = [
     "num_comparisons",
     "num_frames",
 ]
-assert len(E6_COLUMNS) == 28 and len(set(E6_COLUMNS)) == 28
+assert len(E6_COLUMNS) == 30 and len(set(E6_COLUMNS)) == 30
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
 # Columns whose value is null for any row whose status is not "ok".
 _METRIC_COLUMNS: list[str] = [
+    "optimality_stage3_interface_optimization",
+    "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
     "reconstruction_mae_mm",
     "reconstruction_rmse_mm",
@@ -350,7 +362,13 @@ def compute_water_z_error_mm_mean(
     return float(np.mean(errors_mm))
 
 
-def compute_configuration_metrics(scenario, result, evaluation) -> dict:
+def compute_configuration_metrics(
+    scenario,
+    result,
+    evaluation,
+    diag_stage3_interface_optimization: SolverDiagnostics | None = None,
+    diag_stage3_intrinsic_pass: SolverDiagnostics | None = None,
+) -> dict:
     """Build one configuration's metric-only fields from a completed run.
 
     Pure computation over already-produced objects -- no calibration is run
@@ -364,6 +382,14 @@ def compute_configuration_metrics(scenario, result, evaluation) -> dict:
         result: The `CalibrationResult` returned by `calibrate_synthetic`.
         evaluation: The `HeldOutEvaluation` returned by `evaluate_calibration`
             on a held-out detection set.
+        diag_stage3_interface_optimization: The `SolverDiagnostics` sink
+            passed to `calibrate_synthetic`'s `diagnostics_out` for the
+            interface-optimization solve (WR-02), or `None` if the caller
+            did not capture diagnostics -- `optimality` is then null rather
+            than fabricated.
+        diag_stage3_intrinsic_pass: The `SolverDiagnostics` sink for the
+            intrinsic pass, or `None`. Also carries `optimality=None` when
+            `refine_intrinsics=False`, since that pass never runs.
 
     Returns:
         A dict with exactly the keys in `_METRIC_COLUMNS`.
@@ -376,6 +402,16 @@ def compute_configuration_metrics(scenario, result, evaluation) -> dict:
 
     reconstruction = evaluation.reconstruction
     return {
+        "optimality_stage3_interface_optimization": (
+            diag_stage3_interface_optimization.optimality
+            if diag_stage3_interface_optimization is not None
+            else None
+        ),
+        "optimality_stage3_intrinsic_pass": (
+            diag_stage3_intrinsic_pass.optimality
+            if diag_stage3_intrinsic_pass is not None
+            else None
+        ),
         "reprojection_rms_px": float(evaluation.reprojection.rms),
         "reconstruction_mae_mm": (
             float(reconstruction.mean * 1000.0) if reconstruction is not None else None
@@ -464,7 +500,7 @@ def build_row(
 # ---------------------------------------------------------------------------
 
 
-def build_provenance_sidecar(seed: int) -> dict:
+def build_provenance_sidecar(seed: int, environment: dict | None = None) -> dict:
     """Build E6's minimal provenance sidecar, in E3's exact shape (D-31).
 
     E6 runs many small calibrations, none of which is a single canonical
@@ -479,13 +515,23 @@ def build_provenance_sidecar(seed: int) -> dict:
     `solver_config["seed"]`, matching every `assemble_benchmark_record`-shaped
     file, while the top-level `seed` remains for a reader of this sidecar
     specifically.
+
+    Args:
+        seed: The run seed.
+        environment: A pre-captured `capture_environment()` block to reuse --
+            `_run_full`/`_run_smoke_configs` pass the SAME block used to
+            stamp every per-configuration checkpoint, so the sidecar names
+            the same commit as the sweep it describes -- or `None` to
+            capture fresh here (e.g. a standalone caller/test).
     """
     return {
         "experiment": "e6",
         "schema_version": 1,
         "seed": seed,
         "solver_config": {"seed": seed},
-        "environment": capture_environment(),
+        "environment": environment
+        if environment is not None
+        else capture_environment(),
     }
 
 
@@ -496,9 +542,38 @@ def _resolve_config_identity(config: dict) -> dict:
     return {**config, "normal_fixed": GRID_NORMAL_FIXED}
 
 
+# The fields that determine which SCENE `run_configuration` builds (WR-03).
+# Deliberately excludes `axis`, `axis_value`, `is_baseline`, and `config_key`
+# -- those only LABEL which row a configuration illustrates and do not change
+# what gets computed. The three `is_baseline` configurations (`index/1.333`,
+# `layout/grid`, `scale/default`) are, by `build_axis_configurations`'
+# construction, the SAME scene under three different labels; comparing full
+# identity (including the label fields) guaranteed a mismatch no correct run
+# could avoid. Comparing only this set is a fix at the cause, not a loosened
+# guard: every field that actually changes the scene is still compared, so a
+# checkpoint that predates an axis-value edit (e.g. a changed `n_water`,
+# `layout`, or scale geometry) still degrades to `status="failed"` below.
+_SCENARIO_IDENTITY_KEYS: tuple[str, ...] = (
+    "n_cameras",
+    "layout",
+    "n_water",
+    "depth_range",
+    "xy_extent",
+    "spacing",
+    "normal_fixed",
+)
+
+
+def _scenario_identity(identity: dict) -> dict:
+    """Restrict a full configuration identity to `_SCENARIO_IDENTITY_KEYS`."""
+    return {key: identity.get(key) for key in _SCENARIO_IDENTITY_KEYS}
+
+
 def _config_identity_matches(config: dict, cached_config: object) -> bool:
     """True if a checkpoint's recorded config identity matches the one
-    recomputed for `config` right now (WR-03, T-19.2-63).
+    recomputed for `config` right now, on the fields that determine the
+    SCENE (WR-03, T-19.2-63; scope narrowed from full-identity to
+    `_SCENARIO_IDENTITY_KEYS`).
 
     Both sides are compared through a JSON round-trip so tuple/list
     equivalence (e.g. `depth_range`, a tuple in-memory but a list once
@@ -508,7 +583,9 @@ def _config_identity_matches(config: dict, cached_config: object) -> bool:
     """
     expected = json.loads(json.dumps(_resolve_config_identity(config), sort_keys=True))
     actual = json.loads(json.dumps(cached_config, sort_keys=True))
-    return actual == expected
+    if not isinstance(actual, dict):
+        return False
+    return _scenario_identity(actual) == _scenario_identity(expected)
 
 
 # ---------------------------------------------------------------------------
@@ -524,6 +601,7 @@ def run_configuration(
     *,
     refine_intrinsics: bool = True,
     force: bool = False,
+    environment: dict | None = None,
 ) -> dict:
     """Run (or skip, if already cached) one distinct scene, checkpointing to JSON.
 
@@ -578,6 +656,16 @@ def run_configuration(
             `out_dir/e6_configs/`.
         refine_intrinsics: Forwarded to `calibrate_synthetic`.
         force: Overwrite an existing checkpoint instead of skipping it.
+        environment: A pre-captured `capture_environment()` block to stamp
+            this checkpoint with, or `None` to capture fresh here. `run_sweep`
+            captures ONCE per sweep and passes the same block to every call
+            so one sweep names one commit (measured 2026-07-31:
+            `capture_environment()` shells out to `git rev-parse` per call,
+            so a commit landing mid-sweep previously split `git_sha` across
+            the artifact set -- `baseline.json` recorded `3d5c3e6`, the other
+            eleven `3d0aa3e`). `None` remains supported so a direct,
+            standalone call (as several unit tests make) still produces a
+            complete, self-describing checkpoint.
 
     Returns:
         A dict with `status` (one of `STATUS_VALUES`), `status_reason`, and
@@ -622,12 +710,18 @@ def run_configuration(
             spacing=config["spacing"],
             n_water=config["n_water"],
         )
+        diag_stage3 = SolverDiagnostics()
+        diag_intrinsic_pass = SolverDiagnostics()
         result, _detections = calibrate_synthetic(
             scenario,
             n_water=scenario.n_water,
             refine_intrinsics=refine_intrinsics,
             seed=seed,
             normal_fixed=GRID_NORMAL_FIXED,
+            diagnostics_out={
+                "stage3_interface_optimization": diag_stage3,
+                "stage3_intrinsic_pass": diag_intrinsic_pass,
+            },
         )
 
         board = BoardGeometry(scenario.board_config)
@@ -654,7 +748,9 @@ def run_configuration(
             seed=holdout_seed,
         )
         evaluation = evaluate_calibration(result, holdout_detections, board)
-        metrics = compute_configuration_metrics(scenario, result, evaluation)
+        metrics = compute_configuration_metrics(
+            scenario, result, evaluation, diag_stage3, diag_intrinsic_pass
+        )
         outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
     except Exception as exc:
         logger.warning(
@@ -672,7 +768,9 @@ def run_configuration(
         "seed": seed,
         "n_frames": n_frames,
         "schema_version": 1,
-        "environment": capture_environment(),
+        "environment": environment
+        if environment is not None
+        else capture_environment(),
         "solver_config": {"seed": seed},
         "config": _resolve_config_identity(config),
     }
@@ -689,6 +787,7 @@ def run_sweep(
     *,
     refine_intrinsics: bool = True,
     force: bool = False,
+    environment: dict | None = None,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -697,6 +796,12 @@ def run_sweep(
     rows in `configs` reuse one computed result, satisfying "computed ONCE
     and reused for all three baseline rows" without duplicating I/O.
 
+    The environment is captured ONCE -- here if the caller did not already
+    capture one, otherwise the caller's own block is reused -- and the same
+    block is stamped on every checkpoint this call writes, not once per
+    configuration, so one sweep names one commit (see `run_configuration`'s
+    `environment` parameter docstring).
+
     Args:
         configs: `build_axis_configurations()` or `build_smoke_configurations()`.
         seed: Seed forwarded to every configuration.
@@ -704,10 +809,14 @@ def run_sweep(
         out_dir: Root output directory forwarded to `run_configuration`.
         refine_intrinsics: Forwarded to `calibrate_synthetic`.
         force: Forwarded to `run_configuration`.
+        environment: A pre-captured `capture_environment()` block to reuse
+            (e.g. so a caller can stamp the same block on this sweep's
+            provenance sidecar), or `None` to capture fresh here.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
     """
+    environment = environment if environment is not None else capture_environment()
     cache: dict[str, dict] = {}
     rows: list[dict] = []
     for config in configs:
@@ -720,6 +829,7 @@ def run_sweep(
                 out_dir,
                 refine_intrinsics=refine_intrinsics,
                 force=force,
+                environment=environment,
             )
         outcome = cache[config_key]
         row = build_row(
@@ -844,15 +954,27 @@ def _run_check(args: argparse.Namespace) -> int:
 
 def _run_smoke_configs(out_dir: Path, seed: int) -> int:
     """Run the reduced smoke config set, then probe the skip-if-exists path (review M7)."""
+    environment = capture_environment()
     configs = build_smoke_configurations()
     df = run_sweep(
-        configs, seed, _SMOKE_N_FRAMES, out_dir, refine_intrinsics=False, force=True
+        configs,
+        seed,
+        _SMOKE_N_FRAMES,
+        out_dir,
+        refine_intrinsics=False,
+        force=True,
+        environment=environment,
     )
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
-        json.dump(build_provenance_sidecar(seed), f, indent=2, sort_keys=True)
+        json.dump(
+            build_provenance_sidecar(seed, environment=environment),
+            f,
+            indent=2,
+            sort_keys=True,
+        )
 
     # Exercise the skip-if-exists path end to end (review M7, CR-02): re-run
     # the first already-checkpointed configuration WITHOUT --force and
@@ -916,8 +1038,16 @@ def _run_smoke(args: argparse.Namespace) -> int:
 
 def _run_full(args: argparse.Namespace) -> int:
     """Run the full axis sweep, write `generalization_sweep.csv`, and (D-31)
-    the `e6_provenance.json` sidecar beside it."""
+    the `e6_provenance.json` sidecar beside it.
+
+    Captures the environment ONCE, here, and passes it to both `run_sweep`
+    (which stamps every per-configuration checkpoint from it) and the
+    provenance sidecar, so the whole artifact set -- checkpoints and sidecar
+    alike -- names one commit rather than whatever was HEAD when each piece
+    happened to be written.
+    """
     out_dir = resolve_out_dir(args.out)
+    environment = capture_environment()
     configs = build_axis_configurations()
     df = run_sweep(
         configs,
@@ -926,6 +1056,7 @@ def _run_full(args: argparse.Namespace) -> int:
         out_dir,
         refine_intrinsics=True,
         force=args.force,
+        environment=environment,
     )
     write_experiment_csv(
         df,
@@ -934,7 +1065,12 @@ def _run_full(args: argparse.Namespace) -> int:
         force=args.force,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
-        json.dump(build_provenance_sidecar(args.seed), f, indent=2, sort_keys=True)
+        json.dump(
+            build_provenance_sidecar(args.seed, environment=environment),
+            f,
+            indent=2,
+            sort_keys=True,
+        )
     return 0
 
 
