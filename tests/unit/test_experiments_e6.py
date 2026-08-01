@@ -1,9 +1,11 @@
 """Unit tests for `experiments/e6_generalization_sweep.py` (EXP-10).
 
 Fast unit tests only: hand-built fixtures directly constructed, no actual
-calibration solve of any kind, none marked slow. `--smoke` (which does
-exercise a real, small solve) is verified separately by the plan's own
-`<verify>` block, not by pytest.
+calibration solve of any kind, none marked slow -- with one deliberate
+exception (plan 19.2-27 Task 5's inertness proof, which runs the package's
+cheap 'minimal' preset once with and once without the new sinks; still not
+marked slow). `--smoke` (the E6-specific real, small solve) is verified
+separately by the plan's own `<verify>` block, not by pytest.
 """
 
 from __future__ import annotations
@@ -12,12 +14,15 @@ import json
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 import experiments.e4_benchmark_grid as e4
 import experiments.e6_generalization_sweep as m
 from aquacal.calibration._observability import SolverDiagnostics
+from aquacal.datasets import create_scenario
+from aquacal.datasets.pipelines import calibrate_synthetic
 
 REQUIRED_ENVIRONMENT_KEYS = {
     "aquacal_version",
@@ -788,3 +793,59 @@ def test_reconstitute_row_missing_checkpoint_is_failed():
         row = m._reconstitute_row(config, Path("does-not-exist"), default_seed=42)
     assert row["status"] == "failed"
     assert "no checkpoint JSON found" in row["status_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Plan 19.2-27 Task 5: diagnostics_out is numerically inert
+# ---------------------------------------------------------------------------
+
+
+def test_diagnostics_out_sink_is_numerically_inert():
+    """Passing `diagnostics_out` (E6's new sink, WR-02) through
+    `calibrate_synthetic` does not perturb any returned value -- matches
+    E6's own call shape (`normal_fixed=GRID_NORMAL_FIXED`). Uses the
+    package's cheap 'minimal' preset so this stays in the fast suite; a
+    passivity proof, not a convergence study (plan 26's pattern)."""
+    scenario = create_scenario("minimal", seed=1)
+    kwargs = dict(
+        n_water=1.0,
+        refine_intrinsics=False,
+        seed=1,
+        normal_fixed=m.GRID_NORMAL_FIXED,
+    )
+
+    omitted, _ = calibrate_synthetic(scenario, **kwargs)
+
+    diag_stage3 = SolverDiagnostics()
+    diag_intrinsic_pass = SolverDiagnostics()
+    instrumented, _ = calibrate_synthetic(
+        scenario,
+        **kwargs,
+        diagnostics_out={
+            "stage3_interface_optimization": diag_stage3,
+            "stage3_intrinsic_pass": diag_intrinsic_pass,
+        },
+    )
+
+    assert (
+        omitted.diagnostics.reprojection_error_rms
+        == instrumented.diagnostics.reprojection_error_rms
+    )
+    assert sorted(omitted.cameras) == sorted(instrumented.cameras)
+    for cam in omitted.cameras:
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.R,
+            instrumented.cameras[cam].extrinsics.R,
+        )
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.t,
+            instrumented.cameras[cam].extrinsics.t,
+        )
+        assert omitted.cameras[cam].water_z == instrumented.cameras[cam].water_z
+
+    # The instrumented run must have actually populated the sink, or the
+    # inertness proof above is vacuous -- it would also pass if
+    # diagnostics_out were silently ignored. refine_intrinsics=False means
+    # the intrinsic pass never runs, so only the interface-optimization
+    # sink is expected to be populated.
+    assert diag_stage3.nfev is not None

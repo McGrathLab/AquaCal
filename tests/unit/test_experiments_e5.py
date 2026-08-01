@@ -2,7 +2,10 @@
 
 Fast, hand-built-fixture tests only (matching `test_experiments_e1.py`'s
 discipline): no `create_scenario`, no `calibrate_synthetic`/
-`optimize_interface`, nothing marked slow.
+`optimize_interface`, nothing marked slow -- with one deliberate exception
+(plan 19.2-27 Task 5's inertness proof, which runs the package's cheap
+'minimal' preset once with and once without `discard_stats_out`; still not
+marked slow).
 """
 
 from __future__ import annotations
@@ -13,10 +16,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
 import experiments.e5_index_sensitivity as e5mod
+from aquacal.datasets import create_scenario
+from aquacal.datasets.pipelines import calibrate_synthetic
 from aquacal.io import capture_environment
 from experiments.e1_refractive_comparison import compute_scale_bias
 from experiments.e5_index_sensitivity import (
@@ -484,3 +490,52 @@ def test_run_index_point_forwards_discard_stats_out(monkeypatch):
 
     assert received_kwargs.get("discard_stats_out") is stats
     assert row["n_assumed"] == 1.335
+
+
+# ---------------------------------------------------------------------------
+# Plan 19.2-27 Task 5: discard_stats_out is numerically inert
+# ---------------------------------------------------------------------------
+
+
+def test_discard_stats_out_sink_is_numerically_inert():
+    """Passing `discard_stats_out` through `calibrate_synthetic` does not
+    perturb any returned value -- matches E5's own call shape
+    (`normal_fixed=E5_NORMAL_FIXED`, `refine_intrinsics=E5_REFINE_
+    INTRINSICS`). Uses the package's cheap 'minimal' preset so this stays in
+    the fast suite; a passivity proof, not a convergence study (plan 26's
+    pattern)."""
+    scenario = create_scenario("minimal", seed=1)
+    kwargs = dict(
+        n_water=1.0,
+        refine_intrinsics=E5_REFINE_INTRINSICS,
+        seed=1,
+        normal_fixed=E5_NORMAL_FIXED,
+    )
+
+    omitted, _ = calibrate_synthetic(scenario, **kwargs)
+
+    stats: dict[str, int] = {}
+    instrumented, _ = calibrate_synthetic(scenario, **kwargs, discard_stats_out=stats)
+
+    assert (
+        omitted.diagnostics.reprojection_error_rms
+        == instrumented.diagnostics.reprojection_error_rms
+    )
+    assert sorted(omitted.cameras) == sorted(instrumented.cameras)
+    for cam in omitted.cameras:
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.R,
+            instrumented.cameras[cam].extrinsics.R,
+        )
+        np.testing.assert_array_equal(
+            omitted.cameras[cam].extrinsics.t,
+            instrumented.cameras[cam].extrinsics.t,
+        )
+        assert omitted.cameras[cam].water_z == instrumented.cameras[cam].water_z
+
+    # The instrumented run must have actually populated the sink -- every
+    # PnP attempt bumps pnp_attempts_total unconditionally on entry
+    # (_observability.py), so a clean minimal run still leaves the sink
+    # non-empty even with zero discards. A vacuous (never-populated) sink
+    # would make the inertness proof above meaningless.
+    assert stats, "discard_stats_out was supplied but never populated"
