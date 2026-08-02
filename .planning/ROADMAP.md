@@ -369,7 +369,7 @@ Plans:
 - [x] 19.3-03-PLAN.md — wave 1 — archive the five experiments' pre-depth-fix artifacts under the established `experiments/archive/` convention (GEOM-06)
 - [x] 19.3-04-PLAN.md — wave 2 — move `generate_camera_array`'s default and both `create_scenario` presets onto the real-rig standoff; regenerate the affected anchors (GEOM-02)
 - [x] 19.3-05-PLAN.md — wave 2 — derive `GRID_DEPTH_RANGE`, thread the board through `build_grid_scenario`, and update E3's and E5's three hardcoded call sites (GEOM-01)
-- [ ] 19.3-06-PLAN.md — wave 3 — anchor E6's scale axis at the derived floor and correct the axis prose (GEOM-03)
+- [x] 19.3-06-PLAN.md — wave 3 — anchor E6's scale axis at the derived floor and correct the axis prose (GEOM-03)
 - [ ] 19.3-07-PLAN.md — wave 4 — gate E4/E6 cell status on the guard count, record it in E1/E5/E7, and take the full unfiltered suite green at the code-wave boundary (GEOM-04)
 - [ ] 19.3-08-PLAN.md — wave 5 — verify E6's resume mechanism, write the machine-checkable gate script, and write the chained detached re-run queue (GEOM-05)
 - [ ] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05)
@@ -452,7 +452,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
-| 19.3 Scenario Geometry and Convergence | v1.9 | 5/10 | In Progress|  |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 6/10 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
