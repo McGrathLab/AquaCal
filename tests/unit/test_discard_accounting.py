@@ -123,6 +123,18 @@ def test_matches_frozen_anchor():
     The anchor's provenance is what makes this meaningful: it was generated from a
     checkout without this plan's edits and committed before them. Regenerating it
     from instrumented code would make the test self-confirming and worthless.
+
+    **REGENERATED 2026-08-01 (plan 19.3-04, D-19.3-09), for an unrelated
+    reason.** `generate_camera_array`'s `height_above_water` default moved
+    from the old shallow 0.15 m literal to the real-rig standoff
+    (`WATER_Z` ~1.031 m), and the "minimal" preset this test runs no longer
+    passes `height_above_water=0.15` explicitly, so it now inherits the new
+    default -- `water_z` moved from ~0.196 to ~1.190 m as a direct, intended
+    consequence (not a discard-counter regression; the original
+    pre-instrumentation-vs-instrumented comparison this anchor was built for
+    is now historical, same as `TestSolverConfigSeedIsInert` in
+    `test_pipeline.py`). See `tests/fixtures/discard_anchor.json`'s
+    `provenance.note` for the exact before/after values.
     """
     if not ANCHOR_PATH.is_file():
         pytest.skip(f"anchor not generated: {ANCHOR_PATH}")
