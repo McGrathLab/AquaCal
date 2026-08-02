@@ -1027,11 +1027,16 @@ def create_scenario(
             seed=seed,
         )
         camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+        # depth_range is derived (D-19.3-01/GEOM-01) rather than the pre-fix
+        # literal (0.25, 0.45), which sits below this preset's own derived
+        # clearance floor. The preset's camera height and framing are
+        # unchanged here -- that belongs to plan 19.3-04 (D-19.3-09).
         board_poses = generate_board_trajectory(
             n_frames=20,
             camera_positions=camera_positions,
             water_zs=distances,
-            depth_range=(0.25, 0.45),
+            board=default_board,
+            depth_range=None,
             xy_extent=0.08,
             seed=seed,
         )
@@ -1059,11 +1064,14 @@ def create_scenario(
             seed=seed,
         )
         camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+        # depth_range is derived (D-19.3-01/GEOM-01) -- see the "ideal"
+        # branch's comment above; the same reasoning applies here.
         board_poses = generate_board_trajectory(
             n_frames=10,
             camera_positions=camera_positions,
             water_zs=distances,
-            depth_range=(0.25, 0.40),
+            board=default_board,
+            depth_range=None,
             xy_extent=0.06,
             seed=seed,
         )
@@ -1083,9 +1091,16 @@ def create_scenario(
 
     elif name == "realistic":
         intrinsics, extrinsics, distances = generate_real_rig_array()
+        # depth_range is derived (D-19.3-01/GEOM-01) rather than the pre-fix
+        # literal (1.1, 2.0), which sits below the derived clearance floor
+        # (~1.220 m) for this generator's own water_zs. D-19.3-10 records
+        # that this specific call site's movement was expected: E1 and E7's
+        # "realistic" runs move for exactly this reason.
         board_poses = generate_real_rig_trajectory(
             n_frames=30,
-            depth_range=(1.1, 2.0),
+            board=default_board,
+            depth_range=None,
+            water_zs=distances,
             seed=seed,
         )
         return SyntheticScenario(
