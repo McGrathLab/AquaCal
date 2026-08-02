@@ -80,6 +80,13 @@ DISCARD_KEYS: tuple[str, ...] = (
     "frame_no_camera_meets_min_corners",
     "interface_pnp_failed",
     "video_frame_unreadable",
+    # Convergence-diagnostic guard count (plan 19.3-02, D-19.3-11). Counted once,
+    # on the FINAL solution evaluation, per solver stage (optimize_interface's
+    # Stage 3 and joint_refinement's Stage 3 intrinsic pass) -- never a running
+    # per-iteration count. A non-zero value means first-order optimality is
+    # unreliable as a convergence measure for this run (see
+    # DegenerateObservationWarning); the library records this, it never raises.
+    "degenerate_observations_at_solution",
 )
 
 #: Producer-side failure keys whose total must equal `pose_discarded_by_consumer`.

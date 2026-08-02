@@ -611,10 +611,16 @@ class DegenerateObservationWarning(UserWarning):
     model cannot project -- typically corners lying at or above the water
     surface, which is physically impossible for a submerged target. Such
     observations are continued with a pinhole extension so the solve keeps a
-    gradient, but their presence means part of the data is not explained by the
-    refractive model, and the reported reprojection RMS can look acceptable
-    while the solve has not actually converged. Check first-order optimality,
-    not RMS, when this fires.
+    gradient, but the continuation puts the residual on a C0-but-not-C1 kink
+    at the refractive/pinhole boundary.
+
+    When this warning fires, first-order optimality is UNRELIABLE as a
+    convergence measure: the kink inflates it independent of whether the
+    solve actually converged, so neither optimality NOR the reprojection RMS
+    can be trusted to judge convergence in this state. The correct response
+    is to fix the scenario geometry so no corner sits at or above the
+    interface -- not to re-tune the solver or read either diagnostic more
+    carefully.
     """
 
     pass

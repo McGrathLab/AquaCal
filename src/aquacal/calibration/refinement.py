@@ -13,6 +13,7 @@ from scipy.optimize import least_squares
 from aquacal.calibration._observability import (
     OptimizerObserver,
     SolverDiagnostics,
+    _bump,
     build_parameter_labels,
     capture_solver_diagnostics,
 )
@@ -61,6 +62,7 @@ def joint_refinement(
     observer: OptimizerObserver | None = None,
     shared_interface: bool = True,
     diagnostics_out: SolverDiagnostics | None = None,
+    discard_stats_out: dict[str, int] | None = None,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -107,6 +109,13 @@ def joint_refinement(
             the explicit ftol/xtol/gtol, max_nfev's effective value, and
             P/n_groups when `use_sparse_jacobian=True`). Has no effect on the
             returned values. Default None (no capture).
+        discard_stats_out: Optional counter dict populated in place with the
+            same final-solution degeneracy guard count `optimize_interface`
+            records (plan 19.3-02, D-19.3-11). Bumped unconditionally after
+            the guard's post-solve `compute_residuals` call, so a clean run
+            records an explicit 0 rather than an absent key. `None` (the
+            default) disables accounting entirely; has no effect on the
+            returned values.
 
     Returns:
         Tuple of:
@@ -307,15 +316,20 @@ def joint_refinement(
     invalid_counts: list[int] = []
     compute_residuals(result.x, *cost_args, invalid_count_out=invalid_counts)
     n_invalid = invalid_counts[0] if invalid_counts else 0
+    _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
     if n_invalid > 0:
         warnings.warn(
             f"Stage 3's intrinsic pass finished with {n_invalid} observation(s) "
             f"the refractive model could not project (corners at or above the "
             f"water surface, or behind a camera). These were continued with a "
-            f"pinhole extension. First-order optimality is "
-            f"{getattr(result, 'optimality', float('nan')):.4g} and termination "
-            f"status is {result.status}; judge convergence on optimality, not "
-            f"on the reprojection RMS.",
+            f"pinhole extension, which puts the residual on a C0-but-not-C1 "
+            f"kink at the refractive/pinhole boundary -- first-order "
+            f"optimality ({getattr(result, 'optimality', float('nan')):.4g}, "
+            f"termination status {result.status}) is UNRELIABLE as a "
+            f"convergence measure here, and neither it nor the reprojection "
+            f"RMS can be trusted to judge convergence. Fix the scenario "
+            f"geometry so no corner sits at or above the interface; do not "
+            f"re-tune the solver.",
             DegenerateObservationWarning,
             stacklevel=2,
         )

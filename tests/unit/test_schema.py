@@ -17,6 +17,7 @@ from aquacal.config.schema import (
     CameraIntrinsics,
     ConnectivityError,
     ConvergenceError,
+    DegenerateObservationWarning,
     Detection,
     DetectionResult,
     DiagnosticsData,
@@ -435,6 +436,29 @@ class TestExceptionHierarchy:
 
         with pytest.raises(CalibrationError):
             raise ConnectivityError("test")
+
+
+class TestDegenerateObservationWarning:
+    """D-19.3-12: the warning must say optimality is UNRELIABLE, never that it
+    should be used to judge convergence."""
+
+    def test_docstring_states_optimality_is_unreliable(self):
+        """The class docstring must carry the corrected substance."""
+        doc = DegenerateObservationWarning.__doc__
+        assert doc is not None
+        assert "unreliable" in doc.lower()
+
+    def test_docstring_does_not_carry_the_old_backwards_advice(self):
+        """The old advice to judge convergence on optimality must be gone."""
+        doc = DegenerateObservationWarning.__doc__
+        assert doc is not None
+        assert "judge convergence on optimality" not in doc
+        assert "check first-order optimality, not rms" not in doc.lower()
+        assert "not rms, when this fires" not in doc.lower()
+
+    def test_is_a_user_warning(self):
+        """DegenerateObservationWarning stays a UserWarning subclass."""
+        assert issubclass(DegenerateObservationWarning, UserWarning)
 
 
 class TestPublicAPI:

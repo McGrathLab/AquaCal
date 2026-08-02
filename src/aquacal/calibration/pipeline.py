@@ -1332,6 +1332,7 @@ def run_calibration_from_config(
             diagnostics_out=solver_diagnostics.setdefault(
                 "stage3_intrinsic_pass", SolverDiagnostics()
             ),
+            discard_stats_out=discard_stats,
         )
         elapsed = time.perf_counter() - t0
         timings["stage3_intrinsic_pass"] = elapsed
