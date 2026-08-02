@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 19.3 context gathered
-last_updated: "2026-08-02T01:05:08.053Z"
-last_activity: 2026-08-01 -- Phase 19.2 execution started
+last_updated: "2026-08-02T01:10:15.609Z"
+last_activity: 2026-08-01 -- Phase 19.3 context gathered
 progress:
   total_phases: 10
   completed_phases: 6
@@ -21,82 +21,35 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.2 — experiment-execution-and-provenance
+**Current focus:** Phase 19.3 — scenario-geometry-and-convergence
 
 ## Current Position
 
-Phase: 19.2 (experiment-execution-and-provenance) — EXECUTING
-  **D-26 replan complete 2026-07-28: 14 plans in 8 waves, 8/14 executed.**
-  Wave 1 COMPLETE (19.2-01/02/03/04/14 — every src change, each exact-equality guarded).
-  Wave 2 COMPLETE (19.2-06): E2 re-ran with benchmark_memory; every section-3 number
-  reproduced at 0.000% delta, so D-08's hard stop did not trigger. Measured Stage-3 peak
-  is 9.78 GiB (+8.54 GiB in stage3_interface_optimization) — see the 16-camera OOM risk
-  for plan 19.2-09. Its launch gate was the bit-identity suites passing unfiltered
-  (248 + 977 passed), not "git diff -- src/ is empty".
-  Wave 3 COMPLETE (19.2-05 + 19.2-07): E3's three-tier derived-quantities script and E4's
-  direct-call grid runner. Both interrupted by a power outage mid-wave and resumed in place from
-  their worktrees with no lost commits. E3 surfaced MF-01 (see .planning/MANUSCRIPT-FINDINGS.md):
-  the supplement's "two to four steps" Newton claim matches the median but misses a tail of 7.
-  **All 14 original plans are COMPLETE (01-14).**
-
-  **GAP CLOSURE is now the live sequence: 11 plans 19.2-15..25 in 6 waves (`gap_closure: true`).**
-  Its wave numbers COLLIDE with the original plans' waves in this same directory, so always
-  execute with `--gaps-only --wave N`. Gap waves 1-2 (plans 15/16/17, then 18/19/20) COMPLETE
-  2026-07-29, merged at `621a4ef`, tracking `e550e18`; fast suite 1106 passed / 6 skipped.
-  Gap wave 2 was the declared pause point.
-  **2026-07-30: gap wave 3 (plan 19.2-21) FIRST ATTEMPT IS SUPERSEDED — do not merge it.**
-  It ran to completion on branch `worktree-agent-a1a99b5a5289e9e05` (left intact as
-  evidence, never merged), but its results were measured on code carrying TWO REAL
-  LIBRARY DEFECTS, found and fixed the same day. Four of six completed cells had not
-  converged; one, 12x100, hid optimality 6.4e9 behind a publishable 0.79 px RMS.
-
-  **The defects (fixed, committed, unpushed — `7e0cb90`):**
-  (1) `compute_residuals` replaced a failed refractive projection with the CONSTANT
-  100.0 px. Zero derivative => exactly-zero Jacobian rows, an exact 6-dim null space
-  per fully-invalid frame, and an ABSORBING invalid region with no gradient back out.
-  Replaced by the pinhole continuous extension. Cannot move committed results
-  (instrumented branch-hit count of 0 on every converging config).
-  (2) `refractive_solve_pnp` trusted `cv2.solvePnP`'s success flag, which returns
-  `|t| ~ 3e12 m` on near-minimal oblique views. Now self-checked threshold-free.
-  **NOT inert — this one CAN move committed results.**
-
-  Also `a17331e`: the D-33 pre-flight memory guard is REMOVED (it assumed 100% board
-  visibility, over-projected residuals ~3.76x, and wrongly refused the whole
-  n_frames=200 column). A cell too large is now measured, not predicted.
-
-  **BLAST RADIUS — defect (2) is not inert, so every experiment except E3 is exposed**
-  (E1/E2/E4/E5/E6/E7 all run calibrations). E2's release frameset rejects 10 of 3538
-  poses, so E2's Section-3 numbers can move; its baseline is archived at
-  `experiments/archive/e2-2026-07-30-pre-pnp-guard/`.
-  **This voids hard-stop premises in plans 22, 23 and 24**, which each require prior
-  results to reproduce byte-for-byte or treat any movement as a determinism defect.
-  Those gates were written assuming movement means defect; that is no longer true.
-  AMEND THE PLANS — do not quietly relax the gates.
-
-  Remaining: re-run wave 3 on fixed code, then wave 4 (22), wave 5 (23), wave 6 (24 + 25).
-  New plan 19.2-14 adds seed to pipeline.py solver_config (EXP-11).
-  Plan 19.2-05 gained a depends_on edge to 19.2-06. Production runs are serialized
-  one per wave: 06 (w2), 09 (w5), 13 (w6), 11 (w7).
-  Phases 16, 17, 18, 19, and 19.1 COMPLETE, verification PASSED.
-Plan: 1 of 26
-  **Plan 19.1-08 is a blocking human gate (`autonomous: false`)** on E2's real-rig delta table —
-  it must not be self-approved. `workflow.auto_advance` was set false on 2026-07-25 so the
-  discuss→plan chain stopped before execute at the user's explicit request; restore it with
+Phase: 19.3 (scenario-geometry-and-convergence) -- CONTEXT GATHERED, not yet planned
+  Requirements GEOM-01..06. Context at
+  `.planning/phases/19.3-scenario-geometry-and-convergence/19.3-CONTEXT.md` (18 locked
+  decisions, D-19.3-01..18); source brief `19.3-SEED.md`; raw evidence under `evidence/`.
+  Goal: synthetic scenarios become physically valid (board corners stay submerged) so
+  first-order optimality is a trustworthy convergence diagnostic, then E1/E4/E5/E6/E7 are
+  re-measured (~9 h, chained, detached) and the correction reported as MF-08.
+  **Ships a breaking public-API change -- the milestone cuts v2.0.0, not v1.9.x.**
+  Phase 19.3 was created mid-session during 19.2 as a directory plus a seed and never went
+  through phase creation; its roadmap entry and requirements were backfilled 2026-08-01.
+Plan: 0 of TBD -- not yet planned. Next: `/gsd:plan-phase 19.3`
+  **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
+  discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 19.2
-  Phase 19 closed 2026-07-24: 6/6 plans across 4 waves, verifier scored 6/6 after a
-  gap-closure round. The gates earned their keep — verifier caught a BENCH-04 key-mismatch
-  (stage3.seconds always null) and code review caught a false "no least_squares" label
-  (CR-01); both fixed in `5e246b1` with regression tests. 846 tests pass.
-Last activity: 2026-08-01 -- Phase 19.2 execution started
-  Before that, Phase 18 closed 2026-07-24 (8/8, verified 5/5).
-Unreleased on main: everything from Phases 16-19 plus quick task 3's `perf:` commit.
-  Nothing is pushed yet — the next push to `main` will trigger python-semantic-release
-  and cut a version. 22 `feat:` commits are present, so expect a minor bump to v1.9.0.
-  Note: `34497f9 fix(18):` is a mistyped docstring-only repair that should have been
-  `docs(18):`. It does NOT change the version (feat: already forces minor) but will add a
-  misleading line to the CHANGELOG's Bug Fixes section. Left unrewritten pending user
-  decision — rewriting it means rebasing through merge commits.
+Status: Phase 19.3 ready for /gsd:plan-phase
+  Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
+  0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
+  Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
+  Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
+Last activity: 2026-08-01 -- Phase 19.3 context gathered, roadmap entry and GEOM-01..06 added
+  Before that: Phase 19.2 closed 2026-08-01 (29/29). Phase 18 closed 2026-07-24 (8/8).
+Unreleased on main: everything from Phases 16-19.2 plus quick task 3's `perf:` commit.
+  Nothing is pushed yet. Note `34497f9 fix(18):` is a mistyped docstring-only repair that
+  should have been `docs(18):` -- no version impact, one misleading CHANGELOG line, left
+  unrewritten pending a user decision.
 
 Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09), phases 13-15.
 v1.7–v1.8 shipped outside the milestone framework (see MILESTONES.md).

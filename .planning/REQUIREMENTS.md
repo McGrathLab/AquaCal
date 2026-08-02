@@ -121,6 +121,56 @@ modules for E5/E6/E7) lives in the separate `DissertationFigures` repository, so
 phase can satisfy it — it is a downstream handoff, tracked in the phase context, not a
 success criterion.
 
+### Scenario Geometry
+
+Added 2026-08-01 with the insertion of Phase 19.3. Source:
+`.planning/phases/19.3-scenario-geometry-and-convergence/19.3-SEED.md`; decisions locked as
+D-19.3-01..18 in that phase's `19.3-CONTEXT.md`.
+
+Phase 19.2's optimality instrumentation exposed that board corners protrude through the water
+surface in every synthetic scenario (61 of 8800 corners on the baseline, worst protrusion
+66.1 mm). Accuracy is unaffected — the high-optimality group's reconstruction RMSE is
+indistinguishable from the healthy group's — but the C0-but-not-C1 residual at the refractive/
+pinhole hinge destroys first-order optimality as a convergence test, so three of fourteen E6
+configurations were published as `status="ok"` at optimality 3–4 orders above the rest. The
+deliverable is a physically valid scenario construction and a trustworthy convergence
+diagnostic, not an accuracy improvement.
+
+- [ ] **GEOM-01**: Both trajectory generators take a required `BoardConfig` and raise
+  `ValueError` at scenario construction when `depth_range` violates the derived clearance
+  floor `max(water_zs) + 1.1 · R_max · sin(θ_normal)`, where `R_max` is the board's
+  inner-corner diagonal half-extent and the normal tilts by up to `θ√2` for a Rodrigues
+  vector bounded by `θ` on each axis — a derivation computed from `BoardConfig` and the
+  rotation range, not a hardcoded constant
+- [ ] **GEOM-02**: The real-rig standoff is finished into the library — `generate_camera_array`'s
+  default `height_above_water` and both `create_scenario` presets move off 0.15 m — with
+  `default_board` shared and unchanged across every scenario, so board angular size is never a
+  cross-scenario confound
+- [ ] **GEOM-03**: E6's scale axis anchors at the derived floor rather than the water surface,
+  so every scale value is legal by construction, and its documented claim matches what the
+  axis now measures
+- [ ] **GEOM-04**: The pinhole continuation is demoted to a numerical guard — counted on the
+  final solution evaluation, recorded in the run's diagnostics, and gated by the experiment
+  harnesses so a non-zero count cannot be published as `status="ok"` — with the change proven
+  inert by exact-equality test so E2 stays out of scope; and `DegenerateObservationWarning` no
+  longer advises judging convergence on optimality, which is wrong in precisely the situation
+  that emits it
+- [ ] **GEOM-05**: E1, E4, E5, E6 and E7 are re-measured on the corrected geometry, and the
+  paired determinism sweep reports the cell reproduction count against the 63/308 pre-fix
+  baseline as a statistic declared before launch — reported whatever it shows, including no
+  improvement
+- [ ] **GEOM-06**: MF-08 records the before/after with pre-fix artifacts archived under the
+  established `experiments/archive/` convention, claiming "accuracy unaffected" only for
+  experiments with a measured seed band (E1, E5, E7); E4 and E6 report the optimality and
+  degeneracy improvement without an accuracy claim
+
+**Deliberately not requirements here.** Smoothing the refractive/pinhole hinge with a blend
+constant is excluded on physical grounds — for a flat interface the derivative discontinuity
+is real, and a blend would introduce an arbitrary width constant and make the residual
+non-physical inside the band. Re-deriving `WATER_Z` is excluded by user decision (frozen at
+1.031; E4/E6 are coupled to it by D-29). E2 is excluded because it runs on real data, which a
+synthetic scenario change cannot touch.
+
 ## Sequencing Constraints
 
 Not requirements, but binding on the roadmap:
@@ -163,6 +213,17 @@ Not requirements, but binding on the roadmap:
 11. **One machine for the whole E4 grid.** A grid split across machines is not a scaling
     curve. Which machine's spec goes in the paper is an open input, needed by 19.2 and not
     before.
+12. **GEOM-01..04 precede GEOM-05.** Every `src` change lands and is proven inert before any
+    run that yields a publishable result (D-26, carried from Phase 19.2). The corollary that
+    bites: GEOM-04's inertness proof is what keeps E2 out of GEOM-05's re-run set. If that
+    change cannot be shown inert by exact-equality test, the blast radius grows from five
+    experiments to six and picks up the 48–87 minute real-data run whose §3 numbers were
+    re-verified at 0.000% delta on 2026-07-31.
+13. **GEOM-* precedes DATA-* and DOCS-07.** Phase 19.3 ships a breaking change —
+    `generate_board_trajectory` is a public export gaining a required parameter — so the
+    milestone cuts **v2.0.0** rather than a v1.9.x. Phase 21's dataset refresh and Phase 22's
+    release cut both resolve version strings (`CITATION.cff`, README, the Zenodo record, the
+    manuscript's software citation) and must not do so before this is settled.
 
 ## Future Requirements
 
@@ -227,6 +288,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EXP-09 | Phase 19.2 | Complete |
 | EXP-10 | Phase 19.2 | Complete |
 | EXP-11 | Phase 19.2 | Complete |
+| GEOM-01 | Phase 19.3 | Pending |
+| GEOM-02 | Phase 19.3 | Pending |
+| GEOM-03 | Phase 19.3 | Pending |
+| GEOM-04 | Phase 19.3 | Pending |
+| GEOM-05 | Phase 19.3 | Pending |
+| GEOM-06 | Phase 19.3 | Pending |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
@@ -239,8 +306,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOCS-07 | Phase 22 | Pending |
 
 **Coverage:**
-- v1 requirements: 40 total
-- Mapped to phases: 40
+- v1 requirements: 46 total
+- Mapped to phases: 46
 - Unmapped: 0 ✓
 
 ---
@@ -254,3 +321,9 @@ off the `benchmarks/` directory name: the capability shipped and was verified in
 and EXP-03 relocates the runner under `experiments/` as a scope transfer, not a correction.
 X4 (notebook demotion) stays Phase 21 work under DATA-03; X5 (figure modules) is out of
 scope for any AquaCal phase — it lives in the DissertationFigures repository.*
+*Last updated: 2026-08-01 — inserted Phase 19.3 from `19.3-SEED.md`, adding GEOM-01..06
+(40 → 46) and sequencing constraints 12-13. Phase 19.3 was created mid-milestone as a
+directory and a seed during Phase 19.2's session and never went through phase creation, so it
+carried neither a roadmap entry nor requirements until now. Note constraint 13: this phase
+ships a breaking public-API change, so the milestone cuts **v2.0.0** despite being titled
+v1.9 — Phases 21 and 22 resolve version strings and are bound by it.*

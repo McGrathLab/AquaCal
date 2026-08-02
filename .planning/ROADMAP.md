@@ -331,8 +331,7 @@ surface at every frame — so first-order optimality is a trustworthy convergenc
 again; the five affected experiments are re-measured and the correction is reported.
 **Depends on**: Phase 19.2 (a coherent baseline to measure the fix against; D-29's grid-family
 geometry is what this phase finishes)
-**Requirements**: TBD — needs a new series; this phase's obligations are enumerated as
-D-19.3-01..18 in `19.3-CONTEXT.md`
+**Requirements**: GEOM-01, GEOM-02, GEOM-03, GEOM-04, GEOM-05, GEOM-06
 **Source brief**: `19.3-SEED.md` (diagnosis, physics reasoning, four locked user decisions)
 **Success Criteria** (what must be TRUE):
   1. Both trajectory generators take a required `BoardConfig` and raise `ValueError` at
