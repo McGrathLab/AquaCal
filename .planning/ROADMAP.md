@@ -360,7 +360,19 @@ geometry is what this phase finishes)
 **Note**: ships a breaking change (`generate_board_trajectory` is a public export gaining a
 required parameter) — cuts **v2.0.0**. Phases 21 and 22 must know before resolving version
 strings.
-**Plans**: TBD
+**Plans**: 10 plans across 7 waves
+
+Plans:
+- [ ] 19.3-01-PLAN.md — wave 1 — re-centre board poses on the board centre, derive the clearance floor from the corner cloud, make `board` required and raise `ValueError` on an illegal `depth_range` (GEOM-01)
+- [ ] 19.3-02-PLAN.md — wave 1 — record the final-solution guard count into `discard_stats`, correct the `DegenerateObservationWarning` text, and prove the change inert by exact equality (GEOM-04)
+- [ ] 19.3-03-PLAN.md — wave 1 — archive the five experiments' pre-depth-fix artifacts under the established `experiments/archive/` convention (GEOM-06)
+- [ ] 19.3-04-PLAN.md — wave 2 — move `generate_camera_array`'s default and both `create_scenario` presets onto the real-rig standoff; regenerate the affected anchors (GEOM-02)
+- [ ] 19.3-05-PLAN.md — wave 2 — derive `GRID_DEPTH_RANGE`, thread the board through `build_grid_scenario`, and update E3's and E5's three hardcoded call sites (GEOM-01)
+- [ ] 19.3-06-PLAN.md — wave 3 — anchor E6's scale axis at the derived floor and correct the axis prose (GEOM-03)
+- [ ] 19.3-07-PLAN.md — wave 4 — gate E4/E6 cell status on the guard count, record it in E1/E5/E7, and take the full unfiltered suite green at the code-wave boundary (GEOM-04)
+- [ ] 19.3-08-PLAN.md — wave 5 — verify E6's resume mechanism, write the machine-checkable gate script, and write the chained detached re-run queue (GEOM-05)
+- [ ] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05)
+- [ ] 19.3-10-PLAN.md — wave 7 — report the cell reproduction count against 63/308, write MF-08, and draft the reviewer-response prose (GEOM-05, GEOM-06)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
@@ -439,7 +451,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
-| 19.3 Scenario Geometry and Convergence | v1.9 | 0/TBD | Not started | - |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 0/10 | Planned     | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
