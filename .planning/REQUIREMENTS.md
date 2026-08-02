@@ -231,7 +231,15 @@ Deferred. Tracked but not in this roadmap.
 
 ### Performance
 
-- **PERF-01**: Reduce peak memory during Stage 3 (dense `.toarray()` Jacobian, ~3.6 GB on the 13-camera rig) — this milestone measures and reports it only
+- **PERF-01**: Reduce peak memory during Stage 3 (dense `.toarray()` Jacobian). Measured, not
+  estimated: **10.26 GiB whole-run peak** on the 13-camera / 200-frame real rig, with
+  **+9.84 GiB** of that growth attributed to `stage3_interface_optimization` alone, on a
+  15.7 GiB machine — so the run peaks at ~65% of physical RAM and a modestly larger problem
+  does not fit. Source: `experiments/results/benchmark.json` (`memory.whole_run_peak_bytes`,
+  `mode: psutil_peak_wset`), as refreshed by E2's D-34 re-run in `faa05b3`. This milestone
+  measures and reports it only. *(Superseded figures, both still quoted elsewhere: the
+  original ~3.6 GB estimate was never measured; 9.78 GiB was the pre-D-34 measurement from
+  `427738f`.)*
 - **PERF-02**: Analytic Jacobian for refractive projection, removing FD evaluation cost entirely
 
 ### Cleanup
