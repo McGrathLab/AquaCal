@@ -7,10 +7,12 @@ predefined test scenarios with complete ground truth.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.spatial.transform import Rotation
 
 from aquacal.config.schema import (
     BoardConfig,
@@ -26,6 +28,7 @@ from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project
+from aquacal.utils.transforms import rvec_to_matrix
 
 
 @dataclass
@@ -329,11 +332,153 @@ def generate_real_rig_array() -> tuple[
     return intrinsics, extrinsics, water_zs
 
 
+# Module-level memoisation cache for `worst_upward_corner_excursion`. Keyed on
+# the `BoardConfig` field values plus `rotation_range_deg` so the (fairly
+# expensive) rotation sweep runs at most once per distinct (board, tilt)
+# combination -- not once per frame and not once per preset import.
+_EXCURSION_CACHE: dict[tuple, float] = {}
+
+
+def worst_upward_corner_excursion(
+    board: BoardConfig, rotation_range_deg: float
+) -> float:
+    """Compute the largest distance any board corner rises above the board
+    CENTRE over the generators' rotation sampling box (D-19.3-01).
+
+    Evaluated deterministically -- NOT by random sampling and NOT by a
+    closed-form combination of the two tilt angles via a diagonal (root-2)
+    scaling factor, both rejected by D-19.3-01 because the closed form
+    over-approximates once ``rz`` spans the full +/-pi range and a random
+    sample is not a bound. The board-local corner cloud (from
+    ``BoardGeometry(board).corner_positions``) is re-centred on its own
+    centroid -- matching D-19.3-19's re-centred pose semantics, where a pose's
+    ``tvec`` places the board centre, not a corner -- then swept over
+    ``rvec = (rx, ry, rz)`` with ``rx, ry`` each spanning
+    ``linspace(-theta, +theta, 41)`` (``theta = deg2rad(rotation_range_deg)``)
+    and ``rz`` spanning ``linspace(-pi, pi, 180, endpoint=False)``. Because a
+    world corner's Z offset from the centre is ``R[2, :] @ local``, only each
+    rotation's third matrix row is needed, built vectorised via
+    ``Rotation.from_rotvec(rvecs).as_matrix()[:, 2, :]``. World +Z is DOWN
+    (into water), so "upward" excursion is ``max(-(R[2, :] @ local))`` over
+    all sampled rotations and all corners.
+
+    Results are memoised on a hashable key built from ``board``'s field
+    values and ``rotation_range_deg`` -- the sweep is not re-run per frame or
+    per preset import.
+
+    Args:
+        board: ChArUco board specification. The corner cloud is derived from
+            ``BoardGeometry(board).corner_positions``, so the excursion moves
+            whenever any of ``squares_x``, ``squares_y`` or ``square_size``
+            changes -- it is never a restated constant.
+        rotation_range_deg: Maximum board tilt from horizontal, in degrees.
+            Matches the generators' ``rotation_range_deg`` /
+            ``ROTATION_RANGE_DEG`` sampling box.
+
+    Returns:
+        Worst-case upward excursion above the board centre, in meters.
+
+    Example:
+        >>> default_board = BoardConfig(
+        ...     squares_x=12, squares_y=9, square_size=0.060,
+        ...     marker_size=0.045, dictionary="DICT_5X5_100",
+        ... )
+        >>> excursion = worst_upward_corner_excursion(default_board, 15.0)
+        >>> 0.12 < excursion < 0.14
+        True
+    """
+    cache_key = (
+        board.squares_x,
+        board.squares_y,
+        board.square_size,
+        board.marker_size,
+        board.dictionary,
+        board.legacy_pattern,
+        float(rotation_range_deg),
+    )
+    cached = _EXCURSION_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    geometry = BoardGeometry(board)
+    corners_local = np.array(list(geometry.corner_positions.values()), dtype=np.float64)
+    centroid = corners_local.mean(axis=0)
+    corners_centered = corners_local - centroid
+
+    theta = np.deg2rad(rotation_range_deg)
+    rx_vals = np.linspace(-theta, theta, 41)
+    ry_vals = np.linspace(-theta, theta, 41)
+    rz_vals = np.linspace(-np.pi, np.pi, 180, endpoint=False)
+
+    rx_grid, ry_grid, rz_grid = np.meshgrid(rx_vals, ry_vals, rz_vals, indexing="ij")
+    rvecs = np.stack([rx_grid.ravel(), ry_grid.ravel(), rz_grid.ravel()], axis=1)
+    # Only the third row of each rotation matrix is needed, since a corner's
+    # world Z offset from the pivot is R[2, :] @ local.
+    third_rows = Rotation.from_rotvec(rvecs).as_matrix()[:, 2, :]  # (N, 3)
+
+    worst = 0.0
+    for local in corners_centered:
+        z_offsets = third_rows @ local  # (N,), world +Z is DOWN
+        upward = -z_offsets
+        worst = max(worst, float(np.max(upward)))
+
+    _EXCURSION_CACHE[cache_key] = worst
+    return worst
+
+
+def board_clearance_floor(
+    board: BoardConfig,
+    water_zs: Mapping[str, float],
+    rotation_range_deg: float,
+    margin_factor: float = 0.1,
+) -> float:
+    """Derive the minimum legal board-centre depth that keeps every corner
+    submerged (D-19.3-01).
+
+    ``min_depth = max(water_zs) + (1.0 + margin_factor) *
+    worst_upward_corner_excursion(board, rotation_range_deg)``.
+
+    The bound itself -- ``worst_upward_corner_excursion`` -- is derived from
+    the board's own corner cloud and the sampled rotation range; it is never
+    hardcoded. ``margin_factor`` (default 0.1, i.e. ``k = 0.1``) is a
+    *declared safety factor applied to that derived quantity* -- categorically
+    different from adding an arbitrary constant to make a failing case pass
+    (19.2 anti-pattern #6). This is safe **only so long as `margin_factor` is
+    never adjusted in response to a failing run**: if a scenario fails the
+    clearance check, the scenario's depth range moves, not `margin_factor`.
+
+    Uses ``max(water_zs.values())`` -- the DEEPEST per-camera interface --
+    not the mean and not a frozen constant like ``WATER_Z``, because
+    interface tilt makes ``water_zs`` vary per camera and the constraint
+    binds on the deepest one.
+
+    Args:
+        board: ChArUco board specification, forwarded to
+            ``worst_upward_corner_excursion``.
+        water_zs: Per-camera interface distances (Z-coordinate of the water
+            surface in world frame). The floor is anchored at the deepest
+            value.
+        rotation_range_deg: Maximum board tilt from horizontal, in degrees,
+            forwarded to ``worst_upward_corner_excursion``.
+        margin_factor: Fractional safety factor applied to the derived
+            excursion (default 0.1). See the safety-factor framing above --
+            never adjust this to make a failing scenario pass.
+
+    Returns:
+        Minimum legal board-centre depth (Z, meters) below which a corner
+        could rise above the deepest interface.
+    """
+    excursion = worst_upward_corner_excursion(board, rotation_range_deg)
+    return max(water_zs.values()) + (1.0 + margin_factor) * excursion
+
+
 def generate_board_trajectory(
     n_frames: int,
     camera_positions: dict[str, NDArray[np.float64]],
     water_zs: dict[str, float],
-    depth_range: tuple[float, float] = (0.3, 0.6),
+    *,
+    board: BoardConfig,
+    depth_range: tuple[float, float] | None = None,
     xy_extent: float = 0.15,
     rotation_range_deg: float = 15.0,
     min_cameras_per_frame: int = 2,
@@ -346,7 +491,33 @@ def generate_board_trajectory(
     Creates a trajectory that ensures:
     - Each frame is visible by at least min_cameras_per_frame cameras
     - The pose graph is connected (can chain from reference to all cameras)
-    - Board stays within reasonable depth range underwater
+    - Board stays within reasonable depth range underwater, with every corner
+      kept below the deepest interface (D-19.3-01, enforced via
+      ``board_clearance_floor``)
+
+    D-19.3-19: poses are re-centred so ``tvec`` genuinely places the board
+    CENTRE in world coordinates, matching this docstring's ``depth_range``
+    claim (which, pre-fix, was documentation of intent that the code did not
+    implement -- the pose positioned a corner, not the centre). After
+    sampling ``rvec``, the sampled ``(x, y, z)`` is treated as the desired
+    world position of the centroid of ``BoardGeometry(board).corner_positions``,
+    and ``tvec`` is computed as ``sampled_xyz - R @ centroid_local`` so that
+    ``R @ centroid_local + tvec == sampled_xyz``. The RNG call order and
+    count are unchanged, so the sampled ``(x, y, z, rx, ry, rz)`` sequence
+    stays bit-identical for a given seed -- only ``tvec`` is offset from what
+    it would have been pre-fix.
+
+    D-19.3-05: ``board`` is a REQUIRED keyword-only parameter (deliberately
+    breaking this codebase's usual trailing-kwarg-with-safe-default pattern).
+    An optional path that could skip the clearance check is the exact defect
+    shape this fix removes, so there is no default and no way to bypass it.
+
+    D-19.3-04: when ``depth_range`` is omitted (``None``), it resolves to
+    ``(board_clearance_floor(board, water_zs, rotation_range_deg), 2.0)`` --
+    the derived floor and a fixed 2.0 m ceiling. When ``depth_range`` IS
+    supplied and its minimum is below the derived floor, this raises
+    ``ValueError`` naming both the floor and the supplied minimum, before any
+    pose is emitted. No clamping and no warn-and-continue.
 
     D-27: ``center`` defaults to the CENTROID of ``camera_positions``, not to
     the origin and not to this function's pre-D-27 behaviour.
@@ -369,7 +540,13 @@ def generate_board_trajectory(
             Used to compute the default ``center`` (the mean of the XY
             positions) when ``center`` is not passed explicitly.
         water_zs: Per-camera interface distances
-        depth_range: (min_z, max_z) for board center in world coords
+        board: ChArUco board specification. Required -- used to derive the
+            clearance floor (D-19.3-01) and to compute the corner centroid
+            for re-centring (D-19.3-19).
+        depth_range: (min_z, max_z) for the board CENTRE in world coords.
+            Defaults to ``(board_clearance_floor(...), 2.0)`` when ``None``.
+            Raises ``ValueError`` if an explicit minimum is below the
+            derived floor.
         xy_extent: Maximum XY offset from ``center``
         rotation_range_deg: Maximum board tilt from horizontal
         min_cameras_per_frame: Minimum cameras that must see board
@@ -380,6 +557,10 @@ def generate_board_trajectory(
 
     Returns:
         List of BoardPose objects with frame indices 0 to n_frames-1
+
+    Raises:
+        ValueError: If ``depth_range[0]`` is below the derived clearance
+            floor.
     """
     if center is None:
         xs = [float(p[0]) for p in camera_positions.values()]
@@ -388,15 +569,36 @@ def generate_board_trajectory(
     else:
         cx, cy = center
 
+    floor = board_clearance_floor(board, water_zs, rotation_range_deg)
+    if depth_range is None:
+        depth_range = (floor, 2.0)
+    elif depth_range[0] < floor:
+        raise ValueError(
+            f"depth_range[0]={depth_range[0]!r} is below the derived "
+            f"clearance floor {floor:.4f} m (board={board!r}, "
+            f"rotation_range_deg={rotation_range_deg}). A board centre "
+            f"shallower than {floor:.4f} m can raise a corner above the "
+            "deepest interface (D-19.3-01). Either raise depth_range[0] to "
+            "at least the derived floor, or pass depth_range=None to use "
+            "the derived default."
+        )
+
     rng = np.random.default_rng(seed)
+
+    geometry = BoardGeometry(board)
+    centroid_local = np.mean(
+        np.array(list(geometry.corner_positions.values()), dtype=np.float64),
+        axis=0,
+    )
 
     poses: list[BoardPose] = []
     for frame_idx in range(n_frames):
-        # Position: random within extent (about center), random depth
+        # Position: random within extent (about center), random depth --
+        # this is the world position of the board CENTRE (D-19.3-19).
         x = cx + rng.uniform(-xy_extent, xy_extent)
         y = cy + rng.uniform(-xy_extent, xy_extent)
         z = rng.uniform(depth_range[0], depth_range[1])
-        tvec = np.array([x, y, z], dtype=np.float64)
+        sampled_xyz = np.array([x, y, z], dtype=np.float64)
 
         # Rotation: small tilts, full in-plane rotation
         max_tilt = np.deg2rad(rotation_range_deg)
@@ -405,6 +607,9 @@ def generate_board_trajectory(
         rz = rng.uniform(-np.pi, np.pi)
         rvec = np.array([rx, ry, rz], dtype=np.float64)
 
+        R = rvec_to_matrix(rvec)
+        tvec = sampled_xyz - R @ centroid_local
+
         poses.append(BoardPose(frame_idx=frame_idx, rvec=rvec, tvec=tvec))
 
     return poses
@@ -412,27 +617,61 @@ def generate_board_trajectory(
 
 def generate_real_rig_trajectory(
     n_frames: int = 100,
-    depth_range: tuple[float, float] = (1.1, 2.0),
+    *,
+    board: BoardConfig,
+    depth_range: tuple[float, float] | None = None,
+    water_zs: Mapping[str, float] | None = None,
     seed: int = 42,
 ) -> list[BoardPose]:
     """Generate board trajectory appropriate for the real rig geometry.
 
     The real rig has cameras at Z ≈ 0 with water surface at Z ≈ 1.03 m, so
-    the board should be below the water surface (default 1.1–2.0 m, i.e.
-    ~70–970 mm below the surface).
+    the board should be below the water surface. The default ``depth_range``
+    is derived (D-19.3-01): ``(board_clearance_floor(board, water_zs, 20.0),
+    2.0)``, which is ~1.220 m for this generator's own ``water_zs`` default
+    (all cameras exactly ``WATER_Z = 1.031``) -- slightly below the phase
+    reference figure of 1.226 m, because that reference was computed at
+    ``max(water_zs) = 1.0367`` (the tilt-varied grid family), while this
+    generator's own array has no interface tilt at all. That difference is
+    the per-scenario derivation working correctly, not a defect.
 
     Trajectory covers the full field of view:
 
     - Positions sweep across the ~1.3 × 1.2 m footprint of the camera array
     - Ensures connectivity by visiting regions seen by multiple cameras
 
+    D-19.3-19: poses are re-centred so ``tvec`` places the board CENTRE, not
+    a corner -- see ``generate_board_trajectory``'s docstring for the full
+    rationale, which applies identically here. The RNG call order and count
+    are unchanged, so the sampled ``(x, y, z, rx, ry, rz)`` sequence stays
+    bit-identical for a given seed; only ``tvec`` is offset.
+
+    D-19.3-05: ``board`` is a REQUIRED keyword-only parameter, matching
+    ``generate_board_trajectory``.
+
+    D-19.3-04: when ``depth_range`` is omitted (``None``), it resolves to
+    the derived ``(floor, 2.0)``. When supplied and below the derived floor,
+    raises ``ValueError`` naming both the floor and the supplied value.
+
     Args:
         n_frames: Number of frames to generate
-        depth_range: (min_z, max_z) for board center in world coords
+        board: ChArUco board specification. Required -- used to derive the
+            clearance floor (D-19.3-01) and to compute the corner centroid
+            for re-centring (D-19.3-19).
+        depth_range: (min_z, max_z) for the board CENTRE in world coords.
+            Defaults to the derived ``(floor, 2.0)`` when ``None``.
+        water_zs: Per-camera interface distances used to derive the
+            clearance floor. Defaults to ``generate_real_rig_array()``'s
+            ``water_zs`` (all equal to the frozen ``WATER_Z``) when
+            ``None``.
         seed: Random seed
 
     Returns:
         List of BoardPose objects
+
+    Raises:
+        ValueError: If ``depth_range[0]`` is below the derived clearance
+            floor.
     """
     rng = np.random.default_rng(seed)
 
@@ -443,13 +682,37 @@ def generate_real_rig_trajectory(
     XY_EXTENT = 0.7  # +/-700mm from center to ensure full coverage
     ROTATION_RANGE_DEG = 20.0
 
+    if water_zs is None:
+        _, _, water_zs = generate_real_rig_array()
+
+    floor = board_clearance_floor(board, water_zs, ROTATION_RANGE_DEG)
+    if depth_range is None:
+        depth_range = (floor, 2.0)
+    elif depth_range[0] < floor:
+        raise ValueError(
+            f"depth_range[0]={depth_range[0]!r} is below the derived "
+            f"clearance floor {floor:.4f} m (board={board!r}, "
+            f"rotation_range_deg={ROTATION_RANGE_DEG}). A board centre "
+            f"shallower than {floor:.4f} m can raise a corner above the "
+            "deepest interface (D-19.3-01). Either raise depth_range[0] to "
+            "at least the derived floor, or pass depth_range=None to use "
+            "the derived default."
+        )
+
+    geometry = BoardGeometry(board)
+    centroid_local = np.mean(
+        np.array(list(geometry.corner_positions.values()), dtype=np.float64),
+        axis=0,
+    )
+
     poses: list[BoardPose] = []
     for frame_idx in range(n_frames):
-        # Position: random within footprint, random depth
+        # Position: random within footprint, random depth -- world position
+        # of the board CENTRE (D-19.3-19).
         x = X_CENTER + rng.uniform(-XY_EXTENT, XY_EXTENT)
         y = Y_CENTER + rng.uniform(-XY_EXTENT, XY_EXTENT)
         z = rng.uniform(depth_range[0], depth_range[1])
-        tvec = np.array([x, y, z], dtype=np.float64)
+        sampled_xyz = np.array([x, y, z], dtype=np.float64)
 
         # Rotation: small tilts, full in-plane rotation
         max_tilt = np.deg2rad(ROTATION_RANGE_DEG)
@@ -457,6 +720,9 @@ def generate_real_rig_trajectory(
         ry = rng.uniform(-max_tilt, max_tilt)
         rz = rng.uniform(-np.pi, np.pi)
         rvec = np.array([rx, ry, rz], dtype=np.float64)
+
+        R = rvec_to_matrix(rvec)
+        tvec = sampled_xyz - R @ centroid_local
 
         poses.append(BoardPose(frame_idx=frame_idx, rvec=rvec, tvec=tvec))
 

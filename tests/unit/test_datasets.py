@@ -6,9 +6,11 @@ import numpy as np
 import pytest
 
 import aquacal.datasets as datasets_module
+from aquacal.config.schema import BoardConfig
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets import (
     SyntheticScenario,
+    board_clearance_floor,
     calibrate_synthetic,
     clear_cache,
     compute_per_camera_errors,
@@ -22,9 +24,333 @@ from aquacal.datasets import (
     get_cache_info,
     list_datasets,
     load_example,
+    worst_upward_corner_excursion,
 )
 from aquacal.datasets._manifest import get_manifest
 from aquacal.datasets.synthetic import generate_real_rig_trajectory
+
+_DEFAULT_BOARD = BoardConfig(
+    squares_x=12,
+    squares_y=9,
+    square_size=0.060,
+    marker_size=0.045,
+    dictionary="DICT_5X5_100",
+)
+
+# ============================================================================
+# Clearance floor derivation tests (GEOM-01, D-19.3-01)
+# ============================================================================
+
+
+def test_worst_upward_corner_excursion_reference_15deg():
+    """Reproduces the phase reference excursion (131.3 mm) to within 2 mm at
+    15 deg tilt."""
+    excursion = worst_upward_corner_excursion(_DEFAULT_BOARD, 15.0)
+    assert excursion == pytest.approx(0.1313, abs=0.002)
+
+
+def test_worst_upward_corner_excursion_reference_20deg():
+    """Reproduces the phase reference excursion (172.0 mm) to within 2 mm at
+    20 deg tilt."""
+    excursion = worst_upward_corner_excursion(_DEFAULT_BOARD, 20.0)
+    assert excursion == pytest.approx(0.1720, abs=0.002)
+
+
+def test_board_clearance_floor_reference_15deg():
+    """Reproduces the phase reference floor (1.181 m) to within 2 mm at
+    15 deg tilt, anchored on the deepest water_z (1.0367)."""
+    floor = board_clearance_floor(_DEFAULT_BOARD, {"c": 1.0367}, 15.0)
+    assert floor == pytest.approx(1.181, abs=0.002)
+
+
+def test_board_clearance_floor_reference_20deg():
+    """Reproduces the phase reference floor (1.226 m) to within 2 mm at
+    20 deg tilt, anchored on the deepest water_z (1.0367)."""
+    floor = board_clearance_floor(_DEFAULT_BOARD, {"c": 1.0367}, 20.0)
+    assert floor == pytest.approx(1.226, abs=0.002)
+
+
+def test_board_clearance_floor_uses_deepest_water_z_not_mean():
+    """The floor anchors on max(water_zs), not the mean and not a frozen
+    constant like WATER_Z."""
+    water_zs = {"a": 1.0, "b": 1.0367, "c": 1.02}
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
+    excursion = worst_upward_corner_excursion(_DEFAULT_BOARD, 15.0)
+    expected = max(water_zs.values()) + 1.1 * excursion
+    assert floor == pytest.approx(expected)
+
+
+def test_derived_floor_moves_with_square_size():
+    """Doubling square_size strictly increases the derived floor -- proves
+    the floor is DERIVED, not hardcoded (D-19.3-01)."""
+    small_board = BoardConfig(
+        squares_x=12,
+        squares_y=9,
+        square_size=0.060,
+        marker_size=0.045,
+        dictionary="DICT_5X5_100",
+    )
+    large_board = BoardConfig(
+        squares_x=12,
+        squares_y=9,
+        square_size=0.120,
+        marker_size=0.045,
+        dictionary="DICT_5X5_100",
+    )
+    water_zs = {"c": 1.0367}
+    floor_small = board_clearance_floor(small_board, water_zs, 15.0)
+    floor_large = board_clearance_floor(large_board, water_zs, 15.0)
+    assert floor_large > floor_small
+
+
+def test_derived_floor_moves_with_rotation_range():
+    """Raising rotation_range_deg from 15 to 20 strictly increases the
+    derived floor."""
+    water_zs = {"c": 1.0367}
+    floor_15 = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
+    floor_20 = board_clearance_floor(_DEFAULT_BOARD, water_zs, 20.0)
+    assert floor_20 > floor_15
+
+
+def test_derived_floor_moves_with_squares_y():
+    """Changing squares_y changes the derived floor (a different board
+    shape has a different corner cloud)."""
+    board_9 = BoardConfig(
+        squares_x=12,
+        squares_y=9,
+        square_size=0.060,
+        marker_size=0.045,
+        dictionary="DICT_5X5_100",
+    )
+    board_13 = BoardConfig(
+        squares_x=12,
+        squares_y=13,
+        square_size=0.060,
+        marker_size=0.045,
+        dictionary="DICT_5X5_100",
+    )
+    water_zs = {"c": 1.0367}
+    floor_9 = board_clearance_floor(board_9, water_zs, 15.0)
+    floor_13 = board_clearance_floor(board_13, water_zs, 15.0)
+    assert floor_9 != floor_13
+
+
+def test_board_clearance_floor_margin_factor_applies_to_excursion_only():
+    """`(1.0 + margin_factor)` multiplies the derived excursion only -- it is
+    never added directly to max(water_zs)."""
+    water_zs = {"c": 1.0367}
+    excursion = worst_upward_corner_excursion(_DEFAULT_BOARD, 15.0)
+    floor_default = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
+    floor_explicit = board_clearance_floor(
+        _DEFAULT_BOARD, water_zs, 15.0, margin_factor=0.1
+    )
+    assert floor_default == pytest.approx(floor_explicit)
+    assert floor_default == pytest.approx(max(water_zs.values()) + 1.1 * excursion)
+    # A larger margin_factor increases the floor by scaling the excursion,
+    # not by a flat additive bump to max(water_zs).
+    floor_bigger_margin = board_clearance_floor(
+        _DEFAULT_BOARD, water_zs, 15.0, margin_factor=0.2
+    )
+    assert floor_bigger_margin == pytest.approx(
+        max(water_zs.values()) + 1.2 * excursion
+    )
+
+
+# ============================================================================
+# Board re-centring and clearance enforcement tests
+# (D-19.3-02/03/04/05/19, GEOM-01)
+# ============================================================================
+
+
+def _grid_array_for_recentring_tests(n_cameras=6, seed=1):
+    _, extrinsics, water_zs = generate_camera_array(
+        n_cameras=n_cameras, layout="grid", spacing=0.1, seed=seed
+    )
+    camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
+    return camera_positions, water_zs
+
+
+def test_board_trajectory_poses_are_centred_on_board_centre():
+    """Every pose's world-frame corner-cloud mean sits inside depth_range and
+    the center +/- xy_extent box -- tvec places the board CENTRE, not a
+    corner (D-19.3-19)."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+    center = (0.1, -0.2)
+    xy_extent = 0.15
+    depth_range = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0), 2.0
+    board_geom = BoardGeometry(_DEFAULT_BOARD)
+
+    poses = generate_board_trajectory(
+        n_frames=30,
+        camera_positions=camera_positions,
+        water_zs=water_zs,
+        board=_DEFAULT_BOARD,
+        depth_range=depth_range,
+        xy_extent=xy_extent,
+        center=center,
+        seed=5,
+    )
+
+    for pose in poses:
+        world_corners = board_geom.transform_corners(pose.rvec, pose.tvec)
+        mean_xyz = np.mean(np.array(list(world_corners.values())), axis=0)
+        assert depth_range[0] - 1e-9 <= mean_xyz[2] <= depth_range[1] + 1e-9
+        assert abs(mean_xyz[0] - center[0]) <= xy_extent + 1e-6
+        assert abs(mean_xyz[1] - center[1]) <= xy_extent + 1e-6
+
+
+def test_board_trajectory_no_corner_submerged_over_500_frames():
+    """No board corner is ever at or above the deepest interface, across 500
+    frames of the default grid generator."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+    board_geom = BoardGeometry(_DEFAULT_BOARD)
+    max_water_z = max(water_zs.values())
+
+    poses = generate_board_trajectory(
+        n_frames=500,
+        camera_positions=camera_positions,
+        water_zs=water_zs,
+        board=_DEFAULT_BOARD,
+        seed=11,
+    )
+
+    # World +Z is DOWN, so "at or above the interface" means corner Z <=
+    # max_water_z. No corner may reach or cross that line.
+    min_corner_z = min(
+        float(pos[2])
+        for pose in poses
+        for pos in board_geom.transform_corners(pose.rvec, pose.tvec).values()
+    )
+    assert min_corner_z > max_water_z
+
+
+def test_real_rig_trajectory_no_corner_submerged_over_500_frames():
+    """No board corner is ever at or above the deepest interface, across 500
+    frames of the real-rig generator."""
+    _, _, water_zs = generate_real_rig_array()
+    board_geom = BoardGeometry(_DEFAULT_BOARD)
+    max_water_z = max(water_zs.values())
+
+    poses = generate_real_rig_trajectory(
+        n_frames=500,
+        board=_DEFAULT_BOARD,
+        water_zs=water_zs,
+        seed=13,
+    )
+
+    min_corner_z = min(
+        float(pos[2])
+        for pose in poses
+        for pos in board_geom.transform_corners(pose.rvec, pose.tvec).values()
+    )
+    assert min_corner_z > max_water_z
+
+
+def test_board_trajectory_illegal_depth_range_raises_value_error():
+    """An explicit depth_range below the derived floor raises ValueError
+    naming both the floor and the supplied minimum."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
+    illegal_min = floor - 0.05
+
+    with pytest.raises(ValueError, match=r"[Ff]loor"):
+        generate_board_trajectory(
+            n_frames=1,
+            camera_positions=camera_positions,
+            water_zs=water_zs,
+            board=_DEFAULT_BOARD,
+            depth_range=(illegal_min, 2.0),
+        )
+
+
+def test_board_trajectory_legal_depth_range_at_floor_does_not_raise():
+    """A depth_range whose minimum equals the derived floor is legal."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
+
+    poses = generate_board_trajectory(
+        n_frames=1,
+        camera_positions=camera_positions,
+        water_zs=water_zs,
+        board=_DEFAULT_BOARD,
+        depth_range=(floor, 2.0),
+    )
+    assert len(poses) == 1
+
+
+def test_real_rig_trajectory_illegal_depth_range_raises_value_error():
+    """An explicit depth_range below the derived floor raises ValueError for
+    the real-rig generator too."""
+    _, _, water_zs = generate_real_rig_array()
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs, 20.0)
+    illegal_min = floor - 0.05
+
+    with pytest.raises(ValueError, match=r"[Ff]loor"):
+        generate_real_rig_trajectory(
+            n_frames=1,
+            board=_DEFAULT_BOARD,
+            water_zs=water_zs,
+            depth_range=(illegal_min, 2.0),
+        )
+
+
+def test_board_trajectory_requires_board_keyword():
+    """Omitting `board=` raises TypeError, not ValueError and not a silent
+    success (D-19.3-05)."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+
+    with pytest.raises(TypeError):
+        generate_board_trajectory(
+            n_frames=1,
+            camera_positions=camera_positions,
+            water_zs=water_zs,
+        )
+
+
+def test_real_rig_trajectory_requires_board_keyword():
+    """Omitting `board=` raises TypeError for the real-rig generator too."""
+    with pytest.raises(TypeError):
+        generate_real_rig_trajectory(n_frames=1)
+
+
+def test_board_trajectory_rng_determinism_only_tvec_offset():
+    """For a fixed seed, the sampled (x, y, z, rx, ry, rz) sequence is
+    unchanged from pre-fix -- only tvec is offset by the centroid re-centring
+    (D-19.3-19). rvec must be bit-identical to the pre-fix stream."""
+    camera_positions, water_zs = _grid_array_for_recentring_tests()
+
+    def _pre_fix_stream(n_frames, camera_positions, water_zs, seed):
+        xs = [float(p[0]) for p in camera_positions.values()]
+        ys = [float(p[1]) for p in camera_positions.values()]
+        cx, cy = float(np.mean(xs)), float(np.mean(ys))
+        rng = np.random.default_rng(seed)
+        depth_range = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0), 2.0
+        xy_extent = 0.15
+        rows = []
+        for _ in range(n_frames):
+            _ = cx + rng.uniform(-xy_extent, xy_extent)
+            _ = cy + rng.uniform(-xy_extent, xy_extent)
+            _ = rng.uniform(depth_range[0], depth_range[1])
+            max_tilt = np.deg2rad(15.0)
+            rx = rng.uniform(-max_tilt, max_tilt)
+            ry = rng.uniform(-max_tilt, max_tilt)
+            rz = rng.uniform(-np.pi, np.pi)
+            rows.append((rx, ry, rz))
+        return rows
+
+    expected_rvecs = _pre_fix_stream(
+        n_frames=5, camera_positions=camera_positions, water_zs=water_zs, seed=42
+    )
+    poses = generate_board_trajectory(
+        n_frames=5,
+        camera_positions=camera_positions,
+        water_zs=water_zs,
+        board=_DEFAULT_BOARD,
+        seed=42,
+    )
+    for pose, (rx, ry, rz) in zip(poses, expected_rvecs):
+        np.testing.assert_array_equal(pose.rvec, np.array([rx, ry, rz]))
+
 
 # ============================================================================
 # create_scenario Tests
