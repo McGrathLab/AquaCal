@@ -4,14 +4,14 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 19.3 context gathered
-last_updated: "2026-08-02T00:59:17.109Z"
+last_updated: "2026-08-02T01:05:08.053Z"
 last_activity: 2026-08-01 -- Phase 19.2 execution started
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 6
   total_plans: 63
   completed_plans: 63
-  percent: 67
+  percent: 60
 ---
 
 # Project State
@@ -136,6 +136,7 @@ so the code work must land with room to spare. The Hooks → Per-Camera Interfac
 
 - Phase 19.1 inserted after Phase 19: Experiment Suite Consolidation — X1/X2/X3/X6 plus E2, E7, and E1 (EXP-01..06) from the desktop brief; every manuscript number traces to one script/output/figure (URGENT). Rescoped the same day when the phase was split; the execution half became 19.2.
 - Phase 19.2 inserted after Phase 19.1: Experiment Execution and Provenance — E3/E4/E5/E6 + provenance close-out (EXP-07..11), split out of the original 19.1 along the source brief's wave 3/wave 4 boundary so E2's real-rig re-run is a phase gate rather than one item among eleven (URGENT)
+- Phase 19.3 inserted after Phase 19.2: Scenario Geometry and Convergence - synthetic boards protrude through the water surface, invalidating optimality as a convergence diagnostic (URGENT)
 
 ### Decisions
 

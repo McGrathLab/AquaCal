@@ -324,6 +324,43 @@ Gap-closure plans (verification `gaps_found` 5/7; `19.2-GAP-CONTEXT.md` D-27..D-
 - [x] 19.2-24-PLAN.md — wave 6 — widen the EXP-11 gate to all four fields per artifact, per file (WR-11), and re-assert E1's and E7's reproduction on the shipping tree
 - [x] 19.2-25-PLAN.md — wave 6 — make the README's universal provenance claim true, record the pre/post-D-27 boundary, close EXP-07/09/10/11 in `REQUIREMENTS.md`, and resolve MF-01 and MF-02 against fresh measurements
 
+### Phase 19.3: Scenario Geometry and Convergence (INSERTED)
+
+**Goal**: The synthetic scenarios are physically valid — board corners stay below the water
+surface at every frame — so first-order optimality is a trustworthy convergence diagnostic
+again; the five affected experiments are re-measured and the correction is reported.
+**Depends on**: Phase 19.2 (a coherent baseline to measure the fix against; D-29's grid-family
+geometry is what this phase finishes)
+**Requirements**: TBD — needs a new series; this phase's obligations are enumerated as
+D-19.3-01..18 in `19.3-CONTEXT.md`
+**Source brief**: `19.3-SEED.md` (diagnosis, physics reasoning, four locked user decisions)
+**Success Criteria** (what must be TRUE):
+  1. Both trajectory generators take a required `BoardConfig` and raise `ValueError` at
+     construction when `depth_range` violates the derived clearance floor
+     `max(water_zs) + 1.1 · R_max · sin(θ_normal)` — a derivation, not a hardcoded constant.
+  2. The real-rig standoff is finished into the library: `generate_camera_array`'s default
+     `height_above_water` and both `create_scenario` presets move off 0.15 m, so no scenario
+     can be constructed mis-framed. `default_board` stays shared and unchanged.
+  3. E6's scale axis anchors at the derived floor rather than the water surface, so every
+     scale value is legal by construction, and its docstring prose matches what it now
+     measures.
+  4. The pinhole continuation is demoted to a recorded numerical guard: the library counts
+     hits on the final solution evaluation and the experiment harnesses gate on a non-zero
+     count, so a degenerate cell can never be published as `status="ok"`. The change is
+     proven inert by exact-equality test, keeping E2 out of scope.
+  5. `DegenerateObservationWarning` no longer advises judging convergence on optimality —
+     the advice that is wrong in precisely the situation that emits it.
+  6. E1/E4/E5/E6/E7 are re-measured on corrected geometry (~9 h, chained, detached), and the
+     paired determinism sweep reports the cell reproduction count against the 63/308 pre-fix
+     baseline as a pre-declared statistic.
+  7. MF-08 records the before/after with pre-fix artifacts archived, claiming "accuracy
+     unaffected" only where a measured seed band supports it (E1/E5/E7 yes; E4/E6 report the
+     diagnostic improvement without an accuracy claim).
+**Note**: ships a breaking change (`generate_board_trajectory` is a public export gaining a
+required parameter) — cuts **v2.0.0**. Phases 21 and 22 must know before resolving version
+strings.
+**Plans**: TBD
+
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
 estimate into their config by hand.
@@ -401,6 +438,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
