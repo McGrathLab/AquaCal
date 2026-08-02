@@ -52,6 +52,7 @@ import json
 import logging
 import sys
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 import pandas as pd
@@ -60,6 +61,7 @@ from aquacal.core.board import BoardGeometry
 from aquacal.datasets import calibrate_synthetic, generate_synthetic_detections
 from aquacal.datasets.synthetic import (
     SyntheticScenario,
+    board_clearance_floor,
     generate_real_rig_array,
     generate_real_rig_trajectory,
 )
@@ -153,6 +155,28 @@ HOLDOUT_SEED_OFFSET = 100_000
 E5_N_FRAMES = 30
 E5_REFINE_INTRINSICS = False
 
+# Matches `generate_real_rig_trajectory`'s own internal `ROTATION_RANGE_DEG`
+# (D-19.3-03 keeps that generator at 20 deg) -- must stay in step with it, or
+# `_e5_real_rig_depth_range` below would derive a floor for the wrong tilt.
+_E5_ROTATION_RANGE_DEG = 20.0
+
+
+def _e5_real_rig_depth_range(water_zs: Mapping[str, float]) -> tuple[float, float]:
+    """Single source of E5's `depth_range`, called at BOTH the calibration
+    trajectory site and the held-out trajectory site (D-19.3-04).
+
+    A calibration set and a held-out set built at different depths would
+    silently make E5's generalization number measure the wrong thing --
+    routing both call sites through this one function (rather than each
+    independently passing `depth_range=None` and trusting the derivation to
+    agree) makes that impossible by construction: same board, same
+    `water_zs`, same rotation range in, same `depth_range` out, always.
+    """
+    return (
+        board_clearance_floor(BOARD_CONFIG, water_zs, _E5_ROTATION_RANGE_DEG),
+        2.0,
+    )
+
 
 def build_real_rig_scenario(
     n_frames: int, seed: int, n_true: float
@@ -185,7 +209,11 @@ def build_real_rig_scenario(
     """
     intrinsics, extrinsics, water_zs = generate_real_rig_array()
     board_poses = generate_real_rig_trajectory(
-        n_frames=n_frames, depth_range=(1.1, 2.0), seed=seed
+        n_frames=n_frames,
+        board=BOARD_CONFIG,
+        water_zs=water_zs,
+        depth_range=_e5_real_rig_depth_range(water_zs),
+        seed=seed,
     )
     return SyntheticScenario(
         name=E5_SCENARIO_NAME,
@@ -465,7 +493,11 @@ def run_index_point(
 
     holdout_seed = seed + HOLDOUT_SEED_OFFSET
     holdout_poses = generate_real_rig_trajectory(
-        n_frames=n_frames, depth_range=(1.1, 2.0), seed=holdout_seed
+        n_frames=n_frames,
+        board=BOARD_CONFIG,
+        water_zs=scenario.water_zs,
+        depth_range=_e5_real_rig_depth_range(scenario.water_zs),
+        seed=holdout_seed,
     )
     holdout_detections = generate_synthetic_detections(
         intrinsics=scenario.intrinsics,

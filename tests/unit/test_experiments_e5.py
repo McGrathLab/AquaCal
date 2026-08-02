@@ -492,6 +492,50 @@ def test_run_index_point_forwards_discard_stats_out(monkeypatch):
     assert row["n_assumed"] == 1.335
 
 
+def test_calibration_and_holdout_trajectories_share_one_depth_range(monkeypatch):
+    """D-19.3-04: E5's calibration trajectory and its held-out trajectory
+    must resolve to the SAME `depth_range` (and the same `board`) -- a
+    calibration set and a held-out set built at different depths would
+    silently make E5's generalization number measure the wrong thing. Proven
+    by spying on `generate_real_rig_trajectory`'s two call sites (never a
+    real solve, matching this module's own monkeypatched-`calibrate_synthetic`
+    discipline)."""
+    calls: list[dict] = []
+    original = e5mod.generate_real_rig_trajectory
+
+    def _spy(*args, **kwargs):
+        calls.append(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(e5mod, "generate_real_rig_trajectory", _spy)
+
+    def _fake_calibrate_synthetic(scenario, **kwargs):
+        class _Cam:
+            water_z = scenario.n_water
+
+        class _Result:
+            cameras = {"cam0": _Cam()}
+
+        return _Result(), object()
+
+    def _fake_evaluate_calibration(result, detections, board):
+        return _make_evaluation()
+
+    monkeypatch.setattr(e5mod, "calibrate_synthetic", _fake_calibrate_synthetic)
+    monkeypatch.setattr(e5mod, "evaluate_calibration", _fake_evaluate_calibration)
+
+    run_index_point(n_assumed=1.335, n_true=N_TRUE, n_frames=4, seed=1)
+
+    assert len(calls) == 2, "expected exactly one calibration + one holdout call"
+    calib_kwargs, holdout_kwargs = calls
+
+    assert "depth_range" in calib_kwargs and "depth_range" in holdout_kwargs
+    assert calib_kwargs["depth_range"] == holdout_kwargs["depth_range"]
+    assert "board" in calib_kwargs and "board" in holdout_kwargs
+    assert calib_kwargs["board"] == holdout_kwargs["board"] == e5mod.BOARD_CONFIG
+    assert calib_kwargs["seed"] != holdout_kwargs["seed"]
+
+
 # ---------------------------------------------------------------------------
 # Plan 19.2-27 Task 5: discard_stats_out is numerically inert
 # ---------------------------------------------------------------------------

@@ -329,7 +329,11 @@ def build_newton_iterations_df(n_frames: int, seed: int) -> pd.DataFrame:
     """
     intrinsics, extrinsics, water_zs = generate_real_rig_array()
     board_poses = generate_real_rig_trajectory(
-        n_frames=n_frames, depth_range=(1.1, 2.0), seed=seed
+        n_frames=n_frames,
+        board=_REAL_RIG_BOARD_CONFIG,
+        water_zs=water_zs,
+        depth_range=None,
+        seed=seed,
     )
     board = BoardGeometry(_REAL_RIG_BOARD_CONFIG)
     cameras = {cam: Camera(cam, intrinsics[cam], extrinsics[cam]) for cam in intrinsics}
