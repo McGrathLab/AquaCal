@@ -370,3 +370,11 @@ Every committed result's provenance is asserted mechanically, not by inspection,
 `tests/unit/test_experiments_provenance.py` — the six Phase-19.1 records that predate the
 seed key are named there explicitly (see "The seed carve-out" above), and a CSV committed
 without an entry in that test's `CSV_TO_RECORD` mapping fails CI.
+
+## 8. Pre-fix artifact archive
+
+`experiments/archive/` preserves committed artifacts from before a non-inert fix, so a
+reader diffing the manuscript's numbers has one artifact to diff against instead of
+reconstructing "before" from git history. See `experiments/archive/README.md` for the
+index and the convention (partial copy plus `git show <sha>:<path>` pointers for anything
+that trips `check-added-large-files` or `detect-secrets`).
