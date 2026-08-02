@@ -17,6 +17,7 @@ matches the timing of the module's own `--smoke` path (a few seconds).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -66,7 +67,11 @@ from experiments.e4_benchmark_grid import subprocess as e4_subprocess
 
 
 def _write_fake_cell(
-    cell_dir: Path, n_cameras: int, n_frames: int, seed: int = 42
+    cell_dir: Path,
+    n_cameras: int,
+    n_frames: int,
+    seed: int = 42,
+    degenerate_observations_at_solution: int = 0,
 ) -> None:
     """Write a realistic-shaped per-cell benchmark.json fixture, no calibration run."""
     diag1 = SolverDiagnostics(
@@ -110,6 +115,7 @@ def _write_fake_cell(
             "n_cameras_observing_per_frame_min": max(n_cameras - 1, 0),
             "n_cameras_observing_per_frame_median": float(n_cameras),
             "peak_bytes_baseline": 900,
+            "degenerate_observations_at_solution": degenerate_observations_at_solution,
         },
         timings={
             "stage3_interface_optimization": 1.0,
@@ -278,7 +284,99 @@ def test_declared_cells_all_emit_rows(full_grid_dir):
 def test_status_vocabulary(full_grid_dir):
     out_dir, cell_statuses, e2_path = full_grid_dir
     df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
-    assert set(df["status"]) <= {"ok", "failed", "skipped_existing"}
+    assert set(df["status"]) <= {"ok", "degenerate", "failed", "skipped_existing"}
+
+
+# ---------------------------------------------------------------------------
+# D-19.3-11 / plan 19.3-07: guard-count gate on per-cell status
+# (production paths only; smoke carve-out)
+# ---------------------------------------------------------------------------
+
+
+def test_degenerate_count_gates_production_cell_status(full_grid_dir):
+    """A non-zero degenerate_observations_at_solution count recorded for a
+    DECLARED (production) cell downgrades its status from "ok" to
+    "degenerate", never leaving it "ok" -- metrics stay populated (D-19.3-11).
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    degenerate_cell = DECLARED_CELLS[0]
+    cell_dir = (
+        out_dir
+        / "e4_cells"
+        / f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}"
+    )
+    _write_fake_cell(
+        cell_dir,
+        degenerate_cell[0],
+        degenerate_cell[1],
+        degenerate_observations_at_solution=3,
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    cell_key = f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}"
+    row = df[df["cell_key"] == cell_key].iloc[0]
+
+    assert row["status"] == "degenerate"
+    assert row["status_reason"] != ""
+    assert row["degenerate_observations_at_solution"] == 3
+    # Metrics stay populated -- this is NOT the null branch.
+    assert not pd.isna(row["reprojection_rms"])
+    assert not pd.isna(row["n_params_stage3_interface_optimization"])
+
+
+def test_degenerate_count_zero_stays_ok(full_grid_dir):
+    """The common case: a zero guard count records status="ok" and
+    degenerate_observations_at_solution == 0 -- present, not absent."""
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    assembled = df[df["record_source"] == "assembled"]
+    assert (assembled["status"] == "ok").all()
+    assert (assembled["degenerate_observations_at_solution"] == 0).all()
+
+
+def test_degenerate_column_appended_last():
+    """The new column is appended at the very end of GRID_COLUMNS, verified
+    by index -- every pre-existing column keeps its position."""
+    assert GRID_COLUMNS.index("degenerate_observations_at_solution") == (
+        len(GRID_COLUMNS) - 1
+    )
+
+
+def test_smoke_cells_never_reach_the_gate():
+    """SMOKE_CELLS's own trivial (3, 3)/(3, 4) pairs are disjoint from
+    DECLARED_CELLS -- build_grid_dataframe (the sole gating site) only ever
+    iterates DECLARED_CELLS, so a smoke cell can never be gated regardless of
+    its own guard count (D-19.3-11's smoke carve-out)."""
+    from experiments.e4_benchmark_grid import SMOKE_CELLS
+
+    assert set(SMOKE_CELLS).isdisjoint(set(DECLARED_CELLS))
+    import inspect
+
+    source = inspect.getsource(build_grid_dataframe)
+    # The docstring/comment prose is allowed to name SMOKE_CELLS (to explain
+    # the carve-out); the CODE must never iterate over it -- only over
+    # DECLARED_CELLS, verified by the one `for` loop in this function.
+    for_loops = re.findall(r"for .* in (\w+):", source)
+    assert for_loops == ["DECLARED_CELLS"]
+
+
+def test_degenerate_gate_source_is_a_smoke_condition_not_a_threshold():
+    """The production gate is exactly `n_degenerate > 0` -- no other integer
+    literal is ever compared against the guard count anywhere in the module,
+    which is what makes the carve-out a smoke-path condition rather than a
+    threshold or tolerance."""
+    source = Path(e4_grid_module.__file__).read_text(encoding="utf-8")
+    assert source.count('"degenerate"') >= 1
+    guard_comparisons = re.findall(
+        r"n_degenerate\s*(<=|>=|==|!=|<|>)\s*(-?\d+)", source
+    )
+    assert len(guard_comparisons) >= 1
+    for operator, literal in guard_comparisons:
+        assert operator == ">" and literal == "0", (
+            f"found n_degenerate {operator} {literal} in e4_benchmark_grid.py "
+            "-- the production gate must be exactly `> 0`, never a threshold "
+            "or tolerance"
+        )
 
 
 def test_timing_scope_and_record_source(full_grid_dir):

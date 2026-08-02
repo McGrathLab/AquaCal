@@ -179,7 +179,7 @@ SCALE_AXIS_VALUES: list[
     ),
 ]
 
-STATUS_VALUES = frozenset({"ok", "failed", "skipped_existing"})
+STATUS_VALUES = frozenset({"ok", "degenerate", "failed", "skipped_existing"})
 
 E6_COLUMNS: list[str] = [
     "axis",
@@ -219,8 +219,15 @@ E6_COLUMNS: list[str] = [
     "water_z_error_mm_mean",
     "num_comparisons",
     "num_frames",
+    # D-19.3-11/plan 19.3-07: the final-solution guard count this
+    # configuration's calibrate_synthetic call recorded via
+    # discard_stats_out["degenerate_observations_at_solution"]. Appended
+    # last so every existing column keeps its position. Populated whenever
+    # a fresh run recorded metrics (status in {"ok", "degenerate"}); null
+    # on "failed"/"skipped_existing" rows that never resolved a value.
+    "degenerate_observations_at_solution",
 ]
-assert len(E6_COLUMNS) == 30 and len(set(E6_COLUMNS)) == 30
+assert len(E6_COLUMNS) == 31 and len(set(E6_COLUMNS)) == 31
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
@@ -464,12 +471,23 @@ def build_row(
     *,
     status: str,
     status_reason: str,
+    degenerate_count: int | None = None,
 ) -> dict:
     """Combine one configuration's identity fields with its (possibly null) metrics.
 
-    Metric columns are null whenever `status` is not `"ok"`, regardless of
-    what `metrics` contains -- a `"skipped_existing"` or `"failed"` row never
-    silently carries a stale or partial number.
+    Metric columns are populated whenever `status in {"ok", "degenerate"}`
+    AND `metrics` is not `None` -- a `"skipped_existing"` or `"failed"` row
+    never silently carries a stale or partial number. This is deliberately
+    NOT the same rule as "is this configuration converged" (that question is
+    answered by `status == "ok"` alone, everywhere a consumer aggregates or
+    tables this data) -- a `"degenerate"` row's reprojection RMS and
+    reconstruction accuracy are real, measured numbers (plan 09's cell-
+    reproduction statistic needs them), but its `optimality_*` columns are
+    NOT to be trusted as a convergence signal (D-19.3-11): the pinhole
+    continuation the guard count flags puts the residual on a C0-but-not-C1
+    kink at exactly that point. Two rules that were accidentally the same
+    rule (both `status == "ok"`) now differ on purpose; do not "simplify"
+    them back together.
 
     Args:
         config: One entry from `build_axis_configurations()`.
@@ -478,6 +496,10 @@ def build_row(
         metrics: `compute_configuration_metrics()`'s output, or `None`.
         status: One of `STATUS_VALUES`.
         status_reason: Empty string on success, else a short description.
+        degenerate_count: The final-solution guard count recorded via
+            `discard_stats_out["degenerate_observations_at_solution"]`, or
+            `None` when it was never computed for this row (e.g. a
+            `"failed"` or `"skipped_existing"` row predating this column).
 
     Returns:
         A dict with exactly the keys of `E6_COLUMNS`, in that order.
@@ -502,8 +524,11 @@ def build_row(
         "spacing": config["spacing"],
         "status": status,
         "status_reason": status_reason,
+        "degenerate_observations_at_solution": degenerate_count,
     }
-    use_metrics = status == "ok" and metrics is not None
+    # NOT the same predicate as "converged" (status == "ok" alone, used by
+    # every aggregation/LaTeX consumer) -- see the docstring above.
+    use_metrics = status in {"ok", "degenerate"} and metrics is not None
     for col in _METRIC_COLUMNS:
         row[col] = metrics.get(col) if use_metrics else None
     return {col: row[col] for col in E6_COLUMNS}
@@ -616,6 +641,7 @@ def run_configuration(
     refine_intrinsics: bool = True,
     force: bool = False,
     environment: dict | None = None,
+    is_smoke: bool = False,
 ) -> dict:
     """Run (or skip, if already cached) one distinct scene, checkpointing to JSON.
 
@@ -680,10 +706,23 @@ def run_configuration(
             eleven `3d0aa3e`). `None` remains supported so a direct,
             standalone call (as several unit tests make) still produces a
             complete, self-describing checkpoint.
+        is_smoke: D-19.3-11/plan 19.3-07's smoke carve-out. `--smoke`'s
+            configuration set is still a real, if reduced, sweep -- so a
+            non-zero `degenerate_observations_at_solution` count is still
+            RECORDED and still WARNED about here, but it must never set
+            `status="degenerate"` on a `--smoke` invocation: `create_scenario`-
+            style smoke-only geometry (`ideal`/`minimal` in E1/E7) trips the
+            guard legitimately, and this parameter is E6's own equivalent
+            plumbing so the same distinction applies here. Every PRODUCTION
+            configuration (the plain, non-`--smoke` sweep) always passes
+            `is_smoke=False` (the default), so the gate below is exactly
+            `count > 0 -> degenerate` for every published number.
 
     Returns:
-        A dict with `status` (one of `STATUS_VALUES`), `status_reason`, and
-        `metrics` (`compute_configuration_metrics()`'s output, or `None`).
+        A dict with `status` (one of `STATUS_VALUES`), `status_reason`,
+        `metrics` (`compute_configuration_metrics()`'s output, or `None`),
+        and `degenerate_observations_at_solution` (the final-solution guard
+        count, or `None` if it was never computed for this outcome).
     """
     config_key = config["config_key"]
     config_path = Path(out_dir) / "e6_configs" / f"{config_key}.json"
@@ -711,6 +750,9 @@ def run_configuration(
                 "status": cached.get("status", "failed"),
                 "status_reason": cached.get("status_reason", ""),
                 "metrics": cached.get("metrics"),
+                "degenerate_observations_at_solution": cached.get(
+                    "degenerate_observations_at_solution"
+                ),
             }
 
     try:
@@ -726,6 +768,7 @@ def run_configuration(
         )
         diag_stage3 = SolverDiagnostics()
         diag_intrinsic_pass = SolverDiagnostics()
+        discard_stats: dict[str, int] = {}
         result, _detections = calibrate_synthetic(
             scenario,
             n_water=scenario.n_water,
@@ -736,6 +779,7 @@ def run_configuration(
                 "stage3_interface_optimization": diag_stage3,
                 "stage3_intrinsic_pass": diag_intrinsic_pass,
             },
+            discard_stats_out=discard_stats,
         )
 
         board = BoardGeometry(scenario.board_config)
@@ -765,7 +809,35 @@ def run_configuration(
         metrics = compute_configuration_metrics(
             scenario, result, evaluation, diag_stage3, diag_intrinsic_pass
         )
-        outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
+
+        n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+        if n_degenerate > 0 and is_smoke:
+            # Smoke carve-out (D-19.3-11, plan 19.3-07): still recorded and
+            # still warned about, but a --smoke configuration must never be
+            # gated -- see the `is_smoke` parameter docstring above.
+            logger.warning(
+                "Configuration %s (--smoke) recorded %d degenerate observation(s) "
+                "at the final solution -- optimality is unreliable for this "
+                "configuration (D-19.3-11), but --smoke is not gated on it.",
+                config_key,
+                n_degenerate,
+            )
+            outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
+        elif n_degenerate > 0:
+            status_reason = (
+                f"{n_degenerate} degenerate observation(s) recorded at the final "
+                "solution -- first-order optimality is unreliable for this "
+                "configuration (D-19.3-11)"
+            )
+            logger.warning("Configuration %s: %s", config_key, status_reason)
+            outcome = {
+                "status": "degenerate",
+                "status_reason": status_reason,
+                "metrics": metrics,
+            }
+        else:
+            outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
+        outcome["degenerate_observations_at_solution"] = n_degenerate
     except Exception as exc:
         logger.warning(
             "Configuration %s failed: %s: %s", config_key, type(exc).__name__, exc
@@ -774,6 +846,7 @@ def run_configuration(
             "status": "failed",
             "status_reason": f"{type(exc).__name__}: {exc}",
             "metrics": None,
+            "degenerate_observations_at_solution": None,
         }
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -802,6 +875,7 @@ def run_sweep(
     refine_intrinsics: bool = True,
     force: bool = False,
     environment: dict | None = None,
+    is_smoke: bool = False,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -826,6 +900,9 @@ def run_sweep(
         environment: A pre-captured `capture_environment()` block to reuse
             (e.g. so a caller can stamp the same block on this sweep's
             provenance sidecar), or `None` to capture fresh here.
+        is_smoke: Forwarded to `run_configuration` -- D-19.3-11's smoke
+            carve-out. `_run_smoke_configs` passes `True`; `_run_full` never
+            passes it (stays `False`), so every production row is gated.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
@@ -844,6 +921,7 @@ def run_sweep(
                 refine_intrinsics=refine_intrinsics,
                 force=force,
                 environment=environment,
+                is_smoke=is_smoke,
             )
         outcome = cache[config_key]
         row = build_row(
@@ -853,6 +931,7 @@ def run_sweep(
             outcome["metrics"],
             status=outcome["status"],
             status_reason=outcome["status_reason"],
+            degenerate_count=outcome.get("degenerate_observations_at_solution"),
         )
         rows.append(row)
         logger.info(
@@ -909,6 +988,7 @@ def _reconstitute_row(config: dict, configs_dir: Path, default_seed: int) -> dic
     status = cached.get("status", "failed")
     status_reason = cached.get("status_reason", "")
     metrics = cached.get("metrics")
+    degenerate_count = cached.get("degenerate_observations_at_solution")
     cached_config = cached.get("config")
     if cached_config is not None and not _config_identity_matches(
         config, cached_config
@@ -928,6 +1008,7 @@ def _reconstitute_row(config: dict, configs_dir: Path, default_seed: int) -> dic
         metrics,
         status=status,
         status_reason=status_reason,
+        degenerate_count=degenerate_count,
     )
 
 
@@ -978,6 +1059,7 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
         refine_intrinsics=False,
         force=True,
         environment=environment,
+        is_smoke=True,
     )
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
