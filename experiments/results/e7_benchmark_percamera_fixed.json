@@ -1,12 +1,12 @@
 {
   "accuracy": {
-    "reprojection_rms_px": 0.9848484069575327
+    "reprojection_rms_px": 0.49955965254052914
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "f9843972a879d95b87cbff66f06cc37c54e522c3",
+    "git_sha": "22e75ef2b424c9b0234502e5229345a9f5912b11",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -16,6 +16,7 @@
     "scipy_version": "1.17.0"
   },
   "problem_shape": {
+    "degenerate_observations_at_solution": 0,
     "n_cameras": 12,
     "n_frames_calibration": 30,
     "n_frames_holdout": 0
@@ -34,7 +35,7 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 3606.6160694517894,
+      "cost": 3688.1085916960938,
       "fd_reduction": 19.846153846153847,
       "ftol": 1e-08,
       "gtol": 1e-08,
@@ -45,10 +46,12 @@
       "n_groups_reason": null,
       "n_params": 258,
       "n_params_reason": null,
-      "nfev": 16,
-      "njev": 10,
-      "optimality": 0.007740633912018069,
-      "seconds": 63.67174180000438,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 14,
+      "njev": 11,
+      "optimality": 0.002709467728642778,
+      "seconds": 58.91949349999777,
       "status": 2,
       "xtol": 1e-08
     }

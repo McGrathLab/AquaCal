@@ -1,14 +1,14 @@
 {
   "accuracy": {
-    "reprojection_rms": 0.742788060695517,
-    "validation_3d_error_mean": 3.4511440681329504e-05,
-    "validation_3d_error_std": 0.00040491202042329945
+    "reprojection_rms": 0.7048886954401523,
+    "validation_3d_error_mean": 2.9619503099914067e-05,
+    "validation_3d_error_std": 0.00035093626881742317
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "c511429e3fcd6b4e052a1362f44965d1c12f7f33",
+    "git_sha": "22e75ef2b424c9b0234502e5229345a9f5912b11",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -19,16 +19,17 @@
   },
   "memory": {
     "mode": "psutil_peak_wset",
-    "whole_run_peak_bytes": 10250391552
+    "whole_run_peak_bytes": 11121606656
   },
   "problem_shape": {
+    "degenerate_observations_at_solution": 0,
     "memory_pressure": "near_physical_ceiling",
     "n_cameras": 12,
     "n_cameras_observing_per_frame_median": 6.0,
-    "n_cameras_observing_per_frame_min": 1,
+    "n_cameras_observing_per_frame_min": 2,
     "n_frames": 200,
-    "n_observations": 1280,
-    "peak_bytes_baseline": 121733120
+    "n_observations": 1360,
+    "peak_bytes_baseline": 164843520
   },
   "schema_version": 1,
   "solver_config": {
@@ -41,61 +42,61 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 16521.324825213556,
-      "fd_reduction": 96.6923076923077,
+      "cost": 18246.075285115585,
+      "fd_reduction": 97.61538461538461,
       "ftol": 1e-08,
       "gtol": 1e-08,
-      "max_nfev_effective": 125700,
+      "max_nfev_effective": 126900,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1444106240,
-        "commit_peak_bytes_as_of_stage_end": 11204829184,
-        "cumulative_peak_bytes_as_of_stage_end": 9871298560,
-        "delta_bytes_since_previous_boundary": 9749565440,
+        "commit_current_bytes_as_of_stage_end": 1442816000,
+        "commit_peak_bytes_as_of_stage_end": 12296421376,
+        "cumulative_peak_bytes_as_of_stage_end": 10945409024,
+        "delta_bytes_since_previous_boundary": 10780565504,
         "mode": "psutil_peak_wset",
         "ram_total_bytes": 16857190400
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 13,
       "n_groups_reason": null,
-      "n_params": 1257,
+      "n_params": 1269,
       "n_params_reason": null,
-      "n_residuals": 134028,
+      "n_residuals": 147758,
       "n_residuals_reason": null,
-      "nfev": 62,
-      "njev": 50,
-      "optimality": 0.026857025767185405,
-      "seconds": 1970.6941910000023,
+      "nfev": 54,
+      "njev": 41,
+      "optimality": 0.006047921129663791,
+      "seconds": 1769.0674705000129,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 16511.922729391805,
-      "fd_reduction": 76.76470588235294,
+      "cost": 18231.785805444673,
+      "fd_reduction": 77.47058823529412,
       "ftol": 1e-08,
       "gtol": 1e-08,
-      "max_nfev_effective": 130500,
+      "max_nfev_effective": 131700,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1447215104,
-        "commit_peak_bytes_as_of_stage_end": 11582181376,
-        "cumulative_peak_bytes_as_of_stage_end": 10250391552,
-        "delta_bytes_since_previous_boundary": 379092992,
+        "commit_current_bytes_as_of_stage_end": 1445507072,
+        "commit_peak_bytes_as_of_stage_end": 12710981632,
+        "cumulative_peak_bytes_as_of_stage_end": 11121606656,
+        "delta_bytes_since_previous_boundary": 176197632,
         "mode": "psutil_peak_wset",
         "ram_total_bytes": 16857190400
       },
-      "message": "`ftol` termination condition is satisfied.",
+      "message": "Both `ftol` and `xtol` termination conditions are satisfied.",
       "n_groups": 17,
       "n_groups_reason": null,
-      "n_params": 1305,
+      "n_params": 1317,
       "n_params_reason": null,
-      "n_residuals": 134028,
+      "n_residuals": 147758,
       "n_residuals_reason": null,
       "nfev": 4,
       "njev": 4,
-      "optimality": 0.009196892341499563,
-      "seconds": 167.2198980999965,
-      "status": 2,
+      "optimality": 0.006803562926279483,
+      "seconds": 182.2349896999949,
+      "status": 4,
       "xtol": 1e-08
     }
   }

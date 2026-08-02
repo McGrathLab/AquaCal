@@ -1,13 +1,13 @@
 {
   "config": {
     "axis": "index",
-    "axis_value": "1.42",
-    "config_key": "index_1.42",
+    "axis_value": "1.48",
+    "config_key": "index_1.48",
     "depth_range": null,
     "is_baseline": false,
     "layout": "grid",
     "n_cameras": 12,
-    "n_water": 1.42,
+    "n_water": 1.48,
     "normal_fixed": false,
     "spacing": null,
     "xy_extent": null
@@ -27,18 +27,18 @@
     "scipy_version": "1.17.0"
   },
   "metrics": {
-    "focal_error_pct_mean": 0.00022365638289841426,
-    "num_comparisons": 14669,
+    "focal_error_pct_mean": 0.08718468456930746,
+    "num_comparisons": 14631,
     "num_frames": 100,
-    "optimality_stage3_interface_optimization": 0.012620279963812209,
-    "optimality_stage3_intrinsic_pass": 0.002295417700679536,
-    "reconstruction_mae_mm": 0.33972696742780095,
-    "reconstruction_rmse_mm": 0.4913963058116969,
-    "reprojection_rms_px": 0.7053660656350937,
-    "signed_mean_mm": 0.034227403589531254,
+    "optimality_stage3_interface_optimization": 0.0037003089332756645,
+    "optimality_stage3_intrinsic_pass": 0.003952205165603573,
+    "reconstruction_mae_mm": 0.33913783271149667,
+    "reconstruction_rmse_mm": 0.48993749211587295,
+    "reprojection_rms_px": 0.7053832892262437,
+    "signed_mean_mm": 0.03699422557386562,
     "water_z_error_mm_mean": 3.4057256267712526,
-    "xy_position_error_mm_mean": 0.10581598357850637,
-    "z_position_error_mm_mean": -0.32095413215730967
+    "xy_position_error_mm_mean": 0.20477821603459026,
+    "z_position_error_mm_mean": -0.6092647784358761
   },
   "n_frames": 100,
   "schema_version": 1,

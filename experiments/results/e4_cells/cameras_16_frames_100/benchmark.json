@@ -1,14 +1,14 @@
 {
   "accuracy": {
-    "reprojection_rms": 0.7059142170271823,
-    "validation_3d_error_mean": 3.606794230747438e-05,
-    "validation_3d_error_std": 0.0004189430344483329
+    "reprojection_rms": 0.7068507006973413,
+    "validation_3d_error_mean": 3.112154602714666e-05,
+    "validation_3d_error_std": 0.0003389204524813893
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "c511429e3fcd6b4e052a1362f44965d1c12f7f33",
+    "git_sha": "22e75ef2b424c9b0234502e5229345a9f5912b11",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -19,16 +19,17 @@
   },
   "memory": {
     "mode": "psutil_peak_wset",
-    "whole_run_peak_bytes": 3420426240
+    "whole_run_peak_bytes": 3672436736
   },
   "problem_shape": {
+    "degenerate_observations_at_solution": 0,
     "memory_pressure": "clean",
     "n_cameras": 16,
-    "n_cameras_observing_per_frame_median": 6.5,
-    "n_cameras_observing_per_frame_min": 2,
+    "n_cameras_observing_per_frame_median": 7.0,
+    "n_cameras_observing_per_frame_min": 3,
     "n_frames": 100,
-    "n_observations": 698,
-    "peak_bytes_baseline": 120733696
+    "n_observations": 742,
+    "peak_bytes_baseline": 164855808
   },
   "schema_version": 1,
   "solver_config": {
@@ -41,17 +42,17 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 9207.09942038549,
+      "cost": 9944.816145031222,
       "fd_reduction": 53.30769230769231,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 69300,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1442897920,
-        "commit_peak_bytes_as_of_stage_end": 4449308672,
-        "cumulative_peak_bytes_as_of_stage_end": 3122081792,
-        "delta_bytes_since_previous_boundary": 3001348096,
+        "commit_current_bytes_as_of_stage_end": 1442091008,
+        "commit_peak_bytes_as_of_stage_end": 4679122944,
+        "cumulative_peak_bytes_as_of_stage_end": 3370631168,
+        "delta_bytes_since_previous_boundary": 3205775360,
         "mode": "psutil_peak_wset",
         "ram_total_bytes": 16857190400
       },
@@ -60,27 +61,27 @@
       "n_groups_reason": null,
       "n_params": 693,
       "n_params_reason": null,
-      "n_residuals": 74810,
+      "n_residuals": 80612,
       "n_residuals_reason": null,
-      "nfev": 12,
-      "njev": 10,
-      "optimality": 0.006085859826384876,
-      "seconds": 164.1074454000045,
+      "nfev": 26,
+      "njev": 17,
+      "optimality": 0.010890287022107259,
+      "seconds": 297.11696749998373,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 9197.741603401355,
+      "cost": 9936.113324186905,
       "fd_reduction": 44.529411764705884,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 75700,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1443627008,
-        "commit_peak_bytes_as_of_stage_end": 4732420096,
-        "cumulative_peak_bytes_as_of_stage_end": 3420426240,
-        "delta_bytes_since_previous_boundary": 298344448,
+        "commit_current_bytes_as_of_stage_end": 1443164160,
+        "commit_peak_bytes_as_of_stage_end": 4981829632,
+        "cumulative_peak_bytes_as_of_stage_end": 3672436736,
+        "delta_bytes_since_previous_boundary": 301805568,
         "mode": "psutil_peak_wset",
         "ram_total_bytes": 16857190400
       },
@@ -89,12 +90,12 @@
       "n_groups_reason": null,
       "n_params": 757,
       "n_params_reason": null,
-      "n_residuals": 74810,
+      "n_residuals": 80612,
       "n_residuals_reason": null,
       "nfev": 4,
       "njev": 4,
-      "optimality": 0.005708229955075694,
-      "seconds": 72.98214809999627,
+      "optimality": 0.0027821316796234896,
+      "seconds": 78.71735640001134,
       "status": 2,
       "xtol": 1e-08
     }

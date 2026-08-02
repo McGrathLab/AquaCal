@@ -40,7 +40,13 @@ repos:
         # predates the change it guards -- and it takes a new value on every
         # legitimate regeneration, so it has the same baseline problem.
         # None of these file types is a place credentials belong.
-        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results/.*|tests/fixtures/.*\.json)$
+        # The results glob is `results[^/]*` rather than `results` so that
+        # sibling output directories used to isolate a repeated sweep --
+        # experiments/results_e6_repeat2/ is phase 19.3's paired determinism
+        # run (D-19.3-20) -- inherit the same reasoning. They hold the same
+        # artifact types, produced by the same code, with the same
+        # regenerated-every-run `git_sha`.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results[^/]*/.*|tests/fixtures/.*\.json)$
 
   - repo: local
     hooks:

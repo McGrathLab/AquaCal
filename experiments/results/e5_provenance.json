@@ -1,15 +1,14 @@
 {
   "discard_stats": {
-    "pnp_attempts_refractive": 5577,
-    "pnp_attempts_total": 5577,
-    "pnp_guard_rejected": 22,
-    "pose_discarded_by_consumer": 22
+    "degenerate_observations_at_solution": 0,
+    "pnp_attempts_refractive": 5621,
+    "pnp_attempts_total": 5621
   },
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "aa4c92e4f063c75493c1d4c64cfde555636270be",
+    "git_sha": "22e75ef2b424c9b0234502e5229345a9f5912b11",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",

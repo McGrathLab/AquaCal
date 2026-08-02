@@ -12,11 +12,12 @@
     "spacing": null,
     "xy_extent": null
   },
+  "degenerate_observations_at_solution": 0,
   "environment": {
     "aquacal_version": "1.8.0",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "74e75a7b33d4d9be1467f5806e76d1e77604e047",
+    "git_sha": "22e75ef2b424c9b0234502e5229345a9f5912b11",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -26,18 +27,18 @@
     "scipy_version": "1.17.0"
   },
   "metrics": {
-    "focal_error_pct_mean": 0.11747821561746286,
-    "num_comparisons": 13725,
+    "focal_error_pct_mean": 0.08718436941552599,
+    "num_comparisons": 14631,
     "num_frames": 100,
-    "optimality_stage3_interface_optimization": 0.004743423586319295,
-    "optimality_stage3_intrinsic_pass": 0.004501200973948016,
-    "reconstruction_mae_mm": 0.35912367282090174,
-    "reconstruction_rmse_mm": 0.5483312090749141,
-    "reprojection_rms_px": 0.704651394484686,
-    "signed_mean_mm": 0.04652634514089648,
-    "water_z_error_mm_mean": 3.634124229507337,
-    "xy_position_error_mm_mean": 0.14571400737039844,
-    "z_position_error_mm_mean": 0.39798283126149
+    "optimality_stage3_interface_optimization": 0.005616563079229309,
+    "optimality_stage3_intrinsic_pass": 0.005671474999815018,
+    "reconstruction_mae_mm": 0.3391378323586183,
+    "reconstruction_rmse_mm": 0.4899374916689646,
+    "reprojection_rms_px": 0.7053832885415959,
+    "signed_mean_mm": 0.03699422614242236,
+    "water_z_error_mm_mean": 3.4057256267712535,
+    "xy_position_error_mm_mean": 0.20477804755010842,
+    "z_position_error_mm_mean": -0.6092555041662339
   },
   "n_frames": 100,
   "schema_version": 1,
