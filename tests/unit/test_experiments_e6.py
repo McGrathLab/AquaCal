@@ -149,10 +149,12 @@ def test_tilt_configuration_matches_e4():
 
 
 def test_scale_axis_is_a_factor_of_two_ladder_about_the_new_baseline():
-    """D-28/D-29: SCALE_AXIS_VALUES' half_scale/default/double_scale rescale
-    around E4's NEW baseline geometry (GRID_DEPTH_RANGE/GRID_SPACING) rather
-    than the old, now-stale absolute numbers -- and remain a factor-of-two
-    ladder, derived from E4's constants rather than hardcoded a second time."""
+    """D-19.3-07: SCALE_AXIS_VALUES' half_scale/default/double_scale rescale
+    the working-volume depth EXTENT above the derived clearance floor
+    (`GRID_DEPTH_RANGE[0]`), keeping the floor itself fixed at every scale
+    value -- and remain a factor-of-two ladder, derived from E4's constants
+    rather than hardcoded a second time. `xy_extent`/`spacing` still scale
+    directly."""
     labels = [v[0] for v in m.SCALE_AXIS_VALUES]
     assert labels == ["half_scale", "default", "double_scale"]
 
@@ -170,24 +172,24 @@ def test_scale_axis_is_a_factor_of_two_ladder_about_the_new_baseline():
     assert double_spacing == pytest.approx(2.0 * e4.GRID_SPACING)
     assert double_xy_extent == pytest.approx(4.0 * half_xy_extent)
 
-    # depth_range is expressed relative to the water surface, so scaling by
-    # 0.5x/2x must keep the board strictly below GRID_HEIGHT_ABOVE_WATER
-    # (never move it into air) at both ends of the ladder.
-    assert half_depth_range[0] > e4.GRID_HEIGHT_ABOVE_WATER
+    # The floor (GRID_DEPTH_RANGE[0]) is FIXED for every scale value -- only
+    # the extent above it scales (D-19.3-07). This is what makes every scale
+    # value legal by construction: the clearance floor never moves.
+    floor = e4.GRID_DEPTH_RANGE[0]
+    assert half_depth_range[0] == pytest.approx(floor)
+    assert double_depth_range[0] == pytest.approx(floor)
     assert half_depth_range[1] > half_depth_range[0]
-    assert double_depth_range[0] > e4.GRID_HEIGHT_ABOVE_WATER
     assert double_depth_range[1] > double_depth_range[0]
 
-    half_below = (
-        half_depth_range[0] - e4.GRID_HEIGHT_ABOVE_WATER,
-        half_depth_range[1] - e4.GRID_HEIGHT_ABOVE_WATER,
-    )
-    double_below = (
-        double_depth_range[0] - e4.GRID_HEIGHT_ABOVE_WATER,
-        double_depth_range[1] - e4.GRID_HEIGHT_ABOVE_WATER,
-    )
-    assert double_below[0] == pytest.approx(4.0 * half_below[0])
-    assert double_below[1] == pytest.approx(4.0 * half_below[1])
+    baseline_extent = e4.GRID_DEPTH_RANGE[1] - floor
+    half_extent = half_depth_range[1] - floor
+    double_extent = double_depth_range[1] - floor
+    assert half_extent == pytest.approx(0.5 * baseline_extent)
+    assert double_extent == pytest.approx(2.0 * baseline_extent)
+    assert double_extent == pytest.approx(4.0 * half_extent)
+
+    # The baseline scale value reproduces GRID_DEPTH_RANGE exactly.
+    assert m._scaled_depth_range(1.0) == pytest.approx(e4.GRID_DEPTH_RANGE)
 
 
 def test_seed_column_populated():

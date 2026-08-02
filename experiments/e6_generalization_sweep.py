@@ -73,7 +73,6 @@ from experiments._io import (
 )
 from experiments.e4_benchmark_grid import (
     GRID_DEPTH_RANGE,
-    GRID_HEIGHT_ABOVE_WATER,
     GRID_NORMAL_FIXED,
     GRID_SPACING,
     build_grid_scenario,
@@ -126,25 +125,27 @@ LAYOUT_AXIS_VALUES: list[str] = ["grid", "ring", "line"]
 # deliberately NOT scaled -- a real calibration target does not shrink with
 # the tank (see `experiments.e4_benchmark_grid.build_grid_scenario`'s own
 # docstring, which states this same rationale for GRID_BOARD_CONFIG).
-_BASELINE_DEPTH_BELOW_WATER: tuple[float, float] = (
-    GRID_DEPTH_RANGE[0] - GRID_HEIGHT_ABOVE_WATER,
-    GRID_DEPTH_RANGE[1] - GRID_HEIGHT_ABOVE_WATER,
-)
+_BASELINE_EXTENT_ABOVE_FLOOR: float = GRID_DEPTH_RANGE[1] - GRID_DEPTH_RANGE[0]
 _BASELINE_XY_EXTENT: float = default_xy_extent_for_layout(
     n_cameras=BASELINE_N_CAMERAS, layout=BASELINE_LAYOUT, spacing=GRID_SPACING
 )
 
 
 def _scaled_depth_range(factor: float) -> tuple[float, float]:
-    """Scale the baseline's depth-below-water interval by `factor`, then
-    re-express it as an absolute Z (world-frame) depth_range by adding back
-    `GRID_HEIGHT_ABOVE_WATER` -- keeping the board underwater at every
-    scale factor."""
-    lo, hi = _BASELINE_DEPTH_BELOW_WATER
-    return (
-        GRID_HEIGHT_ABOVE_WATER + factor * lo,
-        GRID_HEIGHT_ABOVE_WATER + factor * hi,
-    )
+    """Scale the working-volume depth EXTENT above the derived clearance
+    floor by `factor`, keeping the floor itself fixed at `GRID_DEPTH_RANGE[0]`
+    (D-19.3-07).
+
+    `GRID_DEPTH_RANGE[0]` is already anchored on `max(water_zs)` -- the
+    deepest per-camera interface, not the nominal `GRID_HEIGHT_ABOVE_WATER`
+    -- via `board_clearance_floor` (plan 19.3-05). Anchoring here on that same
+    derived floor, rather than re-deriving from `GRID_HEIGHT_ABOVE_WATER`,
+    means every scale value is legal by construction: `factor=0.5` cannot
+    violate the clearance requirement the way halving the standoff below the
+    water surface did, because the floor never moves.
+    """
+    floor = GRID_DEPTH_RANGE[0]
+    return (floor, floor + factor * _BASELINE_EXTENT_ABOVE_FLOOR)
 
 
 SCALE_AXIS_VALUES: list[
