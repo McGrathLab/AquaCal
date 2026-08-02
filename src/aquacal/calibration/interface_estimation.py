@@ -415,10 +415,13 @@ def optimize_interface(
             f"Stage 3 finished with {n_invalid} observation(s) the refractive "
             f"model could not project (corners at or above the water surface, "
             f"or behind a camera). These were continued with a pinhole "
-            f"extension. First-order optimality is "
-            f"{getattr(result, 'optimality', float('nan')):.4g} and termination "
-            f"status is {result.status}; judge convergence on optimality, not "
-            f"on the reprojection RMS.",
+            f"extension, which puts the residual on a C0-but-not-C1 kink at "
+            f"the refractive/pinhole boundary -- first-order optimality "
+            f"({getattr(result, 'optimality', float('nan')):.4g}, termination "
+            f"status {result.status}) is UNRELIABLE as a convergence measure "
+            f"here, and neither it nor the reprojection RMS can be trusted to "
+            f"judge convergence. Fix the scenario geometry so no corner sits "
+            f"at or above the interface; do not re-tune the solver.",
             DegenerateObservationWarning,
             stacklevel=2,
         )
