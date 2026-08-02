@@ -26,6 +26,23 @@ A divergence touching none of D-19's named headline numbers gets a written mecha
 stays autonomous. Any named headline number moving beyond CHECK_RTOL escalates to the
 user -- see `.planning/phases/19.1-experiment-suite-consolidation/19.1-06-PLAN.md`'s
 ESCALATION RULE and `19.1-E1-REPRODUCTION.md`.
+
+**D-19.3-11: this module RECORDS the final-solution guard count; it does not
+GATE on it.** E1 has no per-row `status` column (its output is a fixed,
+byte-identical-header contract, D-19) -- both `e1_benchmark_refractive.json`
+and `e1_benchmark_nonrefractive.json` carry
+`problem_shape.degenerate_observations_at_solution` (via
+`_run_one_model`'s `discard_stats_out` sink), and a non-zero count logs one
+prominent warning naming it and stating that first-order optimality is
+unreliable for that arm. The actual pass/fail decision, when one is needed,
+belongs to plan 19.3-08's queue script, which keeps the gate machine-
+checkable without inventing a fourth status vocabulary here. `--smoke`'s
+`create_scenario("ideal")` legitimately reports a non-zero count (12
+observations, 0 of 1760 corners above the interface at 123.4 mm clearance --
+extreme obliquity, not a breached surface, see `19.3-ORCHESTRATOR-NOTES.md`
+section 4); that number appearing in smoke output is expected and must never
+become an exit code, which is automatic here since nothing in this module
+compares the count to anything.
 """
 
 from __future__ import annotations
@@ -218,10 +235,19 @@ def compute_xyz_errors(calibration, test_poses, test_detections, board):
 
 
 def _run_one_model(scenario, n_water, seed):
-    """Calibrate one model and return (result, detections, timings, diagnostics)."""
+    """Calibrate one model and return (result, detections, timings, diagnostics,
+    discard_stats).
+
+    `discard_stats["degenerate_observations_at_solution"]` (D-19.3-11) is the
+    final-solution guard count `calibrate_synthetic` recorded via
+    `discard_stats_out`; a non-zero count logs one prominent warning here so
+    it is never silently swallowed, but this function never raises on it --
+    the library records, the harness (or plan 19.3-08's queue script) gates.
+    """
     diag_stage3 = SolverDiagnostics()
     diag_intrinsic_pass = SolverDiagnostics()
     timings: dict[str, float] = {}
+    discard_stats: dict[str, int] = {}
     result, detections = calibrate_synthetic(
         scenario,
         n_water=n_water,
@@ -232,12 +258,22 @@ def _run_one_model(scenario, n_water, seed):
             "stage3_intrinsic_pass": diag_intrinsic_pass,
         },
         timings_out=timings,
+        discard_stats_out=discard_stats,
     )
     diagnostics = {
         "stage3_interface_optimization": diag_stage3,
         "stage3_intrinsic_pass": diag_intrinsic_pass,
     }
-    return result, detections, timings, diagnostics
+    n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+    if n_degenerate > 0:
+        logger.warning(
+            "n_water=%s: %d degenerate observation(s) recorded at the final "
+            "solution -- first-order optimality is unreliable for this arm "
+            "(D-19.3-11).",
+            n_water,
+            n_degenerate,
+        )
+    return result, detections, timings, diagnostics, discard_stats
 
 
 def _build_dataframes(scenario, results, seed, test_depths=None):
@@ -390,15 +426,17 @@ def _run_full(args: argparse.Namespace) -> int:
     results = {}
     timings_by_model = {}
     diagnostics_by_model = {}
+    discard_stats_by_model = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, timings, diagnostics = _run_one_model(
+        result, detections, timings, diagnostics, discard_stats = _run_one_model(
             scenario, n_water, args.seed
         )
         print(f"  Reprojection RMS: {result.diagnostics.reprojection_error_rms:.4f} px")
         results[label] = (result, detections)
         timings_by_model[label] = timings
         diagnostics_by_model[label] = diagnostics
+        discard_stats_by_model[label] = discard_stats
 
     print("\nEvaluating depth sweep and anisotropy...")
     df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
@@ -439,6 +477,11 @@ def _run_full(args: argparse.Namespace) -> int:
                 "n_cameras": len(scenario.intrinsics),
                 "n_frames_calibration": len(scenario.board_poses),
                 "n_frames_holdout": 0,
+                # D-19.3-11: the final-solution guard count, recorded (never
+                # gated) for this arm.
+                "degenerate_observations_at_solution": discard_stats_by_model[
+                    label
+                ].get("degenerate_observations_at_solution", 0),
             },
             timings=timings_by_model[label],
             diagnostics=diagnostics_by_model[label],
@@ -484,13 +527,15 @@ def _run_smoke(args: argparse.Namespace) -> int:
         results = {}
         timings_by_model = {}
         diagnostics_by_model = {}
+        discard_stats_by_model = {}
         for label, n_water in MODELS:
-            result, detections, timings, diagnostics = _run_one_model(
+            result, detections, timings, diagnostics, discard_stats = _run_one_model(
                 scenario, n_water, args.seed
             )
             results[label] = (result, detections)
             timings_by_model[label] = timings
             diagnostics_by_model[label] = diagnostics
+            discard_stats_by_model[label] = discard_stats
 
         df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
             scenario, results, args.seed, test_depths=smoke_depths
@@ -529,6 +574,12 @@ def _run_smoke(args: argparse.Namespace) -> int:
                     "n_cameras": len(scenario.intrinsics),
                     "n_frames_calibration": len(scenario.board_poses),
                     "n_frames_holdout": 0,
+                    # D-19.3-11: recorded, never gated -- create_scenario
+                    # "ideal" legitimately reports a non-zero count here
+                    # (extreme obliquity, not a breached interface).
+                    "degenerate_observations_at_solution": discard_stats_by_model[
+                        label
+                    ].get("degenerate_observations_at_solution", 0),
                 },
                 timings=timings_by_model[label],
                 diagnostics=diagnostics_by_model[label],
@@ -575,7 +626,7 @@ def _run_check(args: argparse.Namespace) -> int:
     results = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, _timings, _diagnostics = _run_one_model(
+        result, detections, _timings, _diagnostics, _discard_stats = _run_one_model(
             scenario, n_water, args.seed
         )
         results[label] = (result, detections)
