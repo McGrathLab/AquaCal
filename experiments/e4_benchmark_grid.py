@@ -96,6 +96,7 @@ from aquacal.core.board import BoardGeometry
 from aquacal.datasets.pipelines import calibrate_synthetic
 from aquacal.datasets.synthetic import (
     SyntheticScenario,
+    board_clearance_floor,
     generate_board_trajectory,
     generate_camera_array,
     generate_synthetic_detections,
@@ -209,11 +210,6 @@ E2_BENCHMARK_PATH = (
 # invalidates the committed nine-cell grid, so neither is a cheap edit.
 GRID_HEIGHT_ABOVE_WATER = 1.031
 
-# Matches generate_real_rig_trajectory's own default depth_range, so the
-# grid family's board sits at the same relative depths below the water
-# surface the real rig calibration uses (D-29).
-GRID_DEPTH_RANGE = (1.1, 2.0)
-
 # Sized so a 12-camera "grid" array (side = ceil(sqrt(12)) = 4, so a 4x3
 # layout) spans (side - 1) * GRID_SPACING = 3 * 0.43 =~ 1.29 m in X --
 # matching generate_real_rig_array's measured ~1.3 m x 1.2 m footprint
@@ -222,6 +218,36 @@ GRID_DEPTH_RANGE = (1.1, 2.0)
 # target does not shrink with the tank (see build_grid_scenario's own
 # docstring, which states this same rationale).
 GRID_SPACING = 0.43
+
+# DERIVED, not restated (D-19.3-01): the minimum is `board_clearance_floor`
+# applied to GRID_BOARD_CONFIG, the grid family's own water_zs (the deepest
+# per-camera interface at GRID_HEIGHT_ABOVE_WATER/GRID_SPACING, i.e. the same
+# inputs build_grid_scenario itself constructs from), and the 15-degree tilt
+# `generate_board_trajectory` samples by default. The maximum stays a fixed
+# 2.0 m ceiling (D-19.3-03) -- only the minimum is derived. This value MOVES
+# if GRID_BOARD_CONFIG, GRID_HEIGHT_ABOVE_WATER, or GRID_SPACING change --
+# that is the entire point of deriving rather than hardcoding it: it cannot
+# silently go stale the way the old literal `(1.1, 2.0)` did the moment the
+# board or tilt range changed underneath it.
+#
+# The anchor is the E6 baseline's own 12-camera array (D-11) built with
+# GRID_HEIGHT_ABOVE_WATER/GRID_SPACING -- the same construction path
+# build_grid_scenario itself uses -- so the derived floor cannot drift from
+# what the actual grid cells build. The seed used here only affects the
+# per-camera height_variation draw (+/- a few mm around GRID_HEIGHT_ABOVE_
+# WATER); it does not affect any scenario's own RNG stream.
+_GRID_BASELINE_N_CAMERAS = 12
+_, _grid_baseline_extrinsics, _grid_baseline_water_zs = generate_camera_array(
+    n_cameras=_GRID_BASELINE_N_CAMERAS,
+    layout=GRID_LAYOUT,
+    spacing=GRID_SPACING,
+    height_above_water=GRID_HEIGHT_ABOVE_WATER,
+    seed=42,
+)
+GRID_DEPTH_RANGE = (
+    board_clearance_floor(GRID_BOARD_CONFIG, _grid_baseline_water_zs, 15.0),
+    2.0,
+)
 
 # D-28: xy_extent scales with the array's OWN footprint span rather than a
 # fixed 0.15 m, so every layout (grid/ring/line) exercises the same
@@ -548,6 +574,7 @@ def build_grid_scenario(
         n_frames=n_frames,
         camera_positions=camera_positions,
         water_zs=water_zs,
+        board=GRID_BOARD_CONFIG,
         depth_range=resolved_depth_range,
         xy_extent=resolved_xy_extent,
         seed=seed,
