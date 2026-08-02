@@ -363,9 +363,9 @@ strings.
 **Plans**: 10 plans across 7 waves
 
 Plans:
-- [ ] 19.3-01-PLAN.md — wave 1 — re-centre board poses on the board centre, derive the clearance floor from the corner cloud, make `board` required and raise `ValueError` on an illegal `depth_range` (GEOM-01)
-- [ ] 19.3-02-PLAN.md — wave 1 — record the final-solution guard count into `discard_stats`, correct the `DegenerateObservationWarning` text, and prove the change inert by exact equality (GEOM-04)
-- [ ] 19.3-03-PLAN.md — wave 1 — archive the five experiments' pre-depth-fix artifacts under the established `experiments/archive/` convention (GEOM-06)
+- [x] 19.3-01-PLAN.md — wave 1 — re-centre board poses on the board centre, derive the clearance floor from the corner cloud, make `board` required and raise `ValueError` on an illegal `depth_range` (GEOM-01)
+- [x] 19.3-02-PLAN.md — wave 1 — record the final-solution guard count into `discard_stats`, correct the `DegenerateObservationWarning` text, and prove the change inert by exact equality (GEOM-04)
+- [x] 19.3-03-PLAN.md — wave 1 — archive the five experiments' pre-depth-fix artifacts under the established `experiments/archive/` convention (GEOM-06)
 - [ ] 19.3-04-PLAN.md — wave 2 — move `generate_camera_array`'s default and both `create_scenario` presets onto the real-rig standoff; regenerate the affected anchors (GEOM-02)
 - [ ] 19.3-05-PLAN.md — wave 2 — derive `GRID_DEPTH_RANGE`, thread the board through `build_grid_scenario`, and update E3's and E5's three hardcoded call sites (GEOM-01)
 - [ ] 19.3-06-PLAN.md — wave 3 — anchor E6's scale axis at the derived floor and correct the axis prose (GEOM-03)
@@ -451,7 +451,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
-| 19.3 Scenario Geometry and Convergence | v1.9 | 0/10 | Planned     | - |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 3/10 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
