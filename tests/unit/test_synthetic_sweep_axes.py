@@ -15,11 +15,20 @@ import itertools
 
 import numpy as np
 
+from aquacal.config.schema import BoardConfig
 from aquacal.datasets import create_scenario, generate_synthetic_detections
 from aquacal.datasets.synthetic import (
     generate_board_trajectory,
     generate_camera_array,
     generate_dense_xy_grid,
+)
+
+_DEFAULT_BOARD = BoardConfig(
+    squares_x=12,
+    squares_y=9,
+    square_size=0.060,
+    marker_size=0.045,
+    dictionary="DICT_5X5_100",
 )
 
 
@@ -90,6 +99,7 @@ def test_tank_scale_axis_is_independent():
         n_frames=50,
         camera_positions=camera_positions_small,
         water_zs=water_zs_small,
+        board=_DEFAULT_BOARD,
         depth_range=(0.3, 0.6),
         seed=2,
     )
@@ -97,6 +107,7 @@ def test_tank_scale_axis_is_independent():
         n_frames=50,
         camera_positions=camera_positions_large,
         water_zs=water_zs_large,
+        board=_DEFAULT_BOARD,
         depth_range=(0.3, 0.6),
         seed=2,
     )
@@ -119,13 +130,17 @@ def test_working_distance_axis_is_independent():
         n_frames=50,
         camera_positions=camera_positions,
         water_zs=water_zs,
-        depth_range=(0.25, 0.45),
+        board=_DEFAULT_BOARD,
+        # 0.25 sits below this array's derived clearance floor (~0.295 m);
+        # 0.30 is the nearest legal minimum (D-19.3-01/GEOM-01).
+        depth_range=(0.30, 0.45),
         seed=4,
     )
     poses_far = generate_board_trajectory(
         n_frames=50,
         camera_positions=camera_positions,
         water_zs=water_zs,
+        board=_DEFAULT_BOARD,
         depth_range=(0.8, 1.0),
         seed=4,
     )
@@ -249,18 +264,21 @@ def test_seed_reproducibility_across_generators():
         n_frames=10,
         camera_positions=camera_positions,
         water_zs=water_zs_a,
+        board=_DEFAULT_BOARD,
         seed=20,
     )
     poses_b = generate_board_trajectory(
         n_frames=10,
         camera_positions=camera_positions,
         water_zs=water_zs_a,
+        board=_DEFAULT_BOARD,
         seed=20,
     )
     poses_c = generate_board_trajectory(
         n_frames=10,
         camera_positions=camera_positions,
         water_zs=water_zs_a,
+        board=_DEFAULT_BOARD,
         seed=21,
     )
     for pa, pb in zip(poses_a, poses_b):

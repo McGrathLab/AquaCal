@@ -46,12 +46,14 @@ from aquacal.datasets.pipelines import (
 )
 from aquacal.datasets.synthetic import (
     SyntheticScenario,
+    board_clearance_floor,
     create_scenario,
     generate_board_trajectory,
     generate_camera_array,
     generate_dense_xy_grid,
     generate_real_rig_array,
     generate_synthetic_detections,
+    worst_upward_corner_excursion,
 )
 
 __all__ = [
@@ -67,6 +69,8 @@ __all__ = [
     "generate_real_rig_array",
     "generate_board_trajectory",
     "generate_dense_xy_grid",
+    "board_clearance_floor",
+    "worst_upward_corner_excursion",
     # From pipelines.py (Phase 19.1 X1 promotion):
     "calibrate_synthetic",
     "compute_per_camera_errors",
