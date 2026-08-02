@@ -56,6 +56,19 @@ Emits, per D-17: `interface_ablation.csv` (one row per camera x arm),
 interface spread, and height/distance correlation), one `e7_trace_<arm>.csv`
 per arm, and one `e7_benchmark_<arm>.json` direct-call provenance record per
 arm (D-09).
+
+**D-19.3-11: this module RECORDS the final-solution guard count; it does
+not GATE on it.** E7 has no per-arm `status` column -- each arm's
+`e7_benchmark_<arm>.json` carries `problem_shape.
+degenerate_observations_at_solution` (summed across `optimize_interface`'s
+and, when `refine_intrinsics=True`, `joint_refinement`'s own
+`discard_stats_out` sinks), and a non-zero count logs one prominent warning
+naming the arm and the count. The pass/fail decision, when one is needed,
+belongs to plan 19.3-08's queue script. `--smoke`'s `"minimal"` scenario
+(`create_scenario("minimal", ...)` above) legitimately reports a non-zero
+count (extreme obliquity, not a breached interface, see
+`19.3-ORCHESTRATOR-NOTES.md` section 4); nothing in this module compares the
+count to anything, so that number can never become an exit code.
 """
 
 from __future__ import annotations
@@ -154,6 +167,7 @@ class ArmResult:
         diagnostics: dict[str, SolverDiagnostics],
         observers: dict[str, OptimizerObserver],
         elapsed_seconds: dict[str, float],
+        degenerate_observations_at_solution: int = 0,
     ) -> None:
         self.arm_name = arm_name
         self.shared_interface = shared_interface
@@ -165,6 +179,12 @@ class ArmResult:
         self.diagnostics = diagnostics
         self.observers = observers
         self.elapsed_seconds = elapsed_seconds
+        # D-19.3-11/plan 19.3-07: the final-solution guard count, SUMMED
+        # across this arm's stages (Stage 3, and Stage 3's intrinsic pass
+        # when refine_intrinsics=True) -- a per-arm question ("did degeneracy
+        # occur anywhere in this arm's solve"), matching plan 19.3-02's own
+        # whole-run-summed convention for this same key.
+        self.degenerate_observations_at_solution = degenerate_observations_at_solution
 
     @property
     def intrinsics_source(self) -> str:
@@ -253,6 +273,7 @@ def _run_arm(
 
     diag_stage3 = SolverDiagnostics()
     observer_stage3 = OptimizerObserver(stage=STAGE_INTERFACE, conditioning=True)
+    discard_stats_stage3: dict[str, int] = {}
 
     t0 = time.perf_counter()
     ext, dist, poses, rms = optimize_interface(
@@ -272,10 +293,12 @@ def _run_arm(
         shared_interface=shared_interface,
         observer=observer_stage3,
         diagnostics_out=diag_stage3,
+        discard_stats_out=discard_stats_stage3,
     )
     elapsed_seconds[STAGE_INTERFACE] = time.perf_counter() - t0
     diagnostics[STAGE_INTERFACE] = diag_stage3
     observers[STAGE_INTERFACE] = observer_stage3
+    n_degenerate = discard_stats_stage3.get("degenerate_observations_at_solution", 0)
 
     intrinsics_final = scenario.intrinsics
     if refine_intrinsics:
@@ -283,6 +306,7 @@ def _run_arm(
         observer_intrinsic_pass = OptimizerObserver(
             stage=STAGE_INTRINSIC_PASS, conditioning=True
         )
+        discard_stats_intrinsic_pass: dict[str, int] = {}
         t1 = time.perf_counter()
         ext, dist, poses, intrinsics_final, rms = joint_refinement(
             stage3_result=(ext, dist, poses, rms),
@@ -301,10 +325,26 @@ def _run_arm(
             shared_interface=shared_interface,
             observer=observer_intrinsic_pass,
             diagnostics_out=diag_intrinsic_pass,
+            discard_stats_out=discard_stats_intrinsic_pass,
         )
         elapsed_seconds[STAGE_INTRINSIC_PASS] = time.perf_counter() - t1
         diagnostics[STAGE_INTRINSIC_PASS] = diag_intrinsic_pass
         observers[STAGE_INTRINSIC_PASS] = observer_intrinsic_pass
+        n_degenerate += discard_stats_intrinsic_pass.get(
+            "degenerate_observations_at_solution", 0
+        )
+
+    if n_degenerate > 0:
+        # D-19.3-11: recorded and warned about, never gated -- E7 has no
+        # per-arm status column (see the module docstring's RECORDS/GATES
+        # note); plan 19.3-08's queue script owns any pass/fail decision.
+        logger.warning(
+            "arm=%s: %d degenerate observation(s) recorded at the final "
+            "solution -- first-order optimality is unreliable for this arm "
+            "(D-19.3-11).",
+            arm_name,
+            n_degenerate,
+        )
 
     return ArmResult(
         arm_name=arm_name,
@@ -317,6 +357,7 @@ def _run_arm(
         diagnostics=diagnostics,
         observers=observers,
         elapsed_seconds=elapsed_seconds,
+        degenerate_observations_at_solution=n_degenerate,
     )
 
 
@@ -496,6 +537,11 @@ def _write_ablation_artifacts(
             "n_cameras": len(scenario.intrinsics),
             "n_frames_calibration": len(scenario.board_poses),
             "n_frames_holdout": 0,
+            # D-19.3-11: this arm's final-solution guard count, summed across
+            # its stages (recorded, never gated -- see the module docstring).
+            "degenerate_observations_at_solution": (
+                arm.degenerate_observations_at_solution
+            ),
         }
         solver_config = {
             "robust_loss": "huber",

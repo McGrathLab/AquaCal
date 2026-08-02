@@ -275,8 +275,9 @@ def test_camera_count_not_swept():
 
 
 def test_status_vocabulary():
-    """The row builder's status values come from {ok, failed, skipped_existing}."""
-    assert m.STATUS_VALUES == {"ok", "failed", "skipped_existing"}
+    """The row builder's status values come from {ok, degenerate, failed, skipped_existing}
+    (D-19.3-11 adds "degenerate")."""
+    assert m.STATUS_VALUES == {"ok", "degenerate", "failed", "skipped_existing"}
     configs = m.build_axis_configurations()
     config = configs[0]
     for status in sorted(m.STATUS_VALUES):
@@ -284,14 +285,17 @@ def test_status_vocabulary():
             config,
             seed=42,
             n_frames=10,
-            metrics=_sample_metrics() if status == "ok" else None,
+            metrics=_sample_metrics() if status in {"ok", "degenerate"} else None,
             status=status,
             status_reason="" if status == "ok" else "reason",
         )
         assert row["status"] in m.STATUS_VALUES
-        if status != "ok":
+        if status not in {"ok", "degenerate"}:
             for col in m._METRIC_COLUMNS:
                 assert row[col] is None
+        else:
+            for col in m._METRIC_COLUMNS:
+                assert row[col] is not None
 
 
 # ---------------------------------------------------------------------------
@@ -663,10 +667,12 @@ def test_run_sweep_captures_environment_once(tmp_path, monkeypatch):
 
 
 def test_e6_columns_count():
-    """generalization_sweep.csv's header carries 30 columns: the original 28
+    """generalization_sweep.csv's header carries 31 columns: the original 28
     (unchanged by the provenance work, plan 19.2-23) plus the two optimality
-    columns Task 1 of plan 19.2-27 adds (WR-02)."""
-    assert len(m.E6_COLUMNS) == 30
+    columns Task 1 of plan 19.2-27 adds (WR-02), plus the
+    degenerate_observations_at_solution column plan 19.3-07 appends last."""
+    assert len(m.E6_COLUMNS) == 31
+    assert m.E6_COLUMNS[-1] == "degenerate_observations_at_solution"
 
 
 # ---------------------------------------------------------------------------
@@ -909,3 +915,140 @@ def test_diagnostics_out_sink_is_numerically_inert():
     # the intrinsic pass never runs, so only the interface-optimization
     # sink is expected to be populated.
     assert diag_stage3.nfev is not None
+
+
+# ---------------------------------------------------------------------------
+# D-19.3-11 / plan 19.3-07: guard-count gate on per-configuration status
+# (production paths only; smoke carve-out)
+# ---------------------------------------------------------------------------
+
+
+class _StubScenario:
+    """Minimal scenario stand-in -- run_configuration reads these attributes
+    off it before passing them on to calibrate_synthetic/generate_synthetic_
+    detections/evaluate_calibration (all monkeypatched below, so none of
+    these values are ever dereferenced beyond attribute access)."""
+
+    board_config = None
+    water_zs: dict = {}
+    n_water = 1.333
+    intrinsics: dict = {}
+    extrinsics: dict = {}
+    noise_std = 0.5
+    n_air = 0
+    board_poses: list = []
+
+
+def _patch_run_configuration_internals(monkeypatch, *, degenerate_count: int):
+    """Stub every solve/build step run_configuration calls except the
+    status-decision logic itself, so these tests exercise the real gate
+    without running an actual calibration solve."""
+
+    def _fake_build_grid_scenario(**kwargs):
+        return _StubScenario()
+
+    def _fake_calibrate_synthetic(scenario, **kwargs):
+        sink = kwargs.get("discard_stats_out")
+        if sink is not None:
+            sink["degenerate_observations_at_solution"] = degenerate_count
+        return object(), object()
+
+    monkeypatch.setattr(m, "build_grid_scenario", _fake_build_grid_scenario)
+    monkeypatch.setattr(m, "calibrate_synthetic", _fake_calibrate_synthetic)
+    monkeypatch.setattr(m, "BoardGeometry", lambda config: object())
+    monkeypatch.setattr(m, "generate_synthetic_detections", lambda **kwargs: object())
+    monkeypatch.setattr(
+        m, "evaluate_calibration", lambda result, detections, board: object()
+    )
+    monkeypatch.setattr(
+        m, "compute_configuration_metrics", lambda *a, **k: _sample_metrics()
+    )
+
+
+def test_degenerate_count_gates_production_status(tmp_path, monkeypatch):
+    """A non-zero degenerate_observations_at_solution count on a PRODUCTION
+    (is_smoke=False, the default) run sets status="degenerate", never "ok",
+    with a non-empty status_reason and populated metrics (D-19.3-11)."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=3)
+
+    outcome = m.run_configuration(config, seed=42, n_frames=10, out_dir=tmp_path)
+
+    assert outcome["status"] == "degenerate"
+    assert outcome["status_reason"] != ""
+    assert outcome["metrics"] is not None
+    assert outcome["degenerate_observations_at_solution"] == 3
+
+    row = m.build_row(
+        config,
+        seed=42,
+        n_frames=10,
+        metrics=outcome["metrics"],
+        status=outcome["status"],
+        status_reason=outcome["status_reason"],
+        degenerate_count=outcome["degenerate_observations_at_solution"],
+    )
+    assert row["status"] == "degenerate"
+    assert row["degenerate_observations_at_solution"] == 3
+    for col in m._METRIC_COLUMNS:
+        assert row[col] is not None
+
+
+def test_degenerate_count_not_gated_on_smoke(tmp_path, monkeypatch):
+    """The SAME non-zero count on a --smoke (is_smoke=True) run is still
+    recorded, but does NOT set status="degenerate" -- the smoke carve-out
+    (D-19.3-11, plan 19.3-07). `ideal`/`minimal`-style smoke-only geometry
+    legitimately trips the guard; --smoke must not report a false failure."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=3)
+
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=10, out_dir=tmp_path, is_smoke=True
+    )
+
+    assert outcome["status"] == "ok"
+    assert outcome["status_reason"] == ""
+    assert outcome["degenerate_observations_at_solution"] == 3
+
+
+def test_degenerate_column_not_gated_when_zero(tmp_path, monkeypatch):
+    """A zero degenerate count (the common case) still records status="ok"
+    and degenerate_observations_at_solution == 0 -- present-and-zero, not
+    absent, matching plan 19.3-02's own convention for this same key."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=0)
+
+    outcome = m.run_configuration(config, seed=42, n_frames=10, out_dir=tmp_path)
+
+    assert outcome["status"] == "ok"
+    assert outcome["degenerate_observations_at_solution"] == 0
+
+
+def test_degenerate_gate_source_is_a_smoke_condition_not_a_threshold():
+    """The carve-out is threaded through an explicit is_smoke condition, not
+    a numeric threshold: no integer literal is ever compared against the
+    guard count except `> 0`."""
+    source = Path(m.__file__).read_text(encoding="utf-8")
+    assert source.count('"degenerate"') >= 2  # STATUS_VALUES membership + assignment
+    guard_comparisons = re.findall(
+        r"n_degenerate\s*(<=|>=|==|!=|<|>)\s*(-?\d+)", source
+    )
+    for operator, literal in guard_comparisons:
+        assert operator == ">" and literal == "0", (
+            f"found n_degenerate {operator} {literal} in "
+            "e6_generalization_sweep.py -- the production gate must be "
+            "exactly `> 0`, never a threshold or tolerance"
+        )
+    assert len(guard_comparisons) >= 2  # production branch + smoke-carve-out branch
+
+
+def test_degenerate_column_appended_last():
+    """The new column is appended at the very end of E6_COLUMNS, verified by
+    index -- every pre-existing column keeps its position."""
+    assert (
+        m.E6_COLUMNS.index("degenerate_observations_at_solution")
+        == len(m.E6_COLUMNS) - 1
+    )

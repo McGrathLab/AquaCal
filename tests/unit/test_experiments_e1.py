@@ -30,7 +30,8 @@ from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project
-from experiments.e1_refractive_comparison import compute_xyz_errors
+from aquacal.datasets import create_scenario
+from experiments.e1_refractive_comparison import _run_one_model, compute_xyz_errors
 
 
 @pytest.fixture
@@ -250,3 +251,35 @@ def test_compute_xyz_errors_deterministic(
 
     for key in ("xy_rmse_mm", "z_rmse_mm", "ratio", "n_points"):
         np.testing.assert_array_equal(result_1[key], result_2[key])
+
+
+# ---------------------------------------------------------------------------
+# D-19.3-11 / plan 19.3-07: E1 records (never gates on) the final-solution
+# guard count.
+# ---------------------------------------------------------------------------
+
+
+def test_run_one_model_records_degenerate_count():
+    """_run_one_model returns a discard_stats dict whose
+    degenerate_observations_at_solution key is present and integer-typed on
+    a clean run -- the package's cheap "minimal" preset, refine_intrinsics
+    left at _run_one_model's own default (True), matching E1's real call
+    shape."""
+    scenario = create_scenario("minimal", seed=1)
+    _result, _detections, _timings, _diagnostics, discard_stats = _run_one_model(
+        scenario, n_water=1.333, seed=1
+    )
+    assert "degenerate_observations_at_solution" in discard_stats
+    assert isinstance(discard_stats["degenerate_observations_at_solution"], int)
+
+
+def test_run_one_model_never_raises_on_a_positive_count():
+    """create_scenario("ideal") legitimately trips the guard (extreme
+    obliquity, not a breached interface, per 19.3-ORCHESTRATOR-NOTES.md
+    section 4) -- _run_one_model must complete and record the count, never
+    raise."""
+    scenario = create_scenario("ideal", seed=1)
+    _result, _detections, _timings, _diagnostics, discard_stats = _run_one_model(
+        scenario, n_water=1.333, seed=1
+    )
+    assert discard_stats["degenerate_observations_at_solution"] >= 0

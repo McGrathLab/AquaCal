@@ -627,6 +627,18 @@ def _run_full(args: argparse.Namespace) -> int:
         refine_intrinsics=E5_REFINE_INTRINSICS,
         discard_stats_out=discard_stats,
     )
+    n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+    if n_degenerate > 0:
+        # D-19.3-11: recorded (already summed into e5_provenance.json's
+        # "discard_stats" via the generic plan 19.2-26 mechanism above), never
+        # gated -- the library records, the harness only warns here.
+        logger.warning(
+            "%d degenerate observation(s) recorded at the final solution, "
+            "summed across the whole band -- first-order optimality is "
+            "unreliable wherever this occurred (D-19.3-11); see "
+            "e5_provenance.json's discard_stats for the per-run count.",
+            n_degenerate,
+        )
     write_experiment_csv(
         df,
         out_dir / "index_sensitivity.csv",

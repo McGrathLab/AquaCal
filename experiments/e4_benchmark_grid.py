@@ -41,11 +41,22 @@ kills only that cell's child process and yields a `status="failed"` row with
 its exit code, and a thrashing cell is bounded by the per-cell timeout.
 
 **Every declared cell emits a row unconditionally** (D-04): `status` is one
-of `ok`, `failed`, `skipped_existing`; a cell with no `benchmark.json` still
-produces a row via a left join onto the literal `DECLARED_CELLS` list, so a
-coverage gap is countable, not invisible. A `skipped_existing` cell whose
-record IS on disk keeps that record's metrics (CR-01) -- the resume path
-(D-24) exists precisely so a resumed run publishes what it already computed.
+of `ok`, `degenerate`, `failed`, `skipped_existing`; a cell with no
+`benchmark.json` still produces a row via a left join onto the literal
+`DECLARED_CELLS` list, so a coverage gap is countable, not invisible. A
+`skipped_existing` cell whose record IS on disk keeps that record's metrics
+(CR-01) -- the resume path (D-24) exists precisely so a resumed run publishes
+what it already computed.
+
+**A cell whose final solution recorded a non-zero
+`degenerate_observations_at_solution` guard count is downgraded from `ok` (or
+`skipped_existing`) to `degenerate`** in `build_grid_dataframe` (D-19.3-11,
+plan 19.3-07) -- its metrics stay populated, but no consumer may read
+`status="degenerate"` as converged. The count is recorded and warned about
+for EVERY cell, including `SMOKE_CELLS`, but the gate itself only ever
+applies to a `DECLARED_CELLS` cell: `build_grid_dataframe` is the sole gating
+site and `_run_smoke_cells` never calls it, so `--smoke` cannot report a
+false failure from this count.
 
 Invoked as `python -m experiments.e4_benchmark_grid`. Inherits the shared
 five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`)
@@ -310,8 +321,9 @@ GRID_KEY_COLUMNS = ["cell_key"]
 _STAGE1 = "stage3_interface_optimization"
 _STAGE2 = "stage3_intrinsic_pass"
 
-# 35 columns, in order (D-02, D-04, D-14, D-15, D-16; review H1, H5, M3, L6;
-# D-33 gap 3 adds memory_pressure).
+# 36 columns, in order (D-02, D-04, D-14, D-15, D-16; review H1, H5, M3, L6;
+# D-33 gap 3 adds memory_pressure; D-19.3-11/plan 19.3-07 appends
+# degenerate_observations_at_solution last).
 GRID_COLUMNS: list[str] = [
     "cell_key",
     "n_cameras",
@@ -348,6 +360,13 @@ GRID_COLUMNS: list[str] = [
     "reprojection_rms",
     "validation_3d_error_mean",
     "validation_3d_error_std",
+    # D-19.3-11/plan 19.3-07: the final-solution guard count this cell's
+    # calibrate_synthetic call recorded via discard_stats_out. Appended last
+    # so every existing column keeps its position. Populated whenever a
+    # cell's metrics are populated (status in {"ok", "degenerate",
+    # "skipped_existing" with an on-disk record}); null when no
+    # benchmark.json was ever read for this cell.
+    "degenerate_observations_at_solution",
 ]
 
 # Metric columns (everything after status/status_reason/exit_code) that must
@@ -383,6 +402,7 @@ _NULL_METRICS: dict = {
     "reprojection_rms": None,
     "validation_3d_error_mean": None,
     "validation_3d_error_std": None,
+    "degenerate_observations_at_solution": None,
 }
 
 # Compact main-text summary view (WP2's placement plan: compact table in the
@@ -679,8 +699,15 @@ def run_grid_cell(
 
     Returns:
         A dict with at least `cell_key`, `n_cameras`, `n_frames`, `status`
-        (`"ok"`, `"failed"`, or `"skipped_existing"` -- D-04's complete
-        vocabulary), and `status_reason`.
+        (`"ok"`, `"failed"`, or `"skipped_existing"` -- this function's own
+        vocabulary; it never returns `"degenerate"` itself), and
+        `status_reason`. A non-zero
+        `discard_stats["degenerate_observations_at_solution"]` is still
+        recorded into the written `benchmark.json`'s `problem_shape` and
+        still logged as a warning here (D-19.3-11) -- the `ok` ->
+        `degenerate` downgrade is applied downstream, in
+        `build_grid_dataframe`, which is the sole gating site (see the
+        module docstring).
     """
     cell_key = f"cameras_{n_cameras}_frames_{n_frames}"
     cell_path = Path(out_dir) / "e4_cells" / cell_key / "benchmark.json"
@@ -722,6 +749,7 @@ def run_grid_cell(
         timings: dict[str, float] = {}
         memory: dict[str, dict] = {}
 
+        discard_stats: dict[str, int] = {}
         result, detections = calibrate_synthetic(
             scenario,
             n_water=GRID_N_WATER,
@@ -734,7 +762,23 @@ def run_grid_cell(
             timings_out=timings,
             memory_out=memory,
             normal_fixed=GRID_NORMAL_FIXED,
+            discard_stats_out=discard_stats,
         )
+        n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+        if n_degenerate > 0:
+            # D-19.3-11: recorded and warned about unconditionally, whether
+            # this is a declared production cell or one of SMOKE_CELLS --
+            # the GATE (ok -> degenerate) is applied downstream in
+            # build_grid_dataframe, which only declared production cells
+            # ever reach (SMOKE_CELLS never call it, see _run_smoke_cells),
+            # so --smoke can never see a false failure from this count.
+            logger.warning(
+                "Cell %s recorded %d degenerate observation(s) at the final "
+                "solution -- first-order optimality is unreliable for this "
+                "cell (D-19.3-11).",
+                cell_key,
+                n_degenerate,
+            )
 
         per_frame_counts = [len(fd.detections) for fd in detections.frames.values()]
         n_observations = sum(per_frame_counts)
@@ -804,6 +848,13 @@ def run_grid_cell(
             # stands) -- lets a reader tell a clean measurement from one
             # taken close to the physical ceiling.
             "memory_pressure": _classify_memory_pressure(memory),
+            # D-19.3-11/plan 19.3-07: the final-solution guard count,
+            # stashed the same way peak_bytes_baseline is above -- problem_
+            # shape is a free-form passthrough dict, so this is how the
+            # count survives into the committed record and, via aggregate(),
+            # becomes the `problem_shape.degenerate_observations_at_solution`
+            # column build_grid_dataframe reads to decide status.
+            "degenerate_observations_at_solution": n_degenerate,
         }
         solver_config = {
             "normal_fixed": GRID_NORMAL_FIXED,
@@ -1013,6 +1064,9 @@ def _extract_assembled_row(row: pd.Series) -> dict:
         "shared_interface": _get(row, "solver_config.shared_interface"),
         "n_observations": _get(row, "problem_shape.n_observations"),
         "memory_pressure": _get(row, "problem_shape.memory_pressure"),
+        "degenerate_observations_at_solution": _get(
+            row, "problem_shape.degenerate_observations_at_solution"
+        ),
         "seconds_stage3_interface_optimization": _get(row, f"{_STAGE1}.seconds"),
         "seconds_stage3_intrinsic_pass": _get(row, f"{_STAGE2}.seconds"),
         "peak_bytes_baseline": _get(row, "problem_shape.peak_bytes_baseline"),
@@ -1089,6 +1143,11 @@ def _extract_pipeline_row(record: dict) -> dict:
         # D-26: E2 never recorded a memory_pressure classification (its
         # benchmark.json predates D-33); None rather than invented (D-14).
         "memory_pressure": None,
+        # D-26: E2's benchmark.json predates this plan's discard_stats
+        # threading and stays out of this phase's re-run scope (E2 is real
+        # data, unaffected by a synthetic scenario-geometry change); None
+        # rather than invented (D-14).
+        "degenerate_observations_at_solution": None,
         "seconds_stage3_interface_optimization": stage1.get("seconds"),
         "seconds_stage3_intrinsic_pass": stage2.get("seconds"),
         "peak_bytes_baseline": None,
@@ -1212,6 +1271,28 @@ def build_grid_dataframe(
             row.update(_NULL_METRICS)
         else:
             row.update(metrics)
+            # D-19.3-11/plan 19.3-07: a PRODUCTION cell (every DECLARED_CELLS
+            # cell reaches here; SMOKE_CELLS never call build_grid_dataframe
+            # at all -- see _run_smoke_cells) whose final solution recorded a
+            # non-zero degenerate_observations_at_solution count can never
+            # publish as converged. Exactly `> 0`, never a threshold --
+            # metrics stay populated (this is the "populate metrics" branch,
+            # not the null branch), only "status" and "status_reason" move.
+            # This is NOT the same predicate as "is this a fresh, non-skipped
+            # cell" (that is `row["status"] == "failed"` above, unchanged) --
+            # a resumed `skipped_existing` cell with a positive count is
+            # gated too, since its on-disk record is exactly as degenerate as
+            # a freshly-run one would be.
+            n_degenerate = row.get("degenerate_observations_at_solution")
+            if row["status"] in ("ok", "skipped_existing") and (
+                n_degenerate is not None and n_degenerate > 0
+            ):
+                row["status"] = "degenerate"
+                row["status_reason"] = (
+                    f"{n_degenerate} degenerate observation(s) recorded at "
+                    "the final solution -- first-order optimality is "
+                    "unreliable for this cell (D-19.3-11)"
+                )
 
         rows.append(row)
 

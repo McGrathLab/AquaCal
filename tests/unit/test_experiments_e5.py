@@ -583,3 +583,44 @@ def test_discard_stats_out_sink_is_numerically_inert():
     # non-empty even with zero discards. A vacuous (never-populated) sink
     # would make the inertness proof above meaningless.
     assert stats, "discard_stats_out was supplied but never populated"
+
+
+# ---------------------------------------------------------------------------
+# D-19.3-11 / plan 19.3-07: E5 records (never gates on) the final-solution
+# guard count.
+# ---------------------------------------------------------------------------
+
+
+def test_discard_stats_out_carries_degenerate_count_on_a_clean_run():
+    """`degenerate_observations_at_solution` is present and integer-typed in
+    `discard_stats_out` on a clean run -- present-and-zero, per plan 19.3-02's
+    convention for this same key, matching E5's own call shape."""
+    scenario = create_scenario("minimal", seed=1)
+    stats: dict[str, int] = {}
+    calibrate_synthetic(
+        scenario,
+        n_water=1.0,
+        refine_intrinsics=E5_REFINE_INTRINSICS,
+        seed=1,
+        normal_fixed=E5_NORMAL_FIXED,
+        discard_stats_out=stats,
+    )
+    assert "degenerate_observations_at_solution" in stats
+    assert isinstance(stats["degenerate_observations_at_solution"], int)
+
+
+def test_run_index_point_sink_carries_degenerate_count():
+    """run_index_point's discard_stats_out sink (already forwarded straight
+    through to calibrate_synthetic) carries degenerate_observations_at_solution
+    end to end -- exercised through E5's own real call shape, not a mock."""
+    stats: dict[str, int] = {}
+    run_index_point(
+        n_assumed=N_TRUE,
+        n_true=N_TRUE,
+        n_frames=4,
+        seed=1,
+        refine_intrinsics=False,
+        discard_stats_out=stats,
+    )
+    assert "degenerate_observations_at_solution" in stats
+    assert isinstance(stats["degenerate_observations_at_solution"], int)
