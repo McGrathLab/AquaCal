@@ -157,10 +157,20 @@ diagnostic, not an accuracy improvement.
   inert by exact-equality test so E2 stays out of scope; and `DegenerateObservationWarning` no
   longer advises judging convergence on optimality, which is wrong in precisely the situation
   that emits it
-- [ ] **GEOM-05**: E1, E4, E5, E6 and E7 are re-measured on the corrected geometry, and the
+- [ ] **GEOM-05**: E1, E3, E4, E5, E6 and E7 are re-measured on the corrected geometry, and the
   paired determinism sweep reports the cell reproduction count against the 63/308 pre-fix
   baseline as a statistic declared before launch — reported whatever it shows, including no
-  improvement
+  improvement.
+
+  **E3 was added 2026-08-02, after planning.** `19.3-SEED.md`'s blast-radius table listed five
+  experiments and omitted E3, but E3 calls `generate_real_rig_trajectory`
+  (`experiments/e3_derived_quantities.py:331`), so the re-centred geometry moves its sampled
+  incidence angles — its `newton_iterations.csv` mismatches by 134 cells. That file is the
+  evidence behind **MF-01**, so leaving it stale would make MF-08's provenance claim false.
+  Only tier 2 is geometry-dependent: tier 1 (`code_constants.csv`) compares declared constants
+  against source, and tier 3 (`cpr_grouping.csv`) derives from camera and frame counts —
+  confirm both are unmoved rather than assuming it. E3 runs no production calibration, so it
+  costs minutes and does not need box exclusivity.
 - [ ] **GEOM-06**: MF-08 records the before/after with pre-fix artifacts archived under the
   established `experiments/archive/` convention, claiming "accuracy unaffected" only for
   experiments with a measured seed band (E1, E5, E7); E4 and E6 report the optimality and

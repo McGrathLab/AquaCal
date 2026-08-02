@@ -351,11 +351,12 @@ geometry is what this phase finishes)
      proven inert by exact-equality test, keeping E2 out of scope.
   5. `DegenerateObservationWarning` no longer advises judging convergence on optimality —
      the advice that is wrong in precisely the situation that emits it.
-  6. E1/E4/E5/E6/E7 are re-measured on corrected geometry (~9 h, chained, detached), and the
+  6. E1/E3/E4/E5/E6/E7 are re-measured on corrected geometry (~9 h, chained, detached), and the
      paired determinism sweep reports the cell reproduction count against the 63/308 pre-fix
-     baseline as a pre-declared statistic.
+     baseline as a pre-declared statistic. (E3 added 2026-08-02 — omitted from the seed's
+     blast-radius table but affected via `generate_real_rig_trajectory`; tier 2 only.)
   7. MF-08 records the before/after with pre-fix artifacts archived, claiming "accuracy
-     unaffected" only where a measured seed band supports it (E1/E5/E7 yes; E4/E6 report the
+     unaffected" only where a measured seed band supports it (E1/E5/E7 yes; E3/E4/E6 report the
      diagnostic improvement without an accuracy claim).
 **Note**: ships a breaking change (`generate_board_trajectory` is a public export gaining a
 required parameter) — cuts **v2.0.0**. Phases 21 and 22 must know before resolving version
