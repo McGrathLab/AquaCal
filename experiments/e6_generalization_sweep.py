@@ -110,21 +110,34 @@ LAYOUT_AXIS_VALUES: list[str] = ["grid", "ring", "line"]
 # D-28's derived xy_extent (see `build_grid_scenario`'s own docstring) -- and
 # is the baseline.
 #
-# `spacing` deliberately varies alongside `depth_range`/`xy_extent` (review
-# M2), so varying only the working volume changes the RATIO of working
-# volume to camera baseline, not the scale itself. Each non-default setting
-# scales all three together by the same factor (0.5x and 2x) relative to
-# E4's own new geometry constants (D-28, D-29) -- imported and derived here
-# rather than hardcoding a second copy of absolute numbers -- so this axis
-# measures "does accuracy hold as the whole rig/tank scales up or down
-# together," not a ratio effect. `height_above_water` is deliberately NOT
-# swept by this axis (unchanged from `build_grid_scenario`'s own default at
-# every scale value): `depth_range` is expressed relative to the water
-# surface below so that scaling by 0.5x/2x moves the board within the water
-# rather than through the surface into air. The board's `square_size` is
-# deliberately NOT scaled -- a real calibration target does not shrink with
-# the tank (see `experiments.e4_benchmark_grid.build_grid_scenario`'s own
-# docstring, which states this same rationale for GRID_BOARD_CONFIG).
+# `spacing` deliberately varies alongside `xy_extent` (review M2), so varying
+# only the working volume changes the RATIO of working volume to camera
+# baseline, not the scale itself. `xy_extent` and `spacing` scale directly by
+# the same factor (0.5x and 2x) relative to E4's own new geometry constants
+# (D-28, D-29) -- imported and derived here rather than hardcoding a second
+# copy of absolute numbers.
+#
+# `depth_range` scales differently (D-19.3-07): the board-to-surface standoff
+# is NOT scaled, so `depth_range`'s LOWER bound (the derived clearance floor,
+# `GRID_DEPTH_RANGE[0]`) is held FIXED at every scale value, and only the
+# depth EXTENT above that floor scales by the factor. This axis previously
+# scaled the standoff itself (relative to the water surface) and claimed to
+# measure "does accuracy hold as the whole rig/tank scales up or down
+# together" -- but that claim went stale the moment the clearance floor
+# became derived from the board's tilt envelope rather than a fixed literal:
+# halving the standoff at `half_scale` violated the floor by construction
+# (99-133mm across two attempted anchors), because the clearance requirement
+# does not shrink just because the standoff does. D-19.3-07 resolves the
+# conflict in favor of the clearance rule, not the axis's original framing:
+# the axis now measures whether accuracy holds as the working-volume depth
+# extent, xy_extent, and camera spacing all scale together above a FIXED
+# board-to-surface standoff -- not as the whole rig/tank scales uniformly.
+# The standoff stays fixed because it is set by the tank and the target, not
+# by rig size, and every scale value is legal by construction as a result.
+# The board's `square_size` is, likewise, deliberately NOT scaled -- a real
+# calibration target does not shrink with the tank (see
+# `experiments.e4_benchmark_grid.build_grid_scenario`'s own docstring, which
+# states this same rationale for GRID_BOARD_CONFIG).
 _BASELINE_EXTENT_ABOVE_FLOOR: float = GRID_DEPTH_RANGE[1] - GRID_DEPTH_RANGE[0]
 _BASELINE_XY_EXTENT: float = default_xy_extent_for_layout(
     n_cameras=BASELINE_N_CAMERAS, layout=BASELINE_LAYOUT, spacing=GRID_SPACING
