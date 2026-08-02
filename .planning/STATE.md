@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.3 context gathered
-last_updated: "2026-08-02T02:08:40.843Z"
+stopped_at: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
+last_updated: "2026-08-02T16:11:21.401Z"
 last_activity: 2026-08-02 -- Phase 19.3 execution started
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 73
-  completed_plans: 63
+  completed_plans: 71
   percent: 60
 ---
 
@@ -359,8 +359,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-08-02T00:59:17.100Z
-Stopped at: Phase 19.3 context gathered
+Last session: 2026-08-02T16:11:21.393Z
+Stopped at: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
@@ -401,5 +401,5 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: .planning/phases/19.3-scenario-geometry-and-convergence/19.3-CONTEXT.md
+Resume file: .planning/phases/19.3-scenario-geometry-and-convergence/.continue-here.md
   (Read alongside `18-DISCUSSION-LOG.md` for the alternatives considered.)
