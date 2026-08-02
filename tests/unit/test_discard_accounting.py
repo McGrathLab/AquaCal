@@ -30,10 +30,19 @@ from aquacal.calibration._observability import (
     check_discard_invariants,
 )
 from aquacal.calibration.extrinsics import estimate_board_pose, refractive_solve_pnp
-from aquacal.config.schema import CameraIntrinsics
+from aquacal.calibration.interface_estimation import optimize_interface
+from aquacal.calibration.refinement import joint_refinement
+from aquacal.config.schema import (
+    BoardConfig,
+    BoardPose,
+    CameraExtrinsics,
+    CameraIntrinsics,
+    DegenerateObservationWarning,
+)
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets import create_scenario
 from aquacal.datasets.pipelines import calibrate_synthetic
+from aquacal.datasets.synthetic import generate_synthetic_detections
 
 ANCHOR_PATH = Path(__file__).parent.parent / "fixtures" / "discard_anchor.json"
 
@@ -251,3 +260,200 @@ def test_full_run_satisfies_both_invariants():
     # A clean synthetic scenario must not trip the degenerate-pose guard. This is
     # the over-counting guard: it fails if the counter fires indiscriminately.
     assert stats.get("pnp_guard_rejected", 0) == 0, stats
+
+
+# ---------------------------------------------------------------------------
+# C. Final-solution degeneracy guard count (plan 19.3-02, D-19.3-11)
+# ---------------------------------------------------------------------------
+#
+# The library RECORDS the number of observations the refractive model could not
+# project AT THE FINAL SOLUTION (never raises -- see DegenerateObservationWarning
+# and the guard blocks in interface_estimation.py / refinement.py). These tests
+# cover both solver stages (optimize_interface's Stage 3, joint_refinement's
+# Stage 3 intrinsic pass) through the real public call shape, not by reaching
+# into private guard internals.
+
+
+def _build_three_camera_board_scene(seed: int, depth_range: tuple[float, float]):
+    """A 3-camera scene with board poses constructed directly (no generators).
+
+    Bypasses `generate_board_trajectory`/`generate_real_rig_trajectory` entirely --
+    plan 19.3-01 makes those raise on a shallow `depth_range`, and this helper's
+    whole purpose is to exercise depths those generators would now refuse to
+    construct. `tvec[2]` is drawn from `depth_range` (world-frame board center
+    height), matching the same construction pattern used by
+    `tests/unit/test_optim_common.py::TestInvalidProjectionKeepsGradient`.
+
+    Returns:
+        (intrinsics, extrinsics, board, water_zs, detections) -- ready to pass
+        straight into `optimize_interface`.
+    """
+    rng = np.random.default_rng(seed)
+    K = np.array([[500.0, 0.0, 320.0], [0.0, 500.0, 240.0], [0.0, 0.0, 1.0]])
+    cams = ("cam0", "cam1", "cam2")
+    intrinsics = {
+        c: CameraIntrinsics(K=K.copy(), dist_coeffs=np.zeros(5), image_size=(640, 480))
+        for c in cams
+    }
+    extrinsics = {
+        "cam0": CameraExtrinsics(R=np.eye(3), t=np.zeros(3)),
+        "cam1": CameraExtrinsics(R=np.eye(3), t=np.array([0.1, 0.0, 0.0])),
+        "cam2": CameraExtrinsics(R=np.eye(3), t=np.array([0.0, 0.1, 0.0])),
+    }
+    board = BoardGeometry(
+        BoardConfig(
+            squares_x=6,
+            squares_y=5,
+            square_size=0.04,
+            marker_size=0.03,
+            dictionary="DICT_4X4_50",
+        )
+    )
+    water_z = 0.15
+    water_zs = {c: water_z for c in cams}
+
+    poses = []
+    for i in range(40):
+        rx, ry, rz = rng.uniform(-0.26, 0.26, 3)
+        tx, ty = rng.uniform(-0.05, 0.05, 2)
+        tz = rng.uniform(*depth_range)
+        poses.append(
+            BoardPose(
+                frame_idx=i, rvec=np.array([rx, ry, rz]), tvec=np.array([tx, ty, tz])
+            )
+        )
+
+    detections = generate_synthetic_detections(
+        intrinsics,
+        extrinsics,
+        water_zs,
+        board,
+        poses,
+        noise_std=0.5,
+        min_corners=6,
+        seed=seed,
+    )
+    return intrinsics, extrinsics, board, water_zs, detections
+
+
+@pytest.mark.slow
+def test_clean_run_records_present_and_zero_guard_count():
+    """A synthetic run with `discard_stats_out={}` records the key at 0.
+
+    Present-and-zero (not absent) is the load-bearing distinction established
+    by 19.2-27: `{}` means "requested, and zero fired", `None` means
+    "accounting never requested".
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stats: dict[str, int] = {}
+    optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stats,
+    )
+    assert stats["degenerate_observations_at_solution"] == 0
+    assert "degenerate_observations_at_solution" in stats
+
+
+@pytest.mark.slow
+def test_none_records_nothing_and_never_raises():
+    """`discard_stats_out=None` (the default) records nothing and does not raise."""
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    # Must not raise, and there is nothing to inspect afterward -- None stays None.
+    optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=None,
+    )
+
+
+@pytest.mark.slow
+def test_shallow_scenario_trips_the_guard_at_the_final_solution():
+    """A deliberately shallow scene (built directly, not via a generator) records
+    a positive guard count at the final least_squares solution.
+
+    Seed 2 is pinned: this specific seed/depth-range combination was verified
+    (2026-08-01) to leave 2 observations the refractive model cannot project
+    at the converged solution -- a "the solver wandered" case (D-19.3-11 point
+    3), not a construction-time violation (that is D-19.3-04's job, in a
+    different plan).
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=2, depth_range=(0.155, 0.18))
+    )
+    stats: dict[str, int] = {}
+    with pytest.warns(DegenerateObservationWarning):
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stats_out=stats,
+        )
+    assert stats["degenerate_observations_at_solution"] > 0
+    # check_discard_invariants is a whole-run-only check; a bare optimize_interface
+    # call is not a full pipeline run (no PnP producer/consumer pairing to cross-
+    # check here), so use the denominator-only subset, matching
+    # test_refractive_attempt_does_not_pollute_the_nonrefractive_branch's usage.
+    assert not check_denominator_only(stats), stats
+
+
+@pytest.mark.slow
+def test_joint_refinement_signature_accepts_and_bumps_discard_stats_out():
+    """`joint_refinement` (Stage 3's intrinsic pass) also threads the sink.
+
+    Runs the intrinsic pass on the same clean scene as
+    `test_clean_run_records_present_and_zero_guard_count`, confirming the second
+    solver stage records present-and-zero too.
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stage3_stats: dict[str, int] = {}
+    stage3_result = optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stage3_stats,
+    )
+    assert stage3_stats["degenerate_observations_at_solution"] == 0
+
+    refine_stats: dict[str, int] = {}
+    joint_refinement(
+        stage3_result=stage3_result,
+        detections=detections,
+        intrinsics=intrinsics,
+        board=board,
+        reference_camera="cam0",
+        refine_intrinsics=False,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=refine_stats,
+    )
+    assert refine_stats["degenerate_observations_at_solution"] == 0
+    assert "degenerate_observations_at_solution" in refine_stats

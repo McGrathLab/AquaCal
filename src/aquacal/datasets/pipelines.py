@@ -189,6 +189,7 @@ def calibrate_synthetic(
                 min_corners=4,
                 diagnostics_out=intrinsic_pass_diagnostics_out,
                 normal_fixed=normal_fixed,
+                discard_stats_out=discard_stats_out,
             )
         )
         if timings_out is not None:

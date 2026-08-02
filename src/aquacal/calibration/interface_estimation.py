@@ -410,6 +410,7 @@ def optimize_interface(
     invalid_counts: list[int] = []
     compute_residuals(result.x, *cost_args, invalid_count_out=invalid_counts)
     n_invalid = invalid_counts[0] if invalid_counts else 0
+    _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
     if n_invalid > 0:
         warnings.warn(
             f"Stage 3 finished with {n_invalid} observation(s) the refractive "
