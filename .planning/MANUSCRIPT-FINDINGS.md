@@ -14,8 +14,9 @@ measured data rather than against this summary.
 
 ## MF-01 — Newton iteration count: the supplement understates the tail
 
-**Status:** RESOLVED (2026-08-01, phase 19.2 plan 19.2-25) — the provenance caveat is closed;
-a prose edit is still needed, and the required framing has changed (see below)
+**Status:** RESOLVED (2026-08-01, phase 19.2 plan 19.2-25); **numbers regenerated 2026-08-02**
+(phase 19.3 plan 10) on the corrected scenario geometry — the provenance caveat is closed; a prose
+edit is still needed, and the required framing has changed (see below)
 **Found:** 2026-07-29, phase 19.2 plan 19.2-05 (E3 tier 2, per D-20)
 **Resolved by:** D-32 option (c) — instrumenting the production batch path directly, decided
 2026-07-29 (`19.2-GAP-CONTEXT.md` § D-32), implemented in plan 19.2-20, regenerated with
@@ -48,23 +49,64 @@ with two values, `scalar` and `batch`, for every camera and the pooled `ALL` row
 >   flag is off by default and proven inert), and yields the one quantity the batch previously
 >   could not report — per-point convergence.
 
+> **NUMBERS REGENERATED 2026-08-02 (phase 19.3 plan 10).** The table below was originally read
+> out of a `newton_iterations.csv` produced on the pre-depth-fix scenario geometry, in which
+> synthetic board corners protruded through the water surface. Phase 19.3 corrected that geometry
+> and plan 09 regenerated the file, moving 134 cells (measured by plan 19.3-05). The pre-fix table
+> is preserved verbatim below the current one, and the pre-fix CSV is archived at
+> `experiments/archive/e3-2026-08-02-pre-depth-fix/newton_iterations.csv` — the two versions are
+> traceable rather than one silently replacing the other. **The entry's conclusion is unchanged in
+> kind and is restated, not softened, below.**
+
 The supplement says the Newton solve for the refraction point converges in **"two to four
-steps."** Measured over the real rig's full working volume (104,052 points, 12 cameras), both
+steps."** Measured over the real rig's full working volume (105,600 points, 12 cameras), both
 loops, from `newton_iterations.csv`'s pooled `ALL` rows:
 
 | quantity | scalar | batch |
 |---|---|---|
 | iterations, min | 2 | 2 |
 | iterations, **median** | **4.0** (identical on every camera) | **4.0** (identical on every camera) |
-| iterations, **max** | **7** (6-7 per camera) | **7** (6-7 per camera) |
+| iterations, **max** | **6** (6 on every camera) | **6** (6 on every camera) |
 | not converged | **0** | **0** |
-| incidence angle range | 0.13 deg - 62.92 deg | 0.13 deg - 62.92 deg |
+| incidence angle range | 0.08 deg - 57.50 deg | 0.08 deg - 57.50 deg |
 | max residual | ~1.0e-9 m (at tolerance) | ~1.0e-9 m (at tolerance) |
+
+**Pre-fix values, for traceability** (104,052 points, superseded — do not quote):
+
+| quantity | scalar | batch |
+|---|---|---|
+| iterations, median | 4.0 | 4.0 |
+| iterations, max | 7 (6-7 per camera) | 7 (6-7 per camera) |
+| incidence angle range | 0.13 deg - 62.92 deg | 0.13 deg - 62.92 deg |
+
+**What moved, and why.** The corrected geometry re-centres board poses on the board centre and
+enforces a depth-clearance floor, so the sampled rays are less oblique: peak incidence fell from
+62.92 deg to 57.50 deg, and the iteration tail with it, from 7 to 6. The point count rose from
+104,052 to **105,600** — which is exactly 12 cameras x 100 frames x 88 corners, i.e. **every
+corner is now valid**. Pre-fix, 129 corners per camera were being dropped as unprojectable. That
+increase is the depth-clearance fix showing up directly in this file.
 
 The two loops' *per-point* convergence-iteration distributions are effectively identical (the
 tiny residual differences, e.g. `9.989e-10` vs `9.999e-10`, are the two implementations' own
 arithmetic, not a scope difference) — each point still takes the same number of Newton steps to
 reach its own root regardless of which loop finds it.
+
+**Does the "two to four steps" prose edit still need making? YES — unchanged in kind, slightly
+smaller in magnitude.** The understatement is now 4 -> 6 rather than 4 -> 7:
+
+| | pre-fix | post-fix |
+|---|---|---|
+| supplement's claim | "two to four steps" | "two to four steps" |
+| measured range | 2 - 7 | **2 - 6** |
+| under-provisioning factor vs median | 7/4 = 1.75x | **6/4 = 1.5x** |
+
+The median is **still 4.0** and zero points still fail to converge, so the supplement's typical
+case remains correct and the tail is still understated. A reader sizing a compute budget from
+"typically four steps" would under-provision by 1.5x rather than 1.75x — smaller, but the same
+error of kind, and still not a rounding detail. **The edit specified below is therefore still
+required; only the number 7 becomes 6.** Note also that per-camera spread collapsed: pre-fix
+`iter_max` varied 6-7 across cameras, post-fix it is 6 on every camera, so the tail is now
+uniform rather than camera-dependent.
 
 **The median/max framing must be restated against the batch loop's actual termination rule, and
 this SHARPENS the entry's original conclusion rather than replacing it.** The per-point
@@ -72,10 +114,10 @@ iteration counts above describe *when each point's own delta would cross toleran
 terminated independently* — but the production batch loop does not terminate per point: it
 runs `np.all(np.abs(delta) < tolerance)`, so **every point in a batch keeps iterating until the
 slowest point in that batch converges.** A point whose own root would be found in 2 steps still
-pays for however many steps the batch's hardest point needs, up to the measured max of 7. So the
+pays for however many steps the batch's hardest point needs, up to the measured max of 6. So the
 production **per-point cost is the batch's max, not its median** — a reader sizing a compute
-budget from "typically four steps" would under-provision by nearly 2x, not merely fail to see an
-occasional tail case. This is stronger than the original entry's "misses that the distribution
+budget from "typically four steps" would under-provision by 1.5x (post-fix; 1.75x pre-fix), not
+merely fail to see an occasional tail case. This is stronger than the original entry's "misses that the distribution
 runs to 7" framing, and it rests on the batch measurement now committed rather than on the
 scalar table alone.
 
@@ -88,15 +130,15 @@ correction, now completed, layered under a prose correction that still needs the
 **Suggested framing for the edit** (wording is the author's call, and has changed from the
 original entry): do not lead with the median. State the effective per-point cost under
 production's all-points termination — "every point costs up to the batch's slowest point, up to
-7 steps over the calibrated volume (individual points would converge in as few as 2, median 4,
+6 steps over the calibrated volume (individual points would converge in as few as 2, median 4,
 if evaluated independently)" — rather than "typically four steps." The batch's own median/max
 are worth reporting as characterizing the *individual* root-find difficulty, but they no longer
 describe the batch's *per-point wall-clock cost*, which the all-points termination rule
 equalizes upward toward the tail.
 
-**Do not** silently change the number to 7 as if it were now "the" iteration count. The
+**Do not** silently change the number to 6 as if it were now "the" iteration count. The
 per-point root-find genuinely converges in a median of 4 steps; what changed is which quantity
-that number describes. Quoting 7 without the batch-termination explanation above would overstate
+that number describes. Quoting 6 without the batch-termination explanation above would overstate
 typical *individual* root-find cost as badly as "two to four" understates *production's*
 per-point cost — the fix is to report both quantities and say which is which, not to swap one
 number for the other.
@@ -505,8 +547,11 @@ this removes the evidence that the fix is harmful; it does not prove the fix is 
 
 ## MF-07 — Three E6 configurations did not converge, and were published as `status="ok"`
 
-**Status:** OPEN — needs an author decision on whether the affected rows can support E6's
-manuscript comparisons. **This entry records the question; it does not answer it.**
+**Status:** RESOLVED BY MF-08 (2026-08-02, phase 19.3) — the diagnosed cause was corrected and all
+six affected experiments re-measured. All fourteen E6 configurations now sit at or below 1e-02
+first-order optimality with a zero degenerate-observation count. The author decision this entry
+asked for is no longer needed: the affected rows were regenerated rather than adjudicated.
+**This entry recorded the question; MF-08 answers it.**
 **Found:** 2026-08-01, plan 19.2-28, on the first run of the optimality capture plan 19.2-27 added
 **Source of truth:** `experiments/results/generalization_sweep.csv`,
 `experiments/results/e6_configs/*.json`; full analysis in `19.2-28-SUMMARY.md`
@@ -570,3 +615,187 @@ identical code (measured, `19.2-28-SUMMARY.md`); it supports an order-of-magnitu
 
 **Fix owner:** phase 19.3 (`.planning/phases/19.3-scenario-geometry-and-convergence/19.3-SEED.md`),
 which will re-run E1/E4/E5/E6/E7 on corrected geometry. E2 is real data and unaffected.
+
+---
+
+## MF-08 — A benchmark-construction flaw moved six experiments; convergence is now readable
+
+**Status:** OPEN — needs the author's edit to §3's synthetic numbers before resubmission
+**Found:** 2026-08-01 (phase 19.2 plan 28, via the optimality capture plan 27 added); corrected and
+re-measured 2026-08-02, phase 19.3
+**Source of truth:** `experiments/results/` and `experiments/results_e6_repeat2/` at commit
+`22e75ef`, against `experiments/archive/e{1,3,4,5,6,7}-2026-08-02-pre-depth-fix/`
+**Where the prose is:** §3 Synthetic validation, the abstract's improvement ratio, and the
+supplement's convergence claim (via MF-01)
+**Answers:** MF-07 (E6 non-convergence). **Moves the numbers in:** MF-01.
+
+### The defect, stated precisely
+
+Every synthetic scenario generated by `generate_board_trajectory` / `generate_real_rig_trajectory`
+allowed calibration-board corners to protrude through the water surface. On the baseline scenario
+**61 of 8,800 corners (0.69%)** sat at or above the interface, worst protrusion **66 mm**. Those
+observations fall outside the refractive model's domain and are continued with a pinhole extension,
+which is C0-but-not-C1 at the boundary. First-order optimality is a max-norm, so a handful of kinks
+dominates it — **the convergence diagnostic became unreadable**.
+
+**What the defect did NOT do: it did not affect accuracy.** Measured before the fix, the
+high-optimality group's reconstruction RMSE (0.5938 mm mean, n=3) is indistinguishable from the
+healthy group's (0.5622 mm, n=11), and `half_scale` — the worst-converged configuration in the
+table at optimality 27-140 — had the **best** reconstruction accuracy of all fourteen at 0.4935 mm.
+This was a defect in how the benchmark was *constructed* and *diagnosed*, not in what the library
+computes.
+
+The fix derives a depth-clearance floor and re-centres board poses on the board centre rather than
+a corner. Post-fix, **zero corners sit at or above the interface in any scenario**, measured
+directly against each scenario's own corner cloud.
+
+### What moved, per experiment
+
+Optimality is quoted to ONE significant figure throughout; it varies ~2x run to run and no finer
+comparison is supportable.
+
+| exp | headline movement | optimality (1 s.f.) | degenerate count | accuracy claim |
+|---|---|---|---|---|
+| **E1** | deepest-point Z-RMSE 257 -> 248 mm; ratio ~135x -> **~128x** | refr 2e-3; non-refr 9e+2 | refr 0; non-refr 0 -> 14,949 (bookkeeping, see below) | **partial only** — see below |
+| **E3** | tier 2 moved 134 cells; iter_max 7 -> 6; incidence 62.92 -> 57.50 deg; points 104,052 -> **105,600** | n/a (no calibration) | n/a | **NONE** — no seed band |
+| **E4** | worst-cell RMS 0.92 -> 0.71 px (16x50), 0.85 -> 0.71 (12x50); 3D error ~3.5e-5 -> ~2.9e-5 m | 3e-2 -> 4e-3 (12x100) | un-instrumented -> **0** on all 9 cells | **NONE** — no seed band |
+| **E5** | reconstruction RMSE +0.009 mm across the band; the 1.341 outlier (0.80 px) resolved to 0.71 | n/a (not recorded) | **0** | **NONE** — single seed, see below |
+| **E6** | index/1.42 **5e+01 -> 1e-02**; scale/half_scale **3e+01 -> 8e-03**; all 14 now <= 1e-02 | see left | per-config 3-38 -> **0** | **NONE** — no seed band |
+| **E7** | percamera_fixed control RMS 0.98 -> 0.50 px; shared_fixed water_z err 0.92 -> 0.63 mm | — | **0** on all four arms | **supported** — see below |
+
+### Accuracy claims: what is and is not supportable
+
+D-19.3-17 permits "accuracy unaffected" only where a measured seed band licenses it. Applying that
+rule strictly gives a **more restrictive** answer than this phase's planning assumed:
+
+- **E7 — supported.** 10-seed band (D-36). Every arm's movement is inside E7's own known seed
+  instability: the refined arms are documented as varying by >10 mm run to run, and the largest
+  movement here is +4.1 mm (percamera_refined water_z error, 3.4 -> 7.5 mm). No directional
+  conclusion is drawn from the refined arms, consistent with that instability.
+- **E1 — PARTIAL, not blanket.** 5-seed band (19.2 plan 24). `xy_position_error_mm` moved
+  -0.117 mm against a band of 0.262 mm (**0.45x band — within noise**). But
+  `z_position_error_mm` moved **+0.252 mm against a band of 0.105 mm — 2.41x the band, i.e.
+  outside seed noise.** E1 therefore may NOT carry a blanket "accuracy unaffected" statement.
+  The movement is attributable to the scenario itself having changed (deeper, re-centred working
+  volume), not to a library defect — but it is a real change in the measured depth-axis accuracy
+  and must be reported as such, not absorbed.
+- **E5 — NONE. This corrects an inherited assumption.** RESEARCH flagged E5's band as
+  inherited-not-verified. `e5_provenance.json` settles it: `"seed": 42` (single) with an
+  11-point `n_assumed_band`. **E5's band varies the assumed refractive index, not the seed**, so it
+  cannot bound seed noise and licenses no accuracy claim. E5 moves into the no-claim group.
+- **E3, E4, E6 — NONE.** No seed sweep has ever been run for any of them. A single-seed
+  before/after cannot support an accuracy claim however plausible the delta and its mechanism look:
+  19.2's "fixed code is worse on 5 of 6 metrics" table was overturned by measuring the noise floor,
+  and phase 19.1 recorded the same lesson independently.
+
+### E1's 14,949 degenerate observations are bookkeeping, not contamination
+
+E1's non-refractive arm is the paper's pinhole baseline (`n_water = 1.0`). It reports 14,949
+degenerate observations, which looks alarming next to a headline of "zero everywhere". It is not a
+contamination of the comparison, and this was established rather than assumed:
+
+- At `n_water = 1.0` the refractive model reduces to pinhole (the paper states this itself), so
+  `water_z` cannot affect any projection — but it still gates the domain test. It is an **exact
+  null direction**: holding all other parameters fixed and sweeping `water_z` over 1.5 m leaves the
+  cost constant to 13 significant figures (relative variation 2.6e-15) while the guard count climbs
+  0 -> 374 -> 5,572 -> 14,949. The n=1.333 control over the same sweep moves the cost by five
+  orders of magnitude, so the probe is not blind.
+- Re-running both arms with `water_z` pinned at ground truth reproduces every non-refractive
+  reconstruction number to ~4 significant figures (2.5 m Z-RMSE 248.267 -> 248.221 mm) while
+  driving the guard count to **0** and optimality from 874 to 0.525.
+
+**Consequence: the refractive-vs-non-refractive comparison is unaffected by the projection guard.**
+The ~135x -> ~128x change comes from the corrected scenario geometry and other v1.6.0 -> v1.8.0
+changes, not from a compromised baseline. That decomposition is not attempted here — the re-run
+carries all causes at once, and separating them would need a factorial old-geometry/new-code run.
+
+**Do not pin `water_z` in the refractive arm.** There it is genuinely observable and estimating it
+is the method's contribution; pinning it inflates the ratio to a flattering 168x and breaks §3's
+stable-anisotropy claim (free: 1.95-2.19, matching the published ~2.3; pinned: drifts 2.21 -> 1.46).
+
+### Determinism
+
+**8 of 308 cells moved between repeats, before 63 of 308.** Thirteen of fourteen configurations
+reproduced exactly; all movement is in `index/1.48`. Computed by the same code path that produced
+the pre-fix figure, pinned by a self-test that re-derives 63/308 before reporting anything
+(`determinism_probe.py --report`). The two E6 repeats used structurally isolated output
+directories, and repeat 2 provably re-solved (zero resume-skip lines).
+
+This is a **reported statistic, not a gate**. There is no tolerance in it and nothing to loosen.
+The pre-fix cross-tabulation of movement against per-configuration degenerate count (correlation
+0.19, no threshold rule) **has no post-fix counterpart**: the guard count is now zero for all
+fourteen configurations, so the predictor has no variance and the correlation is undefined. That is
+reported as undefined rather than as an improvement.
+
+### §3 numbers requiring the author's edit
+
+| quantity | submitted (v1.6.0) | corrected |
+|---|---|---|
+| deepest-point non-refractive Z-RMSE | 257 mm | **248 mm** |
+| deepest-point refractive Z-RMSE | 1.9 mm | 1.94 mm |
+| **abstract's improvement ratio** | **~135x** | **~128x** |
+| refractive Z/XY anisotropy | ~2.3 | **~2.1** |
+| non-refractive Z/XY range | 0.4 - 5.8 | **0.9 - 12.6** |
+| non-refractive focal drift | 5.7% | 5.3 - 7.0% |
+
+Every qualitative claim in §3 survives: the refractive model holds sub-2 mm Z-RMSE at every depth,
+maintains a stable anisotropy ratio, and the non-refractive baseline's depth error still climbs
+steeply with range while its lateral error grows far more slowly.
+
+### A known reporting caveat in `benchmark_grid.csv`
+
+The table's tenth row, `real_rig_13cam_200fr`, is **not** computed by E4 — it is copied from E2's
+benchmark record, which is dated 2026-07-31 at commit `6c7f930b` and carries no degenerate-count
+field. E2 is deliberately out of scope for this phase. Eleven of that row's fields moved relative
+to the archived copy; **that movement is an E2-record refresh, not a geometry effect**, and must not
+be read as one. The gate's cross-artifact `git_sha` consistency check does not enumerate that
+record, so its PASS covers the other nine rows. Recommended follow-up: widen the check to include
+the E2 record it feeds from.
+
+### What may and may not be said
+
+**May be said.** A benchmark-construction flaw was found by the convergence instrumentation the
+reviewers' own questions prompted, corrected at the source, and all six affected experiments
+re-measured in a single frozen run. Convergence is now readable across the suite: every calibration
+experiment reports a zero degenerate-observation count, E6's three non-converged configurations are
+gone, and run-to-run reproduction improved from 63 to 8 cells of 308. E7's accuracy is unchanged
+within its 10-seed band.
+
+**May not be said.** That accuracy is unaffected for E3, E4, E5 or E6 — none has a seed band. That
+E1's accuracy is unaffected without qualification — its depth-axis error moved 2.4x its own seed
+band. That the fix *improved* accuracy anywhere; nothing here measures that. That optimality
+improved by any specific factor beyond one significant figure. That the determinism statistic is a
+pass.
+
+---
+
+## Reviewer-response prose (draft — for the author to place; the manuscript tree is read-only here)
+
+> **On the convergence diagnostics added in response to the reviewers' questions.**
+>
+> Instrumenting first-order optimality across the synthetic suite, as the reviewers' questions
+> prompted, surfaced a flaw in how our synthetic benchmarks were constructed rather than in the
+> calibration itself. Board poses were sampled such that a small fraction of target corners
+> (0.69% at the baseline configuration, worst case 66 mm) protruded through the modelled water
+> surface. Such observations lie outside the refractive projection's domain and are continued with
+> a pinhole extension that is continuous but not continuously differentiable at the boundary.
+> Because first-order optimality is a max-norm, a handful of these points dominated it, and the
+> diagnostic could not distinguish a converged solve from an unconverged one. Three of fourteen
+> configurations in the generalization sweep were affected.
+>
+> We corrected the scenario construction — deriving an explicit depth-clearance floor and
+> re-centring board poses on the board centre — and re-measured all six affected experiments in a
+> single run at one commit. No board corner now reaches the interface in any scenario. All
+> fourteen generalization configurations converge to first-order optimality at or below 1e-2, every
+> calibration experiment reports a zero out-of-domain observation count, and run-to-run
+> reproducibility improved from 63 to 8 of 308 compared cells.
+>
+> We note explicitly that this was a defect in benchmark construction and convergence *diagnosis*,
+> not in the calibration result. Before the correction, reconstruction accuracy was statistically
+> indistinguishable between the affected and unaffected configurations (0.594 mm versus 0.562 mm
+> mean RMSE), and the single worst-converged configuration had the best reconstruction accuracy in
+> the table. The corrected synthetic numbers are accordingly close to those originally reported:
+> the depth-axis improvement over non-refractive calibration at the most extrapolated test depth is
+> 128x, against the 135x previously stated.
+
+---
