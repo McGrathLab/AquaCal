@@ -475,7 +475,11 @@ def _run_smoke(args: argparse.Namespace) -> int:
     with tempfile.TemporaryDirectory(prefix="e1_smoke_") as tmp_dir:
         tmp_path = Path(tmp_dir)
         scenario = create_scenario("ideal", seed=args.seed)
-        smoke_depths = [0.30]
+        # Must sit BELOW the water surface (~1.031 m) or the reconstruction
+        # sweep finds nothing and silently returns NaN. Moved off the pre-fix
+        # 0.30 m when D-19.3-09 raised the preset standoff; 1.30 is drawn from
+        # TEST_DEPTHS so the smoke path exercises a depth the real run uses.
+        smoke_depths = [1.30]
 
         results = {}
         timings_by_model = {}
