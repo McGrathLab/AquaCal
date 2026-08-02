@@ -458,6 +458,68 @@ def test_create_scenario_reference_camera_at_origin():
 
 
 # ============================================================================
+# Real-rig standoff finished into the library (D-19.3-09, GEOM-02)
+# ============================================================================
+
+
+def test_generate_camera_array_default_height_is_water_z():
+    """generate_camera_array's height_above_water default equals the
+    module-level WATER_Z, not the old 0.15 m shallow-tank value."""
+    import inspect
+
+    from aquacal.datasets.synthetic import WATER_Z, generate_camera_array
+
+    default = (
+        inspect.signature(generate_camera_array)
+        .parameters["height_above_water"]
+        .default
+    )
+    assert default == WATER_Z
+    assert default > 1.0
+
+
+@pytest.mark.parametrize("name", ["ideal", "minimal", "realistic"])
+def test_create_scenario_presets_construct_at_real_rig_standoff(name):
+    """Every preset's cameras sit at the real-rig standoff -- no 0.15 m rig
+    survives (D-19.3-09)."""
+    scenario = create_scenario(name)
+    assert min(scenario.water_zs.values()) > 1.0
+
+
+def test_create_scenario_presets_share_board_field_for_field():
+    """All three presets' board_config values are equal field-for-field
+    (D-19.3-08: board size is constant across every scenario)."""
+    ideal = create_scenario("ideal")
+    minimal = create_scenario("minimal")
+    realistic = create_scenario("realistic")
+
+    for a, b in [(ideal, minimal), (ideal, realistic), (minimal, realistic)]:
+        assert a.board_config.squares_x == b.board_config.squares_x
+        assert a.board_config.squares_y == b.board_config.squares_y
+        assert a.board_config.square_size == b.board_config.square_size
+        assert a.board_config.marker_size == b.board_config.marker_size
+        assert a.board_config.dictionary == b.board_config.dictionary
+        assert a.board_config.legacy_pattern == b.board_config.legacy_pattern
+
+
+@pytest.mark.parametrize("name", ["ideal", "minimal", "realistic"])
+def test_create_scenario_presets_no_corner_submerged(name):
+    """No board corner is at or above the deepest interface in any frame of
+    any preset (D-19.3-01/D-19.3-09 combined: the library cannot construct a
+    mis-framed rig by accident)."""
+    scenario = create_scenario(name)
+    board_geom = BoardGeometry(scenario.board_config)
+    max_water_z = max(scenario.water_zs.values())
+
+    min_corner_z = min(
+        float(pos[2])
+        for pose in scenario.board_poses
+        for pos in board_geom.transform_corners(pose.rvec, pose.tvec).values()
+    )
+    assert min_corner_z > max_water_z
+
+
+# ============================================================================
 # Dataset Loading / Manifest Tests
 # ============================================================================
 

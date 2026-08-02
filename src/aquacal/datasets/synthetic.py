@@ -132,11 +132,42 @@ def _rotation_z(angle: float) -> NDArray[np.float64]:
     )
 
 
+# FROZEN DESIGN CONSTANT -- do NOT re-derive from a calibration.
+#
+# Provenance: this value came from an early calibration of the real rig,
+# which has since been SUPERSEDED. The 2026-07-31 re-run of that rig, on
+# code carrying the degenerate-PnP guard, puts its interface at 1.0738 m --
+# and the run it originally came from is now known not to have converged
+# (its Stage-3 intrinsic pass sat at first-order optimality 2.08e4, where
+# the re-run reaches 18.4).
+#
+# It is deliberately NOT updated to 1.0738, and must not be updated to
+# whatever the next calibration reports. The exact value is IMMATERIAL:
+# the synthetic rig approximates the real one, it does not reproduce it,
+# and ~1 m of air gap is what the geometry needs to be representative.
+# Tracking a measured quantity here is what created the problem -- every
+# bug fix that improved the calibration silently invalidated this constant
+# and, through it, every experiment built on the scenario.
+#
+# Changing it is a real cost, not a cosmetic edit: E4 and E6's grid family
+# is deliberately coupled to this value (D-29,
+# experiments/e4_benchmark_grid.py GRID_HEIGHT_ABOVE_WATER), so a change
+# here invalidates the committed nine-cell benchmark grid as well as every
+# realistic-path experiment (E1, E3, E5, E7).
+#
+# D-19.3-09: this constant is also generate_camera_array's default
+# height_above_water below, and both the "ideal" and "minimal"
+# create_scenario presets' standoff -- it is no longer specific to the
+# real-rig array. The library can no longer construct a mis-framed rig
+# (cameras a few tens of cm from a board framed for 1-2 m) by accident.
+WATER_Z: float = 1.031
+
+
 def generate_camera_array(
     n_cameras: int,
     layout: str = "grid",
     spacing: float = 0.1,
-    height_above_water: float = 0.15,
+    height_above_water: float = WATER_Z,
     height_variation: float = 0.005,
     image_size: tuple[int, int] = (1920, 1080),
     fov_deg: float = 60.0,
@@ -149,7 +180,12 @@ def generate_camera_array(
         n_cameras: Number of cameras (2-14)
         layout: Camera arrangement - "grid", "line", or "ring"
         spacing: Distance between adjacent cameras (meters)
-        height_above_water: Mean interface distance (meters)
+        height_above_water: Mean interface distance (meters). Defaults to the
+            module-level ``WATER_Z`` (the real-rig standoff, ~1.031 m;
+            D-19.3-09) -- not a shallow 0.15 m tank. A lens framed for a
+            1-2 m board-to-camera range needs a standoff in that range to
+            avoid over-filling the frame; pass an explicit shallower value
+            only when that mismatch is intentional.
         height_variation: Std dev of per-camera height variation (meters)
         image_size: Image dimensions (width, height)
         fov_deg: Horizontal field of view
@@ -241,7 +277,8 @@ def generate_real_rig_array() -> tuple[
       cameras deviate < 5 deg.
     - XY positions preserved from the real calibration.
     - Common ``water_z = 1.031 m`` -- a FROZEN DESIGN CONSTANT, not a live
-      measurement. See ``WATER_Z`` below before changing or "updating" it.
+      measurement. See the module-level ``WATER_Z`` constant (above, near
+      ``generate_camera_array``) before changing or "updating" it.
 
     This rig is an **approximation** of the real hardware, not a replica. No
     claim of numerical correspondence is made or intended, and none should be
@@ -255,29 +292,10 @@ def generate_real_rig_array() -> tuple[
     """
     IMAGE_SIZE = (1600, 1200)
 
-    # FROZEN DESIGN CONSTANT -- do NOT re-derive from a calibration.
-    #
-    # Provenance: this value came from an early calibration of the real rig,
-    # which has since been SUPERSEDED. The 2026-07-31 re-run of that rig, on
-    # code carrying the degenerate-PnP guard, puts its interface at 1.0738 m --
-    # and the run it originally came from is now known not to have converged
-    # (its Stage-3 intrinsic pass sat at first-order optimality 2.08e4, where
-    # the re-run reaches 18.4).
-    #
-    # It is deliberately NOT updated to 1.0738, and must not be updated to
-    # whatever the next calibration reports. The exact value is IMMATERIAL:
-    # the synthetic rig approximates the real one, it does not reproduce it,
-    # and ~1 m of air gap is what the geometry needs to be representative.
-    # Tracking a measured quantity here is what created the problem -- every
-    # bug fix that improved the calibration silently invalidated this constant
-    # and, through it, every experiment built on the scenario.
-    #
-    # Changing it is a real cost, not a cosmetic edit: E4 and E6's grid family
-    # is deliberately coupled to this value (D-29,
-    # experiments/e4_benchmark_grid.py GRID_HEIGHT_ABOVE_WATER), so a change
-    # here invalidates the committed nine-cell benchmark grid as well as every
-    # realistic-path experiment (E1, E3, E5, E7).
-    WATER_Z = 1.031
+    # Uses the frozen module-level WATER_Z constant (defined above, near
+    # generate_camera_array) -- see its own comment block for the full
+    # provenance and the reason it must never be re-derived from a
+    # calibration.
 
     # Averaged intrinsics across 12 real cameras
     K = np.array(
@@ -976,7 +994,9 @@ def create_scenario(
     - ``'realistic'``: 12 cameras matching actual hardware, 30 frames, 0.5 px noise
 
     All presets use the same ChArUco board (12x9 squares, 60 mm square size,
-    45 mm marker size, DICT_5X5_100).
+    45 mm marker size, DICT_5X5_100) and share the real-rig standoff
+    (D-19.3-09) -- none of them is a shallow-tank rig framed for a
+    mismatched board-to-camera distance.
 
     ``create_scenario`` does not itself generate detections, so ``n_air`` and
     ``n_water`` are recorded on the returned scenario as ground-truth metadata
@@ -1018,19 +1038,28 @@ def create_scenario(
     )
 
     if name == "ideal":
+        # D-19.3-09: height_above_water is no longer passed explicitly, so
+        # this preset falls through to generate_camera_array's own default
+        # (the module-level WATER_Z, the real-rig standoff) instead of the
+        # old 0.15 m shallow-tank value.
         intrinsics, extrinsics, distances = generate_camera_array(
             n_cameras=4,
             layout="grid",
             spacing=0.1,
-            height_above_water=0.15,
             height_variation=0.0,
             seed=seed,
         )
         camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
         # depth_range is derived (D-19.3-01/GEOM-01) rather than the pre-fix
         # literal (0.25, 0.45), which sits below this preset's own derived
-        # clearance floor. The preset's camera height and framing are
-        # unchanged here -- that belongs to plan 19.3-04 (D-19.3-09).
+        # clearance floor.
+        # xy_extent (0.08) is intentionally NOT re-derived here even though
+        # the standoff just moved: whether it needs D-28-style derivation
+        # from the new footprint is an open question (CONTEXT.md "Claude's
+        # Discretion"), and deriving it alongside this geometry fix would
+        # smuggle an observability change in with it -- the same reasoning
+        # D-19.3-03 used to reject unifying the tilt ranges. Left open,
+        # recorded in the SUMMARY.
         board_poses = generate_board_trajectory(
             n_frames=20,
             camera_positions=camera_positions,
@@ -1048,24 +1077,31 @@ def create_scenario(
             water_zs=distances,
             board_poses=board_poses,
             noise_std=0.0,
-            description="Ideal conditions: 4 cameras, 20 frames, 0 noise",
+            description=(
+                "Ideal conditions: 4 cameras, 20 frames, 0 noise, real-rig standoff"
+            ),
             n_air=n_air,
             n_water=n_water,
             seed=seed,
         )
 
     elif name == "minimal":
+        # D-19.3-09: height_above_water is no longer passed explicitly --
+        # see the "ideal" branch's comment above; the same reasoning applies
+        # here.
         intrinsics, extrinsics, distances = generate_camera_array(
             n_cameras=2,
             layout="line",
             spacing=0.15,
-            height_above_water=0.15,
             height_variation=0.003,
             seed=seed,
         )
         camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
         # depth_range is derived (D-19.3-01/GEOM-01) -- see the "ideal"
         # branch's comment above; the same reasoning applies here.
+        # xy_extent (0.06) is likewise intentionally NOT re-derived -- see
+        # the "ideal" branch's comment above for why this is a deliberate
+        # non-change with the derivation question left open.
         board_poses = generate_board_trajectory(
             n_frames=10,
             camera_positions=camera_positions,
@@ -1083,7 +1119,9 @@ def create_scenario(
             water_zs=distances,
             board_poses=board_poses,
             noise_std=0.3,
-            description="Minimal scenario: 2 cameras, 10 frames, 0.3px noise",
+            description=(
+                "Minimal scenario: 2 cameras, 10 frames, 0.3px noise, real-rig standoff"
+            ),
             n_air=n_air,
             n_water=n_water,
             seed=seed,
