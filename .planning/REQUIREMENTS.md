@@ -136,12 +136,14 @@ configurations were published as `status="ok"` at optimality 3–4 orders above 
 deliverable is a physically valid scenario construction and a trustworthy convergence
 diagnostic, not an accuracy improvement.
 
-- [ ] **GEOM-01**: Both trajectory generators take a required `BoardConfig` and raise
-  `ValueError` at scenario construction when `depth_range` violates the derived clearance
-  floor `max(water_zs) + 1.1 · R_max · sin(θ_normal)`, where `R_max` is the board's
-  inner-corner diagonal half-extent and the normal tilts by up to `θ√2` for a Rodrigues
-  vector bounded by `θ` on each axis — a derivation computed from `BoardConfig` and the
-  rotation range, not a hardcoded constant
+- [ ] **GEOM-01**: Board poses are re-centred so a pose's `tvec` positions the board **centre**
+  (matching `generate_board_trajectory`'s existing docstring, which the code contradicted by
+  positioning corner (0,0,0)); and both trajectory generators take a required `BoardConfig`
+  and raise `ValueError` at scenario construction when `depth_range` violates a clearance
+  floor derived from the board's own corner cloud and the rotation range — `max(water_zs)`
+  plus `k = 1.1` times the worst-case upward corner excursion, computed from `BoardConfig`
+  and `rotation_range_deg`, never hardcoded. Measured floors: **1.181 m** at 15°
+  (`generate_board_trajectory`), **1.226 m** at 20° (`generate_real_rig_trajectory`)
 - [ ] **GEOM-02**: The real-rig standoff is finished into the library — `generate_camera_array`'s
   default `height_above_water` and both `create_scenario` presets move off 0.15 m — with
   `default_board` shared and unchanged across every scenario, so board angular size is never a

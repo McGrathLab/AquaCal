@@ -334,9 +334,11 @@ geometry is what this phase finishes)
 **Requirements**: GEOM-01, GEOM-02, GEOM-03, GEOM-04, GEOM-05, GEOM-06
 **Source brief**: `19.3-SEED.md` (diagnosis, physics reasoning, four locked user decisions)
 **Success Criteria** (what must be TRUE):
-  1. Both trajectory generators take a required `BoardConfig` and raise `ValueError` at
-     construction when `depth_range` violates the derived clearance floor
-     `max(water_zs) + 1.1 · R_max · sin(θ_normal)` — a derivation, not a hardcoded constant.
+  1. Board poses are re-centred so `tvec` positions the board centre (the code positioned
+     corner (0,0,0) while the docstring promised the centre), and both trajectory generators
+     take a required `BoardConfig` and raise `ValueError` when `depth_range` violates a
+     clearance floor derived from the board's own corner cloud and the rotation range —
+     1.181 m at 15°, 1.226 m at 20°. A derivation, not a hardcoded constant.
   2. The real-rig standoff is finished into the library: `generate_camera_array`'s default
      `height_above_water` and both `create_scenario` presets move off 0.15 m, so no scenario
      can be constructed mis-framed. `default_board` stays shared and unchanged.
