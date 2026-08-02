@@ -2071,8 +2071,8 @@ class TestBuildInterfaceSpreadReport:
 class TestSolverConfigSeedIsInert:
     """Frozen-anchor regression guard for `run_calibration_from_config` (EXP-11).
 
-    **The no-regeneration rule still stands. It was superseded ONCE, on
-    2026-07-31, with a recorded cause. Read this before touching the constants.**
+    **The no-regeneration rule still stands. It has been superseded TWICE now,
+    each time on a recorded cause. Read this before touching the constants.**
 
     Originally (plan 19.2-14, D-26) these constants proved that adding
     `solver_config["seed"]` changed no calibration number. They were captured
@@ -2081,7 +2081,7 @@ class TestSolverConfigSeedIsInert:
     (`877634a`) that added the `seed` key -- by loading the pre-change file via
     `importlib.util.spec_from_file_location` from a `git show <sha>:...` blob.
 
-    **Why they were regenerated.** `d5d9dde` (plan 19.2-18, D-27) changed
+    **First regeneration (2026-07-31).** `d5d9dde` (plan 19.2-18, D-27) changed
     `generate_board_trajectory` to centre its sampled volume on the camera
     centroid rather than the origin. That commit declares itself *"deliberately
     non-inert for the grid family (ideal/minimal presets, E4/E6)"* -- and this
@@ -2098,6 +2098,20 @@ class TestSolverConfigSeedIsInert:
     PASS -> `d5d9dde` FAIL. `7e0cb90` (the degenerate-PnP guard) was checked and
     EXONERATED -- the test already failed at its parent `35d76a6`.
 
+    **Second regeneration (2026-08-01, plan 19.3-04, D-19.3-09).**
+    `generate_camera_array`'s `height_above_water` default moved from the old
+    shallow 0.15 m literal to the module-level `WATER_Z` (~1.031 m, the
+    real-rig standoff), and the "ideal" preset (which this test runs) no
+    longer passes `height_above_water=0.15` explicitly -- so it now inherits
+    the new default. `R` and `t` again matched to the same precision as
+    before (the preset is still noiseless and still recovers ground truth
+    wherever the board sits); only `water_z` moved, from ~0.15 to ~1.031, and
+    `reprojection_rms`/`validation_3d_error_mean` moved by a similarly tiny
+    floating-point amount reflecting the different (deeper) optimisation
+    path. This is exactly the same shape of movement as the first
+    regeneration -- a deliberate, already-reviewed geometry change, not a
+    finding.
+
     **What this class proves now, and what it no longer proves.** The seed-key
     inertness proof is historical: it held when it was run, and it lives in git
     history and `19.2-26-SUMMARY.md`, not in these numbers. What the constants
@@ -2112,51 +2126,52 @@ class TestSolverConfigSeedIsInert:
     """
 
     # Frozen anchor, scenario "ideal" (4 cameras, 20 frames, 0 noise), seed=99.
-    # Regenerated 2026-07-31 at `e4bce72` after D-27 (`d5d9dde`) invalidated the
-    # original e1d6548 capture -- see the class docstring. Captured from a tree
-    # with `git status --porcelain src/ tests/` empty, so these values predate
-    # plan 19.2-26's discard counters; that plan's changes must reproduce them
-    # exactly, which is an independent check of its own inertness claim.
+    # Regenerated 2026-08-01 (plan 19.3-04, D-19.3-09) after
+    # generate_camera_array's height_above_water default moved from 0.15 to
+    # the real-rig standoff (WATER_Z ~1.031 m) -- see the class docstring's
+    # "Second regeneration" note. R/t are unchanged in substance (still exact
+    # ground-truth recovery on this noiseless preset); water_z moved from
+    # ~0.15 to ~1.031, as intended.
     _ANCHOR_CAMERAS = {
         "cam0": {
             "R": [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 1.626335673341426e-16],
+                [0.0, 1.0, 4.927961186062669e-16],
+                [-1.626335673341426e-16, -4.927961186062669e-16, 1.0],
             ],
             "t": [0.0, 0.0, 0.0],
-            "water_z": 0.1500000000000007,
+            "water_z": 1.0309999999999984,
         },
         "cam1": {
             "R": [
-                [0.9984993371509613, -0.054763799257274454, -1.211077928477896e-16],
-                [0.054763799257274454, 0.9984993371509613, -1.0573862003794593e-16],
-                [1.2671669944383292e-16, 9.894761916313868e-17, 1.0],
+                [0.9984993371509613, -0.05476379925727444, 1.1017821462177006e-16],
+                [0.05476379925727444, 0.9984993371509613, 4.935194749083343e-16],
+                [-1.370398757217483e-16, -4.867450909389911e-16, 1.0],
             ],
-            "t": [-0.09984993371509612, -0.005476379925727438, -2.2261557267801757e-17],
-            "water_z": 0.1500000000000007,
+            "t": [-0.0998499337150961, -0.005476379925727439, -1.1048016500214269e-17],
+            "water_z": 1.0309999999999984,
         },
         "cam2": {
             "R": [
-                [0.9974292528492325, -0.07165811580429562, -2.302295289416684e-16],
-                [0.07165811580429562, 0.9974292528492325, -3.656866704574182e-17],
-                [2.3225810881409154e-16, 1.997684400265586e-17, 1.0],
+                [0.9974292528492325, -0.0716581158042956, 1.0290197797984065e-16],
+                [0.0716581158042956, 0.9974292528492325, 4.76540269700662e-16],
+                [-1.3678542084476145e-16, -4.679414433055323e-16, 1.0],
             ],
-            "t": [0.007165811580429558, -0.09974292528492326, 1.2031028413381547e-17],
-            "water_z": 0.1500000000000007,
+            "t": [0.007165811580429594, -0.09974292528492322, 2.475847453420082e-17],
+            "water_z": 1.0309999999999984,
         },
         "cam3": {
             "R": [
-                [0.996707967334501, 0.08107544543156975, -3.517926485858191e-17],
-                [-0.08107544543156975, 0.996707967334501, 1.0134706264043221e-16],
-                [4.328021181627338e-17, -9.816125023130288e-17, 1.0],
+                [0.996707967334501, 0.0810754454315697, 1.556914059364185e-16],
+                [-0.0810754454315697, 0.996707967334501, 4.702759302376471e-16],
+                [-1.1705103422257564e-16, -4.813505165996692e-16, 1.0],
             ],
-            "t": [-0.10777834127660713, -0.09156325219029318, 6.037744971294463e-17],
-            "water_z": 0.1500000000000007,
+            "t": [-0.107778341276607, -0.09156325219029313, -4.710936323611057e-17],
+            "water_z": 1.0309999999999984,
         },
     }
-    _ANCHOR_REPROJECTION_RMS = 2.3911368601594613e-13
-    _ANCHOR_VALIDATION_3D_ERROR_MEAN = 1.7486012637846215e-16
+    _ANCHOR_REPROJECTION_RMS = 1.9434802095913985e-13
+    _ANCHOR_VALIDATION_3D_ERROR_MEAN = 2.9480354816902667e-15
 
     @staticmethod
     def _run_ideal_pipeline(tmp_path):

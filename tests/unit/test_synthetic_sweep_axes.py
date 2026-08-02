@@ -18,6 +18,7 @@ import numpy as np
 from aquacal.config.schema import BoardConfig
 from aquacal.datasets import create_scenario, generate_synthetic_detections
 from aquacal.datasets.synthetic import (
+    board_clearance_floor,
     generate_board_trajectory,
     generate_camera_array,
     generate_dense_xy_grid,
@@ -95,12 +96,19 @@ def test_tank_scale_axis_is_independent():
     camera_positions_small = {cam: ext.C for cam, ext in extrinsics_small.items()}
     camera_positions_large = {cam: ext.C for cam, ext in extrinsics_large.items()}
 
+    # depth_range is derived off this array's own clearance floor
+    # (D-19.3-01/GEOM-01) rather than the pre-fix literal (0.3, 0.6), which
+    # is now illegal under generate_camera_array's real-rig-standoff default
+    # (D-19.3-09, WATER_Z ~1.031 m instead of the old 0.15 m).
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs_small, 15.0)
+    depth_range = (floor, floor + 0.3)
+
     poses_small = generate_board_trajectory(
         n_frames=50,
         camera_positions=camera_positions_small,
         water_zs=water_zs_small,
         board=_DEFAULT_BOARD,
-        depth_range=(0.3, 0.6),
+        depth_range=depth_range,
         seed=2,
     )
     poses_large = generate_board_trajectory(
@@ -108,7 +116,7 @@ def test_tank_scale_axis_is_independent():
         camera_positions=camera_positions_large,
         water_zs=water_zs_large,
         board=_DEFAULT_BOARD,
-        depth_range=(0.3, 0.6),
+        depth_range=depth_range,
         seed=2,
     )
 
@@ -126,14 +134,18 @@ def test_working_distance_axis_is_independent():
     )
     camera_positions = {cam: ext.C for cam, ext in extrinsics.items()}
 
+    # depth_range is derived off this array's own clearance floor
+    # (D-19.3-01/GEOM-01) rather than the pre-fix literals (0.30, 0.45) /
+    # (0.8, 1.0), which are now illegal under generate_camera_array's
+    # real-rig-standoff default (D-19.3-09, WATER_Z ~1.031 m instead of the
+    # old 0.15 m).
+    floor = board_clearance_floor(_DEFAULT_BOARD, water_zs, 15.0)
     poses_near = generate_board_trajectory(
         n_frames=50,
         camera_positions=camera_positions,
         water_zs=water_zs,
         board=_DEFAULT_BOARD,
-        # 0.25 sits below this array's derived clearance floor (~0.295 m);
-        # 0.30 is the nearest legal minimum (D-19.3-01/GEOM-01).
-        depth_range=(0.30, 0.45),
+        depth_range=(floor, floor + 0.15),
         seed=4,
     )
     poses_far = generate_board_trajectory(
@@ -141,7 +153,7 @@ def test_working_distance_axis_is_independent():
         camera_positions=camera_positions,
         water_zs=water_zs,
         board=_DEFAULT_BOARD,
-        depth_range=(0.8, 1.0),
+        depth_range=(floor + 0.5, floor + 0.7),
         seed=4,
     )
 

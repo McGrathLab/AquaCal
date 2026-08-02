@@ -23,32 +23,32 @@
         0.0,
         0.0
       ],
-      "water_z": 0.1958991741194109
+      "water_z": 1.1898233002668026
     },
     "cam1": {
       "R": [
         [
-          0.9979073461246348,
-          -0.005552955659651631,
-          -0.06442121726519999
+          0.9999968368555907,
+          -0.0024304984115799556,
+          -0.0006472683248227215
         ],
         [
-          0.007256493927367733,
-          0.9996293347690267,
-          0.02623997646941005
+          0.002430380644569849,
+          0.999997029936551,
+          -0.00018266909722767832
         ],
         [
-          0.06425162913397788,
-          -0.026652537452840415,
-          0.9975777515567169
+          0.0006477103793453859,
+          0.00018109541101044875,
+          0.9999997738378327
         ]
       ],
       "t": [
-        -0.12979500353332654,
-        -0.009008950211246626,
-        -0.0008236546576900348
+        -0.14950712429266413,
+        -6.091027332249718e-05,
+        0.0004719243590545779
       ],
-      "water_z": 0.1958991741194109
+      "water_z": 1.1898233002668026
     }
   },
   "provenance": {
@@ -57,9 +57,9 @@
       "refine_intrinsics": "False",
       "seed": "1"
     },
-    "note": "Generated BEFORE plan 19.2-26's counter edits. Regenerating this file from instrumented code destroys the guarantee it exists to provide.",
+    "note": "Originally generated BEFORE plan 19.2-26's counter edits (sha e4bce724b16f8ea555b9244ebf1be8580d50a28f, water_z ~0.196). REGENERATED 2026-08-01 (plan 19.3-04, D-19.3-09): generate_camera_array's height_above_water default moved from the old shallow 0.15 m literal to the real-rig standoff (WATER_Z ~1.031 m), and the 'minimal' preset run here no longer passes height_above_water=0.15 explicitly, so it now inherits the new default -- water_z moved from ~0.196 to ~1.190 as a direct, intended consequence. See tests/unit/test_discard_accounting.py's test_matches_frozen_anchor docstring for the full provenance chain.",
     "scenario": "minimal",
-    "sha": "e4bce724b16f8ea555b9244ebf1be8580d50a28f"
+    "sha": "b8e057ab49b53845bb91c50e588f6ac0f00cdbff"
   },
-  "reprojection_error_rms": 2.9604800699558993
+  "reprojection_error_rms": 0.7944770660152672
 }
