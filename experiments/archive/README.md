@@ -23,6 +23,7 @@ by hand.
 |---|---|---|---|---|
 | `e2-2026-07-30-pre-pnp-guard/` | E2 | 2026-07-30 | The degenerate-PnP guard in `refractive_solve_pnp` (unvalidated `cv2.solvePnP` returning `success=True` for near-minimal oblique views, `\|t\|` up to 3.09e12 m) | `35d76a6828550a5a81d47e7eb820f9e34cdb2fe3` |
 | `e1-2026-08-02-pre-depth-fix/` | E1 | 2026-08-02 | Phase 19.3's synthetic scenario depth-clearance fix (board corners protruding through the water surface; D-19.3-01/19) | `3d23ddd757d474e974d10d96bccd506d7b564f78` |
+| `e3-2026-08-02-pre-depth-fix/` | E3 | 2026-08-02 | Same depth-clearance fix, reaching E3 via `generate_real_rig_trajectory` (Amendment A, user-approved 2026-08-02 — E3 was absent from the seed's blast-radius table). Tier 2 `newton_iterations.csv` was measured to move by 134 cells (plan 19.3-05) and is the evidence behind MF-01 | `54c51e86b7f1fb94e7373e3db5cda92cb831605a` |
 | `e4-2026-08-02-pre-depth-fix/` | E4 | 2026-08-02 | Same depth-clearance fix, plus E4's benchmark grid inheriting `GRID_DEPTH_RANGE` | `c511429e3fcd6b4e052a1362f44965d1c12f7f33` |
 | `e5-2026-08-02-pre-depth-fix/` | E5 | 2026-08-02 | Same depth-clearance fix; `e5_index_sensitivity.py`'s hardcoded shallow `depth_range` | `aa4c92e4f063c75493c1d4c64cfde555636270be` |
 | `e6-2026-08-02-pre-depth-fix/` | E6 | 2026-08-02 | Same depth-clearance fix, plus the scale-axis redefinition (D-19.3-07) and the paired determinism sweep's pre-fix baseline (63/308 cells, D-19.3-14) | `74e75a7b33d4d9be1467f5806e76d1e77604e047` |
