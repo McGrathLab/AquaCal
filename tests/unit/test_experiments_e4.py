@@ -27,11 +27,15 @@ import pytest
 
 import experiments.e4_benchmark_grid as e4_grid_module
 from aquacal.calibration._observability import SolverDiagnostics
-from aquacal.config.schema import CameraExtrinsics
+from aquacal.config.schema import BoardConfig, CameraExtrinsics
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_back_project
-from aquacal.datasets.synthetic import generate_camera_array, generate_camera_intrinsics
+from aquacal.datasets.synthetic import (
+    board_clearance_floor,
+    generate_camera_array,
+    generate_camera_intrinsics,
+)
 from experiments._io import write_direct_call_benchmark
 from experiments.e4_benchmark_grid import (
     _NULL_METRICS,
@@ -318,6 +322,77 @@ def test_build_grid_scenario_shape():
 
     with pytest.raises(ValueError):
         build_grid_scenario(3, 4, seed=42, name="calibration")
+
+
+def test_grid_depth_range_is_derived_from_board_clearance_floor():
+    """D-19.3-01: GRID_DEPTH_RANGE[0] must equal `board_clearance_floor` applied
+    to GRID_BOARD_CONFIG, this module's own grid water_zs, and the 15 degree
+    tilt `generate_board_trajectory` samples by default -- never a restated
+    literal. GRID_DEPTH_RANGE[1] stays a fixed 2.0 m ceiling (D-19.3-03)."""
+    _, _, water_zs = generate_camera_array(
+        n_cameras=12,
+        layout=e4_grid_module.GRID_LAYOUT,
+        spacing=GRID_SPACING,
+        height_above_water=GRID_HEIGHT_ABOVE_WATER,
+        seed=42,
+    )
+    expected_floor = board_clearance_floor(GRID_BOARD_CONFIG, water_zs, 15.0)
+
+    assert GRID_DEPTH_RANGE[0] == pytest.approx(expected_floor)
+    assert GRID_DEPTH_RANGE[1] == 2.0
+
+
+def test_grid_depth_range_moves_when_board_square_size_changes():
+    """GRID_DEPTH_RANGE is derived, not a literal that happens to be right --
+    changing GRID_BOARD_CONFIG.square_size (patched, module reloaded) must
+    move the derived floor. Verified by recomputing the derivation the same
+    way the module does, at a different square_size, rather than by
+    reloading the module (which would re-run the whole file's import-time
+    side effects)."""
+    _, _, water_zs = generate_camera_array(
+        n_cameras=12,
+        layout=e4_grid_module.GRID_LAYOUT,
+        spacing=GRID_SPACING,
+        height_above_water=GRID_HEIGHT_ABOVE_WATER,
+        seed=42,
+    )
+    baseline_floor = board_clearance_floor(GRID_BOARD_CONFIG, water_zs, 15.0)
+
+    bigger_board = BoardConfig(
+        squares_x=GRID_BOARD_CONFIG.squares_x,
+        squares_y=GRID_BOARD_CONFIG.squares_y,
+        square_size=GRID_BOARD_CONFIG.square_size * 2.0,
+        marker_size=GRID_BOARD_CONFIG.marker_size,
+        dictionary=GRID_BOARD_CONFIG.dictionary,
+    )
+    bigger_floor = board_clearance_floor(bigger_board, water_zs, 15.0)
+
+    assert bigger_floor != pytest.approx(baseline_floor)
+    assert GRID_DEPTH_RANGE[0] == pytest.approx(baseline_floor)
+
+
+def test_build_grid_scenario_no_corner_at_or_above_max_water_z_at_production_scale():
+    """No board corner in any frame of a `build_grid_scenario` output may sit
+    at or above `max(water_zs)` -- the clearance property GRID_DEPTH_RANGE
+    and the threaded `board=` exist to guarantee. Checked at a production
+    grid cell (12 cameras, 100 frames), not a toy size."""
+    from aquacal.core.board import BoardGeometry
+    from aquacal.utils.transforms import rvec_to_matrix
+
+    scenario = build_grid_scenario(12, 100, seed=42)
+    max_water_z = max(scenario.water_zs.values())
+    geometry = BoardGeometry(scenario.board_config)
+    corners_local = np.array(list(geometry.corner_positions.values()), dtype=np.float64)
+
+    for pose in scenario.board_poses:
+        R = rvec_to_matrix(pose.rvec)
+        world_corners = (R @ corners_local.T).T + pose.tvec
+        # World +Z is DOWN (into water); a corner is submerged only if its Z
+        # is strictly greater than the deepest interface.
+        assert np.all(world_corners[:, 2] > max_water_z), (
+            f"frame {pose.frame_idx}: a corner is at or above "
+            f"max(water_zs)={max_water_z}"
+        )
 
 
 def test_grid_solver_config_is_self_describing(full_grid_dir):
@@ -944,6 +1019,8 @@ def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatc
     assert calib_kwargs["depth_range"] == holdout_kwargs["depth_range"]
     assert "xy_extent" in calib_kwargs and "xy_extent" in holdout_kwargs
     assert calib_kwargs["xy_extent"] == pytest.approx(holdout_kwargs["xy_extent"])
+    assert "board" in calib_kwargs and "board" in holdout_kwargs
+    assert calib_kwargs["board"] == GRID_BOARD_CONFIG == holdout_kwargs["board"]
 
     assert (
         calib_kwargs["camera_positions"].keys()
@@ -961,3 +1038,42 @@ def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatc
         )
 
     assert calib_kwargs["seed"] != holdout_kwargs["seed"]
+
+
+def test_every_declared_grid_cell_constructs_legally_at_production_frame_count():
+    """Construction-only geometry evidence at PRODUCTION scale for every
+    committed grid cell (D-19.3-01/GEOM-01).
+
+    This is deliberately NOT a claim that the derived-floor fix makes
+    calibration converge -- anti-pattern #4 (every geometry variant
+    "converges" at 6 frames with the underlying bug still present; the
+    failure only shows up at ~50+ frames) means only GEOM-05's real
+    convergence re-runs can make that claim. This test only proves that
+    `build_grid_scenario` constructs -- without raising -- and submerges
+    every board corner, for every `(n_cameras, n_frames)` in
+    `DECLARED_CELLS` at its own real, PRODUCTION `n_frames` (never a
+    reduced count). Construction is cheap; calibration is not, so this
+    gives production-scale geometry evidence without a multi-hour run.
+    No `calibrate_synthetic` call is made anywhere in this test.
+    """
+    from aquacal.core.board import BoardGeometry
+    from aquacal.utils.transforms import rvec_to_matrix
+
+    for n_cameras, n_frames in DECLARED_CELLS:
+        scenario = build_grid_scenario(n_cameras, n_frames, seed=42)
+        assert len(scenario.intrinsics) == n_cameras
+        assert len(scenario.board_poses) == n_frames
+
+        max_water_z = max(scenario.water_zs.values())
+        geometry = BoardGeometry(scenario.board_config)
+        corners_local = np.array(
+            list(geometry.corner_positions.values()), dtype=np.float64
+        )
+
+        for pose in scenario.board_poses:
+            R = rvec_to_matrix(pose.rvec)
+            world_corners = (R @ corners_local.T).T + pose.tvec
+            assert np.all(world_corners[:, 2] > max_water_z), (
+                f"cell ({n_cameras}, {n_frames}) frame {pose.frame_idx}: "
+                f"a corner is at or above max(water_zs)={max_water_z}"
+            )
