@@ -74,6 +74,43 @@ re-derived before being cited. See `.planning/debug/stage3-diverges-new-geometry
 
 ## Known Issues & Workarounds
 
+### A subagent executor that backgrounds a long test run will stall and never finish
+**Context**: Phase 19.3 plan 07's executor committed its two code tasks correctly, then launched
+the test suite as a background job and returned before it completed — leaving no SUMMARY.md.
+Resumed with explicit "run everything in the foreground" instructions, it did exactly the same
+thing again: ~78 min and ~300k tokens on the second attempt with zero progress. The orchestrator
+took the task over and finished it in one foreground run. Phase 19.2 hit the same class of
+failure repeatedly with production sweeps.
+**Insight**: The agent's *return text* is not evidence of what happened. It read as though work
+were still legitimately in flight ("I'll wait for the notification"), which is indistinguishable
+from a stall. **Always verify a subagent's claim against the filesystem and git before acting on
+it** — `git log --oneline HEAD..<worktree-branch>` for committed work, and an `ls` for the
+expected SUMMARY.md. Doing that is what revealed the plan was two-thirds done rather than failed,
+so resuming/taking over was correct and re-running the whole plan would have been waste.
+**How to apply**:
+- Tell executors explicitly: run long commands **synchronously**; never launch a background job
+  and return waiting on it.
+- Tell them what *not* to run — plan 08 writes a queue script but must not execute the ~9 h
+  sweep; without that sentence an executor may try, and then stall for hours.
+- Split a ~10 min suite into `-m "not slow"` then `-m "slow"` rather than one unfiltered run, so
+  each call finishes inside the tool's 10-minute ceiling. (The two together are still required —
+  `-m "not slow"` deselects the bit-identity suites that are often the actual evidence.)
+- If an executor stalls twice on the same step, stop resuming it and finish that step in the
+  orchestrator. Note in the SUMMARY who measured what, so later readers know which numbers came
+  from the executor and which from the orchestrator.
+**References**: `.planning/phases/19.3-scenario-geometry-and-convergence/19.3-07-SUMMARY.md`
+(its header records the takeover), `19.3-ORCHESTRATOR-NOTES.md`.
+**Added**: 2026-08-02
+
+### Neither CLAUDE.md nor .claude/ is tracked in this repo
+**Context**: Attempted to record the pitfall above in `.claude/rules/`, believing it was tracked.
+**Insight**: `.gitignore:214` ignores `.claude/` and `:216` ignores `CLAUDE.md`. `git ls-files
+.claude/` returns **zero** — the rules files are local-only, not committed-but-ignored. Anything
+written to either location persists only on that one machine and is invisible to collaborators
+and to a fresh clone. Durable, shareable project lessons belong in `.planning/knowledge-base.md`
+(this file), which CLAUDE.md itself designates as the home for accumulated gotchas.
+**Added**: 2026-08-02
+
 ## Debugging Recipes
 
 ### Offline Stage 1 analysis must match the pipeline's frame_step
