@@ -229,3 +229,10 @@ experiments/results/interface_ablation_conditioning.npz
 # fully deterministic and reproduced on demand via
 # `python -m experiments.e1_refractive_comparison --out experiments/results --force`.
 experiments/results/exp2_spatial_errors.csv
+
+# Seed-sweep working directories. These are noise-floor MEASUREMENTS used to
+# decide whether a movement is real (D-19.3-17), not manuscript artifacts: each
+# run writes a full experiment output tree per seed, which is large and is
+# summarised into MANUSCRIPT-FINDINGS.md rather than committed.
+seed_sweep_19_2/
+seed_sweep_19_3/
