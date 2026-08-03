@@ -425,6 +425,35 @@ analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
 > difference is still the correct question — but it is carried by the sign test, not by
 > correlation, for `fixed`.
 
+> **RE-MEASURED ON THE CORRECTED GEOMETRY, 2026-08-03 (phase 19.3).** Everything below was
+> measured on the PRE-depth-fix geometry. Phase 19.3 corrected the scenario construction and
+> re-ran E7 at ten seeds. **The `fixed` pairing STRENGTHENED to unanimity; the `refined` pairing
+> WEAKENED below conventional significance.** Both are reported; neither is adjusted to fit.
+>
+> | pairing | pre-fix | corrected geometry |
+> |---|---|---|
+> | `fixed` | 9/10, crosses zero (seed 49, -0.020 tie), sign test p = 0.0107 | **10/10, does NOT cross zero**, range [+0.919, +1.879], **p = 0.00098** |
+> | `refined` | 9/10, crosses zero (seed 48, -1.000 real reversal), p = 0.0107 | **8/10**, crosses zero, range [-0.471, +2.524], **p = 0.055** |
+>
+> **What this changes.** The primary result — the fixed-intrinsics pairing, which this entry
+> already identifies as "the primary result" — is now unanimous at ten seeds with no zero
+> crossing, which is stronger evidence than the pre-fix record. The `refined` pairing, always the
+> weaker of the two, fell to 8/10 and its sign test (p = 0.055) no longer clears a conventional
+> 0.05 threshold. **"A tendency, not a rule" remains the correct characterisation for `refined`;
+> for `fixed` on corrected geometry it is now unanimous.**
+>
+> The refined arms' seed instability also roughly halved (11.101 -> 6.558 mm shared,
+> 10.915 -> 5.182 mm per-camera), so the corrected geometry improved conditioning as well.
+>
+> Per-arm corrected-geometry spread, mean `|camera_height_drift_mm|`:
+>
+> | arm | min | max | range | mean |
+> |---|---|---|---|---|
+> | `shared_fixed` | 0.039 | 1.092 | **1.053** | 0.579 |
+> | `percamera_fixed` | 1.419 | 2.254 | 0.835 | 1.787 |
+> | `shared_refined` | 0.491 | 7.050 | 6.558 | 2.950 |
+> | `percamera_refined` | 2.059 | 7.240 | 5.182 | 3.794 |
+
 ### Per-arm spread — what bounds any ABSOLUTE claim
 
 mean `|camera_height_drift_mm|`, by seed:
@@ -663,37 +692,77 @@ comparison is supportable.
 
 | exp | headline movement | optimality (1 s.f.) | degenerate count | accuracy claim |
 |---|---|---|---|---|
-| **E1** | deepest-point Z-RMSE 257 -> 248 mm; ratio ~135x -> **~128x** | refr 2e-3; non-refr 9e+2 | refr 0; non-refr 0 -> 14,949 (bookkeeping, see below) | **partial only** — see below |
+| **E1** | deepest-point ratio 134.3x -> 128.1x, **NOT resolvable** (seed band 97-178x) | refr 2e-3; non-refr 9e+2 | refr 0; non-refr 0 -> 14,949 (bookkeeping, see below) | **NONE** — see below |
 | **E3** | tier 2 moved 134 cells; iter_max 7 -> 6; incidence 62.92 -> 57.50 deg; points 104,052 -> **105,600** | n/a (no calibration) | n/a | **NONE** — no seed band |
 | **E4** | worst-cell RMS 0.92 -> 0.71 px (16x50), 0.85 -> 0.71 (12x50); 3D error ~3.5e-5 -> ~2.9e-5 m | 3e-2 -> 4e-3 (12x100) | un-instrumented -> **0** on all 9 cells | **NONE** — no seed band |
 | **E5** | reconstruction RMSE +0.009 mm across the band; the 1.341 outlier (0.80 px) resolved to 0.71 | n/a (not recorded) | **0** | **NONE** — single seed, see below |
 | **E6** | index/1.42 **5e+01 -> 1e-02**; scale/half_scale **3e+01 -> 8e-03**; layout/ring intrinsic **4e+00 -> 2e-03**; all 14 <= 1e-02 on BOTH passes | see left | per-config 3-38 -> **0** | **NONE** — no seed band |
-| **E7** | percamera_fixed control RMS 0.98 -> 0.50 px; shared_fixed water_z err 0.92 -> 0.63 mm | — | **0** on all four arms | **supported** — see below |
+| **E7** | shared_fixed water_z err 0.92 -> **0.63 mm**; percamera_fixed 3.18 -> **2.24 mm**; `fixed` pairing now **10/10** shared-better, no zero crossing | — | **0** on all four arms | **supported** — corrected-geometry band |
 
 ### Accuracy claims: what is and is not supportable
 
 D-19.3-17 permits "accuracy unaffected" only where a measured seed band licenses it. Applying that
 rule strictly gives a **more restrictive** answer than this phase's planning assumed:
 
-- **E7 — supported.** 10-seed band (D-36). Every arm's movement is inside E7's own known seed
-  instability: the refined arms are documented as varying by >10 mm run to run, and the largest
-  movement here is +4.1 mm (percamera_refined water_z error, 3.4 -> 7.5 mm). No directional
-  conclusion is drawn from the refined arms, consistent with that instability.
-- **E1 — PARTIAL, not blanket.** 5-seed band (19.2 plan 24). `xy_position_error_mm` moved
-  -0.117 mm against a band of 0.262 mm (**0.45x band — within noise**). But
-  `z_position_error_mm` moved **+0.252 mm against a band of 0.105 mm — 2.41x the band, i.e.
-  outside seed noise.** E1 therefore may NOT carry a blanket "accuracy unaffected" statement.
-  The movement is attributable to the scenario itself having changed (deeper, re-centred working
-  volume), not to a library defect — but it is a real change in the measured depth-axis accuracy
-  and must be reported as such, not absorbed.
+- **E7 — supported, and now on a CORRECTED-GEOMETRY band (re-measured 2026-08-03).** An earlier
+  version of this entry justified the claim against MF-05's *pre-fix* 10-seed band, which is the
+  same cross-geometry weakness that invalidated E1's. E7 was therefore re-run at ten seeds on the
+  corrected geometry. Per-arm mean `|camera_height_drift_mm|`:
+
+  | arm | corrected band | mean | pre-fix range |
+  |---|---|---|---|
+  | `shared_fixed` | 0.039 - 1.092 | 0.579 | 1.484 |
+  | `percamera_fixed` | 1.419 - 2.254 | 1.787 | 1.273 |
+  | `shared_refined` | 0.491 - 7.050 | 2.950 | **11.101** |
+  | `percamera_refined` | 2.059 - 7.240 | 3.794 | **10.915** |
+
+  Every production (seed-42) value falls inside its corrected band, so the claim holds on
+  like-for-like evidence. **The corrected geometry roughly halved the refined arms' seed
+  instability** (11.1 -> 6.6 mm and 10.9 -> 5.2 mm) — a real conditioning improvement.
+
+  **Correction to an earlier reading.** A session note argued that both refined arms moving ~+6 mm
+  in the same direction "is not the signature of seed noise". That was wrong: MF-05 records the
+  refined arms' between-arm correlation as **r = +0.961**, so common-mode movement is precisely
+  what seed noise looks like there. Seed 42 drew near the top of both bands (7.42 and 7.48 against
+  band maxima of 7.417 and 7.479). No systematic effect is required or evidenced.
+- **E1 — NONE, revised 2026-08-03.** An earlier version of this entry gave E1 a PARTIAL claim,
+  on the grounds that `xy_position_error_mm` moved only 0.45x its seed band. That band was
+  measured on the **pre-fix** geometry (19.2 plan 24) — the same cross-geometry comparison this
+  phase re-ran E1 to eliminate. Re-measured on the corrected geometry, the bands are different
+  and **both** metrics fall outside:
+
+  | refractive metric | pre-fix band | corrected band | delta | verdict |
+  |---|---|---|---|---|
+  | `z_position_error_mm` | 0.105 | 0.157 | +0.252 | **1.60x — outside** |
+  | `xy_position_error_mm` | 0.262 | **0.058** | -0.117 | **2.01x — outside** |
+
+  The corrected-geometry `xy` band is 4.5x narrower than the pre-fix one, which is why the old
+  comparison read as "within noise" and the new one does not. E1 therefore carries **no**
+  accuracy claim. Note this is a statement about the calibrated *volume having changed*, not
+  about a library defect — but it cannot be phrased as "accuracy unaffected".
 - **E5 — NONE. This corrects an inherited assumption.** RESEARCH flagged E5's band as
   inherited-not-verified. `e5_provenance.json` settles it: `"seed": 42` (single) with an
   11-point `n_assumed_band`. **E5's band varies the assumed refractive index, not the seed**, so it
   cannot bound seed noise and licenses no accuracy claim. E5 moves into the no-claim group.
-- **E3, E4, E6 — NONE.** No seed sweep has ever been run for any of them. A single-seed
-  before/after cannot support an accuracy claim however plausible the delta and its mechanism look:
-  19.2's "fixed code is worse on 5 of 6 metrics" table was overturned by measuring the noise floor,
-  and phase 19.1 recorded the same lesson independently.
+- **E3, E4, E6 — NONE, and for E4/E6 the reason is stronger than "not yet measured".** A
+  single-seed before/after cannot support an accuracy claim however plausible the delta and its
+  mechanism look: 19.2's "fixed code is worse on 5 of 6 metrics" table was overturned by measuring
+  the noise floor, and phase 19.1 recorded the same lesson independently.
+
+  **E4 and E6 additionally CANNOT be seed-swept as shipped** (found 2026-08-03 by attempting it).
+  `GRID_DEPTH_RANGE[0]` is evaluated once at import from the baseline camera array, but
+  `generate_camera_array` gives seed-dependent camera heights, so the required clearance floor
+  moves per seed while the constant does not. **7 of 10 seeds fail** the D-19.3-01 guard; seed 42 —
+  the seed the constant was derived from — passes with **exactly zero margin**, and seed 44 fails
+  by 46 microns. E6 records per-configuration failures as rows rather than raising, so such a run
+  still exits 0 and looks superficially successful.
+
+  So E4's published grid and E6's published sweep are single-seed **by necessity**, and no band can
+  exist for them without a code change. A fix (deriving the floor per scenario via
+  `depth_range=None`, which the guard's own error message recommends) appears inert at seed 42 —
+  the per-scenario floor there is bit-identical to the frozen constant — but that inertness must be
+  verified by exact comparison before any published artifact is regenerated. Tracked as a defect,
+  not actioned in this phase.
 
 ### E1's 14,949 degenerate observations are bookkeeping, not contamination
 
@@ -713,26 +782,69 @@ contamination of the comparison, and this was established rather than assumed:
 
 **Consequence: the refractive-vs-non-refractive comparison is unaffected by the projection guard.**
 
-**The ~135x -> ~128x change is attributable to the scenario geometry correction, and this IS
-decomposed.** (An earlier draft of this entry said the decomposition was not attempted; that was
-superseded by the check below.) The archived pre-fix E1 reproduces the submitted paper's numbers
-almost exactly:
+> **RETRACTED 2026-08-03.** An earlier version of this section decomposed the
+> `~135x -> ~128x` change and attributed it to the scenario geometry correction,
+> citing MF-06's measurement of the projection guard at -0.0015 mm. **That
+> decomposition was measuring noise and assigning it a cause.** A five-seed sweep
+> on the corrected geometry shows the deepest-point ratio is not a stable
+> quantity. The text below replaces it.
 
-| quantity | submitted paper (v1.6.0) | archive `3d23ddd7` | post-fix `22e75ef` |
-|---|---|---|---|
-| non-refractive Z-RMSE @ 2.5 m | 257 mm | **256.972 mm** | 248.267 mm |
-| refractive Z-RMSE @ 2.5 m | 1.9 mm | **1.914 mm** | 1.938 mm |
-| ratio | ~135x | **134.3x** | **128.1x** |
-| refractive Z/XY | ~2.3 | **2.11 - 2.47** | 1.95 - 2.19 |
-| non-refractive Z/XY | 0.4 - 5.8 | **0.43 - 5.82** | 0.95 - 12.64 |
+**The `~135x -> ~128x` change is NOT resolvable above seed noise.** Measured across
+seeds on the corrected geometry:
 
-Since the archive reproduces every published figure, everything from v1.6.0 up to `3d23ddd7` was
-inert for E1, and the whole change is localised to the `3d23ddd7 -> 22e75ef` window. That window
-contains two candidate causes, and MF-06 already measured one of them: the `7e0cb90` projection
-guard moved E1's `z_position_error_mm` by **-0.0015 mm** against a 5-seed band of 0.105 mm. The
-total post-fix movement is **+0.252 mm** -- about 169x larger. The scenario geometry correction
-therefore accounts for essentially all of it, with the guard contributing a change roughly two
-orders of magnitude below seed noise.
+Ten seeds (42-51) on the corrected geometry:
+
+| seed | non-refr Z-RMSE | refr Z-RMSE | ratio | | seed | non-refr | refr | ratio |
+|---|---|---|---|---|---|---|---|---|
+| 42 | 248.3 | 1.938 | 128.1x | | 47 | 199.3 | 1.516 | 131.4x |
+| 43 | 252.1 | 1.416 | **178.0x** | | 48 | 238.4 | 1.779 | 134.0x |
+| 44 | 205.5 | 2.111 | **97.3x** | | 49 | 237.2 | 1.493 | 158.9x |
+| 45 | 231.0 | 1.505 | 153.4x | | 50 | 223.4 | 2.254 | 99.1x |
+| 46 | 229.8 | 1.457 | 157.8x | | 51 | 223.5 | 1.428 | 156.5x |
+
+**Band: 97.3x - 178.0x, mean 139.5, sd 25.1** (n = 10).
+
+**What this band covers, precisely.** E1's evaluation test set is NOT reseeded:
+`_build_dataframes` accepts a `seed` argument and never uses it, deriving test poses
+and their detection noise from a hardcoded `depth_seed = 42 + int(depth * 100)`
+(`e1_refractive_comparison.py:327`). Verified empirically -- `n_points` per depth is
+byte-identical across all ten seeds. The band therefore measures **calibration-scenario
+variance against a fixed test set**, which is exactly what a reader reproducing via
+`--seed N` will observe, so it is the right number for reproducibility. It is a lower
+bound on total variance if the evaluation set were also resampled. **If that dead
+parameter is ever wired up, every band recorded here becomes incomparable and must be
+re-measured.** The reported change is **7x**
+-- about **0.09x of the band, or 0.28 sd**. Pre-fix and post-fix are statistically
+indistinguishable.
+
+**This is better news for the manuscript than it first appears.** The published
+`~135x` sits **0.18 sd from the ten-seed mean** -- it is not a lucky draw but an
+essentially representative value. The abstract's companion figure, 1.9 mm at 2.5 m,
+is likewise conservative: the ten-seed mean of that quantity is 1.69 mm. The
+published numbers are defensible; what is not defensible is treating a 7x
+difference between two single-seed runs as a measured change.
+
+**Consequences, stated plainly:**
+
+1. **`~135x -> ~128x` must NOT be presented as a corrected number requiring a §3
+   edit.** Nothing measurable moved. Reporting a 7x shift against an 81x noise floor
+   is exactly the error this milestone has already made twice -- 19.2's "fixed code
+   is worse on 5 of 6 metrics" table, overturned by measuring the noise floor, and
+   phase 19.1's independent version of the same lesson.
+2. **The archive still reproduces the paper** (256.97 mm / 1.914 mm / 134.3x against
+   the published 257 / 1.9 / ~135x), which remains useful: it confirms the pre-fix
+   artifacts are a faithful record of the submitted state. It just cannot support an
+   attribution claim.
+3. **A separate and more serious issue surfaces: the published `~135x` is itself a
+   single-seed draw from a wide distribution.** A reader reproducing E1 at another
+   seed can legitimately obtain anything from ~97x to ~178x. The ratio inherits noise
+   from both of its terms -- the refractive Z-RMSE alone varies 1.24 - 2.11 mm across
+   seeds and depths.
+
+**What IS robust:** the non-refractive baseline's depth error (205 - 252 mm) and the
+refractive model's (1.2 - 2.1 mm) are separated by **two orders of magnitude** on
+every seed tested. That statement is seed-stable and is the defensible form of the
+claim. A precise multiplier is not.
 
 **Do not pin `water_z` in the refractive arm.** There it is genuinely observable and estimating it
 is the method's contribution; pinning it inflates the ratio to a flattering 168x and breaks §3's
@@ -754,18 +866,89 @@ reported as undefined rather than as an improvement.
 
 ### §3 numbers requiring the author's edit
 
-| quantity | submitted (v1.6.0) | corrected |
-|---|---|---|
-| deepest-point non-refractive Z-RMSE | 257 mm | **248 mm** |
-| deepest-point refractive Z-RMSE | 1.9 mm | 1.94 mm |
-| **abstract's improvement ratio** | **~135x** | **~128x** |
-| refractive Z/XY anisotropy | ~2.3 | **~2.1** |
-| non-refractive Z/XY range | 0.4 - 5.8 | **0.9 - 12.6** |
-| non-refractive focal drift | 5.7% | 5.3 - 7.0% |
+| quantity | submitted (v1.6.0) | seed-42 post-fix | seed band (n=4) | verdict |
+|---|---|---|---|---|
+| deepest non-refractive Z-RMSE | 257 mm | 248 mm | **199 - 252 mm** (n=10) | within noise |
+| deepest refractive Z-RMSE | 1.9 mm | 1.94 mm | **1.42 - 2.25 mm** (n=10, mean 1.69) | within noise; published value is conservative |
+| **abstract's improvement ratio** | **~135x** | 128x | **97 - 178x** (mean 139.5, sd 25.1, n=10) | **within noise — do NOT "correct" it**; published value is 0.18 sd from the mean |
+| refractive Z/XY anisotropy | ~2.3 | ~2.1 | not yet banded | probably within noise |
+| non-refractive Z/XY range | 0.4 - 5.8 | 0.9 - 12.6 | not yet banded | unknown |
+| non-refractive focal drift | 5.7% | 5.3 - 7.0% | not yet banded | unknown |
 
-Every qualitative claim in §3 survives: the refractive model holds sub-2 mm Z-RMSE at every depth,
-maintains a stable anisotropy ratio, and the non-refractive baseline's depth error still climbs
-steeply with range while its lateral error grows far more slowly.
+**The honest summary is that §3's numbers did not measurably move.** The single-seed post-fix
+values differ from the published ones, but every difference measured so far is small against its
+own seed band. The rows marked "not yet banded" are not claims — they are single-seed
+observations, and they should not be edited into the manuscript until a band exists for them.
+
+Every qualitative claim in §3 survives, with one caveat: the refractive model maintains a stable
+anisotropy ratio and the non-refractive baseline's depth error climbs steeply with range while its
+lateral error grows far more slowly. The "sub-2 mm at every depth" bound is seed-sensitive — see
+above.
+
+### Which §3 claims are seed-robust, and which are not — a ranking for the revision
+
+Ten seeds on the corrected geometry, ordered by stability. This is the most directly
+actionable output of the re-measurement: it says which numbers the manuscript can state
+sharply and which it cannot.
+
+| claim | 10-seed spread | relative spread | verdict |
+|---|---|---|---|
+| inter-corner distance RMSE (refractive) | 0.4194 - 0.4216 mm | **0.5%** | **rock solid** — sub-mm on every seed |
+| non-refr vs refr separation, order of magnitude | 199-252 mm vs 1.4-2.3 mm | — | **rock solid** — two orders on every seed |
+| deepest refractive Z-RMSE | 1.42 - 2.25 mm | 46% | fragile as a bound |
+| "below 2 mm at every depth" | fails on 2 of 10 seeds | — | **not a safe bright line** |
+| **depth-axis improvement ratio** | **97 - 178x** | **80%** | **most fragile number in §3** |
+
+**The abstract currently leads with the most seed-fragile quantity.** It opens with
+"1.9 mm depth-axis RMSE at 2.5 m — a ~135x improvement", then mentions the
+sub-millimetre inter-corner result second. The stability ordering is the reverse: the
+inter-corner figure varies by 0.5% across seeds while the ratio varies by 80%.
+
+Suggested for the revision (the author's call): lead with the inter-corner result,
+which can be stated sharply and survives any reproduction, and give the depth-axis
+advantage as "two orders of magnitude" rather than a specific multiplier. Nothing needs
+to be retracted — every published value is inside its band, and ~135x sits near the mean
+— but a precise multiplier invites a reviewer to reproduce it and get 97x or 178x.
+
+**Why the two differ so much:** inter-corner distance is a *relative* measurement between
+nearby points, so common-mode error cancels. Absolute Z-RMSE inherits the full
+depth/`water_z` uncertainty. The robustness gap is structural, not incidental.
+
+### Two §3 statements that are seed-sensitive or stale — found by tracing, not by the numbers check
+
+**(a) The calibration depth range moved.** §3 says the calibration trajectory *"stayed within
+0.10-0.84 m below the surface, so the deepest test depths probed extrapolation roughly 0.6 m
+beyond the calibrated volume."* Measured post-fix (water_z = 1.031 m):
+
+| measure | §3 | post-fix |
+|---|---|---|
+| calibration depth below surface | 0.10 - 0.84 m | corners **0.15 - 0.93 m**; centres 0.21 - 0.86 m |
+| extrapolation beyond the volume | ~0.6 m | 0.54 m (corners) / 0.61 m (centres) |
+
+Pre-fix the pose pivot was a board CORNER sampling `depth_range=(1.1, 2.0)`; post-fix it is the
+board CENTRE against a derived floor (D-19.3-19 / D-19.3-01), so the calibrated volume genuinely
+shifted — narrower at the top, deeper at the bottom. "Roughly 0.6 m" survives if measured to the
+board centre and becomes ~0.54 m measured to the deepest corner. This is descriptive prose rather
+than a table, which is exactly why a numbers-check over the result CSVs never touches it.
+
+**(b) "Sub-2 mm at every depth" is seed-sensitive.** §3 states the refractive model *"holds its
+Z-RMSE below 2 mm at every depth"*. Across the corrected-geometry seed sweep:
+
+Across ten seeds the maximum refractive Z-RMSE at any depth ranges **1.457 - 2.254 mm**, and
+**2 of 10 seeds exceed the stated bound**:
+
+| seed | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49 | 50 | 51 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| max refr Z-RMSE (mm) | 1.938 | 1.928 | **2.111** | 1.765 | 1.457 | 1.548 | 1.779 | 1.636 | **2.254** | 1.479 |
+
+The claim is true for the reported run (seed 42 maxes at 1.938 mm) but fails on **20% of seeds** —
+a bright line a reproduction can cross. **Compounding this, the paper never states which seed produced §3's
+synthetic numbers, and E1's benchmark records carry no `seed` field** (the documented
+seedless-legacy exemption in `tests/unit/test_experiments_provenance.py`). A reader therefore
+cannot reproduce the exact run, and a different seed can break a stated bound.
+
+Recommended for the revision: state the seed, and phrase the bound with its spread (e.g.
+"approximately 2 mm across the tested volume") rather than as a strict inequality.
 
 ### A known reporting caveat in `benchmark_grid.csv`
 
@@ -773,7 +956,10 @@ The table's tenth row, `real_rig_13cam_200fr`, is **not** computed by E4 — it 
 benchmark record, which is dated 2026-07-31 at commit `6c7f930b` and carries no degenerate-count
 field. E2 is deliberately out of scope for this phase. Eleven of that row's fields moved relative
 to the archived copy; **that movement is an E2-record refresh, not a geometry effect**, and must not
-be read as one. The gate's cross-artifact `git_sha` consistency check does not enumerate that
+be read as one. The refresh is specifically `faa05b3` (MF-04): the degenerate-PnP guard rejected 10
+poses of 3548 and moved E2's solve to a converged basin, changing `reprojection_rms` 1.019 -> 0.928
+among others. **See MF-04 for that movement; it is not phase 19.3's and must not be attributed to
+the geometry correction.** The gate's cross-artifact `git_sha` consistency check does not enumerate that
 record, so its PASS covers the other nine rows. Recommended follow-up: widen the check to include
 the E2 record it feeds from.
 
@@ -783,14 +969,19 @@ the E2 record it feeds from.
 reviewers' own questions prompted, corrected at the source, and all six affected experiments
 re-measured in a single frozen run. Convergence is now readable across the suite: every calibration
 experiment reports a zero degenerate-observation count, E6's three non-converged configurations are
-gone, and run-to-run reproduction improved from 63 to 8 cells of 308. E7's accuracy is unchanged
-within its 10-seed band.
+gone (verified on BOTH the interface and intrinsic optimality columns), and run-to-run reproduction
+improved from 63 to 8 cells of 308. The synthetic results are unchanged in substance: the
+depth-axis improvement is two orders of magnitude, and the originally published ratio falls inside
+the measured seed band. E7's accuracy is unchanged within its 10-seed band.
 
-**May not be said.** That accuracy is unaffected for E3, E4, E5 or E6 — none has a seed band. That
-E1's accuracy is unaffected without qualification — its depth-axis error moved 2.4x its own seed
-band. That the fix *improved* accuracy anywhere; nothing here measures that. That optimality
-improved by any specific factor beyond one significant figure. That the determinism statistic is a
-pass.
+**May not be said.** That accuracy is unaffected for E1, E3, E4, E5 or E6 — none has a
+corrected-geometry seed band supporting it, and E1's two metrics both fall OUTSIDE the band that
+was measured. That the `~135x -> ~128x` difference is a real change, or that it is attributable to
+any specific cause — it is 0.09x of the seed band and both an earlier version of this entry and a
+session narrative asserted a decomposition that was measuring noise. That the fix *improved*
+accuracy anywhere; nothing here measures that. That optimality improved by any specific factor
+beyond one significant figure. That the determinism statistic is a pass. That the refractive model
+is "below 2 mm at every depth" as an unconditional bound — seed 44 reaches 2.111 mm.
 
 ---
 
@@ -819,14 +1010,16 @@ pass.
 > not in the calibration result. Before the correction, reconstruction accuracy was statistically
 > indistinguishable between the affected and unaffected configurations (0.594 mm versus 0.562 mm
 > mean RMSE), and the single worst-converged configuration had the best reconstruction accuracy in
-> the table. The corrected synthetic numbers are accordingly close to those originally reported:
-> the depth-axis improvement over non-refractive calibration at the most extrapolated test depth is
-> 128x, against the 135x previously stated.
+> the table.
 >
-> We retained the pre-correction artifacts, and they reproduce the originally submitted values
-> (256.97 mm and 1.914 mm at the deepest test depth, a 134x degradation). The revised figure is
-> therefore attributable to the scenario correction itself rather than to any accumulated change in
-> the library: the one other candidate in the same interval, a guard on the projection's domain,
-> moves the affected quantity by 0.0015 mm against a five-seed spread of 0.105 mm.
+> The reported synthetic results are unchanged in substance. We re-ran the synthetic validation
+> across ten random seeds to establish a noise floor. The depth-axis improvement over non-refractive
+> calibration varies between roughly 97x and 178x depending on the seed (mean 140), and the
+> originally reported figure of ~135x falls close to the centre of that distribution rather than at
+> its edge. We have accordingly rephrased the claim in
+> terms that are stable across seeds: the non-refractive baseline's depth error at the most
+> extrapolated test depth is two orders of magnitude larger than the refractive model's
+> (approximately 205-252 mm against 1.4-2.1 mm). We also now state the random seed used for the
+> reported run, which the original submission omitted.
 
 ---

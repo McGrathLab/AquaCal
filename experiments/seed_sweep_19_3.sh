@@ -44,11 +44,16 @@ cd "$REPO_ROOT" || exit 1
 
 PY="${SEED_SWEEP_PYTHON:-$HOME/anaconda3/envs/AquaCal/python.exe}"
 OUT_ROOT="seed_sweep_19_3"
-SEEDS="42 43 44 45 46"
+E1_SEEDS="42 43 44 45 46 47 48 49 50 51"
+E7_SEEDS="42 43 44 45 46 47 48 49 50 51"
+E6_SEEDS="42 43 44 45 46"
 STATE="${OUT_ROOT}/state.tsv"
 
 mkdir -p "$OUT_ROOT"
-: > "$STATE"
+# Append, never truncate: completed stages must survive a restart so a re-launch
+# skips them. The first launch created this file; truncating here would re-run
+# every seed already paid for.
+touch "$STATE"
 
 ts() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
 
@@ -75,17 +80,40 @@ run_stage() {
 log "Seed sweep starting. HEAD: $(git rev-parse HEAD)"
 log "Writing under ${OUT_ROOT}/ -- experiments/results/ is NOT touched."
 
-# E1 first: ~6 min per seed, ~35 min total. This is the one that can change
-# MF-08's E1 verdict, so it lands early enough to be actionable even if the
-# night is cut short.
-for s in $SEEDS; do
+# ORDER REVISED 2026-08-03 after the first four E1 seeds landed. The original
+# order (E1 x5 then E6 x5) was wrong on two counts, both found by reading the
+# partial results rather than by planning:
+#
+#   1. The E1 band is far wider than assumed. The deepest-point ratio spans
+#      97x-178x over four seeds, so the "135x -> 128x" change MF-08 reports is
+#      0.09x of the seed band -- not resolvable. Four seeds is thin for a band
+#      that wide, so E1 goes to ten.
+#   2. E7 was not queued at all, yet its band underwrites the ONLY clean
+#      accuracy claim MF-08 makes, and it costs ~70 min. E6's band would enable
+#      a claim MF-08 explicitly DECLINES to make, and costs ~8 h. Verifying a
+#      claim you are making outranks enabling one you are not.
+#
+# Order is therefore: E1 (ten seeds) -> E7 (ten seeds) -> E6 (five seeds).
+# Everything already carrying a completion line is skipped, so the four E1 seeds
+# from the first launch are not repaid.
+
+# E1: ~6.5 min per seed. Seeds 42-45 already complete from the first launch.
+for s in $E1_SEEDS; do
   run_stage e1 "$s" experiments.e1_refractive_comparison
 done
 log "E1 sweep complete."
 
-# E6 second: ~100 min per seed, ~8 h total. Fills the gap that currently forces
-# MF-08 to make no accuracy statement about E6 at all.
-for s in $SEEDS; do
+# E7: ~7 min per seed, ~70 min. Re-measures on the CORRECTED geometry the band
+# MF-08 currently checks against MF-05's PRE-fix band -- the same cross-geometry
+# weakness the E1 re-run exists to remove.
+for s in $E7_SEEDS; do
+  run_stage e7 "$s" experiments.e7_interface_ablation
+done
+log "E7 sweep complete."
+
+# E6 last: ~100 min per seed, ~8 h. Lowest priority -- it would enable a claim
+# MF-08 currently declines to make. Runs only if the night has room.
+for s in $E6_SEEDS; do
   run_stage e6 "$s" experiments.e6_generalization_sweep
 done
 log "E6 sweep complete."
