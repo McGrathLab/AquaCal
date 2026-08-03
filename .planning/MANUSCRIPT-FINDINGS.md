@@ -1003,6 +1003,169 @@ is "below 2 mm at every depth" as an unconditional bound — seed 44 reaches 2.1
 
 ---
 
+## MF-09 — The edit map: every finding located in the pre-revision manuscript, with a verdict
+
+**Status:** OPEN — this is the entry to work from when editing. It does not add measurements; it
+maps MF-01 through MF-08 onto the actual submitted text and rules on each.
+**Found:** 2026-08-03, by reading the manuscript against the findings file rather than by running
+anything
+**Source of truth for the manuscript side:**
+`OneDrive - Georgia Institute of Technology/Thesis/Spinoffs/papers/aquacal/main.tex` and
+`supplement.tex`, both dated 2026-06-29 12:56 — the source of the committed `main.pdf` of the same
+timestamp. Code version C1 = **v1.6.0**. Line numbers below are `main.tex` unless marked.
+**Source of truth for the measurement side:** MF-01, MF-04, MF-08 as cited per row.
+**Why this entry exists:** MF-01–MF-08 each name "where the prose is" in general terms
+(e.g. "§3's real-rig numbers", "the supplement's convergence claim"). Nobody had checked those
+against the actual file. Doing so found three location errors and one edit that is already
+unnecessary — see § "Corrections to earlier entries' locations".
+
+### The ruling, in one line
+
+**Most of §3's headline numbers must NOT be edited.** The re-measurement's main service was
+establishing a noise floor, and it is wide enough to convert several apparent corrections into
+noise. Four things genuinely need changing; six things must be left alone.
+
+### Group 1 — Changes that improve the numbers (MF-04)
+
+| location | published | corrected | delta |
+|---|---|---|---|
+| abstract L69, §3 L301 | inter-corner RMSE **0.674 mm** | **0.628 mm** | −6.8% |
+| §3 L301 | MAE **0.268 mm** | **0.258 mm** | −3.7% |
+| abstract L69, L301, L351 | **0.45%** mean relative error | **0.43%** | −3.72% |
+| L301 | 7,762 comparisons | 7,762 | **unchanged** |
+
+**Cause:** the degenerate-PnP guard rejects 10 poses of 3,548 whose translations reached
+3.09e12 m. `n_params`, `n_groups`, `n_residuals` (147,950) and `n_comparisons` (7,762) are all
+identical across the two runs — the data and the problem are unchanged; only initialization
+differed.
+
+**Do not present this as an accuracy improvement.** The published record's
+`stage3_intrinsic_pass` first-order optimality was **2.08e4**; the re-run reaches **18.4**. The
+published numbers came from a solve that had not converged, behind a 1.019 px RMS that looked
+entirely publishable. MF-04's framing governs: a defect in pose initialization allowed a
+non-converged solution to be reported, the defect is fixed, and §3 now reports a converged solve.
+The improvement is a consequence of fixing a correctness bug.
+
+**`mean_reprojection_px` (1.019 → 0.928) does not appear in the manuscript** and needs no edit.
+
+### Group 2 — Changes that weaken a stated claim
+
+| location | published | measured | why it matters |
+|---|---|---|---|
+| **L280** and figure caption **L295** | "$Z$-RMSE **below 2 mm** at every depth" / "maintains sub-2 mm $Z$-RMSE at all depths" | **fails on 2 of 10 seeds** — seed 44 → 2.111 mm, seed 50 → 2.254 mm | a strict inequality a reproduction can cross |
+| **L204** *and* supplement **L226** | Newton converges in "**2--4 steps**" / "two to four steps" | **2–6**, median 4.0, zero non-convergence | 1.5x under-provisioning |
+
+**On the sub-2 mm bound.** True for the reported run — seed 42 maxes at 1.938 mm — but the paper
+never states which seed produced §3's synthetic numbers, and E1's benchmark records carry no
+`seed` field (the documented seedless-legacy exemption). A reader cannot reproduce the exact run,
+and 20% of seeds break the bound. MF-08's recommendation stands: state the seed, and phrase the
+bound with its spread rather than as a strict inequality.
+
+**On the Newton range.** Per MF-01 this is not a simple 4→6 swap. The production batch loop
+terminates on `np.all(...)`, so every point pays for the batch's slowest point: the per-point
+production cost is the **max**, while the median 4 describes *individual* root-find difficulty.
+Report both quantities and say which is which. Quoting 6 alone would overstate individual cost as
+badly as "two to four" understates production's.
+
+### Group 3 — Stale descriptive prose (MF-08)
+
+| location | published | post-fix |
+|---|---|---|
+| **L274** | calibration trajectory "stayed within **0.10--0.84 m** below the surface" | corners **0.15–0.93 m**; centres 0.21–0.86 m |
+| **L274** | "extrapolation roughly **0.6 m** beyond the calibrated volume" | **0.54 m** to deepest corner; **0.61 m** to centre |
+
+Pre-fix the pose pivot was a board CORNER against `depth_range=(1.1, 2.0)`; post-fix it is the
+board CENTRE against a derived floor (D-19.3-19 / D-19.3-01), so the calibrated volume genuinely
+shifted — narrower at the top, deeper at the bottom. **"Roughly 0.6 m" survives** if measured to
+the board centre.
+
+### Group 4 — A number the paper understates in its own favour (MF-08)
+
+**L227** states that CPR column grouping reduces finite-difference evaluations "by roughly an
+order of magnitude for a typical 12-camera, 100-frame problem." Measured on **exactly the case
+the sentence names**: **42x**. The paper understates its own result by roughly 4x. This is a free
+improvement and the only edit in this entry that strengthens a claim.
+
+### Group 5 — Numbers that moved but must NOT be edited
+
+| location | published | post-fix (seed 42) | 10-seed band | verdict |
+|---|---|---|---|---|
+| abstract **L68**, **L281** | **~135x** | 128x | **97–178x** (mean 139.5, sd 25.1) | published is **0.18 sd from the mean** |
+| abstract **L68**, **L281**, caption **L295** | **1.9 mm** | 1.94 mm | 1.42–2.25 (mean 1.69) | published is **conservative** |
+| **L281**, caption **L295** | **257 mm** | 248 mm | 199–252 mm | see caveat |
+| **L280** | $Z/XY \approx$ **2.3** | ~2.1 | not banded | do not edit |
+| **L280** | non-refr $Z/XY$ **0.4–5.8** | 0.9–12.6 | not banded | do not edit |
+| **L270** | non-refr focal drift **5.7%** | 5.3–7.0% | not banded | do not edit |
+
+**The `135x -> 128x` difference is 7x against an 81x band — 0.09x of the band, 0.28 sd.**
+An earlier revision of MF-08 reported it as a corrected §3 number *and* decomposed it to the
+geometry fix; both are retracted there. Editing it would publish noise, and would be the third
+instance of this milestone's recurring error.
+
+**Caveat on the 257 mm figure, stated more sharply than MF-08 does.** MF-08's §3 table marks it
+"within noise", but **257 sits just above the corrected-geometry band maximum of 252 mm**. This is
+not a contradiction — 257 is a pre-fix value being compared against a post-fix band, and the
+geometry correction moved the calibrated volume — but it is the only headline figure not strictly
+inside its band, and it should be known before a reviewer recomputes it. It is not grounds for an
+edit; the three "not banded" rows below it are the stronger reason to leave this whole group alone.
+
+**The rows marked "not banded" are not claims.** They are single-seed observations and must not be
+edited into the manuscript until a band exists.
+
+### Group 6 — Not a correction: E6 is absent from the manuscript
+
+**The generalization sweep does not appear in `main.tex` at all** — no mention of the sweep, the
+layout axis, or the scale axis. E6 was built for the revision (reviewer point R1.4), so everything
+from it is **new content**, not an edit to existing prose. Practical consequence: E6's seed
+fragilities constrain what may be written in new text; they contradict nothing already published.
+
+### Corrections to earlier entries' locations
+
+Found by checking the manuscript rather than by re-measuring. Each is a place an author following
+an earlier entry literally would have made an incomplete edit.
+
+1. **MF-01 mislocates the Newton claim.** It says "supplement, the refractive-projection
+   convergence claim". The claim appears in **both** `supplement.tex:226` ("two to four steps")
+   **and `main.tex:204`** ("solves this in 2--4 steps"). Editing only the supplement leaves the
+   same understatement in the body.
+2. **MF-04's `water_z` and camera-height movement has an unnamed manuscript location.** MF-04
+   records that `water_z` moved 1.030555 -> 1.073840 m and that `camera_height_range_m` also
+   moved, but names no location. It is **Figure `rig-3d`'s caption, L262**: "the estimated water
+   surface at $z_w \approx \SI{1.03}{\meter}$" and "estimated camera heights range from 1.01 to
+   \SI{1.08}{\meter}". Both move under the re-run. Note the caption also ties these to "the
+   physically measured distance of ~1 m", so the sentence needs reading as a whole, not a
+   find-and-replace.
+3. **MF-04's "representative of" edit is already unnecessary.** MF-04 asks that any claim the
+   synthetic rig *matches* the deployment be softened. **L267 already reads** "a 12-camera rig
+   configured as an **idealized version** of the real-world setup". No edit needed in the body.
+   (The supplement was not audited for this at the same depth.)
+
+### The highest-value change is not a number
+
+The abstract (**L68**) leads with "1.9 mm depth-axis RMSE at 2.5 m --- a ~135x improvement" and
+mentions the sub-millimetre inter-corner result second. **The stability ordering is the reverse:**
+
+| claim | 10-seed relative spread |
+|---|---|
+| inter-corner distance RMSE | **0.5%** (0.4194–0.4216 mm) |
+| depth-axis improvement ratio | **80%** (97–178x) |
+
+Leading with the inter-corner figure and giving the depth-axis advantage as "two orders of
+magnitude" rather than a specific multiplier **retracts nothing** — every published value is
+inside or conservative to its band — while removing the one invitation for a reviewer to
+reproduce the headline and obtain 97x or 178x. MF-08 reaches the same recommendation; this entry
+adds that it is the single lowest-risk, highest-value edit available.
+
+### Scope note
+
+This entry covers the manuscript comparison only. **It does not fold in the 2026-08-03 E6
+seed-band measurement** (seeds 62 and 28, both `{'ok': 14}`), which contradicts MF-08's claim that
+E6's accuracy silence is *structural* rather than a measurement backlog item. That amendment to
+MF-08 is still outstanding and is deliberately not made here. See
+`.planning/debug/e6-seed-locked-clearance-floor.md`.
+
+---
+
 ## Reviewer-response prose (draft — for the author to place; the manuscript tree is read-only here)
 
 > **On the convergence diagnostics added in response to the reviewers' questions.**
