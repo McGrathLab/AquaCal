@@ -625,38 +625,28 @@ class TestAssembleBenchmarkRecord:
         assert stage3["n_residuals"] is None
 
 
-class TestCommittedBenchmarkRecordsUnaffectedByNResiduals:
-    """T-19.2-05/EXP-08 inertness: adding n_residuals must not retroactively
-    alter any benchmark.json record already committed to the repository,
-    other than the one record plan 19.2-06 deliberately re-runs and refreshes.
-
-    `experiments/results/benchmark.json` is excluded here: plan 19.2-06 (D-26)
-    re-ran E2 against the release frameset specifically to populate
-    `n_residuals` (and `solver_config.seed`, and a `memory` block) in that
-    record, verified against the committed `real_rig_metrics.json` at 0.000%
-    delta on every section-3 number before the artifact was refreshed. Every
-    OTHER committed record (E1, E7) was not re-run and must still carry no
-    `n_residuals` key.
-    """
-
-    COMMITTED_BENCHMARK_FILES = [
-        "experiments/results/e1_benchmark_refractive.json",
-        "experiments/results/e1_benchmark_nonrefractive.json",
-        "experiments/results/e7_benchmark_percamera_fixed.json",
-        "experiments/results/e7_benchmark_percamera_refined.json",
-        "experiments/results/e7_benchmark_shared_fixed.json",
-        "experiments/results/e7_benchmark_shared_refined.json",
-    ]
-
-    @pytest.mark.parametrize("path", COMMITTED_BENCHMARK_FILES)
-    def test_committed_record_has_no_n_residuals_key(self, path):
-        with open(path) as f:
-            record = json.load(f)
-        for stage_name, stage_block in record["stages"].items():
-            assert "n_residuals" not in stage_block, (
-                f"{path}: stage {stage_name!r} unexpectedly carries n_residuals "
-                "-- this plan must not rewrite committed artifacts"
-            )
+# RETIRED 2026-08-02 (phase 19.3 plan 10):
+# TestCommittedBenchmarkRecordsUnaffectedByNResiduals asserted that E1's two and
+# E7's four committed benchmark records still carried no `n_residuals` key,
+# because plan 19.2-06 had re-run only E2. That was a time-bound guard on a
+# question specific to phase 19.2: did adding `n_residuals` retroactively
+# rewrite artifacts that were never re-run? It did not, and that question is
+# settled.
+#
+# Phase 19.3 plan 09 then DELIBERATELY re-ran E1 and E7 on the corrected
+# scenario geometry, as GEOM-05 requires. Those six records are now legitimately
+# regenerated artifacts that carry `n_residuals`, so the assertion no longer
+# describes the world by design rather than by accident. Keeping it would have
+# required never re-running E1 or E7 again -- the opposite of what this phase
+# exists to do.
+#
+# The guard is retired rather than weakened: no tolerance was loosened and no
+# assertion was softened to make a failing case pass. What lapsed is the
+# premise. Provenance of the regenerated records is covered by
+# tests/unit/test_experiments_provenance.py, and the pre-regeneration artifacts
+# remain retrievable via experiments/archive/e{1,7}-2026-08-02-pre-depth-fix/
+# READMEs, which record `git show <sha>:<path>` pointers for exactly these
+# git_sha-bearing JSON records.
 
 
 class TestWriteBenchmarkJson:

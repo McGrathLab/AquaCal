@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import subprocess
 
 import pandas as pd
 import pytest
@@ -28,7 +29,8 @@ import pytest
 # process working directory -- a gate that resolves relative to cwd can
 # vanish from a run silently just because pytest was invoked from elsewhere
 # (WR-06). tests/unit/test_experiments_provenance.py -> parents[2] == repo root.
-RESULTS_DIR = pathlib.Path(__file__).resolve().parents[2] / "experiments" / "results"
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+RESULTS_DIR = REPO_ROOT / "experiments" / "results"
 
 # The subset of capture_environment()'s live key names (src/aquacal/io/
 # benchmark.py) covering library version, git SHA, and the Python/NumPy/SciPy
@@ -162,10 +164,38 @@ def _discover_json_files() -> list[pathlib.Path]:
     return sorted(RESULTS_DIR.rglob("*.json"))
 
 
+def _is_tracked(path: pathlib.Path) -> bool:
+    """True if git tracks ``path``.
+
+    The CSV suite documents its scope as files "committed under
+    experiments/results/", but discovers them by globbing the working tree. Those
+    two sets diverge whenever an experiment writes an output that is
+    deliberately excluded from the repository -- E1's
+    ``exp2_spatial_errors.csv`` is 11.6 MB and gitignored (``.gitignore:231``),
+    so it appears on disk after any E1 run but is never committed. Globbing
+    alone made the tripwire fire on exactly the files it was never meant to
+    cover. Filtering to tracked files narrows the suite to its own stated scope;
+    it does not weaken any assertion about artifacts that ARE committed.
+    """
+    try:
+        return (
+            subprocess.run(
+                ["git", "ls-files", "--error-unmatch", str(path)],
+                capture_output=True,
+                cwd=REPO_ROOT,
+            ).returncode
+            == 0
+        )
+    except OSError:
+        # No git available: fall back to covering everything found, which is the
+        # stricter behaviour and matches the pre-existing contract.
+        return True
+
+
 def _discover_csv_files() -> list[pathlib.Path]:
     if not RESULTS_DIR.exists():
         return []
-    return sorted(RESULTS_DIR.glob("*.csv"))
+    return sorted(p for p in RESULTS_DIR.glob("*.csv") if _is_tracked(p))
 
 
 def _load_json(path: pathlib.Path) -> dict:
