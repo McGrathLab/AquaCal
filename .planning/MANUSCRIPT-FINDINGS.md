@@ -649,6 +649,13 @@ The fix derives a depth-clearance floor and re-centres board poses on the board 
 a corner. Post-fix, **zero corners sit at or above the interface in any scenario**, measured
 directly against each scenario's own corner cloud.
 
+**Both optimality columns were checked, not just the interface pass.** MF-07 flagged three E6
+configurations, and one of them — `layout/ring` — was flagged on the *intrinsic* pass (4.20) while
+its interface pass was healthy (0.0016). Checking only the interface column would have missed it.
+Post-fix, the worst value across `optimality_stage3_interface_optimization` AND
+`optimality_stage3_intrinsic_pass`, over all fourteen configurations, is **0.0126** (1e-02 to one
+significant figure). All three of MF-07's flagged configurations are clean on both passes.
+
 ### What moved, per experiment
 
 Optimality is quoted to ONE significant figure throughout; it varies ~2x run to run and no finer
@@ -660,7 +667,7 @@ comparison is supportable.
 | **E3** | tier 2 moved 134 cells; iter_max 7 -> 6; incidence 62.92 -> 57.50 deg; points 104,052 -> **105,600** | n/a (no calibration) | n/a | **NONE** — no seed band |
 | **E4** | worst-cell RMS 0.92 -> 0.71 px (16x50), 0.85 -> 0.71 (12x50); 3D error ~3.5e-5 -> ~2.9e-5 m | 3e-2 -> 4e-3 (12x100) | un-instrumented -> **0** on all 9 cells | **NONE** — no seed band |
 | **E5** | reconstruction RMSE +0.009 mm across the band; the 1.341 outlier (0.80 px) resolved to 0.71 | n/a (not recorded) | **0** | **NONE** — single seed, see below |
-| **E6** | index/1.42 **5e+01 -> 1e-02**; scale/half_scale **3e+01 -> 8e-03**; all 14 now <= 1e-02 | see left | per-config 3-38 -> **0** | **NONE** — no seed band |
+| **E6** | index/1.42 **5e+01 -> 1e-02**; scale/half_scale **3e+01 -> 8e-03**; layout/ring intrinsic **4e+00 -> 2e-03**; all 14 <= 1e-02 on BOTH passes | see left | per-config 3-38 -> **0** | **NONE** — no seed band |
 | **E7** | percamera_fixed control RMS 0.98 -> 0.50 px; shared_fixed water_z err 0.92 -> 0.63 mm | — | **0** on all four arms | **supported** — see below |
 
 ### Accuracy claims: what is and is not supportable
@@ -705,9 +712,27 @@ contamination of the comparison, and this was established rather than assumed:
   driving the guard count to **0** and optimality from 874 to 0.525.
 
 **Consequence: the refractive-vs-non-refractive comparison is unaffected by the projection guard.**
-The ~135x -> ~128x change comes from the corrected scenario geometry and other v1.6.0 -> v1.8.0
-changes, not from a compromised baseline. That decomposition is not attempted here — the re-run
-carries all causes at once, and separating them would need a factorial old-geometry/new-code run.
+
+**The ~135x -> ~128x change is attributable to the scenario geometry correction, and this IS
+decomposed.** (An earlier draft of this entry said the decomposition was not attempted; that was
+superseded by the check below.) The archived pre-fix E1 reproduces the submitted paper's numbers
+almost exactly:
+
+| quantity | submitted paper (v1.6.0) | archive `3d23ddd7` | post-fix `22e75ef` |
+|---|---|---|---|
+| non-refractive Z-RMSE @ 2.5 m | 257 mm | **256.972 mm** | 248.267 mm |
+| refractive Z-RMSE @ 2.5 m | 1.9 mm | **1.914 mm** | 1.938 mm |
+| ratio | ~135x | **134.3x** | **128.1x** |
+| refractive Z/XY | ~2.3 | **2.11 - 2.47** | 1.95 - 2.19 |
+| non-refractive Z/XY | 0.4 - 5.8 | **0.43 - 5.82** | 0.95 - 12.64 |
+
+Since the archive reproduces every published figure, everything from v1.6.0 up to `3d23ddd7` was
+inert for E1, and the whole change is localised to the `3d23ddd7 -> 22e75ef` window. That window
+contains two candidate causes, and MF-06 already measured one of them: the `7e0cb90` projection
+guard moved E1's `z_position_error_mm` by **-0.0015 mm** against a 5-seed band of 0.105 mm. The
+total post-fix movement is **+0.252 mm** -- about 169x larger. The scenario geometry correction
+therefore accounts for essentially all of it, with the guard contributing a change roughly two
+orders of magnitude below seed noise.
 
 **Do not pin `water_z` in the refractive arm.** There it is genuinely observable and estimating it
 is the method's contribution; pinning it inflates the ratio to a flattering 168x and breaks §3's
@@ -797,5 +822,11 @@ pass.
 > the table. The corrected synthetic numbers are accordingly close to those originally reported:
 > the depth-axis improvement over non-refractive calibration at the most extrapolated test depth is
 > 128x, against the 135x previously stated.
+>
+> We retained the pre-correction artifacts, and they reproduce the originally submitted values
+> (256.97 mm and 1.914 mm at the deepest test depth, a 134x degradation). The revised figure is
+> therefore attributable to the scenario correction itself rather than to any accumulated change in
+> the library: the one other candidate in the same interval, a guard on the projection's domain,
+> moves the affected quantity by 0.0015 mm against a five-seed spread of 0.105 mm.
 
 ---
