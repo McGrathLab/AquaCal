@@ -13,3 +13,13 @@ analysis actually rests on are preserved here.
 | `generalization_sweep_pre-optimality.csv` | The pre-re-run E6 table, for the 63/308-cell movement comparison. |
 
 `../determinism_probe.py` is the probe script itself — re-runnable.
+
+## Added 2026-08-03 (phase 19.3 plan 10 verification)
+
+| file | what it proves |
+|---|---|
+| `water_z_null_direction_probe.py` | `water_z` is an EXACT null direction at `n_water=1.0`: sweeping it 0.53-2.03 m leaves the cost constant to 13 significant figures (rel. variation 2.6e-15) while the guard count climbs 0 -> 14,949. The n=1.333 control moves the cost five orders of magnitude, proving the probe is not blind. This is why E1's 14,949 degenerate observations are bookkeeping and do not contaminate the paper's refractive-vs-non-refractive comparison. |
+| `e1_pinned_water_z.py` | End-to-end confirmation via a `build_bounds` monkeypatch: pinning `water_z` at ground truth reproduces every non-refractive reconstruction number to ~4 s.f. (2.5 m Z-RMSE 248.267 -> 248.221 mm) while driving the guard count 14,949 -> 0 and optimality 874 -> 0.525. Also shows the refractive arm MUST NOT be pinned -- doing so inflates the ratio to a flattering 168x. |
+
+Both write only to temp/scratch locations and never touch `experiments/results/`.
+Run with `PYTHONPATH="$(pwd)/src:$(pwd)"`.
