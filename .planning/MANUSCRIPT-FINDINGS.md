@@ -752,17 +752,35 @@ rule strictly gives a **more restrictive** answer than this phase's planning ass
   **E4 and E6 additionally CANNOT be seed-swept as shipped** (found 2026-08-03 by attempting it).
   `GRID_DEPTH_RANGE[0]` is evaluated once at import from the baseline camera array, but
   `generate_camera_array` gives seed-dependent camera heights, so the required clearance floor
-  moves per seed while the constant does not. **7 of 10 seeds fail** the D-19.3-01 guard; seed 42 —
-  the seed the constant was derived from — passes with **exactly zero margin**, and seed 44 fails
-  by 46 microns. E6 records per-configuration failures as rows rather than raising, so such a run
+  moves per seed while the constant does not. Seed 42 — the seed the constant was
+  derived from — passes with **exactly zero margin**.
+
+  **Measured, not predicted:** E6 was run end-to-end at three seeds.
+
+  | seed | result |
+  |---|---|
+  | 42 | `{'ok': 14}` — the only complete sweep |
+  | 47 | `{'failed': 14}` after 74 min of real compute; required floor 1.1830 m |
+  | 50 | `{'failed': 14}` after 84 min; required floor 1.1839 m, **baseline config included** |
+
+  **Only seed 42 yields a complete E6 sweep, so an E6 seed band is unobtainable as shipped.**
+
+  An earlier draft of this entry carried a per-seed slack table predicting three legal seeds
+  (42/47/50). **That table was wrong and has been removed.** It was computed from a standalone
+  `generate_camera_array` call that does not reproduce how E6 actually constructs each
+  configuration's array — E6 sweeps layout and scale axes, and every configuration builds its own
+  array with its own `max(water_zs)` and therefore its own floor. The empirical three-seed result
+  above supersedes it. E6 records per-configuration failures as rows rather than raising, so such a run
   still exits 0 and looks superficially successful.
 
   So E4's published grid and E6's published sweep are single-seed **by necessity**, and no band can
-  exist for them without a code change. A fix (deriving the floor per scenario via
-  `depth_range=None`, which the guard's own error message recommends) appears inert at seed 42 —
-  the per-scenario floor there is bit-identical to the frozen constant — but that inertness must be
-  verified by exact comparison before any published artifact is regenerated. Tracked as a defect,
-  not actioned in this phase.
+  exist for them without a code change. A fix — deriving the floor per scenario via
+  `depth_range=None`, which the guard's own error message recommends — is **verified inert at seed
+  42 by exact comparison**: the per-scenario floor is bit-identical to the frozen constant
+  (difference exactly 0.000e+00) and the resulting 100-frame trajectory matches on every `rvec` and
+  `tvec`. The committed nine-cell grid and E6 sweep would therefore be unchanged. Tracked as a
+  defect; not actioned in this phase, since regenerating published artifacts is outside plan 10's
+  scope.
 
 ### E1's 14,949 degenerate observations are bookkeeping, not contamination
 
