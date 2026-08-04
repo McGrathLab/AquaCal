@@ -136,7 +136,7 @@ configurations were published as `status="ok"` at optimality 3–4 orders above 
 deliverable is a physically valid scenario construction and a trustworthy convergence
 diagnostic, not an accuracy improvement.
 
-- [ ] **GEOM-01**: Board poses are re-centred so a pose's `tvec` positions the board **centre**
+- [x] **GEOM-01**: Board poses are re-centred so a pose's `tvec` positions the board **centre**
   (matching `generate_board_trajectory`'s existing docstring, which the code contradicted by
   positioning corner (0,0,0)); and both trajectory generators take a required `BoardConfig`
   and raise `ValueError` at scenario construction when `depth_range` violates a clearance
@@ -144,20 +144,20 @@ diagnostic, not an accuracy improvement.
   plus `k = 1.1` times the worst-case upward corner excursion, computed from `BoardConfig`
   and `rotation_range_deg`, never hardcoded. Measured floors: **1.181 m** at 15°
   (`generate_board_trajectory`), **1.226 m** at 20° (`generate_real_rig_trajectory`)
-- [ ] **GEOM-02**: The real-rig standoff is finished into the library — `generate_camera_array`'s
+- [x] **GEOM-02**: The real-rig standoff is finished into the library — `generate_camera_array`'s
   default `height_above_water` and both `create_scenario` presets move off 0.15 m — with
   `default_board` shared and unchanged across every scenario, so board angular size is never a
   cross-scenario confound
-- [ ] **GEOM-03**: E6's scale axis anchors at the derived floor rather than the water surface,
+- [x] **GEOM-03**: E6's scale axis anchors at the derived floor rather than the water surface,
   so every scale value is legal by construction, and its documented claim matches what the
   axis now measures
-- [ ] **GEOM-04**: The pinhole continuation is demoted to a numerical guard — counted on the
+- [x] **GEOM-04**: The pinhole continuation is demoted to a numerical guard — counted on the
   final solution evaluation, recorded in the run's diagnostics, and gated by the experiment
   harnesses so a non-zero count cannot be published as `status="ok"` — with the change proven
   inert by exact-equality test so E2 stays out of scope; and `DegenerateObservationWarning` no
   longer advises judging convergence on optimality, which is wrong in precisely the situation
   that emits it
-- [ ] **GEOM-05**: E1, E3, E4, E5, E6 and E7 are re-measured on the corrected geometry, and the
+- [x] **GEOM-05**: E1, E3, E4, E5, E6 and E7 are re-measured on the corrected geometry, and the
   paired determinism sweep reports the cell reproduction count against the 63/308 pre-fix
   baseline as a statistic declared before launch — reported whatever it shows, including no
   improvement.
@@ -171,10 +171,19 @@ diagnostic, not an accuracy improvement.
   against source, and tier 3 (`cpr_grouping.csv`) derives from camera and frame counts —
   confirm both are unmoved rather than assuming it. E3 runs no production calibration, so it
   costs minutes and does not need box exclusivity.
-- [ ] **GEOM-06**: MF-08 records the before/after with pre-fix artifacts archived under the
+- [x] **GEOM-06**: MF-08 records the before/after with pre-fix artifacts archived under the
   established `experiments/archive/` convention, claiming "accuracy unaffected" only for
   experiments with a measured seed band (E1, E5, E7); E4 and E6 report the optimality and
   degeneracy improvement without an accuracy claim
+
+  **Delivered stricter than written (2026-08-03).** Applying D-19.3-17 to the measured data
+  admitted **only E7**, not the three this requirement anticipated. **E1** was demoted because
+  its band was measured on *pre-fix* geometry — the corrected-geometry `xy` band is 4.5x
+  narrower and both metrics fall outside it. **E5** was demoted because `e5_provenance.json`
+  shows a single `seed: 42` with an 11-point `n_assumed_band` — it varies the assumed
+  refractive index, not the seed, so it cannot bound seed noise. E3 (added with GEOM-05) joins
+  E4 and E6 in the no-claim group. The requirement is satisfied *a fortiori*: the gate held and
+  admitted fewer claims than planning assumed, which is the direction that matters.
 
 **Deliberately not requirements here.** Smoothing the refractive/pinhole hinge with a blend
 constant is excluded on physical grounds — for a flat interface the derivative discontinuity
@@ -308,12 +317,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EXP-09 | Phase 19.2 | Complete |
 | EXP-10 | Phase 19.2 | Complete |
 | EXP-11 | Phase 19.2 | Complete |
-| GEOM-01 | Phase 19.3 | Pending |
-| GEOM-02 | Phase 19.3 | Pending |
-| GEOM-03 | Phase 19.3 | Pending |
-| GEOM-04 | Phase 19.3 | Pending |
-| GEOM-05 | Phase 19.3 | Pending |
-| GEOM-06 | Phase 19.3 | Pending |
+| GEOM-01 | Phase 19.3 | Complete |
+| GEOM-02 | Phase 19.3 | Complete |
+| GEOM-03 | Phase 19.3 | Complete |
+| GEOM-04 | Phase 19.3 | Complete |
+| GEOM-05 | Phase 19.3 | Complete |
+| GEOM-06 | Phase 19.3 | Complete |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |

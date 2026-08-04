@@ -358,9 +358,24 @@ geometry is what this phase finishes)
   7. MF-08 records the before/after with pre-fix artifacts archived, claiming "accuracy
      unaffected" only where a measured seed band supports it (E1/E5/E7 yes; E3/E4/E6 report the
      diagnostic improvement without an accuracy claim).
+     **Met, and stricter than written:** only **E7** qualified. E1's band was pre-fix geometry
+     (the corrected band is 4.5x narrower and both metrics fall outside); E5's band varies the
+     assumed index, not the seed. See REQUIREMENTS.md § GEOM-06.
 **Note**: ships a breaking change (`generate_board_trajectory` is a public export gaining a
 required parameter) — cuts **v2.0.0**. Phases 21 and 22 must know before resolving version
 strings.
+
+> **HANDOFF TO PHASES 21 AND 22 — the milestone cuts v2.0.0, not a v1.9.x.**
+> Confirmed on phase close, 2026-08-03 (D-19.3-06, Sequencing Constraint 13). Plan 19.3-01 made
+> `board` a **required** parameter of `generate_board_trajectory` and `generate_real_rig_trajectory`,
+> both public exports. Any caller that omitted it now raises `TypeError`, so the next release is a
+> **major** bump. Both phases resolve version strings and must read this before writing one.
+> The closing commit is scoped `feat!:` so python-semantic-release cuts the major bump on the
+> first push. **Never hand-edit the version or CHANGELOG.**
+>
+> **Carried forward, deliberately unfixed:** the E4/E6 clearance-floor defect (`GRID_DEPTH_RANGE`
+> frozen at import from a seed-42 array) is diagnosed but not applied — it gets its own phase by
+> user decision. Planning input: `.planning/debug/e6-seed-locked-clearance-floor.md`.
 **Plans**: 10 plans across 7 waves
 
 Plans:
@@ -372,8 +387,8 @@ Plans:
 - [x] 19.3-06-PLAN.md — wave 3 — anchor E6's scale axis at the derived floor and correct the axis prose (GEOM-03)
 - [x] 19.3-07-PLAN.md — wave 4 — gate E4/E6 cell status on the guard count, record it in E1/E5/E7, and take the full unfiltered suite green at the code-wave boundary (GEOM-04)
 - [x] 19.3-08-PLAN.md — wave 5 — verify E6's resume mechanism, write the machine-checkable gate script, and write the chained detached re-run queue (GEOM-05)
-- [ ] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05)
-- [ ] 19.3-10-PLAN.md — wave 7 — report the cell reproduction count against 63/308, write MF-08, and draft the reviewer-response prose (GEOM-05, GEOM-06)
+- [x] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05) — ran in **6 h 02 min**, all seven stages exit 0, one git sha (`22e75ef`) across every artifact
+- [x] 19.3-10-PLAN.md — wave 7 — report the cell reproduction count against 63/308, write MF-08, and draft the reviewer-response prose (GEOM-05, GEOM-06) — **8 of 308**, before 63 of 308
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
@@ -452,7 +467,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
-| 19.3 Scenario Geometry and Convergence | v1.9 | 8/10 | In Progress|  |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-03 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
