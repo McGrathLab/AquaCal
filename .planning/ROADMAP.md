@@ -397,7 +397,8 @@ the scenario is constructed, so E4 and E6 are legal at any seed rather than only
 their frozen constant was derived from — without moving a single published number.
 **Depends on**: Phase 19.3 (which introduced the clearance guard and whose seed sweeps exposed
 this defect; its `.continue-here.md` anti-pattern table carries forward)
-**Requirements**: TBD — to be added during planning
+**Requirements**: GRID-01, GRID-02, GRID-03, GRID-04, GRID-05 (proposed during planning; plan
+19.4-01 writes them into `.planning/REQUIREMENTS.md`, plan 19.4-07 ticks them)
 **Source brief**: `.planning/debug/e6-seed-locked-clearance-floor.md` (status `diagnosed`;
 root cause, all six call sites, consequential changes, and a costed verification plan)
 **Success Criteria** (what must be TRUE):
@@ -414,10 +415,25 @@ root cause, all six call sites, consequential changes, and a costed verification
 holdout scene by up to 0.469 mm and would silently move every published E4/E6 held-out number.
 The bit-inert form is `max(GRID_DEPTH_RANGE[0], board_clearance_floor(...))`. Do not adjust
 `board_clearance_floor`'s `margin_factor`.
-**Plans**: TBD (run `/gsd:plan-phase 19.4`)
+**Plans**: 7 plans across 6 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 19.4 to break down)
+- [ ] 19.4-01-PLAN.md — wave 1 — write GRID-01..05 into REQUIREMENTS.md; capture the seed-42 pose
+  anchor from the UNFIXED tree and write the exact-equality inertness gate (GRID-02)
+- [ ] 19.4-02-PLAN.md — wave 2 — add `grid_depth_range(water_zs, extent_factor)`, rename the frozen
+  constant to a published-geometry anchor, resolve per-scenario in `build_grid_scenario`, rewrite
+  the two E4 tests that encode the old design (GRID-01, GRID-02)
+- [ ] 19.4-03-PLAN.md — wave 3 — move E6's scale axis onto a per-scenario extent factor, pin
+  `_BASELINE_EXTENT_ABOVE_FLOOR` (D-19.4-08), keep all twelve committed checkpoints matching, and
+  populate `depth_range_min`/`max` from the resolved range (GRID-01, GRID-05)
+- [ ] 19.4-04-PLAN.md — wave 3 — the 13,500-scenario legality sweep as a non-`slow` suite test,
+  plus construction regressions for the five characterised failure seeds (GRID-03)
+- [ ] 19.4-05-PLAN.md — wave 4 — fail-fast on the first failed cell/configuration in E4 and E6,
+  non-zero exit, key + exception + floors printed, explicit `--no-fail-fast` (GRID-04)
+- [ ] 19.4-06-PLAN.md — wave 5 — declare the artifact diff in advance, run the cheap gates, E6
+  `--smoke`, then the ~96 min seed-42 `--force` byte-comparison (GRID-02, GRID-05)
+- [ ] 19.4-07-PLAN.md — wave 6 — record the two deferred runs and what they would have proven,
+  update MF-08, bank the defect class in the knowledge base, tick the trackers (all GRID)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
