@@ -227,7 +227,12 @@ class TestGenerateCameraArray:
         assert len(set([tuple(p) for p in positions])) == 4  # All unique
 
     def test_line_layout(self):
-        """Line layout should arrange cameras in a row."""
+        """Line layout should arrange cameras along X (Y stays 0 for all
+        cameras). Z no longer stays 0 for non-reference cameras: D-19.4-09
+        relocates generate_camera_array's height_variation jitter onto
+        camera height (C_z), not the water surface, so cam0 alone is
+        guaranteed Z=0 -- cam1/cam2 legitimately carry per-camera height
+        jitter."""
         intrinsics, extrinsics, distances = generate_camera_array(
             n_cameras=3, layout="line", spacing=0.1, seed=42
         )
@@ -236,7 +241,11 @@ class TestGenerateCameraArray:
         for i, cam in enumerate(["cam0", "cam1", "cam2"]):
             C = extrinsics[cam].C
             np.testing.assert_allclose(C[1], 0.0, atol=1e-10)  # Y=0
-            np.testing.assert_allclose(C[2], 0.0, atol=1e-10)  # Z=0
+
+        # Only the reference camera is pinned to Z=0 (D-19.4-09); the water
+        # surface itself is the single shared plane, not this axis.
+        np.testing.assert_allclose(extrinsics["cam0"].C[2], 0.0, atol=1e-10)
+        assert len(set(distances.values())) == 1
 
     def test_ring_layout(self):
         """Ring layout should arrange cameras in a circle."""

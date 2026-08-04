@@ -133,8 +133,24 @@ def test_matches_frozen_anchor():
     consequence (not a discard-counter regression; the original
     pre-instrumentation-vs-instrumented comparison this anchor was built for
     is now historical, same as `TestSolverConfigSeedIsInert` in
-    `test_pipeline.py`). See `tests/fixtures/discard_anchor.json`'s
-    `provenance.note` for the exact before/after values.
+    `test_pipeline.py`).
+
+    **REGENERATED again 2026-08-04 (plan 19.4-02, D-19.4-09), also for an
+    unrelated reason.** `generate_camera_array`'s `height_variation` jitter
+    moved from `water_z` onto `C_z` -- cam1 of the "minimal" preset now sits
+    at a jittered camera height above a SHARED water plane instead of
+    looking through its own slightly-deeper water plane at `C_z == 0`. The
+    ground-truth `h_c = water_z - C_z` is unchanged (proven exactly in
+    `tests/unit/test_synthetic_scenario_geometry.py`), but the calibrated
+    (not ground-truth) `water_z` for this scenario is only weakly
+    identified here -- `n_water=1.0` in `_MINIMAL_KWARGS` deliberately
+    mismatches the scenario's `n_water=1.333` ground truth, degrading
+    refraction to near-inert, which is why a millimeter-scale input jitter
+    change can move the optimizer's converged (but weakly-constrained)
+    interface estimate by tens of centimeters while reprojection RMS moves
+    only in its sixth decimal digit. See
+    `tests/fixtures/discard_anchor.json`'s `provenance.note` for the exact
+    before/after values.
     """
     if not ANCHOR_PATH.is_file():
         pytest.skip(f"anchor not generated: {ANCHOR_PATH}")

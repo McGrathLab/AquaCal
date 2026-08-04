@@ -1092,12 +1092,24 @@ def test_xy_extent_over_array_span_is_equal_across_layouts():
 
 def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatch):
     """The held-out trajectory built inside `run_grid_cell` must be built
-    from the SAME depth_range/xy_extent/camera_positions as the cell's own
+    from the SAME depth_range/xy_extent/camera XY layout as the cell's own
     calibration trajectory, differing only in seed. FAILS if `run_grid_cell`
     reverts to calling `generate_board_trajectory` directly with bare
     defaults, since that call would omit `depth_range`/`xy_extent`
     entirely (captured as absent here) rather than matching the first
-    call's explicit D-28/D-29 values."""
+    call's explicit D-28/D-29 values.
+
+    Camera Z (`C_z`) is deliberately NOT asserted equal between the two
+    calls. D-19.4-09 moved `generate_camera_array`'s `height_variation`
+    jitter onto `C_z`, which is itself seed-dependent (same as roll always
+    was) -- the calibration and holdout calls use different seeds
+    (`holdout_seed = seed + 1_000_000`), so their internally-constructed
+    camera arrays now legitimately diverge in `C_z` by up to a few mm. This
+    is harmless: only the calibration scenario's own extrinsics are ever
+    used for calibration or detection generation (see `run_grid_cell`'s
+    comment above its holdout-construction call); the holdout scenario's
+    camera array exists solely to derive `xy_extent`, which depends only on
+    XY span (`_array_xy_span`), never on Z."""
     calls: list[dict] = []
     original = e4_grid_module.generate_board_trajectory
 
@@ -1125,13 +1137,15 @@ def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatc
         == holdout_kwargs["camera_positions"].keys()
     )
     for cam in calib_kwargs["camera_positions"]:
-        # Camera XY positions are seed-independent (only per-camera roll and
-        # height jitter vary with seed), but C = R^T @ (-R @ pos) reintroduces
-        # ~1e-16 floating-point noise through a DIFFERENT random roll per
-        # seed -- assert_allclose at a tight tolerance, not exact equality.
+        # Camera XY positions are seed-independent (layout/spacing/n_cameras
+        # alone determine them); C = R^T @ (-R @ pos) reintroduces ~1e-16
+        # floating-point noise through a DIFFERENT random roll per seed --
+        # assert_allclose at a tight tolerance, not exact equality. Z is
+        # excluded here: D-19.4-09 moved height_variation's jitter onto
+        # C_z, which is seed-dependent by design (see the docstring above).
         np.testing.assert_allclose(
-            calib_kwargs["camera_positions"][cam],
-            holdout_kwargs["camera_positions"][cam],
+            calib_kwargs["camera_positions"][cam][:2],
+            holdout_kwargs["camera_positions"][cam][:2],
             atol=1e-12,
         )
 
