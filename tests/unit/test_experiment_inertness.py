@@ -36,6 +36,7 @@ cheaper proof for "the ground truth this experiment builds did not change".
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from aquacal.datasets.synthetic import create_scenario
@@ -48,26 +49,42 @@ _E5_PATH = _EXPERIMENTS_DIR / "e5_index_sensitivity.py"
 _E7_PATH = _EXPERIMENTS_DIR / "e7_interface_ablation.py"
 
 
-def _non_comment_lines(path: Path) -> list[str]:
-    """Source lines with `#`-prefixed (post-strip) comment lines filtered
-    out, so a docstring or comment MENTIONING the symbol cannot
-    self-invalidate the gate -- only a real reference (import, call) counts.
-    """
-    return [
-        line
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if not line.strip().startswith("#")
-    ]
-
-
 def _count_references(path: Path, symbol: str) -> int:
-    """Count of `symbol` appearing in `path`'s non-comment source text.
+    """Count of real references to `symbol` in `path` -- imports, calls and
+    attribute accesses in live code.
 
-    Intentionally coarse (substring count on non-comment lines, not an AST
-    walk): the point is "does this experiment reference the symbol AT ALL
-    in live code", not a precise call-site enumeration.
+    Resolved via AST rather than substring matching. The original
+    implementation stripped `#`-comment lines and counted substrings, which
+    did not honour its own stated contract that "a docstring or comment
+    MENTIONING the symbol cannot self-invalidate the gate": a docstring is an
+    expression, not a `#` line, so it survived the filter. Plan 19.4-06 then
+    added a paragraph to E1's module docstring correctly stating that E1
+    "never reaches `generate_camera_array`", and the gate failed on the very
+    sentence asserting the invariant it exists to check (caught by the
+    post-merge integration gate; plans 04 and 06 each passed alone).
+
+    An AST walk is strictly MORE precise than the substring count, not
+    weaker: a genuine `from ... import generate_camera_array`, a call, or an
+    attribute access is still counted, while prose is correctly ignored.
     """
-    return sum(line.count(symbol) for line in _non_comment_lines(path))
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    count = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == symbol:
+            count += 1
+        elif isinstance(node, ast.Attribute) and node.attr == symbol:
+            count += 1
+        elif isinstance(node, ast.ImportFrom):
+            count += sum(
+                1 for alias in node.names if symbol in (alias.name, alias.asname)
+            )
+        elif isinstance(node, ast.Import):
+            count += sum(
+                1
+                for alias in node.names
+                if alias.name == symbol or alias.name.endswith(f".{symbol}")
+            )
+    return count
 
 
 def test_e3_never_references_generate_camera_array():
@@ -135,3 +152,44 @@ def test_realistic_scenario_water_zs_is_seed_invariant():
     scenario_a = create_scenario("realistic", seed=1)
     scenario_b = create_scenario("realistic", seed=999)
     assert scenario_a.water_zs == scenario_b.water_zs
+
+
+def test_reference_counter_detects_a_real_reference():
+    """Positive control: the counter must actually FIRE on live code.
+
+    Without this, `_count_references` could silently degrade to returning 0
+    for everything and every inertness assertion above would pass
+    vacuously. E4 is the natural control -- it is one of the two grid-family
+    experiments that genuinely imports and calls `generate_camera_array`,
+    which is precisely why E4's numbers move under this phase's fix while
+    E1/E3/E5/E7's do not.
+    """
+    e4_path = _EXPERIMENTS_DIR / "e4_benchmark_grid.py"
+    assert _count_references(e4_path, "generate_camera_array") > 0
+
+
+def test_reference_counter_ignores_prose_but_not_code(tmp_path):
+    """The counter honours its own contract: prose mentioning the symbol is
+    ignored, an import or call is not.
+
+    This is the exact confusion that broke the gate once already -- E1's
+    module docstring correctly states it "never reaches
+    generate_camera_array", and a substring-based counter failed on that
+    sentence.
+    """
+    prose_only = tmp_path / "prose_only.py"
+    prose_only.write_text(
+        '"""This module never calls generate_camera_array."""\n'
+        "# generate_camera_array is not used here either\n"
+        "X = 1\n",
+        encoding="utf-8",
+    )
+    assert _count_references(prose_only, "generate_camera_array") == 0
+
+    real_use = tmp_path / "real_use.py"
+    real_use.write_text(
+        "from aquacal.datasets.synthetic import generate_camera_array\n"
+        "result = generate_camera_array(n_cameras=2)\n",
+        encoding="utf-8",
+    )
+    assert _count_references(real_use, "generate_camera_array") > 0
