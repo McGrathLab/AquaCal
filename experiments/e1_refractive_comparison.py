@@ -9,7 +9,8 @@ the two.
 
 Invoked as `python -m experiments.e1_refractive_comparison`. Inherits the shared
 five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`) from
-`experiments._io.build_experiment_arg_parser` (D-21).
+`experiments._io.build_experiment_arg_parser` (D-21), plus a script-local
+`--seeds` flag (D-19.4-14).
 
 Emits into `--out`:
   exp1_parameter_errors.csv, exp2_depth_generalization.csv, exp3_xy_vs_z_anisotropy.csv
@@ -20,6 +21,32 @@ Emits into `--out`:
     compared by --check.
   e1_benchmark_refractive.json, e1_benchmark_nonrefractive.json -- two distinct
     direct-call provenance records (D-09), one per model, because E1 calibrates twice.
+  exp1_band.csv -- written only by `--seeds` (see below); never written by any
+    of the three modes above.
+
+**`--seeds` band mode (D-19.4-14, SC-5a).** `--seeds 42,43,...` runs E1's
+depth-generalization path once per listed seed and emits `exp1_band.csv`
+(one row per seed x test_depth x model -- 10 seeds x 8 depths x 2 models =
+160 rows at production scale), the same row shape as
+`exp2_depth_generalization.csv` plus a `seed` column. This is the committed,
+regenerable artifact behind MF-08's 97-178x deepest-point ratio spread and
+the "2 of 10 seeds exceed 2 mm" finding, both of which previously lived only
+in gitignored `seed_sweep_19_3/` output. **E1 carries NO accuracy claim
+(D-19.3-17 demoted it)** -- this band exists for reproducibility, not
+because E1's numbers move: E1's production `SCENARIO_NAME = "realistic"`
+resolves to `generate_real_rig_array()`'s frozen shared `water_z` and is
+INERT under this phase's interface fix (it never reaches
+`generate_camera_array`). A `--seeds` run NEVER writes
+`exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
+`exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those remain
+exclusively the single-seed run's artifacts. The band CSV write always
+overwrites (force implied for that file only, mirroring E7); no other
+artifact's overwrite behavior changes. `--seeds` is mutually exclusive with
+`--check`. Each of `e1_benchmark_refractive.json` and
+`e1_benchmark_nonrefractive.json` written during a band run additively
+carries a `seeds` list holding the resolved seed list, reflecting the LAST
+seed's diagnostics/timings/accuracy (one provenance record cannot represent
+N independent solves).
 
 E1's reproduction bar (D-19, AMENDED 2026-07-27): within CHECK_RTOL is fully autonomous.
 A divergence touching none of D-19's named headline numbers gets a written mechanism and
@@ -71,7 +98,9 @@ from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
     exit_code_for,
+    parse_seed_list,
     resolve_out_dir,
+    run_seed_band,
     validate_args,
     write_direct_call_benchmark,
     write_experiment_csv,
@@ -106,6 +135,10 @@ EXP1_KEY_COLUMNS = ["camera", "model"]
 EXP2_KEY_COLUMNS = ["test_depth_m", "model"]
 EXP3_KEY_COLUMNS = ["test_depth_m", "model"]
 SPATIAL_KEY_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m"]
+# D-19.4-14: the band CSV carries every seed's rows, so `seed` joins the key
+# columns -- (test_depth_m, model) alone is no longer unique once multiple
+# seeds are concatenated (mirrors E7's BAND_KEY_COLUMNS convention).
+BAND_KEY_COLUMNS = ["seed", "test_depth_m", "model"]
 
 # Pinned column order -- byte-identical to the committed baselines (D-19).
 EXP1_COLUMNS = [
@@ -651,26 +684,166 @@ def _run_check(args: argparse.Namespace) -> int:
     return worst_exit
 
 
+def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
+    """`--seeds`: run E1's depth-generalization path once per seed, emit the
+    band CSV and per-model provenance (D-19.4-14, SC-5a).
+
+    Writes `exp1_band.csv` (force implied -- see the module docstring's
+    "--seeds band mode" section) and both `e1_benchmark_<model>.json`
+    sidecars, additively carrying `solver_config["seeds"] = seeds`.
+    Deliberately does NOT write `exp1_parameter_errors.csv`,
+    `exp2_depth_generalization.csv`, `exp2_spatial_errors.csv`, or
+    `exp3_xy_vs_z_anisotropy.csv` -- those remain exclusively the
+    single-seed run's artifacts.
+
+    The benchmark payload (`problem_shape`/`timings`/`diagnostics`/
+    `accuracy`) is taken from the LAST seed in `seeds`'s run, since a single
+    provenance record cannot represent N independent solves; `seeds` records
+    which N were actually run so a reader is never left assuming it reflects
+    only the last one. Mirrors `e7_interface_ablation._run_band` exactly
+    (D-19.4-14) so the two scripts' `--seeds` behavior stays symmetrical.
+    """
+    scenario_name = "ideal" if smoke else SCENARIO_NAME
+    depths = [1.30] if smoke else None
+
+    last_results: dict = {}
+    last_timings_by_model: dict = {}
+    last_diagnostics_by_model: dict = {}
+    last_discard_stats_by_model: dict = {}
+    last_scenario = None
+
+    def _runner(seed: int) -> pd.DataFrame:
+        nonlocal last_results, last_timings_by_model, last_diagnostics_by_model
+        nonlocal last_discard_stats_by_model, last_scenario
+
+        scenario = create_scenario(scenario_name, seed=seed)
+        results: dict = {}
+        timings_by_model: dict = {}
+        diagnostics_by_model: dict = {}
+        discard_stats_by_model: dict = {}
+        for label, n_water in MODELS:
+            result, detections, timings, diagnostics, discard_stats = _run_one_model(
+                scenario, n_water, seed
+            )
+            results[label] = (result, detections)
+            timings_by_model[label] = timings
+            diagnostics_by_model[label] = diagnostics
+            discard_stats_by_model[label] = discard_stats
+
+        _df_exp1, df_exp2, _df_spatial, _df_exp3 = _build_dataframes(
+            scenario, results, seed, test_depths=depths
+        )
+
+        last_results = results
+        last_timings_by_model = timings_by_model
+        last_diagnostics_by_model = diagnostics_by_model
+        last_discard_stats_by_model = discard_stats_by_model
+        last_scenario = scenario
+
+        return df_exp2
+
+    band_df = run_seed_band(_runner, seeds)
+    write_experiment_csv(
+        band_df,
+        out_dir / "exp1_band.csv",
+        key_columns=BAND_KEY_COLUMNS,
+        # Force is implied for the band CSV only (D-19.4-14): regenerating
+        # the band on demand is the entire point of it being reproducible.
+        force=True,
+    )
+
+    for label, n_water in MODELS:
+        result, _detections = last_results[label]
+        record_path = out_dir / BENCHMARK_FILENAMES[label]
+        solver_config = {
+            "robust_loss": "huber",
+            "loss_scale": 1.0,
+            "refine_intrinsics": True,
+            "n_water": n_water,
+            "n_air": 1.0,
+            "shared_interface": True,
+            "ftol": last_diagnostics_by_model[label][
+                "stage3_interface_optimization"
+            ].ftol,
+            "xtol": last_diagnostics_by_model[label][
+                "stage3_interface_optimization"
+            ].xtol,
+            "gtol": last_diagnostics_by_model[label][
+                "stage3_interface_optimization"
+            ].gtol,
+            "seeds": list(seeds),
+        }
+        write_direct_call_benchmark(
+            record_path,
+            problem_shape={
+                "n_cameras": len(last_scenario.intrinsics),
+                "n_frames_calibration": len(last_scenario.board_poses),
+                "n_frames_holdout": 0,
+                "degenerate_observations_at_solution": last_discard_stats_by_model[
+                    label
+                ].get("degenerate_observations_at_solution", 0),
+            },
+            timings=last_timings_by_model[label],
+            diagnostics=last_diagnostics_by_model[label],
+            solver_config=solver_config,
+            accuracy={"reprojection_rms_px": result.diagnostics.reprojection_error_rms},
+            # Force is NOT implied for any artifact besides the band CSV
+            # (D-19.4-14) -- normal resumability applies here.
+            force=force,
+        )
+        print(f"Wrote {record_path}")
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build E1's CLI parser: the shared five-flag contract, no extra flags."""
+    """Build E1's CLI parser, extending the shared five-flag contract (D-21)
+    with a script-local `--seeds` flag (D-19.4-14)."""
     parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
     )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        default=None,
+        help="Comma-separated seed list (e.g. '42,43,44') to run a "
+        "reproducible band instead of a single seed, emitting exp1_band.csv "
+        "(D-19.4-14). Mutually exclusive with --check. The band CSV write "
+        "always overwrites (force implied for that file only); no other "
+        "artifact's overwrite behavior changes. A --seeds run never writes "
+        "exp1_parameter_errors.csv, exp2_depth_generalization.csv, "
+        "exp2_spatial_errors.csv, or exp3_xy_vs_z_anisotropy.csv.",
+    )
     return parser
+
+
+def _validate_e1_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Extend the shared five-flag validation with `--seeds`'s constraints
+    (D-19.4-14)."""
+    validate_args(parser, args)
+    if args.seeds is not None and args.check:
+        parser.error("--seeds cannot be combined with --check")
 
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e1_refractive_comparison`."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
-    validate_args(parser, args)
+    _validate_e1_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    if args.smoke:
-        return _run_smoke(args)
     if args.check:
         return _run_check(args)
+
+    if args.seeds is not None:
+        seeds = parse_seed_list(args.seeds)
+        out_dir = resolve_out_dir(args.out)
+        _run_band(seeds, out_dir, smoke=args.smoke, force=args.force)
+        return 0
+
+    if args.smoke:
+        return _run_smoke(args)
     return _run_full(args)
 
 
