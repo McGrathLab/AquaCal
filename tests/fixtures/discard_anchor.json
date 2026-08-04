@@ -57,7 +57,7 @@
       "refine_intrinsics": "False",
       "seed": "1"
     },
-    "note": "Generated BEFORE plan 19.2-26's counter edits. Regenerating this file from instrumented code destroys the guarantee it exists to provide.",
+    "note": "Originally generated BEFORE plan 19.2-26's counter edits (sha e4bce724b16f8ea555b9244ebf1be8580d50a28f, water_z ~0.196). REGENERATED 2026-08-01 (plan 19.3-04, D-19.3-09): generate_camera_array's height_above_water default moved from the old shallow 0.15 m literal to the real-rig standoff (WATER_Z ~1.031 m), and the 'minimal' preset run here no longer passes height_above_water=0.15 explicitly, so it now inherits the new default -- water_z moved from ~0.196 to ~1.190 as a direct, intended consequence. REGENERATED AGAIN 2026-08-04 (plan 19.4-02, D-19.4-09): generate_camera_array's height_variation jitter moved from water_z onto C_z, so cam1 of the 'minimal' preset now sits at a jittered camera height above a SHARED water plane instead of looking through its own deeper plane at C_z == 0. Ground-truth h_c = water_z - C_z is unchanged (proven exactly in tests/unit/test_synthetic_scenario_geometry.py). The CALIBRATED (not ground-truth) values moved: water_z 1.1898233002668026 -> 1.5273578316945136 and reprojection_error_rms 0.7944770660152672 -> 0.7944718492870945. The interface estimate swings by decimeters while rms moves only in its sixth decimal because MINIMAL_KWARGS deliberately sets n_water=1.0 against the scenario's 1.333 ground truth, degrading refraction to near-inert and leaving water_z weakly identified. See tests/unit/test_discard_accounting.py's test_matches_frozen_anchor docstring for the full provenance chain.",
     "scenario": "minimal",
     "sha": "12fa9e6354acea532d4f091b44e20e6dfbfede80"
   },
