@@ -390,50 +390,42 @@ Plans:
 - [x] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05) — ran in **6 h 02 min**, all seven stages exit 0, one git sha (`22e75ef`) across every artifact
 - [x] 19.3-10-PLAN.md — wave 7 — report the cell reproduction count against 63/308, write MF-08, and draft the reviewer-response prose (GEOM-05, GEOM-06) — **8 of 308**, before 63 of 308
 
-### Phase 19.4: Grid-Family Clearance Floor Fix (INSERTED)
+### Phase 19.4: Single Flat Interface (INSERTED)
 
-**Goal**: A grid-family scenario derives its depth range from its own `water_zs` at the point
-the scenario is constructed, so E4 and E6 are legal at any seed rather than only at the seed
-their frozen constant was derived from — without moving a single published number.
-**Depends on**: Phase 19.3 (which introduced the clearance guard and whose seed sweeps exposed
-this defect; its `.continue-here.md` anti-pattern table carries forward)
-**Requirements**: GRID-01, GRID-02, GRID-03, GRID-04, GRID-05 (proposed during planning; plan
-19.4-01 writes them into `.planning/REQUIREMENTS.md`, plan 19.4-07 ticks them)
-**Source brief**: `.planning/debug/e6-seed-locked-clearance-floor.md` (status `diagnosed`;
-root cause, all six call sites, consequential changes, and a costed verification plan)
+**Goal**: Every synthetic scenario models **one flat water surface shared by all cameras**,
+matching the physical premise the method and the manuscript rest on. The per-camera interface
+*distance* variation is preserved by moving it onto camera height. The three affected experiments
+are re-measured; the three unaffected ones are proven unaffected.
+**Depends on**: Phase 19.3
+**Requirements**: TBD — to be added during planning
+**Source brief**: `19.4-RESCOPE-PROPOSAL.md` (the five-source audit and the pixel measurement);
+`19.4-CONTEXT.md` (decisions D-19.4-09..13)
 **Success Criteria** (what must be TRUE):
-  1. No module-level constant is used as a clearance floor. Each scenario derives its own
-     from the `water_zs` it was built with — E5's `_e5_real_rig_depth_range` is the pattern.
-  2. Bit-inertness at seed 42 for BOTH the calibration and holdout scenes, proven on all 100
-     poses' `rvec`/`tvec` across E4's `{8,12,16} x {50,100,200}` cells and both E6 scale values.
-     The published grid and sweep must be unchanged.
-  3. `build_grid_scenario` never raises across 500 seeds x {8,12,16} cameras x {grid,ring,line}
-     x 3 spacings — as a test in the suite. Its absence is why this shipped.
-  4. E6 completes at previously-failing seeds, including one fast-path failure (43) and one
-     slow-path failure (47).
-**Note**: the guard's own suggested remedy (`depth_range=None`) is **NOT inert** — it shifts the
-holdout scene by up to 0.469 mm and would silently move every published E4/E6 held-out number.
-The bit-inert form is `max(GRID_DEPTH_RANGE[0], board_clearance_floor(...))`. Do not adjust
-`board_clearance_floor`'s `margin_factor`.
-**Plans**: 7 plans across 6 waves
+  1. Every synthetic scenario source yields exactly ONE distinct `water_z`, asserted by a test
+     covering all three `create_scenario` presets, `generate_real_rig_array`, and
+     `generate_camera_array` across layouts and seeds.
+  2. The jitter moves from `water_z` to `C_z` with each camera's `h_c` preserved exactly.
+  3. E1, E3 and E5 are PROVEN bit-inert, not assumed.
+  4. `GRID_DEPTH_RANGE` re-derived; the clearance floor is seed-invariant by construction.
+  5. E4, E6 and E7 re-measured, with E7's 10-seed band re-measured on the corrected geometry so
+     it retains the milestone's only surviving accuracy claim.
+  6. Long runs abort on the first failed cell and exit non-zero.
+**Note**: **published numbers WILL move** for E4, E6 and E7 — the opposite of 19.3's constraint.
+Measured impact of the defect: mean 1.42 px, max 6.33 px over 31,680 corner observations, against
+an E4/E6 reprojection RMS of ~0.4-0.9 px. The modelling error exceeds the residual it was being
+measured against.
+**Verification cost**: ~7 h, one overnight run (full seven-stage queue 6 h 02 min + E7 band 50
+min), measured from 19.3's queue.
+**Plans**: TBD (run `/gsd:plan-phase 19.4`)
+
+> **SUPERSEDED SCOPE.** This phase was created as "Grid-Family Clearance Floor Fix" and planned
+> with 7 plans and decisions D-19.4-01..08 before the root cause was understood. That scope is
+> cancelled — the clearance floor only moved with the seed because the ground truth gave each
+> camera its own water surface. Plans deleted; see `git show aa9ad7f`. The directory name is
+> historical.
 
 Plans:
-- [ ] 19.4-01-PLAN.md — wave 1 — write GRID-01..05 into REQUIREMENTS.md; capture the seed-42 pose
-  anchor from the UNFIXED tree and write the exact-equality inertness gate (GRID-02)
-- [ ] 19.4-02-PLAN.md — wave 2 — add `grid_depth_range(water_zs, extent_factor)`, rename the frozen
-  constant to a published-geometry anchor, resolve per-scenario in `build_grid_scenario`, rewrite
-  the two E4 tests that encode the old design (GRID-01, GRID-02)
-- [ ] 19.4-03-PLAN.md — wave 3 — move E6's scale axis onto a per-scenario extent factor, pin
-  `_BASELINE_EXTENT_ABOVE_FLOOR` (D-19.4-08), keep all twelve committed checkpoints matching, and
-  populate `depth_range_min`/`max` from the resolved range (GRID-01, GRID-05)
-- [ ] 19.4-04-PLAN.md — wave 3 — the 13,500-scenario legality sweep as a non-`slow` suite test,
-  plus construction regressions for the five characterised failure seeds (GRID-03)
-- [ ] 19.4-05-PLAN.md — wave 4 — fail-fast on the first failed cell/configuration in E4 and E6,
-  non-zero exit, key + exception + floors printed, explicit `--no-fail-fast` (GRID-04)
-- [ ] 19.4-06-PLAN.md — wave 5 — declare the artifact diff in advance, run the cheap gates, E6
-  `--smoke`, then the ~96 min seed-42 `--force` byte-comparison (GRID-02, GRID-05)
-- [ ] 19.4-07-PLAN.md — wave 6 — record the two deferred runs and what they would have proven,
-  update MF-08, bank the defect class in the knowledge base, tick the trackers (all GRID)
+- [ ] TBD (run /gsd:plan-phase 19.4 to break down)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
@@ -513,7 +505,7 @@ behavior the published artifacts actually reflect.
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
-| 19.4 Grid-Family Clearance Floor Fix | v1.9 | 0/TBD | Not started | - |
+| 19.4 Single Flat Interface | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
