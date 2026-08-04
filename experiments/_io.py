@@ -192,6 +192,22 @@ def run_seed_band(
             unmodified. A failing seed must not be swallowed into a partial
             band (D-19.4-11's fail-fast posture) -- there is no
             `try`/`except` here.
+
+    Adding E4/E6 later (deferred, D-19.4-13/D-19.4-14): a future caller
+    supplies (1) a `runner(seed) -> DataFrame` closure that wraps that
+    experiment's EXISTING per-cell or per-configuration loop (E4's grid
+    sweep, E6's generalization sweep) and returns the one seed's rows, (2) a
+    script-local `--seeds` argument on that script's own `build_arg_parser`
+    (mirroring E1's and E7's `--seeds` flags), and (3) a `_validate_*_args`
+    extension rejecting `--seeds` combined with `--check`, exactly like
+    `experiments.e1_refractive_comparison._validate_e1_args` and
+    `experiments.e7_interface_ablation._validate_e7_args`. No change to
+    `run_seed_band` or to `parse_seed_list` is needed -- that is the entire
+    point of this being the shared primitive. This is deliberately NOT done
+    in this
+    phase: a 10-seed E6 band is ~16.6 h and a 10-seed E4 band is ~22.1 h,
+    ~39 h together, and neither E4 nor E6 carries an accuracy claim that a
+    band would defend.
     """
     frames: list[pd.DataFrame] = []
     for seed in seeds:
