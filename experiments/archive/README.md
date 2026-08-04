@@ -28,6 +28,8 @@ by hand.
 | `e5-2026-08-02-pre-depth-fix/` | E5 | 2026-08-02 | Same depth-clearance fix; `e5_index_sensitivity.py`'s hardcoded shallow `depth_range` | `aa4c92e4f063c75493c1d4c64cfde555636270be` |
 | `e6-2026-08-02-pre-depth-fix/` | E6 | 2026-08-02 | Same depth-clearance fix, plus the scale-axis redefinition (D-19.3-07) and the paired determinism sweep's pre-fix baseline (63/308 cells, D-19.3-14) | `74e75a7b33d4d9be1467f5806e76d1e77604e047` |
 | `e7-2026-08-02-pre-depth-fix/` | E7 | 2026-08-02 | Same depth-clearance fix (E7's `"realistic"` scenario call is affected via the shared depth-range enforcement even though its standoff itself is untouched) | `f9843972a879d95b87cbff66f06cc37c54e522c3` |
+| `e4-2026-08-04-pre-interface-fix/` | E4 | 2026-08-04 | The single-flat-interface fix (D-19.4-09) — `generate_camera_array`'s `height_variation` jitter moved from `water_z` to `C_z`, so all cameras share one water surface | `22e75ef2b424c9b0234502e5229345a9f5912b11` |
+| `e6-2026-08-04-pre-interface-fix/` | E6 | 2026-08-04 | Same single-flat-interface fix, plus the `GRID_DEPTH_RANGE` re-derivation from cam7's seed-42 jitter (D-19.4-12/15) | `22e75ef2b424c9b0234502e5229345a9f5912b11` |
 
 ## The convention
 
