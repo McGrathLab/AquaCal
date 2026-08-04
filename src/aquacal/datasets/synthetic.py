@@ -186,14 +186,21 @@ def generate_camera_array(
             1-2 m board-to-camera range needs a standoff in that range to
             avoid over-filling the frame; pass an explicit shallower value
             only when that mismatch is intentional.
-        height_variation: Std dev of per-camera height variation (meters)
+        height_variation: Std dev of per-camera height variation (meters),
+            applied to camera height (``C_z``; D-19.4-09), not the water
+            surface. Every camera shares one water plane at
+            ``height_above_water``; the variation makes cameras sit at
+            slightly different physical distances from that shared plane.
         image_size: Image dimensions (width, height)
         fov_deg: Horizontal field of view
         seed: Random seed for reproducibility
 
     Returns:
         Tuple of (intrinsics, extrinsics, water_zs) dicts keyed by camera name.
-        Camera "cam0" is always the reference camera at origin with identity rotation.
+        Camera "cam0" is always the reference camera at origin with identity
+        rotation. ``water_zs`` holds one shared value (``height_above_water``)
+        for every camera -- a single flat interface (D-19.4-09) -- not a
+        per-camera distance.
     """
     rng = np.random.default_rng(seed)
 
@@ -247,17 +254,21 @@ def generate_camera_array(
         else:
             roll = rng.uniform(-0.1, 0.1)  # radians
 
+        # D-19.4-09: the jitter lives on camera height (C_z), not the water
+        # surface -- every camera looks through the SAME flat interface,
+        # while h_c = water_z - C_z is preserved exactly per camera. RNG
+        # draw order is unchanged (roll, then delta, per iteration); only
+        # what the drawn value is APPLIED to moves.
+        delta = 0.0 if i == 0 else rng.normal(0, height_variation)
+        pos[2] = -delta  # world frame is +Z down, so -delta raises the camera
+
         R = _rotation_z(roll)
         t = -R @ pos
 
         extrinsics[cam_name] = CameraExtrinsics(R=R, t=t)
 
-        # Interface distance with small variation
-        if i == 0:
-            dist = height_above_water  # Reference camera: exact height
-        else:
-            dist = height_above_water + rng.normal(0, height_variation)
-        distances[cam_name] = dist
+        # One shared water surface for every camera (D-19.4-09).
+        distances[cam_name] = height_above_water
 
     return intrinsics, extrinsics, distances
 
