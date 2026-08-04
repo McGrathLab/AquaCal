@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
-last_updated: "2026-08-02T16:11:21.401Z"
-last_activity: 2026-08-02 -- Phase 19.3 execution started
+stopped_at: Phase 19.3 COMPLETE (10/10 plans, GEOM-01..06); awaiting a new phase for the E6 clearance-floor fix
+last_updated: "2026-08-04T00:00:00.000Z"
+last_activity: "2026-08-04 -- Phase 19.3 closed (d406001, feat! commit); milestone cuts v2.0.0"
 progress:
   total_phases: 10
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 73
-  completed_plans: 71
-  percent: 60
+  completed_plans: 73
+  percent: 70
 ---
 
 # Project State
@@ -21,11 +21,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.3 — scenario-geometry-and-convergence
+**Current focus:** Phase 19.3 CLOSED. Next: a new phase for the E4/E6 clearance-floor fix, then Phase 20.
 
 ## Current Position
 
-Phase: 19.3 (scenario-geometry-and-convergence) — EXECUTING
+Phase: 19.3 (scenario-geometry-and-convergence) — **COMPLETE 2026-08-04**, 10/10 plans,
+  GEOM-01..06 all satisfied. Closing commit `d406001` (`feat!:`). Unfiltered suite
+  **1283 passed / 6 skipped / 0 failed**. Deliverables: MF-08 (six re-measured experiments),
+  MF-01 re-resolved on regenerated Newton data, MF-09 (the manuscript edit map), the
+  determinism statistic (**8 of 308**, before 63 of 308), and the reviewer-response prose.
+  **Only E7 carries an accuracy claim** — D-19.3-17 applied strictly demoted E1 (its band was
+  pre-fix geometry) and E5 (its band varies the assumed index, not the seed).
+
+Next: **a new phase for the E4/E6 clearance-floor fix** (user decision 2026-08-03: close 19.3
+  first, then fix). Planning input is ready and complete:
+  `.planning/debug/e6-seed-locked-clearance-floor.md` — root cause, all six call sites, the
+  consequential changes, and a costed 6-9 h verification plan. Do NOT apply the guard's own
+  suggested remedy (`depth_range=None`); it is not inert. After that, Phase 20.
+
+Superseded position (retained for orientation):
+Phase: 19.3 (scenario-geometry-and-convergence) — was EXECUTING
   Requirements GEOM-01..06. Context at
   `.planning/phases/19.3-scenario-geometry-and-convergence/19.3-CONTEXT.md` (18 locked
   decisions, D-19.3-01..18); source brief `19.3-SEED.md`; raw evidence under `evidence/`.
@@ -39,12 +54,15 @@ Plan: 1 of 10
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 19.3
+Status: Phase 19.3 COMPLETE — between phases
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-02 -- Phase 19.3 execution started
+Last activity: 2026-08-04 -- Phase 19.3 closed (10/10). The milestone now cuts **v2.0.0**,
+  not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
+  required `board` parameter and both are public exports. Phases 21 and 22 resolve version
+  strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
   Before that: Phase 19.2 closed 2026-08-01 (29/29). Phase 18 closed 2026-07-24 (8/8).
 Unreleased on main: everything from Phases 16-19.2 plus quick task 3's `perf:` commit.
   Nothing is pushed yet. Note `34497f9 fix(18):` is a mistyped docstring-only repair that
@@ -359,8 +377,14 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-08-02T16:11:21.393Z
-Stopped at: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
+Last session: 2026-08-04
+Stopped at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
+  walked and recorded in `19.3-10-SUMMARY.md`. One revision was made before approval: MF-08's
+  E4/E6 subsection carried four statements falsified by the clearance-floor diagnosis (that E6
+  cannot be seed-swept, that only seed 42 completes, that each configuration derives its own
+  floor, and that `depth_range=None` is inert) — corrected in `0054cd9`. E6's verdict did not
+  change; the stated reason did.
+Previously: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
   written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
   cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
   Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
@@ -401,5 +425,7 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: .planning/phases/19.3-scenario-geometry-and-convergence/.continue-here.md
-  (Read alongside `18-DISCUSSION-LOG.md` for the alternatives considered.)
+Resume file: none — Phase 19.3 is closed and its `.continue-here.md` is **stale**
+  (it describes the pre-close checkpoint state). Authoritative record is
+  `19.3-10-SUMMARY.md` plus `.planning/MANUSCRIPT-FINDINGS.md` MF-08/MF-09.
+  For the next phase, start from `.planning/debug/e6-seed-locked-clearance-floor.md`.

@@ -366,7 +366,7 @@ required parameter) — cuts **v2.0.0**. Phases 21 and 22 must know before resol
 strings.
 
 > **HANDOFF TO PHASES 21 AND 22 — the milestone cuts v2.0.0, not a v1.9.x.**
-> Confirmed on phase close, 2026-08-03 (D-19.3-06, Sequencing Constraint 13). Plan 19.3-01 made
+> Confirmed on phase close, 2026-08-04 (D-19.3-06, Sequencing Constraint 13). Plan 19.3-01 made
 > `board` a **required** parameter of `generate_board_trajectory` and `generate_real_rig_trajectory`,
 > both public exports. Any caller that omitted it now raises `TypeError`, so the next release is a
 > **major** bump. Both phases resolve version strings and must read this before writing one.
@@ -467,7 +467,7 @@ behavior the published artifacts actually reflect.
 | 19. Benchmark Instrumentation | v1.9 | 6/6 | Complete    | 2026-07-24 |
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
-| 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-03 |
+| 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
