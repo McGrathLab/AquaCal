@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -103,6 +104,101 @@ def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
     """
     if args.check and args.force:
         parser.error("--check and --force are mutually exclusive")
+
+
+def parse_seed_list(value: str) -> list[int]:
+    """Parse a comma-separated seed list into explicit integers (D-19.4-14).
+
+    Chosen over an integer count so the exact seeds an experiment's band ran
+    at are auditable in the committed provenance JSON rather than derived
+    from a rule a reader would have to re-execute to check. This is the
+    shared parsing primitive a script-local `--seeds` flag calls; it is
+    deliberately NOT wired into `build_experiment_arg_parser` itself, since
+    that shared parser's own docstring promises exactly five flags. Reusing
+    this function is what lets E4 and E6 add a `--seeds` mode later as
+    configuration (a script-local flag calling this same parser), not new
+    parsing code (D-19.4-14).
+
+    Args:
+        value: A comma-separated string of integer seeds, e.g. `"42,43,44"`.
+            Surrounding whitespace around each token is tolerated.
+
+    Returns:
+        The parsed seeds, in the order they appeared in `value`.
+
+    Raises:
+        ValueError: If `value` is empty, contains an empty token (e.g. a
+            trailing comma), contains a token that does not parse as an
+            integer, or contains a duplicate seed -- each message names the
+            offending token so the caller does not have to re-derive which
+            one failed.
+    """
+    tokens = [token.strip() for token in value.split(",")]
+    if value.strip() == "" or any(token == "" for token in tokens):
+        raise ValueError(
+            f"parse_seed_list({value!r}) contains an empty token; expected "
+            "a comma-separated list of integers, e.g. '42,43,44'"
+        )
+
+    seeds: list[int] = []
+    for token in tokens:
+        try:
+            seed = int(token)
+        except ValueError as exc:
+            raise ValueError(
+                f"parse_seed_list({value!r}) could not parse token {token!r} "
+                "as an integer"
+            ) from exc
+        seeds.append(seed)
+
+    seen: set[int] = set()
+    for seed in seeds:
+        if seed in seen:
+            raise ValueError(
+                f"parse_seed_list({value!r}) contains duplicate seed {seed}; "
+                "a repeated seed silently halves the band's own width"
+            )
+        seen.add(seed)
+
+    return seeds
+
+
+def run_seed_band(
+    runner: Callable[[int], pd.DataFrame], seeds: Sequence[int]
+) -> pd.DataFrame:
+    """Run `runner` once per seed and concatenate the results into one band (D-19.4-14).
+
+    This is the shared band-execution primitive: an experiment script wires
+    its own per-seed run into `runner`, and this function owns only the
+    "call once per seed, stamp `seed`, concatenate" mechanics. Adding a band
+    mode to E4/E6 later is then a matter of writing their own `runner`
+    closures and calling this function -- configuration, not new code
+    (D-19.4-14).
+
+    Args:
+        runner: A callable taking a single `seed: int` and returning the
+            `DataFrame` of rows that seed produced. Called once per element
+            of `seeds`, in order.
+        seeds: The seeds to run, in the order to run them.
+
+    Returns:
+        The row-wise concatenation (`ignore_index=True`) of every frame
+        `runner` returned, in seed order, with a `seed` column present and
+        correct on every row (added if `runner`'s own frame did not already
+        carry one).
+
+    Raises:
+        Exception: Whatever `runner` raises, propagated immediately and
+            unmodified. A failing seed must not be swallowed into a partial
+            band (D-19.4-11's fail-fast posture) -- there is no
+            `try`/`except` here.
+    """
+    frames: list[pd.DataFrame] = []
+    for seed in seeds:
+        frame = runner(seed).copy()
+        frame["seed"] = seed
+        frames.append(frame)
+    return pd.concat(frames, ignore_index=True)
 
 
 def resolve_out_dir(out: Path) -> Path:
