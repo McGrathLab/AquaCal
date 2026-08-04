@@ -95,6 +95,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Mapping
 from pathlib import Path
 
 import numpy as np
@@ -255,10 +256,69 @@ _, _grid_baseline_extrinsics, _grid_baseline_water_zs = generate_camera_array(
     height_above_water=GRID_HEIGHT_ABOVE_WATER,
     seed=42,
 )
-GRID_DEPTH_RANGE = (
-    board_clearance_floor(GRID_BOARD_CONFIG, _grid_baseline_water_zs, 15.0),
-    2.0,
-)
+
+
+# D-19.4-12: kept as a water_zs-parameterized helper (demoted to hygiene, not
+# thesis -- post-fix `max(water_zs) == height_above_water` at every seed
+# (D-19.4-15), so a module constant would already be correct; deriving
+# per-scenario stays right if a caller ever passes a different
+# `height_above_water`, and costs nothing). Mirrors
+# `experiments/e5_index_sensitivity.py`'s `_e5_real_rig_depth_range` --
+# takes `water_zs` as a parameter rather than rebuilding a camera array
+# internally.
+#
+# Placement note (deviation from D-19.4-12's literal "beside
+# `default_xy_extent_for_layout`"): this helper is referenced at IMPORT TIME
+# by the `GRID_DEPTH_RANGE` assignment immediately below, which itself must
+# stay above `default_xy_extent_for_layout` in the file (declared-grid
+# constants precede the scene-builder section). Defining the helper here,
+# immediately before its only call site, keeps `GRID_DEPTH_RANGE`
+# derivable without a forward reference; `default_xy_extent_for_layout`
+# carries a comment naming this function as its sibling instead.
+def derive_grid_depth_range(
+    water_zs: Mapping[str, float],
+    board: BoardConfig = GRID_BOARD_CONFIG,
+    rotation_range_deg: float = 15.0,
+) -> tuple[float, float]:
+    """Derive the grid family's `depth_range` from a camera array's `water_zs`.
+
+    D-19.4-12/D-19.4-15: post-fix, every camera in a `generate_camera_array`
+    array shares one flat interface, so `max(water_zs.values()) ==
+    height_above_water` exactly, at every seed and every camera count --
+    the derived floor is therefore seed-invariant BY CONSTRUCTION, not by
+    accident. Measured over 3,000 draws (500 seeds x {8,12,16} cameras x
+    calibration and holdout): exactly one distinct derived floor,
+    1.176215948246 (a drop of ~5.6 mm from the pre-fix constant, which was
+    anchored on cam7's seed-42 jitter -- the deepest per-camera water
+    surface under the old per-camera-interface defect).
+
+    Kept as a function, not inlined as a frozen constant, so it stays
+    correct if a caller passes a `water_zs` built at a different
+    `height_above_water` (the helper derives; it does not memoize a single
+    scenario's answer).
+
+    Args:
+        water_zs: Per-camera interface distances, e.g. a `generate_camera_
+            array` baseline's third return value. NOT rebuilt internally --
+            the caller owns scenario construction.
+        board: ChArUco board specification forwarded to
+            `board_clearance_floor`. Defaults to `GRID_BOARD_CONFIG`.
+        rotation_range_deg: Tilt range forwarded to `board_clearance_floor`.
+            Defaults to 15.0, matching `generate_board_trajectory`'s own
+            default.
+
+    Returns:
+        `(derived_floor, 2.0)` -- the minimum is derived via
+        `board_clearance_floor`; the maximum stays a fixed 2.0 m ceiling
+        (D-19.3-03).
+    """
+    return (
+        board_clearance_floor(board, water_zs, rotation_range_deg),
+        2.0,
+    )
+
+
+GRID_DEPTH_RANGE = derive_grid_depth_range(_grid_baseline_water_zs)
 
 # D-28: xy_extent scales with the array's OWN footprint span rather than a
 # fixed 0.15 m, so every layout (grid/ring/line) exercises the same
@@ -467,7 +527,14 @@ def default_xy_extent_for_layout(n_cameras: int, layout: str, spacing: float) ->
     than hardcoding a second copy (D-28). Camera XY positions do not depend
     on `seed` -- only per-camera roll and height jitter do
     (`generate_camera_array`) -- so any seed value yields the same span;
-    `seed=0` is used here for clarity, not reproducibility.
+    `seed=0` is used here for clarity, not reproducibility. (D-19.4-09: the
+    height jitter now lands on each camera's `C_z`, not on the shared
+    `water_z`; XY positions were never affected by either jitter source, so
+    the seed-independence claim itself is unchanged.)
+
+    `derive_grid_depth_range` (below `GRID_DEPTH_RANGE`, D-19.4-12) is this
+    function's sibling: both take a `generate_camera_array`-derived quantity
+    and reduce it to a single scalar the grid family needs at import time.
 
     Args:
         n_cameras: Camera count for `generate_camera_array`.
