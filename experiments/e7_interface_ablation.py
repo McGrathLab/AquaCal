@@ -49,13 +49,31 @@ this docstring) learns what "fixed" meant.
 
 Invoked as `python -m experiments.e7_interface_ablation`. Inherits the shared
 five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`)
-from `experiments._io.build_experiment_arg_parser` (D-21).
+from `experiments._io.build_experiment_arg_parser` (D-21), plus a
+script-local `--seeds` flag (D-19.4-14).
 
 Emits, per D-17: `interface_ablation.csv` (one row per camera x arm),
 `interface_ablation_conditioning.json` + `.npz` (per-arm conditioning,
 interface spread, and height/distance correlation), one `e7_trace_<arm>.csv`
 per arm, and one `e7_benchmark_<arm>.json` direct-call provenance record per
 arm (D-09).
+
+**`--seeds` band mode (D-19.4-14, SC-5a).** `--seeds 42,43,...` runs the same
+four-arm loop once per listed seed and emits `interface_ablation_band.csv`
+(one row per seed x camera x arm -- 10 seeds x 12 cameras x 4 arms = 480 rows
+at production scale) instead of `interface_ablation.csv`. **A `--seeds` run
+NEVER writes `interface_ablation.csv`** -- the single-seed production
+artifact is only ever produced by a plain `--seed` run, so a band run can
+never overwrite the artifact the E7-inertness gate compares against. The
+band CSV write always overwrites (force is implied for that one file only --
+regenerating the band on demand is the entire point of it being a
+reproducible artifact); no other artifact's overwrite behavior is affected
+by `--seeds`. `--seeds` is mutually exclusive with `--check` (a band run is
+a new compute pass, not a comparison). Each `e7_benchmark_<arm>.json`
+written during a band run additively carries a `seeds` list holding the
+resolved seed list (EXP-11 pattern). E7's production scenario is inert under
+this phase's `src` fix (see the CORRECTION note below); the `--seeds` band
+exists for reproducibility of MF-05's numbers, not because they move.
 
 **D-19.3-11: this module RECORDS the final-solution guard count; it does
 not GATE on it.** E7 has no per-arm `status` column -- each arm's
@@ -95,7 +113,9 @@ from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
     exit_code_for,
+    parse_seed_list,
     resolve_out_dir,
+    run_seed_band,
     validate_args,
     write_direct_call_benchmark,
     write_experiment_csv,
@@ -125,6 +145,10 @@ INTRINSICS_FIXED_SOURCE = "ground_truth"
 
 CHECK_RTOL = 1e-6
 ABLATION_KEY_COLUMNS = ["arm", "camera"]
+# D-19.4-14: the band CSV carries every seed's rows, so `seed` joins the key
+# columns -- (arm, camera) alone is no longer unique once multiple seeds are
+# concatenated.
+BAND_KEY_COLUMNS = ["seed", "arm", "camera"]
 REFERENCE_CAMERA = "cam0"
 INTERFACE_NORMAL = np.array([0.0, 0.0, -1.0], dtype=np.float64)
 
@@ -495,6 +519,35 @@ def _build_conditioning_entry(
     return entry
 
 
+def _build_arm_benchmark_payload(arm: ArmResult, scenario) -> tuple[dict, dict, dict]:
+    """Build the `(problem_shape, solver_config, accuracy)` triple for one
+    arm's `e7_benchmark_<arm>.json` (shared by the single-seed and
+    `--seeds` band write paths, D-19.4-14).
+    """
+    problem_shape = {
+        "n_cameras": len(scenario.intrinsics),
+        "n_frames_calibration": len(scenario.board_poses),
+        "n_frames_holdout": 0,
+        # D-19.3-11: this arm's final-solution guard count, summed across
+        # its stages (recorded, never gated -- see the module docstring).
+        "degenerate_observations_at_solution": arm.degenerate_observations_at_solution,
+    }
+    solver_config = {
+        "robust_loss": "huber",
+        "loss_scale": 1.0,
+        "refine_intrinsics": arm.refine_intrinsics,
+        "shared_interface": arm.shared_interface,
+        "n_water": scenario.n_water,
+        "n_air": scenario.n_air,
+    }
+    final_diag = arm.diagnostics[arm.final_stage]
+    solver_config["ftol"] = final_diag.ftol
+    solver_config["xtol"] = final_diag.xtol
+    solver_config["gtol"] = final_diag.gtol
+    accuracy = {"reprojection_rms_px": float(arm.rms)}
+    return problem_shape, solver_config, accuracy
+
+
 def _write_ablation_artifacts(
     results: list[ArmResult], scenario, out_dir: Path, force: bool
 ) -> None:
@@ -533,29 +586,9 @@ def _write_ablation_artifacts(
             arm.observers[arm.final_stage].write_trace_csv(trace_path)
 
     for arm in results:
-        problem_shape = {
-            "n_cameras": len(scenario.intrinsics),
-            "n_frames_calibration": len(scenario.board_poses),
-            "n_frames_holdout": 0,
-            # D-19.3-11: this arm's final-solution guard count, summed across
-            # its stages (recorded, never gated -- see the module docstring).
-            "degenerate_observations_at_solution": (
-                arm.degenerate_observations_at_solution
-            ),
-        }
-        solver_config = {
-            "robust_loss": "huber",
-            "loss_scale": 1.0,
-            "refine_intrinsics": arm.refine_intrinsics,
-            "shared_interface": arm.shared_interface,
-            "n_water": scenario.n_water,
-            "n_air": scenario.n_air,
-        }
-        final_diag = arm.diagnostics[arm.final_stage]
-        solver_config["ftol"] = final_diag.ftol
-        solver_config["xtol"] = final_diag.xtol
-        solver_config["gtol"] = final_diag.gtol
-        accuracy = {"reprojection_rms_px": float(arm.rms)}
+        problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(
+            arm, scenario
+        )
         write_direct_call_benchmark(
             out_dir / f"e7_benchmark_{arm.arm_name}.json",
             problem_shape=problem_shape,
@@ -620,24 +653,109 @@ def _run_check(out_dir: Path) -> int:
     return exit_code_for(report)
 
 
+def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
+    """`--seeds`: run the four-arm loop once per seed, emit the band CSV and
+    per-arm provenance (D-19.4-14, SC-5a).
+
+    Writes `interface_ablation_band.csv` (force implied -- see the module
+    docstring's "--seeds band mode" section) and one `e7_benchmark_<arm>.json`
+    per arm, additively carrying `solver_config["seeds"] = seeds`. Deliberately
+    does NOT write `interface_ablation.csv`, conditioning JSON/NPZ, or trace
+    CSVs -- those remain exclusively the single-seed run's artifacts.
+
+    The benchmark payload (`problem_shape`/`timings`/`diagnostics`/`accuracy`)
+    is taken from the LAST seed in `seeds`' run, since a single provenance
+    record cannot represent N independent solves; `seeds` records which N were
+    actually run so a reader is never left assuming it reflects only the last
+    one.
+    """
+    last_results: list[ArmResult] = []
+    last_scenario = None
+
+    def _runner(seed: int) -> pd.DataFrame:
+        nonlocal last_results, last_scenario
+        results, scenario = run_all_arms(seed=seed, smoke=smoke)
+        last_results, last_scenario = results, scenario
+        rows: list[dict] = []
+        for arm in results:
+            rows.extend(_build_ablation_rows(arm, scenario))
+        return pd.DataFrame(rows, columns=ABLATION_COLUMNS)
+
+    band_df = run_seed_band(_runner, seeds)
+    write_experiment_csv(
+        band_df,
+        out_dir / "interface_ablation_band.csv",
+        key_columns=BAND_KEY_COLUMNS,
+        # Force is implied for the band CSV only (D-19.4-14): regenerating
+        # the band on demand is the entire point of it being reproducible.
+        force=True,
+    )
+
+    for arm in last_results:
+        problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(
+            arm, last_scenario
+        )
+        solver_config["seeds"] = list(seeds)
+        write_direct_call_benchmark(
+            out_dir / f"e7_benchmark_{arm.arm_name}.json",
+            problem_shape=problem_shape,
+            timings=arm.elapsed_seconds,
+            diagnostics=arm.diagnostics,
+            solver_config=solver_config,
+            accuracy=accuracy,
+            # Force is NOT implied for any artifact besides the band CSV
+            # (D-19.4-14) -- normal resumability applies here.
+            force=force,
+        )
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build E7's CLI parser, extending the shared five-flag contract (D-21)."""
-    return argparse.ArgumentParser(
+    """Build E7's CLI parser, extending the shared five-flag contract (D-21)
+    with a script-local `--seeds` flag (D-19.4-14)."""
+    parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
     )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        default=None,
+        help="Comma-separated seed list (e.g. '42,43,44') to run a "
+        "reproducible band instead of a single seed, emitting "
+        "interface_ablation_band.csv (D-19.4-14). Mutually exclusive with "
+        "--check. The band CSV write always overwrites (force implied for "
+        "that file only); no other artifact's overwrite behavior changes. "
+        "A --seeds run never writes interface_ablation.csv.",
+    )
+    return parser
+
+
+def _validate_e7_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Extend the shared five-flag validation with `--seeds`'s constraints
+    (D-19.4-14)."""
+    validate_args(parser, args)
+    if args.seeds is not None and args.check:
+        parser.error("--seeds cannot be combined with --check")
 
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e7_interface_ablation`."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
-    validate_args(parser, args)
+    _validate_e7_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.check:
         out_dir = resolve_out_dir(args.out)
         return _run_check(out_dir)
+
+    if args.seeds is not None:
+        seeds = parse_seed_list(args.seeds)
+        out_dir = resolve_out_dir(args.out)
+        _run_band(seeds, out_dir, smoke=args.smoke, force=args.force)
+        return 0
 
     if args.smoke:
         # Honor an explicitly-passed --out (e.g. a caller-supplied temp dir
