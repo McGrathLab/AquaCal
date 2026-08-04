@@ -390,6 +390,35 @@ Plans:
 - [x] 19.3-09-PLAN.md — wave 6 — freeze the tree and execute the ~9 h detached serial re-run of E1/E4/E5/E6x2/E7 (GEOM-05) — ran in **6 h 02 min**, all seven stages exit 0, one git sha (`22e75ef`) across every artifact
 - [x] 19.3-10-PLAN.md — wave 7 — report the cell reproduction count against 63/308, write MF-08, and draft the reviewer-response prose (GEOM-05, GEOM-06) — **8 of 308**, before 63 of 308
 
+### Phase 19.4: Grid-Family Clearance Floor Fix (INSERTED)
+
+**Goal**: A grid-family scenario derives its depth range from its own `water_zs` at the point
+the scenario is constructed, so E4 and E6 are legal at any seed rather than only at the seed
+their frozen constant was derived from — without moving a single published number.
+**Depends on**: Phase 19.3 (which introduced the clearance guard and whose seed sweeps exposed
+this defect; its `.continue-here.md` anti-pattern table carries forward)
+**Requirements**: TBD — to be added during planning
+**Source brief**: `.planning/debug/e6-seed-locked-clearance-floor.md` (status `diagnosed`;
+root cause, all six call sites, consequential changes, and a costed verification plan)
+**Success Criteria** (what must be TRUE):
+  1. No module-level constant is used as a clearance floor. Each scenario derives its own
+     from the `water_zs` it was built with — E5's `_e5_real_rig_depth_range` is the pattern.
+  2. Bit-inertness at seed 42 for BOTH the calibration and holdout scenes, proven on all 100
+     poses' `rvec`/`tvec` across E4's `{8,12,16} x {50,100,200}` cells and both E6 scale values.
+     The published grid and sweep must be unchanged.
+  3. `build_grid_scenario` never raises across 500 seeds x {8,12,16} cameras x {grid,ring,line}
+     x 3 spacings — as a test in the suite. Its absence is why this shipped.
+  4. E6 completes at previously-failing seeds, including one fast-path failure (43) and one
+     slow-path failure (47).
+**Note**: the guard's own suggested remedy (`depth_range=None`) is **NOT inert** — it shifts the
+holdout scene by up to 0.469 mm and would silently move every published E4/E6 held-out number.
+The bit-inert form is `max(GRID_DEPTH_RANGE[0], board_clearance_floor(...))`. Do not adjust
+`board_clearance_floor`'s `margin_factor`.
+**Plans**: TBD (run `/gsd:plan-phase 19.4`)
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 19.4 to break down)
+
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
 estimate into their config by hand.
@@ -468,6 +497,7 @@ behavior the published artifacts actually reflect.
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
+| 19.4 Grid-Family Clearance Floor Fix | v1.9 | 0/TBD | Not started | - |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |

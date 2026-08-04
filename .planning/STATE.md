@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.3 COMPLETE (10/10 plans, GEOM-01..06); awaiting a new phase for the E6 clearance-floor fix
-last_updated: "2026-08-04T00:00:00.000Z"
-last_activity: "2026-08-04 -- Phase 19.3 closed (d406001, feat! commit); milestone cuts v2.0.0"
+stopped_at: "Phase 19.3 COMPLETE and verified (10/10, passed); Phase 19.4 inserted, not yet planned"
+last_updated: "2026-08-04T14:12:10.083Z"
+last_activity: "2026-08-04 -- Phase 19.3 closed and verified; Phase 19.4 inserted for the clearance-floor fix"
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 7
   total_plans: 73
   completed_plans: 73
-  percent: 70
+  percent: 64
 ---
 
 # Project State
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.3 CLOSED. Next: a new phase for the E4/E6 clearance-floor fix, then Phase 20.
+**Current focus:** Phase 19.4 — grid-family-clearance-floor-fix (inserted 2026-08-04, not yet planned). Then 20, 21, 22 in numeric order.
 
 ## Current Position
 
@@ -33,8 +33,8 @@ Phase: 19.3 (scenario-geometry-and-convergence) — **COMPLETE 2026-08-04**, 10/
   **Only E7 carries an accuracy claim** — D-19.3-17 applied strictly demoted E1 (its band was
   pre-fix geometry) and E5 (its band varies the assumed index, not the seed).
 
-Next: **a new phase for the E4/E6 clearance-floor fix** (user decision 2026-08-03: close 19.3
-  first, then fix). Planning input is ready and complete:
+Phase: **19.4 (grid-family-clearance-floor-fix) — INSERTED 2026-08-04, not yet planned.**
+  Next command: `/gsd:plan-phase 19.4`. Planning input is ready and complete:
   `.planning/debug/e6-seed-locked-clearance-floor.md` — root cause, all six call sites, the
   consequential changes, and a costed 6-9 h verification plan. Do NOT apply the guard's own
   suggested remedy (`depth_range=None`); it is not inert. After that, Phase 20.
@@ -54,7 +54,7 @@ Plan: 1 of 10
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Phase 19.3 COMPLETE — between phases
+Status: Phase 19.3 COMPLETE and VERIFIED (19.3-VERIFICATION.md, status passed, 7/7). Phase 19.4 inserted, awaiting planning.
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
@@ -108,6 +108,7 @@ so the code work must land with room to spare. The Hooks → Per-Camera Interfac
 - Phase 19.1 inserted after Phase 19: Experiment Suite Consolidation — X1/X2/X3/X6 plus E2, E7, and E1 (EXP-01..06) from the desktop brief; every manuscript number traces to one script/output/figure (URGENT). Rescoped the same day when the phase was split; the execution half became 19.2.
 - Phase 19.2 inserted after Phase 19.1: Experiment Execution and Provenance — E3/E4/E5/E6 + provenance close-out (EXP-07..11), split out of the original 19.1 along the source brief's wave 3/wave 4 boundary so E2's real-rig re-run is a phase gate rather than one item among eleven (URGENT)
 - Phase 19.3 inserted after Phase 19.2: Scenario Geometry and Convergence - synthetic boards protrude through the water surface, invalidating optimality as a convergence diagnostic (URGENT)
+- Phase 19.4 inserted after Phase 19.3: Grid-Family Clearance Floor Fix -- GRID_DEPTH_RANGE frozen at import from a seed-42 array makes E4/E6 legal at only ~6% of seeds (URGENT)
 
 ### Decisions
 
