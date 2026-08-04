@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
-last_updated: "2026-08-04T17:44:06.210Z"
-last_activity: 2026-08-04 -- Phase 19.4 planning complete
+last_updated: "2026-08-04T17:51:38.478Z"
+last_activity: 2026-08-04 -- Phase 19.4 execution started
 progress:
   total_phases: 11
   completed_phases: 7
@@ -21,20 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.4 — **Single Flat Interface** (re-scoped 2026-08-04, decisions locked, NOT yet planned). Then 20, 21, 22 in numeric order.
+**Current focus:** Phase 19.4 — Single Flat Interface
 
 ## Current Position
 
-Phase: 19.3 (scenario-geometry-and-convergence) — **COMPLETE 2026-08-04**, 10/10 plans,
-  GEOM-01..06 all satisfied. Closing commit `d406001` (`feat!:`). Unfiltered suite
-  **1283 passed / 6 skipped / 0 failed**. Deliverables: MF-08 (six re-measured experiments),
-  MF-01 re-resolved on regenerated Newton data, MF-09 (the manuscript edit map), the
-  determinism statistic (**8 of 308**, before 63 of 308), and the reviewer-response prose.
-  **Only E7 carries an accuracy claim** — D-19.3-17 applied strictly demoted E1 (its band was
-  pre-fix geometry) and E5 (its band varies the assumed index, not the seed).
-
-Phase: **19.4 — Single Flat Interface. PLANNED 2026-08-04 — 10 plans in 6 waves, plan-checker
-  PASSED.** Next command: `/gsd:execute-phase 19.4`.
+Phase: **19.4 — Single Flat Interface — EXECUTING.** 10 plans in 6 waves, plan-checker PASSED.
+  (Preceded by Phase 19.3, CLOSED 2026-08-04, commit `d406001` (`feat!:`), suite 1283 passed /
+  6 skipped / 0 failed — GEOM-01..06 all satisfied. **Only E7 carries an accuracy claim**;
+  D-19.3-17 applied strictly demoted E1 and E5.)
 
   **The clearance-floor scope is CANCELLED.** `generate_camera_array` applied its per-camera
   jitter to `water_z` — the world-frame Z of the water *surface* — giving each camera its own
@@ -78,12 +72,12 @@ Plan: 1 of 10
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Ready to execute
+Status: Executing Phase 19.4
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-04 -- Phase 19.4 planning complete
+Last activity: 2026-08-04 -- Phase 19.4 execution started
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
