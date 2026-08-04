@@ -682,8 +682,9 @@ directly against each scenario's own corner cloud.
 configurations, and one of them — `layout/ring` — was flagged on the *intrinsic* pass (4.20) while
 its interface pass was healthy (0.0016). Checking only the interface column would have missed it.
 Post-fix, the worst value across `optimality_stage3_interface_optimization` AND
-`optimality_stage3_intrinsic_pass`, over all fourteen configurations, is **0.0126** (1e-02 to one
-significant figure). All three of MF-07's flagged configurations are clean on both passes.
+`optimality_stage3_intrinsic_pass`, over all fourteen configurations, is **1e-02** (one significant
+figure — the measure varies ~2x run to run and no finer statement is supportable). All three of
+MF-07's flagged configurations are clean on both passes.
 
 ### What moved, per experiment
 
@@ -744,43 +745,90 @@ rule strictly gives a **more restrictive** answer than this phase's planning ass
   inherited-not-verified. `e5_provenance.json` settles it: `"seed": 42` (single) with an
   11-point `n_assumed_band`. **E5's band varies the assumed refractive index, not the seed**, so it
   cannot bound seed noise and licenses no accuracy claim. E5 moves into the no-claim group.
-- **E3, E4, E6 — NONE, and for E4/E6 the reason is stronger than "not yet measured".** A
-  single-seed before/after cannot support an accuracy claim however plausible the delta and its
-  mechanism look: 19.2's "fixed code is worse on 5 of 6 metrics" table was overturned by measuring
-  the noise floor, and phase 19.1 recorded the same lesson independently.
+- **E3, E4, E6 — NONE.** A single-seed before/after cannot support an accuracy claim however
+  plausible the delta and its mechanism look: 19.2's "fixed code is worse on 5 of 6 metrics" table
+  was overturned by measuring the noise floor, and phase 19.1 recorded the same lesson
+  independently.
 
-  **E4 and E6 additionally CANNOT be seed-swept as shipped** (found 2026-08-03 by attempting it).
-  `GRID_DEPTH_RANGE[0]` is evaluated once at import from the baseline camera array, but
-  `generate_camera_array` gives seed-dependent camera heights, so the required clearance floor
-  moves per seed while the constant does not. Seed 42 — the seed the constant was
-  derived from — passes with **exactly zero margin**.
+  > **REVISED 2026-08-03.** An earlier version of this subsection said E4 and E6 *cannot* be
+  > seed-swept as shipped, that only seed 42 yields a complete E6 sweep, that each configuration
+  > builds its own floor, and that the `depth_range=None` fix is inert at seed 42. **All four
+  > statements are wrong** and are corrected below. They were written from a partial model of the
+  > failure; the full diagnosis is `.planning/debug/e6-seed-locked-clearance-floor.md` (status
+  > `diagnosed`), which supersedes F12 in `19.3-CODE-TRACE-FINDINGS.md`. E6's verdict is
+  > **unchanged** — it still carries no accuracy claim — but the *reason* is that no band has been
+  > measured, **not** that none can exist.
 
-  **Measured, not predicted:** E6 was run end-to-end at three seeds.
+  **The mechanism, established rather than inferred.** `GRID_DEPTH_RANGE[0]`
+  (`e4_benchmark_grid.py:258`) is evaluated once at import from a seed-42 camera array, while
+  `generate_board_trajectory`'s guard re-derives the floor from each scenario's own `water_zs`.
+  `max(water_zs)` is a pure function of `(seed, n_cameras)`: it is **invariant to layout and
+  spacing** (verified over 180 arrays, 20 seeds x 3 layouts x 3 spacings — all 9 combinations give
+  one floor per seed) and **does** vary with `n_cameras` (11 of 23 seeds differ across {8, 12, 16}).
+  `run_configuration` builds **two** scenarios inside one `try` with a blanket `except` — the
+  calibration scene at `seed` (`e6:759`) and the held-out scene at `seed + 1_000_000` (`e6:787`) —
+  and **both** are checked against the same frozen constant. The printed floor identifies which
+  site raised, matching at 4 dp for **72/72** seed x configuration failure records.
 
-  | seed | result |
-  |---|---|
-  | 42 | `{'ok': 14}` — the only complete sweep |
-  | 47 | `{'failed': 14}` after 74 min of real compute; required floor 1.1830 m |
-  | 50 | `{'failed': 14}` after 84 min; required floor 1.1839 m, **baseline config included** |
+  That resolves the two failure modes:
 
-  **Only seed 42 yields a complete E6 sweep, so an E6 seed band is unobtainable as shipped.**
+  | seed | result | why |
+  |---|---|---|
+  | 42 | `{'ok': 14}` | calibration floor equals the constant *by construction* (zero margin); holdout clears by ~0.5 mm |
+  | 43-46 | `{'failed': 14}` in ~1 s | **calibration** draw fails; raises before Stage 2 ever runs |
+  | 47, 50 | `{'failed': 14}` after 74 / 84 min | calibration passes, Stage 2 + Stage 3 run **to convergence**, then the **holdout** draw fails and the finished solve is discarded |
 
-  An earlier draft of this entry carried a per-seed slack table predicting three legal seeds
-  (42/47/50). **That table was wrong and has been removed.** It was computed from a standalone
-  `generate_camera_array` call that does not reproduce how E6 actually constructs each
-  configuration's array — E6 sweeps layout and scale axes, and every configuration builds its own
-  array with its own `max(water_zs)` and therefore its own floor. The empirical three-seed result
-  above supersedes it. E6 records per-configuration failures as rows rather than raising, so such a run
-  still exits 0 and looks superficially successful.
+  An earlier draft carried a per-seed slack table predicting 42/47/50 legal. Its method was right —
+  a standalone `generate_camera_array` call *is* the call `build_grid_scenario` makes — but it was
+  **incomplete**, modelling only the calibration array. Legality requires both draws to clear.
 
-  So E4's published grid and E6's published sweep are single-seed **by necessity**, and no band can
-  exist for them without a code change. A fix — deriving the floor per scenario via
-  `depth_range=None`, which the guard's own error message recommends — is **verified inert at seed
-  42 by exact comparison**: the per-scenario floor is bit-identical to the frozen constant
-  (difference exactly 0.000e+00) and the resulting 100-frame trajectory matches on every `rvec` and
-  `tvec`. The committed nine-cell grid and E6 sweep would therefore be unchanged. Tracked as a
-  defect; not actioned in this phase, since regenerating published artifacts is outside plan 10's
-  scope.
+  **E6 is NOT seed-locked to 42, and it converges off 42.** Over seeds 0-499 at E6's
+  `n_cameras=12`, the calibration array is legal in 114/500 (22.8%), the holdout array in 117/500
+  (23.4%), and **both in 29/500 (5.8%)** — independently re-derived by the orchestrator, not taken
+  from the session's return text. Legal seeds below 100: **28, 42, 52, 62, 72, 75, 94.** Two of
+  them were run end-to-end with no source change:
+
+  | seed | wall clock | result | guard count |
+  |---|---|---|---|
+  | 42 | 96.6 min | `{'ok': 14}` | 0 on all 14 |
+  | 62 | 85 min | `{'ok': 14}` | 0 on all 14 |
+  | 28 | 83 min | `{'ok': 14}` | 0 on all 14 |
+
+  Accuracy is highly reproducible across the three: `reconstruction_rmse_mm` agrees within ~5% on
+  every configuration (baseline 0.4869 / 0.4689 / 0.4762; half_scale 0.3596 / 0.3380 / 0.3435) and
+  `reprojection_rms_px` to three decimals. **n = 3 is not a band and no band may be quoted from it**
+  — which is why E6's accuracy verdict stays NONE. Durable record:
+  `evidence/e6_seed_band_42_62_28.md` and the `.csv` beside it; the raw output under
+  `seed_sweep_19_3/e6/seed_{62,28}/` is gitignored and costs ~85 min/seed to regenerate.
+
+  **Two seed-fragile spots surfaced, both invisible while E6 was single-seed.**
+  (a) `scale/double_scale` optimality: `optimality_stage3_intrinsic_pass` is 0.00166 at seed 42 but
+  elevated on **both** non-42 seeds (1.139 and 0.2241), while that row's `reconstruction_rmse_mm`
+  is if anything slightly better off 42 (0.6619 vs 0.7244). **The optimality collapse this entry
+  credits to the geometry fix is therefore seed-fragile as a convergence-diagnostic statement** —
+  it is not an accuracy statement and was never claimed as one.
+  (b) `layout/line` parameter recovery: `xy_position_error_mm_mean` 2.231 / 1.565 / 6.152 and
+  `water_z_error_mm_mean` 3.452 / 8.251 / 11.76 (~4x spread, far above every other configuration)
+  while reconstruction and reprojection stay clean — this project's documented weak-observability
+  signature.
+
+  **E4 remains unbanded, and for a stronger reason than E6.** It sweeps `n_cameras` ∈ {8, 12, 16},
+  which *does* move the floor, giving up to **six** independent legality draws per seed against one
+  frozen constant. Its published nine-cell grid is safe at seed 42 (all six draws clear) but must
+  not be assumed safe at any other seed.
+
+  **The fix is specified but deliberately not applied here** — it lands in a phase created after
+  19.3 closes. Note for that phase: the guard's own suggested remedy, `depth_range=None`, is
+  **NOT inert**. It is bit-identical for the calibration scene but shifts the **holdout** scene's
+  board depths by up to **0.469 mm**, silently moving every published E4 and E6 held-out accuracy
+  number. *An earlier version of this subsection asserted the opposite; that assertion covered only
+  the calibration scenario and is retracted.* The form that is bit-inert for both is
+  `max(GRID_DEPTH_RANGE[0], board_clearance_floor(GRID_BOARD_CONFIG, water_zs, 15.0))`, verified on
+  all 100 poses' `rvec` and `tvec`.
+
+  **Independent of all the above and still true:** E6 records a per-configuration failure as a
+  `status="failed"` row rather than raising, so a run in which all 14 configurations died still
+  **exits 0**. Check `status` counts, never the exit code.
 
 ### E1's 14,949 degenerate observations are bookkeeping, not contamination
 
@@ -796,7 +844,7 @@ contamination of the comparison, and this was established rather than assumed:
   orders of magnitude, so the probe is not blind.
 - Re-running both arms with `water_z` pinned at ground truth reproduces every non-refractive
   reconstruction number to ~4 significant figures (2.5 m Z-RMSE 248.267 -> 248.221 mm) while
-  driving the guard count to **0** and optimality from 874 to 0.525.
+  driving the guard count to **0** and optimality from 9e+02 to 5e-01 (one significant figure).
 
 **Consequence: the refractive-vs-non-refractive comparison is unaffected by the projection guard.**
 
@@ -999,7 +1047,10 @@ any specific cause — it is 0.09x of the seed band and both an earlier version 
 session narrative asserted a decomposition that was measuring noise. That the fix *improved*
 accuracy anywhere; nothing here measures that. That optimality improved by any specific factor
 beyond one significant figure. That the determinism statistic is a pass. That the refractive model
-is "below 2 mm at every depth" as an unconditional bound — seed 44 reaches 2.111 mm.
+is "below 2 mm at every depth" as an unconditional bound — seed 44 reaches 2.111 mm. That E6's
+optimality collapse holds at seeds other than 42 — `scale/double_scale` is elevated on the
+intrinsic pass at both non-42 seeds measured (n=3), so the collapse is a seed-42 observation about
+a convergence *diagnostic*, not a general result. It carries no accuracy consequence either way.
 
 ---
 
