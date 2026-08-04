@@ -409,13 +409,17 @@ are re-measured; the three unaffected ones are proven unaffected.
   4. `GRID_DEPTH_RANGE` re-derived; the clearance floor is seed-invariant by construction.
   5. E4, E6 and E7 re-measured, with E7's 10-seed band re-measured on the corrected geometry so
      it retains the milestone's only surviving accuracy claim.
+  5a. E1 and E7 gain a `--seeds` mode emitting a committed band CSV, so every banded number in
+     MF-08 is regenerable by running the experiment rather than trusting a planning document.
+     Today the bands live only in gitignored `seed_sweep_19_3/` output.
   6. Long runs abort on the first failed cell and exit non-zero.
 **Note**: **published numbers WILL move** for E4, E6 and E7 — the opposite of 19.3's constraint.
 Measured impact of the defect: mean 1.42 px, max 6.33 px over 31,680 corner observations, against
 an E4/E6 reprojection RMS of ~0.4-0.9 px. The modelling error exceeds the residual it was being
 measured against.
-**Verification cost**: ~7 h, one overnight run (full seven-stage queue 6 h 02 min + E7 band 50
-min), measured from 19.3's queue.
+**Verification cost**: ~9 h 30 min, one overnight run — full seven-stage queue 6 h 02 min, E7
+band +50 min, E1 band +57 min, E6 at formerly-failing seed 43 +99.6 min. Measured from 19.3's
+queue, not estimated.
 **Plans**: TBD (run `/gsd:plan-phase 19.4`)
 
 > **SUPERSEDED SCOPE.** This phase was created as "Grid-Family Clearance Floor Fix" and planned
