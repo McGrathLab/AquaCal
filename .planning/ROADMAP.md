@@ -392,6 +392,9 @@ Plans:
 
 ### Phase 19.4: Single Flat Interface (INSERTED)
 
+**End state this serves**: good-quality, CURRENT numbers across ALL experiments, ready for
+analysis and transfer into the publication — a result set a reviewer could re-run and reproduce,
+and the author can lift numbers from directly. The interface fix is the means, not the end.
 **Goal**: Every synthetic scenario models **one flat water surface shared by all cameras**,
 matching the physical premise the method and the manuscript rest on. The per-camera interface
 *distance* variation is preserved by moving it onto camera height. The three affected experiments
@@ -416,6 +419,10 @@ are re-measured; the three unaffected ones are proven unaffected.
   7. The verification queue runs risk-first (e6, e4 early) so both high-risk stages complete
      inside 4 h, and a src defect triggers abort-and-restart rather than a midstream edit that
      would split the one-git-sha-per-artifact property.
+  8. **Before the queue launches**, a coverage matrix confirms each reviewer point is still
+     answered by the experiment assigned to it — read against the pre-review paper, the reviewer
+     responses, and the response plan that spawned the experiment chain. A gap amends the queue
+     BEFORE launch, not after.
 **Note**: **published numbers WILL move** for E4, E6 and E7 — the opposite of 19.3's constraint.
 Measured impact of the defect: mean 1.42 px, max 6.33 px over 31,680 corner observations, against
 an E4/E6 reprojection RMS of ~0.4-0.9 px. The modelling error exceeds the residual it was being
