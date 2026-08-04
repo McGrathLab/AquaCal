@@ -397,8 +397,8 @@ analysis and transfer into the publication — a result set a reviewer could re-
 and the author can lift numbers from directly. The interface fix is the means, not the end.
 **Goal**: Every synthetic scenario models **one flat water surface shared by all cameras**,
 matching the physical premise the method and the manuscript rest on. The per-camera interface
-*distance* variation is preserved by moving it onto camera height. The three affected experiments
-are re-measured; the three unaffected ones are proven unaffected.
+*distance* variation is preserved by moving it onto camera height. The two affected experiments
+(E4, E6) are re-measured; the four unaffected ones (E1, E3, E5, E7) are proven unaffected.
 **Depends on**: Phase 19.3
 **Requirements**: TBD — to be added during planning
 **Source brief**: `19.4-RESCOPE-PROPOSAL.md` (the five-source audit and the pixel measurement);
@@ -408,10 +408,11 @@ are re-measured; the three unaffected ones are proven unaffected.
      covering all three `create_scenario` presets, `generate_real_rig_array`, and
      `generate_camera_array` across layouts and seeds.
   2. The jitter moves from `water_z` to `C_z` with each camera's `h_c` preserved exactly.
-  3. E1, E3 and E5 are PROVEN bit-inert, not assumed.
+  3. E1, E3, E5 **and E7** are PROVEN bit-inert, not assumed.
   4. `GRID_DEPTH_RANGE` re-derived; the clearance floor is seed-invariant by construction.
-  5. E4, E6 and E7 re-measured, with E7's 10-seed band re-measured on the corrected geometry so
-     it retains the milestone's only surviving accuracy claim.
+  5. E4 and E6 re-measured. E7's 10-seed band is produced as a committed artifact so the
+     milestone's only surviving accuracy claim becomes regenerable — its numbers are reproduced,
+     not replaced.
   5a. E1 and E7 gain a `--seeds` mode emitting a committed band CSV, so every banded number in
      MF-08 is regenerable by running the experiment rather than trusting a planning document.
      Today the bands live only in gitignored `seed_sweep_19_3/` output.
@@ -423,7 +424,10 @@ are re-measured; the three unaffected ones are proven unaffected.
      answered by the experiment assigned to it — read against the pre-review paper, the reviewer
      responses, and the response plan that spawned the experiment chain. A gap amends the queue
      BEFORE launch, not after.
-**Note**: **published numbers WILL move** for E4, E6 and E7 — the opposite of 19.3's constraint.
+**Note**: **published numbers WILL move** for E4 and E6 — the opposite of 19.3's constraint.
+(Corrected 2026-08-04 during planning: E7 was originally listed here. E7 runs the `"realistic"`
+scenario, which resolves to `generate_real_rig_array`'s frozen shared `WATER_Z`, and never calls
+`generate_camera_array` — so it is inert. See `19.4-CONTEXT.md` § CORRECTION.)
 Measured impact of the defect: mean 1.42 px, max 6.33 px over 31,680 corner observations, against
 an E4/E6 reprojection RMS of ~0.4-0.9 px. The modelling error exceeds the residual it was being
 measured against.
