@@ -413,6 +413,9 @@ are re-measured; the three unaffected ones are proven unaffected.
      MF-08 is regenerable by running the experiment rather than trusting a planning document.
      Today the bands live only in gitignored `seed_sweep_19_3/` output.
   6. Long runs abort on the first failed cell and exit non-zero.
+  7. The verification queue runs risk-first (e6, e4 early) so both high-risk stages complete
+     inside 4 h, and a src defect triggers abort-and-restart rather than a midstream edit that
+     would split the one-git-sha-per-artifact property.
 **Note**: **published numbers WILL move** for E4, E6 and E7 — the opposite of 19.3's constraint.
 Measured impact of the defect: mean 1.42 px, max 6.33 px over 31,680 corner observations, against
 an E4/E6 reprojection RMS of ~0.4-0.9 px. The modelling error exceeds the residual it was being
