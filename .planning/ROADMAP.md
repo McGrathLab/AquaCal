@@ -444,10 +444,10 @@ queue, not estimated.
 > historical.
 
 Plans:
-- [ ] 19.4-01-PLAN.md — wave 1 — archive E4's and E6's pre-interface-fix artifacts with provenance READMEs (SC-5, D-19.4-10)
-- [ ] 19.4-02-PLAN.md — wave 1 — move `generate_camera_array`'s jitter from `water_z` to `C_z` and add the scenario-invariant one-water_z test (SC-1, SC-2, D-19.4-09)
-- [ ] 19.4-03-PLAN.md — wave 1 — pre-run reviewer-intent coverage matrix; GATES the queue (SC-8, D-19.4-17)
-- [ ] 19.4-05-PLAN.md — wave 1 — shared `parse_seed_list`/`run_seed_band` in `_io.py` plus E7's `--seeds` band (SC-5a, D-19.4-14)
+- [x] 19.4-01-PLAN.md — wave 1 — archive E4's and E6's pre-interface-fix artifacts with provenance READMEs (SC-5, D-19.4-10)
+- [x] 19.4-02-PLAN.md — wave 1 — move `generate_camera_array`'s jitter from `water_z` to `C_z` and add the scenario-invariant one-water_z test (SC-1, SC-2, D-19.4-09)
+- [x] 19.4-03-PLAN.md — wave 1 — pre-run reviewer-intent coverage matrix; GATES the queue (SC-8, D-19.4-17)
+- [x] 19.4-05-PLAN.md — wave 1 — shared `parse_seed_list`/`run_seed_band` in `_io.py` plus E7's `--seeds` band (SC-5a, D-19.4-14)
 - [ ] 19.4-04-PLAN.md — wave 2 — `derive_grid_depth_range` helper, floor re-derived to 1.176215948246, E1/E3/E5/E7 inertness proof (SC-3, SC-4, D-19.4-12/15)
 - [ ] 19.4-06-PLAN.md — wave 2 — E1's `--seeds` band over the depth-generalization rows (SC-5a, D-19.4-14)
 - [ ] 19.4-07-PLAN.md — wave 3 — fail-fast in E4 and E6 with a `--no-fail-fast` opt-out (SC-6, D-19.4-11)
@@ -533,7 +533,7 @@ behavior the published artifacts actually reflect.
 | 19.1 Experiment Suite Consolidation | v1.9 | 8/8 | Complete    | 2026-07-27 |
 | 19.2 Experiment Execution and Provenance | v1.9 | 29/29 | Complete   | 2026-08-01 |
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
-| 19.4 Single Flat Interface | v1.9 | 0/TBD | Not started | - |
+| 19.4 Single Flat Interface | v1.9 | 4/10 | In Progress|  |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
 | 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/TBD | Not started | - |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
