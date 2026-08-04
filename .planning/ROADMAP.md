@@ -403,7 +403,7 @@ matching the physical premise the method and the manuscript rest on. The per-cam
 **Requirements**: SC-1, SC-2, SC-3, SC-4, SC-5, SC-5a, SC-6, SC-7, SC-8 (this phase's Success
 Criteria below ARE its requirement set; REQUIREMENTS.md maps no IDs to 19.4)
 **Source brief**: `19.4-RESCOPE-PROPOSAL.md` (the five-source audit and the pixel measurement);
-`19.4-CONTEXT.md` (decisions D-19.4-09..13)
+`19.4-CONTEXT.md` (decisions D-19.4-09..17, plus § CORRECTION: E7 is inert)
 **Success Criteria** (what must be TRUE):
   1. Every synthetic scenario source yields exactly ONE distinct `water_z`, asserted by a test
      covering all three `create_scenario` presets, `generate_real_rig_array`, and

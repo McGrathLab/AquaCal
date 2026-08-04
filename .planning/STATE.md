@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.4 re-scoped to Single Flat Interface; decisions locked, plans deleted, awaiting /gsd:plan-phase 19.4"
-last_updated: "2026-08-04T14:12:10.083Z"
-last_activity: "2026-08-04 -- Phase 19.3 closed and verified; Phase 19.4 re-scoped after a ground-truth interface defect was found"
+stopped_at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
+last_updated: "2026-08-04T17:44:06.210Z"
+last_activity: 2026-08-04 -- Phase 19.4 planning complete
 progress:
   total_phases: 11
   completed_phases: 7
-  total_plans: 73
+  total_plans: 83
   completed_plans: 73
   percent: 64
 ---
@@ -33,19 +33,30 @@ Phase: 19.3 (scenario-geometry-and-convergence) — **COMPLETE 2026-08-04**, 10/
   **Only E7 carries an accuracy claim** — D-19.3-17 applied strictly demoted E1 (its band was
   pre-fix geometry) and E5 (its band varies the assumed index, not the seed).
 
-Phase: **19.4 — Single Flat Interface. RE-SCOPED 2026-08-04. Decisions locked, plans DELETED,
-  not yet re-planned.** Next command: `/gsd:plan-phase 19.4`.
+Phase: **19.4 — Single Flat Interface. PLANNED 2026-08-04 — 10 plans in 6 waves, plan-checker
+  PASSED.** Next command: `/gsd:execute-phase 19.4`.
 
   **The clearance-floor scope is CANCELLED.** `generate_camera_array` applied its per-camera
   jitter to `water_z` — the world-frame Z of the water *surface* — giving each camera its own
   water plane, while the paper's whole premise is a single flat interface. The clearance floor
   only moved with the seed because of that. Measured: mean **1.42 px**, max **6.33 px** over
   31,680 corner observations, against an E4/E6 reprojection RMS of ~0.4–0.9 px — the modelling
-  error exceeded the residual being reported. Affects **E4, E6, E7**; E1/E3/E5 are clean.
+  error exceeded the residual being reported. Affects **E4 and E6 only**; E1/E3/E5/E7 are clean.
+
+  **CORRECTION 2026-08-04 (during planning): E7 is INERT, not affected.** E7 runs the
+  `"realistic"` scenario (`e7_interface_ablation.py:212`), which resolves to
+  `generate_real_rig_array()`'s frozen shared `WATER_Z`, and never calls `generate_camera_array`.
+  Same for E1, whose inertness this file (and CONTEXT.md) previously justified via the wrong
+  preset. **MF-05 does not move.** E7 still gains its `--seeds` band — that decision was always
+  about reproducibility, not movement. See `19.4-CONTEXT.md` § CORRECTION.
 
   **DO NOT implement D-19.4-01..08** (the `max(GRID_DEPTH_RANGE[0], derived)` form, the
   checkpoint-payload work). They existed to preserve seed-42 bit-inertness, which this phase
-  deliberately gives up. Live decisions are **D-19.4-09..16** in `19.4-CONTEXT.md`.
+  deliberately gives up. Live decisions are **D-19.4-09..17** in `19.4-CONTEXT.md`.
+
+  **Plan 19.4-03 is a blocking gate:** the D-19.4-17 reviewer-intent coverage matrix must be
+  approved before any production stage runs, and an AMENDED verdict changes the queue's stage
+  list. Plan 19.4-09 is the ~9 h 30 min overnight queue and changes no code.
 
   Superseded planning input (mechanism still correct, "fix" section is not):
   `.planning/debug/e6-seed-locked-clearance-floor.md` — root cause, all six call sites, the
@@ -67,12 +78,12 @@ Plan: 1 of 10
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Phase 19.3 COMPLETE and VERIFIED (19.3-VERIFICATION.md, status passed, 7/7). Phase 19.4 inserted, awaiting planning.
+Status: Ready to execute
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-04 -- Phase 19.3 closed (10/10). The milestone now cuts **v2.0.0**,
+Last activity: 2026-08-04 -- Phase 19.4 planning complete
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
