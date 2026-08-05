@@ -570,6 +570,122 @@ def check_e7(out_dir: Path) -> list[GateResult]:
     return results
 
 
+def check_band_csv(
+    experiment: str,
+    out_dir: Path,
+    csv_name: str,
+    sidecar_glob: str,
+) -> list[GateResult]:
+    """Gate the `--seeds` band CSVs introduced by D-19.4-14 (SC-5a).
+
+    A band exists to make a published number REGENERABLE: before this phase,
+    MF-05's per-arm bands and MF-08's 97-178x ratio spread lived only in
+    gitignored `seed_sweep_19_3/` output, so a reviewer had to take the summary
+    tables on trust. The gate therefore checks the property that makes the
+    artifact trustworthy -- that it really contains the N independent seeds its
+    provenance claims -- not merely that a file appeared.
+
+    Verdicts:
+        N/A   the band CSV is absent (its stage has not run yet).
+        FAIL  no `seed` column; or the count of DISTINCT seeds in the CSV
+              disagrees with the length of `solver_config["seeds"]` recorded in
+              the sidecar. A short band silently quoted as a 10-seed band is
+              exactly the failure this catches.
+        PASS  distinct-seed count matches the recorded seed list.
+
+    Args:
+        experiment: Experiment label, e.g. `"E7"`.
+        out_dir: Root output directory.
+        csv_name: Band CSV filename, e.g. `"interface_ablation_band.csv"`.
+        sidecar_glob: Glob for the provenance sidecars carrying `seeds`.
+
+    Returns:
+        One `GateResult` for this band artifact.
+    """
+    csv_path = out_dir / csv_name
+    gate = f"gate4_band:{csv_name}"
+    if not csv_path.exists():
+        return [
+            GateResult(
+                experiment,
+                gate,
+                "N/A",
+                f"{csv_name} not present (its stage has not run yet)",
+            )
+        ]
+
+    try:
+        band = pd.read_csv(csv_path)
+    except (OSError, ValueError) as exc:
+        return [
+            GateResult(
+                experiment,
+                gate,
+                "FAIL",
+                f"{csv_name} unreadable: {type(exc).__name__}: {exc}",
+            )
+        ]
+
+    if "seed" not in band.columns:
+        return [
+            GateResult(
+                experiment,
+                gate,
+                "FAIL",
+                f"{csv_name} has no 'seed' column; a band CSV without it cannot be "
+                "attributed to the seeds it claims to cover",
+            )
+        ]
+
+    distinct = sorted({int(s) for s in band["seed"].tolist()})
+
+    recorded: list[int] | None = None
+    sidecar_used: str | None = None
+    for path in sorted(out_dir.glob(sidecar_glob)):
+        record = _load_json(path)
+        if not isinstance(record, dict):
+            continue
+        seeds = record.get("solver_config", {}).get("seeds")
+        if isinstance(seeds, list) and seeds:
+            recorded = [int(s) for s in seeds]
+            sidecar_used = path.name
+            break
+
+    if recorded is None:
+        return [
+            GateResult(
+                experiment,
+                gate,
+                "FAIL",
+                f"{csv_name} exists with {len(distinct)} distinct seed(s) {distinct}, but no "
+                f"sidecar matching '{sidecar_glob}' records solver_config['seeds'] -- the band "
+                "cannot be verified against what was actually requested",
+            )
+        ]
+
+    if len(distinct) != len(recorded):
+        return [
+            GateResult(
+                experiment,
+                gate,
+                "FAIL",
+                f"{csv_name} carries {len(distinct)} distinct seed(s) {distinct} but "
+                f"{sidecar_used} records {len(recorded)} requested seed(s) {sorted(recorded)} -- "
+                "a partial band must never be quoted as a full one",
+            )
+        ]
+
+    return [
+        GateResult(
+            experiment,
+            gate,
+            "PASS",
+            f"{csv_name}: {len(distinct)} distinct seed(s) {distinct} match "
+            f"{sidecar_used}'s recorded seed list",
+        )
+    ]
+
+
 def _collect_all_json_paths(out_dir: Path) -> list[Path]:
     """Every JSON artifact this run's gates read, for the cross-artifact
     git_sha consistency check."""
@@ -644,6 +760,13 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
     results += check_e5(out_dir)
     results += check_e6(out_dir)
     results += check_e7(out_dir)
+    # D-19.4-14's band artifacts. Only E7 and E1 have bands this phase -- E4 and
+    # E6 bands cost ~39 h together and neither carries an accuracy claim, so
+    # they are a Deferred Idea, not an omission.
+    results += check_band_csv(
+        "E7", out_dir, "interface_ablation_band.csv", "e7_benchmark_*.json"
+    )
+    results += check_band_csv("E1", out_dir, "exp1_band.csv", "e1_benchmark_*.json")
     results.append(_check_git_sha_consistency(out_dir))
     return results
 

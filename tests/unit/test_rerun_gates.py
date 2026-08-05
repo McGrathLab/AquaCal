@@ -13,6 +13,7 @@ import pandas as pd
 
 from experiments.check_rerun_gates import (
     GateResult,
+    check_band_csv,
     check_e1,
     check_e3,
     check_e4,
@@ -636,3 +637,80 @@ class TestMainCli:
         captured = capsys.readouterr()
         assert exit_code == 0, captured.out
         assert "0 FAIL" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# D-19.4-14 band-CSV gates (SC-5a)
+#
+# A band exists to make a published number regenerable. The gate must therefore
+# check that the CSV really carries the N independent seeds its provenance
+# claims -- a short band silently quoted as a 10-seed band is the failure mode
+# these tests pin down.
+# ---------------------------------------------------------------------------
+
+
+def _write_band(path: Path, seeds: list[int]) -> None:
+    """Two rows per seed, so distinct-seed counting is exercised rather than
+    plain row counting."""
+    rows = {"seed": [s for s in seeds for _ in range(2)]}
+    rows["value"] = list(range(len(rows["seed"])))
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def test_band_gate_na_when_csv_absent(tmp_path):
+    results = check_band_csv(
+        "E7", tmp_path, "interface_ablation_band.csv", "e7_benchmark_*.json"
+    )
+    assert len(results) == 1
+    assert results[0].verdict == "N/A"
+
+
+def test_band_gate_passes_when_distinct_seeds_match_sidecar(tmp_path):
+    seeds = [42, 43, 44]
+    _write_band(tmp_path / "interface_ablation_band.csv", seeds)
+    _write_json(
+        tmp_path / "e7_benchmark_shared_fixed.json",
+        {"solver_config": {"seeds": seeds}},
+    )
+    results = check_band_csv(
+        "E7", tmp_path, "interface_ablation_band.csv", "e7_benchmark_*.json"
+    )
+    assert results[0].verdict == "PASS", results[0].detail
+
+
+def test_band_gate_fails_when_band_is_short(tmp_path):
+    """The negative case: the sidecar records 10 seeds, the CSV holds 3."""
+    _write_band(tmp_path / "exp1_band.csv", [42, 43, 44])
+    _write_json(
+        tmp_path / "e1_benchmark_refractive.json",
+        {"solver_config": {"seeds": list(range(42, 52))}},
+    )
+    results = check_band_csv("E1", tmp_path, "exp1_band.csv", "e1_benchmark_*.json")
+    assert results[0].verdict == "FAIL"
+    assert "must never be quoted as a full one" in results[0].detail
+
+
+def test_band_gate_fails_without_seed_column(tmp_path):
+    pd.DataFrame({"value": [1, 2]}).to_csv(tmp_path / "exp1_band.csv", index=False)
+    _write_json(
+        tmp_path / "e1_benchmark_refractive.json",
+        {"solver_config": {"seeds": [42]}},
+    )
+    results = check_band_csv("E1", tmp_path, "exp1_band.csv", "e1_benchmark_*.json")
+    assert results[0].verdict == "FAIL"
+    assert "no 'seed' column" in results[0].detail
+
+
+def test_band_gate_fails_when_sidecar_records_no_seeds(tmp_path):
+    """A band CSV with no provenance to check it against is unverifiable, which
+    is a FAIL rather than a pass-by-absence."""
+    _write_band(tmp_path / "interface_ablation_band.csv", [42, 43])
+    _write_json(
+        tmp_path / "e7_benchmark_shared_fixed.json",
+        {"solver_config": {"seed": 42}},
+    )
+    results = check_band_csv(
+        "E7", tmp_path, "interface_ablation_band.csv", "e7_benchmark_*.json"
+    )
+    assert results[0].verdict == "FAIL"
+    assert "cannot be verified" in results[0].detail

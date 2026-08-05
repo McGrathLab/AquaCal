@@ -40,8 +40,10 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || { echo "FATAL: cannot cd to repo root"; exit 1; }
 
 PYTHON_BIN="${PRELAUNCH_GATE_PYTHON:-$HOME/anaconda3/envs/AquaCal/python.exe}"
-SHA_FILE="experiments/rerun_19_3_frozen_sha.txt"
-PLAN03_SUMMARY=".planning/phases/19.3-scenario-geometry-and-convergence/19.3-03-SUMMARY.md"
+SHA_FILE="experiments/rerun_19_4_frozen_sha.txt"
+# Phase 19.4's archiving plan is 01, not 03. The variable keeps its name so the
+# ARCHIVES_PRESENT block below reads unchanged.
+PLAN03_SUMMARY=".planning/phases/19.4-grid-family-clearance-floor-fix/19.4-01-SUMMARY.md"
 SUPERSEDED_BRANCH="worktree-agent-a1a99b5a5289e9e05"
 
 FAILURES=()
@@ -50,7 +52,7 @@ pass() { echo "PASS $1"; }
 fail() { echo "FAIL $1 -- $2"; FAILURES+=("$1"); }
 
 echo "=============================================================="
-echo " Phase 19.3 pre-launch freeze gate"
+echo " Phase 19.4 pre-launch freeze gate"
 echo " repo root: $REPO_ROOT"
 echo " started:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "=============================================================="
@@ -78,7 +80,7 @@ if [ ! -x "$PYTHON_BIN" ] && ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
 else
   # No -m selector is passed, and none can be injected: the argument list here
   # is a literal. PYTEST_ADDOPTS is cleared so it cannot smuggle one in.
-  echo "running: $PYTHON_BIN -m pytest tests/ -q   (UNFILTERED -- expect ~24 min)"
+  echo "running: $PYTHON_BIN -m pytest tests/ -q   (UNFILTERED -- expect ~60-90 min)"
   PYTEST_LOG="$(mktemp)"
   env -u PYTEST_ADDOPTS "$PYTHON_BIN" -m pytest tests/ -q 2>&1 | tee "$PYTEST_LOG"
   PYTEST_RC="${PIPESTATUS[0]}"
@@ -117,18 +119,27 @@ echo
 # ---------------------------------------------------------------------------
 # 4. ARCHIVES_PRESENT
 #
-# The expected set is READ FROM PLAN 03'S SUMMARY, not hardcoded -- plan 03 is
-# the authority on which experiments it archived, and hardcoding "five" here
-# would silently pass if plan 03 had covered a different set. E3 is checked
-# separately and unconditionally, because plan 03 did NOT archive it (E3 was
-# added to scope after planning, Amendment A) and its tier-2 baseline is about
-# to be overwritten.
+# The expected set is READ FROM THE ARCHIVING PLAN'S SUMMARY, not hardcoded --
+# that plan is the authority on which experiments it archived, and hardcoding a
+# count here would silently pass if it had covered a different set.
+#
+# PHASE 19.4: the expected set narrows to {e4, e6}. 19.3 archived six or seven
+# experiments because its geometry fix moved nearly everything. This phase's fix
+# moves only the grid family: E1, E3, E5 and E7 are PROVEN inert (none of them
+# reaches generate_camera_array -- E1 and E7 run the "realistic" scenario, which
+# resolves to generate_real_rig_array's frozen shared WATER_Z). Archiving an
+# artifact that is about to be reproduced byte-for-byte records nothing, so
+# D-19.4-10 was narrowed accordingly.
+#
+# 19.3's unconditional E3 special case is therefore REMOVED here, not repointed:
+# E3 has no pre-interface-fix archive in this phase because E3 does not move.
+# Its inertness is proven by byte-comparison in plan 10 instead.
 # ---------------------------------------------------------------------------
 echo "--- 4. ARCHIVES_PRESENT -------------------------------------"
 if [ ! -f "$PLAN03_SUMMARY" ]; then
   fail ARCHIVES_PRESENT "plan 03 SUMMARY not found at $PLAN03_SUMMARY -- cannot derive the expected archive set"
 else
-  EXPECTED_DIRS="$(grep -oE 'experiments/archive/e[0-9]+-2026-08-02-pre-depth-fix' "$PLAN03_SUMMARY" \
+  EXPECTED_DIRS="$(grep -oE 'experiments/archive/e[0-9]+-2026-08-04-pre-interface-fix' "$PLAN03_SUMMARY" \
                     | sort -u)"
   if [ -z "$EXPECTED_DIRS" ]; then
     fail ARCHIVES_PRESENT "no archive directories could be parsed out of $PLAN03_SUMMARY"
@@ -148,22 +159,9 @@ else
       fi
     done <<< "$EXPECTED_DIRS"
 
-    # E3 -- not part of plan 03's set; checked unconditionally.
-    E3_DIR="experiments/archive/e3-2026-08-02-pre-depth-fix"
-    E3_OK=true
-    for F in newton_iterations.csv code_constants.csv cpr_grouping.csv; do
-      if [ -f "$E3_DIR/$F" ]; then
-        echo "  present: $E3_DIR/$F"
-      else
-        echo "  MISSING: $E3_DIR/$F"
-        E3_OK=false
-      fi
-    done
-    if [ "$E3_OK" = true ]; then
-      COVERED="$COVERED e3"
-    else
-      MISSING="$MISSING e3"
-    fi
+    # 19.3's unconditional E3 archive check is deliberately absent -- see the
+    # block comment above. E3 is inert under this phase's fix and is not
+    # archived; proving that is plan 10's byte-comparison, not this gate's job.
 
     echo "archive set covers experiments:$COVERED"
     if [ -n "$MISSING" ]; then
