@@ -98,15 +98,53 @@ so resuming/taking over was correct and re-running the whole plan would have bee
   and return waiting on it.
 - Tell them what *not* to run — plan 08 writes a queue script but must not execute the ~9 h
   sweep; without that sentence an executor may try, and then stall for hours.
-- Split a ~10 min suite into `-m "not slow"` then `-m "slow"` rather than one unfiltered run, so
-  each call finishes inside the tool's 10-minute ceiling. (The two together are still required —
-  `-m "not slow"` deselects the bit-identity suites that are often the actual evidence.)
+- ~~Split a ~10 min suite into `-m "not slow"` then `-m "slow"`~~ — **superseded 2026-08-04.**
+  This no longer works: `-m "not slow"` alone is now ~26 min, itself 2.6x over the ceiling.
 - If an executor stalls twice on the same step, stop resuming it and finish that step in the
   orchestrator. Note in the SUMMARY who measured what, so later readers know which numbers came
   from the executor and which from the orchestrator.
 **References**: `.planning/phases/19.3-scenario-geometry-and-convergence/19.3-07-SUMMARY.md`
 (its header records the takeover), `19.3-ORCHESTRATOR-NOTES.md`.
 **Added**: 2026-08-02
+
+#### ROOT CAUSE, found 2026-08-04 (phase 19.4) — and the policy that removes it
+
+**The mechanism is a harness message that is correct for the orchestrator and fatal for a
+subagent.** When a Bash call exceeds the tool's ceiling it is auto-backgrounded, and the tool
+returns *"You will be notified when it completes."* For the top-level agent that is true. For a
+subagent, **ending its turn IS task completion** — there is no one left to deliver the
+notification to. The tool therefore instructs precisely the behaviour that kills the agent, which
+is why hardening the prompt kept failing: the prompt said "never do X" while the tool said "X is
+how this works." In phase 19.4, five of six executors stalled, including ones given an explicit
+anti-stall section and a literal `until grep ...; do sleep 10; done` poll recipe.
+
+**Why it started in this milestone.** The suite crossed the ceiling by a wide margin, and only
+recently. Measured in phase 19.4: unfiltered post-merge runs of **56 min** and **88 min**; a
+plan's own suite run 47 min; `-m "not slow"` ~26 min. The ceiling is 600 s. Test *count* is not
+the cause (1168 → 1283 → 1411 across 19.2/19.3/19.4); test *content* is — phases 16-19.4 added
+tests that run real optimizations and full synthetic calibrations (`test_discard_accounting.py`
+alone is ~127 s for 13 tests). Before this milestone most runs fit under the ceiling, so nobody
+hit the trap.
+
+**Policy (user decision, 2026-08-04): the full suite belongs to the post-merge gate, not to
+executors.**
+- Executor plans get a **targeted** test command — the files their own plan touches — which
+  finishes inside the ceiling.
+- The **orchestrator** owns the one unfiltered `pytest tests/` run, in the post-merge gate, where
+  auto-backgrounding is harmless because the notification actually arrives.
+- Executor prompts should say plainly: *"Do NOT run the full suite; the orchestrator runs it at
+  the post-merge gate."* Removing the trap beats asking agents to resist it.
+- This also puts the integration run where it belongs — after merge, where cross-plan breakage is
+  visible. A per-executor suite run cannot see the other plans in its own wave anyway. Phase
+  19.4's wave-2 gate proved the point: plans 04 and 06 each passed alone and contradicted each
+  other once merged.
+
+**Still binding regardless:** never trust a subagent's return text. Verify against
+`git log --oneline <base>..<worktree-branch>`, `git -C <worktree> status --porcelain` for
+uncommitted work at risk, and an `ls` for the expected SUMMARY.md. In 19.4 that discipline caught
+every one of the five stalls with zero work lost — including plan 05, whose completed Task 2
+existed only as uncommitted files that would have died with its worktree.
+**Added**: 2026-08-04
 
 ### Neither CLAUDE.md nor .claude/ is tracked in this repo
 **Context**: Attempted to record the pitfall above in `.claude/rules/`, believing it was tracked.
