@@ -179,6 +179,24 @@ CHECK_RTOL = 1e-6
 # parsing stdout (review H2, H3).
 SKIPPED_EXIT_CODE = 3
 
+
+def _fail_fast_abort_message(key: str, detail: str) -> str:
+    """Format the D-19.4-11 fail-fast abort message.
+
+    `detail` is the failure's own `status_reason` (or, in the direct
+    `--cell` path, `f"{type(exc).__name__}: {exc}"`) -- both already carry
+    the exception type and message verbatim, and for a clearance-floor
+    rejection both the supplied minimum and the derived floor, since
+    `generate_board_trajectory`'s own `ValueError` message already includes
+    both numbers (D-19.3-01). Nothing here recomposes those numbers.
+    """
+    return (
+        f"FAIL-FAST ABORT (D-19.4-11): {key} failed: {detail}\n"
+        'Pass --no-fail-fast to record this as a status="failed" row and '
+        "continue instead (19.2-21's pre-authorised use case)."
+    )
+
+
 # Two trivial, non-declared cells (3 cameras, 3-4 frames) that --smoke runs
 # through the SAME subprocess hop as the real grid, so CI proves the parent/
 # child contract works end to end rather than only the in-process path.
@@ -732,7 +750,12 @@ def _classify_memory_pressure(memory: dict) -> str:
 
 
 def run_grid_cell(
-    n_cameras: int, n_frames: int, seed: int, out_dir: Path, force: bool
+    n_cameras: int,
+    n_frames: int,
+    seed: int,
+    out_dir: Path,
+    force: bool,
+    fail_fast: bool = False,
 ) -> dict:
     """Run exactly one grid cell to completion and record its outcome.
 
@@ -763,6 +786,13 @@ def run_grid_cell(
             `out_dir/e4_cells/cameras_<n_cameras>_frames_<n_frames>/`.
         force: Overwrite an existing `benchmark.json` for this cell instead
             of skipping (resumability, D-24).
+        fail_fast: D-19.4-11. When `True`, an exception raised during the
+            cell's own work is RE-RAISED after being logged, instead of
+            being swallowed into a `status="failed"` dict -- so the CHILD
+            process this function runs inside (via `--cell`) genuinely
+            exits non-zero. Default `False` preserves this function's
+            original never-raises contract for direct callers (unit tests,
+            `--no-fail-fast`).
 
     Returns:
         A dict with at least `cell_key`, `n_cameras`, `n_frames`, `status`
@@ -956,6 +986,12 @@ def run_grid_cell(
         }
     except Exception as exc:
         logger.warning("Cell %s failed: %s: %s", cell_key, type(exc).__name__, exc)
+        if fail_fast:
+            # D-19.4-11: re-raise so the child process this function runs
+            # inside (via --cell) exits non-zero instead of swallowing the
+            # exception into a status="failed" dict the child then exits 0
+            # on.
+            raise
         return {
             "cell_key": cell_key,
             "n_cameras": n_cameras,
@@ -1024,6 +1060,7 @@ def run_cell_subprocess(
     out_dir: Path,
     force: bool,
     timeout: float | None = None,
+    no_fail_fast: bool = False,
 ) -> dict:
     """Run one cell in a child process (parent side; review H2, H3).
 
@@ -1049,6 +1086,9 @@ def run_cell_subprocess(
         force: Forwarded to the child's `--force` flag when True.
         timeout: Optional subprocess timeout in seconds. Production call
             sites always pass `CELL_TIMEOUT_SECONDS` explicitly.
+        no_fail_fast: D-19.4-11. Forwarded to the child's own `--no-fail-fast`
+            flag when `True`, so a direct `--cell` invocation of the spawned
+            child sees the same opt-out the parent was given.
 
     Returns:
         A dict with `cell_key`, `n_cameras`, `n_frames`, `status` (`"ok"`,
@@ -1071,6 +1111,8 @@ def run_cell_subprocess(
     ]
     if force:
         cmd.append("--force")
+    if no_fail_fast:
+        cmd.append("--no-fail-fast")
 
     status, status_reason, exit_code, elapsed = _invoke_subprocess_with_status_mapping(
         cmd, timeout
@@ -1481,6 +1523,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "run_cell_subprocess spawns. Not for direct interactive use. "
         "Mutually exclusive with --check and --smoke.",
     )
+    parser.add_argument(
+        "--no-fail-fast",
+        action="store_true",
+        default=False,
+        help="D-19.4-11: by default, the full nine-cell run aborts and "
+        "exits non-zero at the first cell that does not complete ok or "
+        "skipped_existing. Pass --no-fail-fast to restore the old "
+        "record-and-continue behaviour (every declared cell still gets a "
+        "row, the run always exits 0) -- the sole intended use is "
+        "19.2-21's pre-authorised 16x200 failing cell.",
+    )
     return parser
 
 
@@ -1596,24 +1649,40 @@ def _run_smoke(args: argparse.Namespace) -> int:
 
 
 def _run_full(args: argparse.Namespace) -> int:
-    """Run the nine declared cells (one subprocess each, sequentially) and render."""
+    """Run the nine declared cells (one subprocess each, sequentially) and render.
+
+    D-19.4-11: by default (`args.no_fail_fast` False, fail-fast ON), the loop
+    stops at the first cell whose status is neither `"ok"` nor
+    `"skipped_existing"`, prints the abort message to stderr, and returns
+    non-zero WITHOUT calling any subsequent cell. `--no-fail-fast` restores
+    the pre-existing behaviour exactly: every declared cell still runs, every
+    cell still gets a row (via `build_grid_dataframe`'s left join), and the
+    function still returns 0 regardless of any cell's recorded status.
+    """
     out_dir = resolve_out_dir(args.out)
+    fail_fast = not args.no_fail_fast
 
     cell_statuses = []
     for n_cameras, n_frames in DECLARED_CELLS:
         # Cells run one at a time, never concurrently -- E4 is a wall-clock
         # and peak-memory benchmark and two cells sharing the box would
         # contaminate both measurements.
-        cell_statuses.append(
-            run_cell_subprocess(
-                n_cameras,
-                n_frames,
-                args.seed,
-                out_dir,
-                args.force,
-                timeout=CELL_TIMEOUT_SECONDS,
-            )
+        row = run_cell_subprocess(
+            n_cameras,
+            n_frames,
+            args.seed,
+            out_dir,
+            args.force,
+            timeout=CELL_TIMEOUT_SECONDS,
+            no_fail_fast=args.no_fail_fast,
         )
+        cell_statuses.append(row)
+        if fail_fast and row["status"] not in ("ok", "skipped_existing"):
+            print(
+                _fail_fast_abort_message(row["cell_key"], row["status_reason"]),
+                file=sys.stderr,
+            )
+            return 1
 
     df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)
     write_experiment_csv(
@@ -1637,7 +1706,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.cell is not None:
         n_cameras, n_frames = _parse_cell(parser, args.cell)
         out_dir = resolve_out_dir(args.out)
-        row = run_grid_cell(n_cameras, n_frames, args.seed, out_dir, args.force)
+        fail_fast = not args.no_fail_fast
+        try:
+            row = run_grid_cell(
+                n_cameras, n_frames, args.seed, out_dir, args.force, fail_fast=fail_fast
+            )
+        except Exception as exc:
+            # D-19.4-11: fail_fast=True made run_grid_cell re-raise instead
+            # of swallowing the exception -- print the abort message with
+            # the cell key and the exception, then exit non-zero.
+            cell_key = f"cameras_{n_cameras}_frames_{n_frames}"
+            print(
+                _fail_fast_abort_message(cell_key, f"{type(exc).__name__}: {exc}"),
+                file=sys.stderr,
+            )
+            return 1
         logger.info("cell %s: status=%s", row["cell_key"], row["status"])
         if row["status"] == "ok":
             return 0
