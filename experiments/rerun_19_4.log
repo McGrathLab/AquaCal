@@ -1,0 +1,1448 @@
+[2026-08-05T04:27:15Z] Phase 19.4 re-run queue starting. HEAD at queue start: 2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395
+[2026-08-05T04:27:15Z] Risk-first order (D-19.4-16): e6_repeat1 e4 e6_repeat2 e6_seed43 e7 e1 e5 e3
+[2026-08-05T04:27:15Z] Resuming from stage index 1 (stages already marked complete are skipped regardless).
+[2026-08-05T04:27:15Z] >>> STAGE 1/8: e6_repeat1 starting
+[2026-08-05T04:27:15Z] e6_repeat1: clearing any partial E6 state under experiments/results before running
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7226e+04, final cost 9.2362e+03, first-order optimality 1.14e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 4.45e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 38, initial cost 2.5847e+05, final cost 9.1355e+03, first-order optimality 4.40e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1355e+03, final cost 9.1314e+03, first-order optimality 5.29e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.706128052685143
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 1.5048e+05, final cost 9.0531e+03, first-order optimality 5.77e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0531e+03, final cost 9.0473e+03, first-order optimality 4.02e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7054774527733221
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 9.0027e+04, final cost 8.9605e+03, first-order optimality 3.14e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9605e+03, final cost 8.9535e+03, first-order optimality 3.42e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7057738766140876
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 9.1009e+04, final cost 8.8636e+03, first-order optimality 2.82e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8636e+03, final cost 8.8579e+03, first-order optimality 4.19e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7055812548388236
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 7.5170e+04, final cost 8.7631e+03, first-order optimality 6.42e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7631e+03, final cost 8.7567e+03, first-order optimality 3.43e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7057542723648736
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 6.4117e+04, final cost 8.7001e+03, first-order optimality 3.49e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7001e+03, final cost 8.6937e+03, first-order optimality 2.09e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7052880615120624
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 6.4978e+04, final cost 8.5927e+03, first-order optimality 1.16e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5927e+03, final cost 8.5873e+03, first-order optimality 2.35e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7055874728743434
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.2215e+04, final cost 5.2008e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.2008e+03, final cost 5.1953e+03, first-order optimality 4.40e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7047698176513518
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 4.9099e+03, final cost 1.0414e+03, first-order optimality 1.19e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.0414e+03, final cost 1.0369e+03, first-order optimality 1.54e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7566242746764179
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 4.6303e+04, final cost 1.8543e+04, first-order optimality 4.22e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8543e+04, final cost 1.8536e+04, first-order optimality 5.03e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7063377702510393
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 26, initial cost 3.2665e+04, final cost 4.2007e+03, first-order optimality 2.02e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2007e+03, final cost 4.1934e+03, first-order optimality 1.13e-02.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7045914871783993
+[2026-08-05T07:14:11Z] <<< STAGE 1/8: e6_repeat1 finished exit=0
+----- GATE VERDICT: stage=e6_repeat1 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[FAIL] ALL gate3_git_sha_consistency                     artifacts carry DIFFERENT git_sha values -- something was committed while the queue's run was in flight (22e75ef2b424c9b0234502e5229345a9f5912b11: ['e1_benchmark_nonrefractive.json', 'e1_benchmark_refractive.json', 'e3_provenance.json']...; 2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395: ['e6_provenance.json', 'e6_configs\\baseline.json', 'e6_configs\\index_1.36.json']...)
+
+TOTAL: 80 PASS, 9 N/A, 9 FAIL
+----- END GATE VERDICT: stage=e6_repeat1 exit=1 -----
+[2026-08-05T07:14:11Z] >>> STAGE 2/8: e4 starting
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+cell cameras_8_frames_50: status=ok exit_code=0 elapsed=421.5s
+cell cameras_8_frames_100: status=ok exit_code=0 elapsed=989.3s
+cell cameras_8_frames_200: status=ok exit_code=0 elapsed=3296.2s
+cell cameras_12_frames_50: status=ok exit_code=0 elapsed=362.3s
+cell cameras_12_frames_100: status=ok exit_code=0 elapsed=923.3s
+cell cameras_12_frames_200: status=ok exit_code=0 elapsed=2103.8s
+cell cameras_16_frames_50: status=ok exit_code=0 elapsed=588.6s
+cell cameras_16_frames_100: status=ok exit_code=0 elapsed=1488.5s
+cell cameras_16_frames_200: status=ok exit_code=0 elapsed=2687.2s
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\benchmark_grid.csv (may be stale from a previous config).
+[2026-08-05T10:48:34Z] <<< STAGE 2/8: e4 finished exit=0
+----- GATE VERDICT: stage=e4 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[FAIL] ALL gate3_git_sha_consistency                     artifacts carry DIFFERENT git_sha values -- something was committed while the queue's run was in flight (22e75ef2b424c9b0234502e5229345a9f5912b11: ['e1_benchmark_nonrefractive.json', 'e1_benchmark_refractive.json', 'e3_provenance.json']...; 2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395: ['e6_provenance.json', 'e4_cells\\cameras_12_frames_100\\benchmark.json', 'e4_cells\\cameras_12_frames_200\\benchmark.json']...)
+
+TOTAL: 80 PASS, 9 N/A, 9 FAIL
+----- END GATE VERDICT: stage=e4 exit=1 -----
+[2026-08-05T10:48:34Z] >>> STAGE 3/8: e6_repeat2 starting
+[2026-08-05T10:48:34Z] e6_repeat2: clearing experiments/results_e6_repeat2 before running (isolated dir)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_repeat2
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7226e+04, final cost 9.2362e+03, first-order optimality 1.14e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 4.45e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 38, initial cost 2.5847e+05, final cost 9.1355e+03, first-order optimality 4.40e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1355e+03, final cost 9.1314e+03, first-order optimality 5.29e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.706128052685143
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 1.5048e+05, final cost 9.0531e+03, first-order optimality 5.77e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0531e+03, final cost 9.0473e+03, first-order optimality 4.02e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7054774527733221
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 9.0027e+04, final cost 8.9605e+03, first-order optimality 3.14e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9605e+03, final cost 8.9535e+03, first-order optimality 3.42e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7057738766140876
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 9.1009e+04, final cost 8.8636e+03, first-order optimality 2.82e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8636e+03, final cost 8.8579e+03, first-order optimality 4.19e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7055812548388236
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 7.5170e+04, final cost 8.7631e+03, first-order optimality 6.42e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7631e+03, final cost 8.7567e+03, first-order optimality 3.43e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7057542723648736
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 6.4117e+04, final cost 8.7001e+03, first-order optimality 3.39e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7001e+03, final cost 8.6937e+03, first-order optimality 1.92e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7052880615977061
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 6.4978e+04, final cost 8.5927e+03, first-order optimality 1.09e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5927e+03, final cost 8.5873e+03, first-order optimality 5.19e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.705587472977639
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.2215e+04, final cost 5.2008e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.2008e+03, final cost 5.1953e+03, first-order optimality 4.40e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7047698176513518
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 4.9099e+03, final cost 1.0414e+03, first-order optimality 1.19e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.0414e+03, final cost 1.0369e+03, first-order optimality 1.54e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7566242746764179
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 4.6303e+04, final cost 1.8543e+04, first-order optimality 4.22e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8543e+04, final cost 1.8536e+04, first-order optimality 5.03e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7063377702510393
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 26, initial cost 3.2665e+04, final cost 4.2007e+03, first-order optimality 2.02e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2007e+03, final cost 4.1934e+03, first-order optimality 1.13e-02.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7045914871783993
+[2026-08-05T13:35:01Z] e6_repeat2: positive re-solve signal -- 0 'already exists (resumability)' skip line(s) found in experiments/results_e6_repeat2/repeat2_stdout.log (0 expected for a genuine re-solve)
+[2026-08-05T13:35:01Z] <<< STAGE 3/8: e6_repeat2 finished exit=0
+----- GATE VERDICT: stage=e6_repeat2 out_dir=experiments/results_e6_repeat2 -----
+[FAIL] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_repeat2\e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_repeat2\e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_repeat2\e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395)
+
+TOTAL: 39 PASS, 9 N/A, 26 FAIL
+----- END GATE VERDICT: stage=e6_repeat2 exit=1 -----
+[2026-08-05T13:35:02Z] >>> STAGE 4/8: e6_seed43 starting
+[2026-08-05T13:35:02Z] e6_seed43: clearing experiments/results_e6_seed43 before running (isolated dir -- seed is NOT in E6's config identity)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_seed43
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.8799e+04, final cost 9.3023e+03, first-order optimality 4.34e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.3023e+03, final cost 9.2971e+03, first-order optimality 4.13e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 5.2319e+04, final cost 9.2177e+03, first-order optimality 2.60e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2177e+03, final cost 9.2079e+03, first-order optimality 6.31e-02.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7056514966156007
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.2574e+04, final cost 9.1238e+03, first-order optimality 6.68e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1238e+03, final cost 9.1181e+03, first-order optimality 5.79e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7053778943168266
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 2.3045e+04, final cost 9.0274e+03, first-order optimality 6.06e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0274e+03, final cost 9.0229e+03, first-order optimality 7.08e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7045415617344254
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 3.6394e+04, final cost 8.9453e+03, first-order optimality 1.33e-01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9453e+03, final cost 8.9370e+03, first-order optimality 5.20e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7046744053369045
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.4399e+04, final cost 8.8779e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8779e+03, final cost 8.8744e+03, first-order optimality 3.70e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7049953521209178
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 26, initial cost 7.1571e+04, final cost 8.7979e+03, first-order optimality 3.53e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7979e+03, final cost 8.7901e+03, first-order optimality 5.15e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7045049844031243
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 5.9995e+04, final cost 8.7053e+03, first-order optimality 4.87e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7053e+03, final cost 8.7007e+03, first-order optimality 5.11e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.703645822890678
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 2.6096e+04, final cost 5.1943e+03, first-order optimality 1.74e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.1943e+03, final cost 5.1897e+03, first-order optimality 3.11e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7011962233964234
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 24, initial cost 1.1454e+04, final cost 1.3484e+03, first-order optimality 1.67e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 7, initial cost 1.3484e+03, final cost 1.3421e+03, first-order optimality 1.01e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.8150828058017515
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 6, initial cost 2.9355e+04, final cost 1.8564e+04, first-order optimality 1.85e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8564e+04, final cost 1.8558e+04, first-order optimality 8.47e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7070340311648454
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 50, initial cost 1.3892e+05, final cost 4.0828e+03, first-order optimality 2.36e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.0828e+03, final cost 4.0774e+03, first-order optimality 3.04e-03.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7007740113354737
+[2026-08-05T16:16:30Z] <<< STAGE 4/8: e6_seed43 finished exit=0
+----- GATE VERDICT: stage=e6_seed43 out_dir=experiments/results_e6_seed43 -----
+[FAIL] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_seed43\e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_seed43\e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e6_seed43\e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395)
+
+TOTAL: 39 PASS, 9 N/A, 26 FAIL
+----- END GATE VERDICT: stage=e6_seed43 exit=1 -----
+[2026-08-05T16:16:31Z] >>> STAGE 5/8: e7 starting
+[2026-08-05T16:16:31Z] e7: single-seed production run
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\interface_ablation.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_trace_shared_fixed.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_trace_shared_refined.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_trace_percamera_fixed.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_trace_percamera_refined.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_shared_fixed.json (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_shared_refined.json (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_percamera_fixed.json (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_percamera_refined.json (may be stale from a previous config).
+[2026-08-05T16:27:54Z] e7: single-seed exit=0
+[2026-08-05T16:27:54Z] e7: 10-seed band (42,43,44,45,46,47,48,49,50,51) -> interface_ablation_band.csv
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Running arm shared_fixed...
+Running arm shared_refined...
+Running arm percamera_fixed...
+Running arm percamera_refined...
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_shared_fixed.json: file already exists and --force was not given (resumability).
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_shared_refined.json: file already exists and --force was not given (resumability).
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_percamera_fixed.json: file already exists and --force was not given (resumability).
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e7_benchmark_percamera_refined.json: file already exists and --force was not given (resumability).
+[2026-08-05T18:25:25Z] e7: band exit=0
+[2026-08-05T18:25:25Z] <<< STAGE 5/8: e7 finished exit=0
+----- GATE VERDICT: stage=e7 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[FAIL] ALL gate3_git_sha_consistency                     artifacts carry DIFFERENT git_sha values -- something was committed while the queue's run was in flight (22e75ef2b424c9b0234502e5229345a9f5912b11: ['e1_benchmark_nonrefractive.json', 'e1_benchmark_refractive.json', 'e3_provenance.json']...; 2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395: ['e6_provenance.json', 'e7_benchmark_percamera_fixed.json', 'e7_benchmark_percamera_refined.json']...)
+
+TOTAL: 80 PASS, 8 N/A, 10 FAIL
+----- END GATE VERDICT: stage=e7 exit=1 -----
+[2026-08-05T18:25:25Z] >>> STAGE 6/8: e1 starting
+[2026-08-05T18:25:25Z] e1: single-seed production run
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Creating scenario 'realistic' (seed=42)...
+  Cameras: 12  Frames: 30
+
+Calibrating refractive model (n_water=1.333)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2104e+04, final cost 3.6890e+03, first-order optimality 1.66e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6890e+03, final cost 3.6805e+03, first-order optimality 1.55e-02.
+  Reprojection RMS: 0.4990 px
+
+Calibrating non_refractive model (n_water=1.0)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`xtol` termination condition is satisfied.
+Function evaluations 38, initial cost 1.2736e+05, final cost 2.6067e+04, first-order optimality 3.96e-03.
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 8, initial cost 2.6067e+04, final cost 1.5098e+04, first-order optimality 8.74e+02.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:177: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 14949 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (874, termination status 3) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  joint_refinement(
+n_water=1.0: 14949 degenerate observation(s) recorded at the final solution -- first-order optimality is unreliable for this arm (D-19.3-11).
+  Reprojection RMS: 1.2669 px
+
+Evaluating depth sweep and anisotropy...
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\exp1_parameter_errors.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\exp2_depth_generalization.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\exp2_spatial_errors.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\exp3_xy_vs_z_anisotropy.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_refractive.json (may be stale from a previous config).
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_refractive.json
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_nonrefractive.json (may be stale from a previous config).
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_nonrefractive.json
+
+E1 run complete.
+[2026-08-05T18:37:09Z] e1: single-seed exit=0
+[2026-08-05T18:37:09Z] e1: 10-seed band (42,43,44,45,46,47,48,49,50,51) -> exp1_band.csv
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2104e+04, final cost 3.6890e+03, first-order optimality 1.66e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6890e+03, final cost 3.6805e+03, first-order optimality 1.55e-02.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`xtol` termination condition is satisfied.
+Function evaluations 38, initial cost 1.2736e+05, final cost 2.6067e+04, first-order optimality 3.96e-03.
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 8, initial cost 2.6067e+04, final cost 1.5098e+04, first-order optimality 8.74e+02.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:177: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 14949 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (874, termination status 3) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  joint_refinement(
+n_water=1.0: 14949 degenerate observation(s) recorded at the final solution -- first-order optimality is unreliable for this arm (D-19.3-11).
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.0114e+04, final cost 3.6877e+03, first-order optimality 2.71e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6877e+03, final cost 3.6831e+03, first-order optimality 2.13e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 8.5050e+04, final cost 2.5941e+04, first-order optimality 4.24e+00.
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 21, initial cost 2.5941e+04, final cost 1.3501e+04, first-order optimality 1.61e-01.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 3.6066e+04, final cost 3.6838e+03, first-order optimality 1.59e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6838e+03, final cost 3.6760e+03, first-order optimality 8.66e-04.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 1.0922e+05, final cost 3.0625e+04, first-order optimality 1.38e+00.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 3.0625e+04, final cost 1.7524e+04, first-order optimality 1.24e-02.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:177: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 14907 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (0.01245, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  joint_refinement(
+n_water=1.0: 14907 degenerate observation(s) recorded at the final solution -- first-order optimality is unreliable for this arm (D-19.3-11).
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.5037e+04, final cost 4.0315e+03, first-order optimality 1.35e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.0315e+03, final cost 4.0262e+03, first-order optimality 2.45e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 25, initial cost 1.1910e+05, final cost 3.0170e+04, first-order optimality 8.90e-01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 3.0170e+04, final cost 1.6453e+04, first-order optimality 2.08e-01.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.2386e+04, final cost 3.8587e+03, first-order optimality 2.93e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.8587e+03, final cost 3.8542e+03, first-order optimality 1.46e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 36, initial cost 1.2255e+05, final cost 3.0262e+04, first-order optimality 4.99e-03.
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 33, initial cost 3.0262e+04, final cost 1.6139e+04, first-order optimality 4.15e-02.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.5181e+04, final cost 4.0616e+03, first-order optimality 3.34e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.0616e+03, final cost 4.0552e+03, first-order optimality 1.10e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 27, initial cost 1.5693e+05, final cost 3.2648e+04, first-order optimality 3.22e+00.
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 38, initial cost 3.2648e+04, final cost 1.6765e+04, first-order optimality 4.91e-02.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 15, initial cost 2.1762e+04, final cost 3.9026e+03, first-order optimality 2.13e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.9026e+03, final cost 3.8968e+03, first-order optimality 1.47e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 27, initial cost 1.4119e+05, final cost 2.7644e+04, first-order optimality 1.16e+00.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 2.7644e+04, final cost 1.5357e+04, first-order optimality 2.52e-02.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:177: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 2128 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (0.02518, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  joint_refinement(
+n_water=1.0: 2128 degenerate observation(s) recorded at the final solution -- first-order optimality is unreliable for this arm (D-19.3-11).
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 21, initial cost 2.9577e+04, final cost 3.7639e+03, first-order optimality 1.65e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.7639e+03, final cost 3.7585e+03, first-order optimality 1.29e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 28, initial cost 1.7910e+05, final cost 2.9818e+04, first-order optimality 1.60e+00.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 2.9818e+04, final cost 1.4238e+04, first-order optimality 9.20e-02.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 11, initial cost 1.0056e+04, final cost 3.6227e+03, first-order optimality 2.53e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6227e+03, final cost 3.6167e+03, first-order optimality 2.38e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 27, initial cost 1.3982e+05, final cost 3.0659e+04, first-order optimality 3.60e+00.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:140: DegenerateObservationWarning: Stage 3 finished with 70 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (3.601, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  opt_extrinsics, opt_distances, opt_poses, rms = optimize_interface(
+Stage 3's second pass: Intrinsic refinement...
+`xtol` termination condition is satisfied.
+Function evaluations 30, initial cost 3.0659e+04, final cost 1.8859e+04, first-order optimality 2.21e-01.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\datasets\pipelines.py:177: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 1064 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (0.2211, termination status 3) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  joint_refinement(
+n_water=1.0: 1134 degenerate observation(s) recorded at the final solution -- first-order optimality is unreliable for this arm (D-19.3-11).
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 1.3428e+04, final cost 3.6072e+03, first-order optimality 2.12e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6072e+03, final cost 3.6021e+03, first-order optimality 1.59e-03.
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 49, initial cost 9.6320e+05, final cost 2.7463e+04, first-order optimality 9.79e-01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 30, initial cost 2.7463e+04, final cost 1.3684e+04, first-order optimality 3.44e+00.
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_refractive.json: file already exists and --force was not given (resumability).
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_refractive.json
+Skipping write to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_nonrefractive.json: file already exists and --force was not given (resumability).
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e1_benchmark_nonrefractive.json
+[2026-08-05T20:57:44Z] e1: band exit=0
+[2026-08-05T20:57:44Z] <<< STAGE 6/8: e1 finished exit=0
+----- GATE VERDICT: stage=e1 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E1  gate4_band:exp1_band.csv                      exp1_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e1_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] ALL gate3_git_sha_consistency                     artifacts carry DIFFERENT git_sha values -- something was committed while the queue's run was in flight (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395: ['e1_benchmark_nonrefractive.json', 'e1_benchmark_refractive.json', 'e6_provenance.json']...; 22e75ef2b424c9b0234502e5229345a9f5912b11: ['e3_provenance.json', 'e5_provenance.json'])
+
+TOTAL: 80 PASS, 7 N/A, 11 FAIL
+----- END GATE VERDICT: stage=e1 exit=1 -----
+[2026-08-05T20:57:45Z] >>> STAGE 7/8: e5 starting
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.7464e+04, final cost 3.7027e+03, first-order optimality 2.18e-03.
+  reprojection_rms_px=0.7087 scale_bias_pct=0.0394
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.3250e+04, final cost 3.6970e+03, first-order optimality 9.11e-04.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0414
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.7126e+04, final cost 3.6927e+03, first-order optimality 1.09e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0435
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 1.6954e+04, final cost 3.6900e+03, first-order optimality 1.20e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0456
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2361e+04, final cost 3.6887e+03, first-order optimality 9.83e-04.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0478
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2104e+04, final cost 3.6888e+03, first-order optimality 1.15e-03.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0499
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2181e+04, final cost 3.6904e+03, first-order optimality 2.49e-03.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0521
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2465e+04, final cost 3.6933e+03, first-order optimality 1.20e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0542
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.4991e+04, final cost 3.6977e+03, first-order optimality 1.97e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0564
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.2734e+04, final cost 3.7035e+03, first-order optimality 1.24e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0586
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.6653e+04, final cost 3.7107e+03, first-order optimality 1.31e-03.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0608
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\index_sensitivity.csv (may be stale from a previous config).
+
+E5 run complete.
+[2026-08-05T21:43:10Z] <<< STAGE 7/8: e5 finished exit=0
+----- GATE VERDICT: stage=e5 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E1  gate4_band:exp1_band.csv                      exp1_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e1_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] ALL gate3_git_sha_consistency                     artifacts carry DIFFERENT git_sha values -- something was committed while the queue's run was in flight (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395: ['e1_benchmark_nonrefractive.json', 'e1_benchmark_refractive.json', 'e5_provenance.json']...; 22e75ef2b424c9b0234502e5229345a9f5912b11: ['e3_provenance.json'])
+
+TOTAL: 80 PASS, 7 N/A, 11 FAIL
+----- END GATE VERDICT: stage=e5 exit=1 -----
+[2026-08-05T21:43:11Z] >>> STAGE 8/8: e3 starting
+[2026-08-05T21:43:11Z] e3: --check FIRST (tier-by-tier snapshot of the pre-regeneration state)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+code_constants.csv: Fresh output matches committed baseline within tolerance.
+Newton iterations (pooled, n=105600): scalar min=2 median=4.0 max=6 | batch min=2 median=4.0 max=6
+newton_iterations.csv: Fresh output matches committed baseline within tolerance.
+cpr_grouping.csv: Fresh output matches committed baseline within tolerance.
+[2026-08-05T21:43:19Z] e3: --check exit=0
+[2026-08-05T21:43:19Z] e3: --force SECOND (regenerates the committed tier CSVs/LaTeX fragments)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\code_constants.csv (may be stale from a previous config).
+Newton iterations (pooled, n=105600): scalar min=2 median=4.0 max=6 | batch min=2 median=4.0 max=6
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\newton_iterations.csv (may be stale from a previous config).
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\cpr_grouping.csv (may be stale from a previous config).
+[2026-08-05T21:43:27Z] e3: --force exit=0
+[2026-08-05T21:43:27Z] <<< STAGE 8/8: e3 finished exit=0
+----- GATE VERDICT: stage=e3 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E1  gate4_band:exp1_band.csv                      exp1_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e1_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395)
+
+TOTAL: 81 PASS, 7 N/A, 10 FAIL
+----- END GATE VERDICT: stage=e3 exit=1 -----
+[2026-08-05T21:43:28Z] Phase 19.4 re-run queue finished all 8 stages. See experiments/rerun_19_4_state.tsv for the full stage-completion record.
