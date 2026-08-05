@@ -51,6 +51,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import sys
 import tempfile
 from pathlib import Path
 
@@ -82,6 +83,40 @@ from experiments.e4_benchmark_grid import (
 logger = logging.getLogger(__name__)
 
 CHECK_RTOL = 1e-6
+
+
+class FailFastAbort(RuntimeError):
+    """Raised by `run_sweep` in fail-fast mode (D-19.4-11).
+
+    Raised for the FIRST configuration -- fresh run or cached checkpoint
+    alike -- whose outcome records `status="failed"`. E6 runs its
+    configurations in-process (no subprocess hop, unlike E4), so this is the
+    single stop-on-first-failure site; `run_configuration`'s own
+    `except Exception` sink is left untouched, since both the live-exception
+    and the cached-failure paths already surface as `outcome["status"] ==
+    "failed"` by the time `run_sweep` sees them.
+    """
+
+    def __init__(self, config_key: str, status_reason: str) -> None:
+        self.config_key = config_key
+        self.status_reason = status_reason
+        super().__init__(f"{config_key}: {status_reason}")
+
+
+def _fail_fast_abort_message(key: str, detail: str) -> str:
+    """Format the D-19.4-11 fail-fast abort message.
+
+    `detail` is the failure's own `status_reason`, which already carries the
+    exception type and message verbatim, and for a clearance-floor rejection
+    both the supplied minimum and the derived floor (D-19.3-01) -- nothing
+    here recomposes those numbers.
+    """
+    return (
+        f"FAIL-FAST ABORT (D-19.4-11): {key} failed: {detail}\n"
+        'Pass --no-fail-fast to record this as a status="failed" row and '
+        "continue instead."
+    )
+
 
 # ---------------------------------------------------------------------------
 # Baseline and the three one-dimensional axes (D-11, amended D-11, review M2)
@@ -876,6 +911,7 @@ def run_sweep(
     force: bool = False,
     environment: dict | None = None,
     is_smoke: bool = False,
+    fail_fast: bool = False,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -903,6 +939,12 @@ def run_sweep(
         is_smoke: Forwarded to `run_configuration` -- D-19.3-11's smoke
             carve-out. `_run_smoke_configs` passes `True`; `_run_full` never
             passes it (stays `False`), so every production row is gated.
+        fail_fast: D-19.4-11. When `True`, raises `FailFastAbort` for the
+            FIRST configuration -- fresh run or cached checkpoint alike --
+            whose outcome records `status="failed"`, instead of appending
+            its row and continuing. `_run_smoke_configs` never passes `True`
+            (--smoke is unaffected in either mode); only `_run_full` gates
+            on it, via `not args.no_fail_fast`.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
@@ -924,6 +966,11 @@ def run_sweep(
                 is_smoke=is_smoke,
             )
         outcome = cache[config_key]
+        if fail_fast and outcome["status"] == "failed":
+            # D-19.4-11: stop at the FIRST failing configuration -- fresh
+            # run or cached checkpoint alike, since a resumed run must not
+            # silently pass over a cached status="failed" checkpoint.
+            raise FailFastAbort(config_key, outcome["status_reason"])
         row = build_row(
             config,
             seed,
@@ -950,10 +997,24 @@ def run_sweep(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build E6's CLI parser: the shared five-flag contract, no script-local flags."""
-    return argparse.ArgumentParser(
+    """Build E6's CLI parser: the shared five-flag contract plus `--no-fail-fast`."""
+    parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
     )
+    parser.add_argument(
+        "--no-fail-fast",
+        action="store_true",
+        default=False,
+        help="D-19.4-11: by default, the full axis sweep aborts and exits "
+        "non-zero at the first configuration -- fresh run or cached "
+        'checkpoint alike -- whose recorded status is "failed" (never '
+        '"degenerate", which is recorded but not gated). Pass '
+        "--no-fail-fast to restore the old record-and-continue behaviour "
+        "(every configuration still gets a row, the run always exits 0) -- "
+        "the sole intended use is 19.2-21's pre-authorised failing-cell "
+        "precedent. --smoke is unaffected in either mode.",
+    )
+    return parser
 
 
 def _reconstitute_row(config: dict, configs_dir: Path, default_seed: int) -> dict:
@@ -1141,19 +1202,34 @@ def _run_full(args: argparse.Namespace) -> int:
     provenance sidecar, so the whole artifact set -- checkpoints and sidecar
     alike -- names one commit rather than whatever was HEAD when each piece
     happened to be written.
+
+    D-19.4-11: by default (`args.no_fail_fast` False, fail-fast ON), a
+    `FailFastAbort` raised by `run_sweep` -- fresh failure or cached failure
+    alike -- is caught here, printed to stderr with the configuration key and
+    the failure detail, and converted into a non-zero return. `--no-fail-fast`
+    restores the pre-existing behaviour exactly: `run_sweep` never raises,
+    every configuration still gets a row, and this function still returns 0.
     """
     out_dir = resolve_out_dir(args.out)
     environment = capture_environment()
     configs = build_axis_configurations()
-    df = run_sweep(
-        configs,
-        args.seed,
-        BASELINE_N_FRAMES,
-        out_dir,
-        refine_intrinsics=True,
-        force=args.force,
-        environment=environment,
-    )
+    try:
+        df = run_sweep(
+            configs,
+            args.seed,
+            BASELINE_N_FRAMES,
+            out_dir,
+            refine_intrinsics=True,
+            force=args.force,
+            environment=environment,
+            fail_fast=not args.no_fail_fast,
+        )
+    except FailFastAbort as exc:
+        print(
+            _fail_fast_abort_message(exc.config_key, exc.status_reason),
+            file=sys.stderr,
+        )
+        return 1
     write_experiment_csv(
         df,
         out_dir / "generalization_sweep.csv",

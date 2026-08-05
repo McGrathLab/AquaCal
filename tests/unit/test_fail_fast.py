@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 import experiments.e4_benchmark_grid as e4
+import experiments.e6_generalization_sweep as e6
 
 # ---------------------------------------------------------------------------
 # E4 (Task 1): two-layer fail-fast -- child re-raise + outer cell-loop stop
@@ -194,3 +195,199 @@ def test_e4_run_full_no_fail_fast_runs_every_cell_and_exits_zero(tmp_path, monke
     assert exit_code == 0
     assert len(calls) == len(e4.DECLARED_CELLS)
     assert all(no_fail_fast is True for (_, _, no_fail_fast) in calls)
+
+
+# ---------------------------------------------------------------------------
+# E6 (Task 2): single-layer fail-fast in run_sweep's config loop
+# ---------------------------------------------------------------------------
+
+
+def test_e6_help_lists_no_fail_fast(capsys):
+    parser = e6.build_arg_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--help"])
+    captured = capsys.readouterr()
+    assert "--no-fail-fast" in captured.out
+
+
+def test_e6_run_configuration_default_still_swallows_into_failed_row(
+    tmp_path, monkeypatch
+):
+    """Unchanged existing contract: `run_configuration` never raises by
+    default (pinned so this plan cannot regress `test_experiments_e6.py`'s
+    own `_fail_fast` monkeypatch helpers, which depend on this)."""
+
+    def _boom(**kwargs):
+        raise RuntimeError("synthetic failure for test")
+
+    monkeypatch.setattr(e6, "build_grid_scenario", _boom)
+    configs = e6.build_axis_configurations()
+    outcome = e6.run_configuration(configs[0], seed=42, n_frames=10, out_dir=tmp_path)
+    assert outcome["status"] == "failed"
+    assert "synthetic failure for test" in outcome["status_reason"]
+
+
+def test_e6_run_sweep_default_stops_at_first_failing_configuration(
+    tmp_path, monkeypatch
+):
+    calls: list[str] = []
+
+    def _tracking_run_configuration(config, *a, **k):
+        calls.append(config["config_key"])
+        if len(calls) == 2:
+            return {
+                "status": "failed",
+                "status_reason": "RuntimeError: synthetic failure for test",
+                "metrics": None,
+                "degenerate_observations_at_solution": None,
+            }
+        return {
+            "status": "ok",
+            "status_reason": "",
+            "metrics": None,
+            "degenerate_observations_at_solution": 0,
+        }
+
+    monkeypatch.setattr(e6, "run_configuration", _tracking_run_configuration)
+
+    configs = e6.build_axis_configurations()
+    # Distinct config_keys only -- run_sweep's cache means a repeated key
+    # (the three baseline rows) would not add a new call.
+    seen_keys = set()
+    distinct_configs = []
+    for c in configs:
+        if c["config_key"] not in seen_keys:
+            seen_keys.add(c["config_key"])
+            distinct_configs.append(c)
+    assert len(distinct_configs) >= 3
+
+    with pytest.raises(e6.FailFastAbort) as excinfo:
+        e6.run_sweep(
+            distinct_configs,
+            seed=42,
+            n_frames=10,
+            out_dir=tmp_path,
+            fail_fast=True,
+        )
+
+    assert len(calls) == 2
+    assert excinfo.value.config_key == calls[1]
+    assert "synthetic failure for test" in excinfo.value.status_reason
+
+
+def test_e6_run_sweep_no_fail_fast_continues_and_returns_all_rows(
+    tmp_path, monkeypatch
+):
+    calls: list[str] = []
+
+    def _tracking_run_configuration(config, *a, **k):
+        calls.append(config["config_key"])
+        status = "failed" if len(calls) == 2 else "ok"
+        return {
+            "status": status,
+            "status_reason": "boom" if status == "failed" else "",
+            "metrics": None,
+            "degenerate_observations_at_solution": 0 if status == "ok" else None,
+        }
+
+    monkeypatch.setattr(e6, "run_configuration", _tracking_run_configuration)
+
+    configs = e6.build_axis_configurations()
+    seen_keys = set()
+    distinct_configs = []
+    for c in configs:
+        if c["config_key"] not in seen_keys:
+            seen_keys.add(c["config_key"])
+            distinct_configs.append(c)
+
+    df = e6.run_sweep(
+        distinct_configs,
+        seed=42,
+        n_frames=10,
+        out_dir=tmp_path,
+        fail_fast=False,
+    )
+
+    assert len(calls) == len(distinct_configs)
+    assert len(df) == len(distinct_configs)
+    assert (df["status"] == "failed").sum() == 1
+
+
+def test_e6_run_sweep_cached_failure_triggers_abort_in_fail_fast_mode(
+    tmp_path, monkeypatch
+):
+    """A resumed run must not silently pass over a cached `status="failed"`
+    checkpoint -- E6 treats a cached failure as a failure."""
+    configs = e6.build_axis_configurations()
+    config = configs[0]
+
+    def _cached_failed(config, *a, **k):
+        return {
+            "status": "failed",
+            "status_reason": "RuntimeError: cached failure from a prior run",
+            "metrics": None,
+            "degenerate_observations_at_solution": None,
+        }
+
+    monkeypatch.setattr(e6, "run_configuration", _cached_failed)
+
+    with pytest.raises(e6.FailFastAbort) as excinfo:
+        e6.run_sweep([config], seed=42, n_frames=10, out_dir=tmp_path, fail_fast=True)
+
+    assert excinfo.value.config_key == config["config_key"]
+    assert "cached failure from a prior run" in excinfo.value.status_reason
+
+
+def test_e6_run_full_prints_abort_message_and_returns_nonzero(
+    tmp_path, monkeypatch, capsys
+):
+    def _boom_run_sweep(configs, seed, n_frames, out_dir, **kwargs):
+        assert kwargs.get("fail_fast") is True
+        raise e6.FailFastAbort(
+            "index_1.36",
+            "RuntimeError: depth_range[0]=0.5 is below the derived clearance "
+            "floor 1.1762 m",
+        )
+
+    monkeypatch.setattr(e6, "run_sweep", _boom_run_sweep)
+    monkeypatch.setattr(e6, "capture_environment", lambda: {})
+
+    parser = e6.build_arg_parser()
+    args = parser.parse_args(["--out", str(tmp_path), "--seed", "1"])
+    exit_code = e6._run_full(args)
+
+    assert exit_code != 0
+    err = capsys.readouterr().err
+    assert "index_1.36" in err
+    assert "clearance floor 1.1762" in err
+
+
+def test_e6_run_full_no_fail_fast_forwards_flag_and_exits_zero(tmp_path, monkeypatch):
+    calls = {}
+
+    def _fake_run_sweep(configs, seed, n_frames, out_dir, **kwargs):
+        calls["fail_fast"] = kwargs.get("fail_fast")
+        return pd.DataFrame()
+
+    monkeypatch.setattr(e6, "run_sweep", _fake_run_sweep)
+    monkeypatch.setattr(e6, "capture_environment", lambda: {})
+    monkeypatch.setattr(e6, "write_experiment_csv", lambda *a, **k: None)
+
+    parser = e6.build_arg_parser()
+    args = parser.parse_args(["--out", str(tmp_path), "--seed", "1", "--no-fail-fast"])
+    exit_code = e6._run_full(args)
+
+    assert exit_code == 0
+    assert calls["fail_fast"] is False
+
+
+def test_e6_smoke_is_unaffected_by_fail_fast_wiring():
+    """`--smoke` (`_run_smoke_configs`) never forwards `fail_fast=True` to
+    `run_sweep` -- fail-fast wiring must not change smoke behaviour. Checked
+    at the source level (never instrumenting `_run_smoke_configs`'s own
+    resume-path probe, which writes/reads real checkpoint files and is
+    already covered by `test_experiments_e6.py`)."""
+    import inspect
+
+    source = inspect.getsource(e6._run_smoke_configs)
+    assert "fail_fast" not in source
