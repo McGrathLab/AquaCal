@@ -363,7 +363,7 @@ def build_small_problem(
         n_frames=n_frames,
         camera_positions=camera_positions,
         water_zs=water_zs,
-        board=board,
+        board=board_config,
         depth_range=None,
         xy_extent=0.08,
         seed=seed,
