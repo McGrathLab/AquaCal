@@ -192,6 +192,66 @@ non-physical inside the band. Re-deriving `WATER_Z` is excluded by user decision
 1.031; E4/E6 are coupled to it by D-29). E2 is excluded because it runs on real data, which a
 synthetic scenario change cannot touch.
 
+### Experiment Coverage and Uncertainty
+
+Added 2026-08-05 with the insertion of Phase 19.5. Source: this session's read of the
+pre-review manuscript (`main.tex`), `reviewer_responses.md` and `reviewer_response_plan.md`
+against the committed suite in `experiments/results/` at `0ffbe15`.
+
+Phases 19.2-19.4 established that the experiments are **correct**. This phase establishes what
+may be **claimed** from them. Two facts drive the scope. First, only E1 and E7 carry seed bands,
+so under D-19.3-17 E4, E5 and E6 support no accuracy claim — and E6 is both the entire R1.4
+substitute for the reviewer's requested physical multi-tank study *and* content that appears
+nowhere in the submitted manuscript. Second, two reviewer comments (R1.2's accuracy half, R1.3)
+have no experimental answer at all. The enabler is a side effect of 19.4: `generate_camera_array`
+now returns one shared `height_above_water`, so `GRID_DEPTH_RANGE` is seed-invariant by
+construction and the ~5.8%-of-seeds legality trap that made E4 and E6 un-sweepable is gone.
+
+**This phase changes experiment scripts, not the library.** Any unavoidable diagnostic hook takes
+the D-32/E3 pattern — opt-in flag, off by default, proven bit-identical to current production
+output when unset.
+
+- [ ] **COV-01**: A purely structural sweep (no calibration solve) records `n_params`,
+  `n_groups`, `fd_reduction`, nnz and Jacobian element count over camera counts well past
+  R1.3's "N>10" and a range of frame counts, showing the group count pins at 13/17 independent
+  of N, and locating the 500 M-element dense→sparse/LSMR boundary as a **disclosed** scaling
+  limit. Extends E3 tier 3, which already computes these at N ∈ {3, 8, 12, 13, 16}
+- [ ] **COV-02**: R1.2 gets an **accuracy** answer, not only the existing cost answer (42x CPR
+  reduction). The shipped finite-difference Jacobian is compared against a tighter-step or
+  Richardson-extrapolated reference, reporting column-wise relative error and the induced change
+  in the optimizer step, plus a step-size sweep showing the shipped choice sits in the flat
+  region. The full analytic derivation stays **declined** per the response plan
+- [ ] **COV-03**: E6 carries a measured seed band, so the R1.4 substitute can make an accuracy
+  claim under D-19.3-17 instead of none. The two known seed-fragile spots are adjudicated:
+  `scale/double_scale` intrinsic-pass optimality (elevated at both non-42 seeds measured) and
+  `layout/line`'s ~4x `water_z_error_mm` spread
+- [ ] **COV-04**: E6 gains an `n_cameras` axis, so accuracy-vs-N is measured and not only
+  timing-vs-N (E4). R1.3's "stably adapts to N>10" is an accuracy question nothing answers today
+- [ ] **COV-05**: E5 carries a seed band, so R2's headline — index-induced scale bias sits below
+  the holdout noise floor — is stated against a measured floor rather than one run's one number.
+  E5's existing `n_assumed_band` varies the assumed index, not the seed, and cannot bound it
+- [ ] **COV-06**: E4's runtime numbers carry a repeat, so a run-to-run spread exists for at least
+  a subset. Every 200-frame cell ran at `near_physical_ceiling` (11.3 GiB on a 15.7 GiB box) and
+  19.4 observed an unexplained ~2x environmental slowdown. Any shipped timing table reports
+  `nfev` beside wall-clock, per MF-03
+- [ ] **COV-07**: E2 carries a band over calibration/holdout splits, obtained by varying
+  `config.seed` (which threads into `split_detections`). Its scope is stated exactly in the
+  artifact and in prose: **split variance on fixed data, NOT measurement variance**. `--seed` is
+  currently parsed and deliberately not threaded (`e2_real_rig.py:588`)
+- [ ] **COV-08**: Two zero-runtime analyses of already-committed data land: E7's
+  `focal_drift_pct` / `standoff_m` columns are analyzed for the L149 focal/standoff degeneracy
+  WP6 planned and MF-05 never reported; and a bootstrap over the 7,762 committed inter-corner
+  comparisons gives the real-rig headline a stated interval, labelled as **metric sampling
+  variance only**
+- [ ] **COV-09**: Every band lands in `MANUSCRIPT-FINDINGS.md` as an MF entry naming its citable
+  artifact, and MF-09's edit map is updated wherever a band changes what may be claimed
+
+**Deliberately not requirements here.** The Stage-2 basin-of-attraction study for R4.3 is out by
+user decision (2026-08-05) — R4.3 keeps its prose-plus-optimality answer. The temperature/
+salinity helper is Phase 20 (INDEX-01..03) and is not pulled forward. Installing or running
+CalibMar remains declined on modelling grounds (WP6), and the full analytic Jacobian derivation
+remains declined (WP3 item 5) — COV-02 answers the accuracy question without it.
+
 ## Sequencing Constraints
 
 Not requirements, but binding on the roadmap:
@@ -332,6 +392,15 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SC-6 | Phase 19.4 | Complete |
 | SC-7 | Phase 19.4 | Complete |
 | SC-8 | Phase 19.4 | Complete |
+| COV-01 | Phase 19.5 | Pending |
+| COV-02 | Phase 19.5 | Pending |
+| COV-03 | Phase 19.5 | Pending |
+| COV-04 | Phase 19.5 | Pending |
+| COV-05 | Phase 19.5 | Pending |
+| COV-06 | Phase 19.5 | Pending |
+| COV-07 | Phase 19.5 | Pending |
+| COV-08 | Phase 19.5 | Pending |
+| COV-09 | Phase 19.5 | Pending |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
@@ -344,8 +413,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOCS-07 | Phase 22 | Pending |
 
 **Coverage:**
-- v1 requirements: 46 total
-- Mapped to phases: 46
+- v1 requirements: 55 total (46 + COV-01..09 added 2026-08-05 with Phase 19.5)
+- Mapped to phases: 55
 - Unmapped: 0 ✓
 
 ### Phase 19.4 success criteria — the artifact or test satisfying each

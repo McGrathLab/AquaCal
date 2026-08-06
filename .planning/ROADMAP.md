@@ -71,6 +71,8 @@ must settle the stage-key schema before benchmark.json locks it in.
  (completed 2026-07-24)
 - [x] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
  (completed 2026-07-24)
+- [ ] **Phase 19.5: Experiment Coverage and Uncertainty Bands** (INSERTED) - Every experiment the reviewer response leans on carries a measured uncertainty band or says plainly that it does not, and R1.2/R1.3 get their first experimental answer
+  (Phases 19.1-19.4 are likewise inserted decimals; see Phase Details. 19.5 is the next phase.)
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
 - [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
 - [ ] **Phase 22: Release Cut** - The version referenced by the manuscript and Zenodo archive is the one whose behavior the published artifacts reflect
@@ -454,6 +456,77 @@ Plans:
 - [x] 19.4-08-PLAN.md — wave 4 — write the risk-first resumable queue, extend the gate script, narrow the prelaunch gate (SC-7, D-19.4-16)
 - [x] 19.4-09-PLAN.md — wave 5 — execute the ~9 h 30 min production queue once, under one git sha (SC-5, SC-7, D-19.4-13/16)
 - [x] 19.4-10-PLAN.md — wave 6 — inertness verdict by byte-comparison, MF-05/MF-08 updates, new interface finding, phase closure (SC-3, SC-5, SC-5a, SC-8)
+
+### Phase 19.5: Experiment Coverage and Uncertainty Bands (INSERTED)
+
+**Goal**: Every experiment the reviewer response leans on either carries a measured
+uncertainty band or states plainly that it does not — and the two reviewer comments with no
+experimental answer at all (R1.2 accuracy, R1.3 scaling) get one. Phases 19.2-19.4 established
+that the experiments are *correct*; this phase establishes what may be *claimed* from them.
+
+**Why now, and why it is cheap**: 19.4's single-flat-interface fix made the grid family's
+clearance floor seed-invariant (`generate_camera_array` now returns one shared
+`height_above_water`), so `GRID_DEPTH_RANGE` is correct by construction and the ~5.8%-of-seeds
+legality trap that made E4 and E6 un-sweepable is gone. The seed bands D-19.3-17 requires were
+blocked by that trap; they are now merely a matter of runtime.
+
+**Depends on**: Phase 19.4 (the seed-invariant clearance floor is the enabler; the committed
+`experiments/results/` at `0ffbe15` is the baseline every band is measured against)
+
+**Requirements**: COV-01, COV-02, COV-03, COV-04, COV-05, COV-06, COV-07, COV-08, COV-09
+(defined in REQUIREMENTS.md § Experiment Coverage and Uncertainty; the Success Criteria below
+map one-to-one onto them in order)
+
+**Scope decision (user, 2026-08-05)**: Tier A + Tier B + the E2 replicate band are IN. The
+Stage-2 basin-of-attraction study for R4.3 is OUT — R4.3 keeps its prose-plus-optimality answer.
+
+**Sequencing (user, 2026-08-05)**: cheap-first. Land and verify every zero-runtime item, then
+assemble all remaining solves into a SINGLE risk-first overnight queue under one frozen git sha,
+following the 19.4 pattern (`rerun_19_4.sh`). Do not interleave production runs with commits —
+per-cell `git rev-parse` splits an artifact's recorded SHA.
+
+**Constraint**: experiment scripts only. No non-inert `src/` change. If a diagnostic hook is
+unavoidable, it takes the D-32/E3 pattern — opt-in flag, off by default, proven bit-identical to
+current production output when unset.
+
+**Success Criteria** (what must be TRUE):
+  1. **R1.3 has an experimental answer.** A purely structural sweep (no calibration solve)
+     records `n_params`, `n_groups`, `fd_reduction`, nnz and Jacobian element count over camera
+     counts well past the reviewer's "N>10" and a range of frame counts, showing the group count
+     pins at 13/17 independent of N, and locating the 500 M-element dense→sparse/LSMR boundary
+     as a disclosed scaling limit rather than an unstated one.
+  2. **R1.2 has an accuracy answer, not only a cost answer.** The shipped finite-difference
+     Jacobian is compared against a tighter-step/Richardson reference, reporting column-wise
+     relative error and the induced change in the optimizer step, plus a step-size sweep showing
+     the shipped choice sits in the flat region. The full analytic derivation stays declined.
+  3. **E6 carries a seed band.** The generalization sweep — the entire R1.4 substitute, and
+     content that appears nowhere in the submitted manuscript — is measured at multiple seeds, so
+     it can make an accuracy claim under D-19.3-17 instead of none. The two known seed-fragile
+     spots are adjudicated: `scale/double_scale` intrinsic-pass optimality and `layout/line`'s
+     ~4x `water_z_error_mm` spread.
+  4. **E6 gains a camera-count axis.** Accuracy vs `n_cameras` is measured, not just timing vs
+     `n_cameras` (E4). R1.3's "stably adapts" is an accuracy question that nothing currently
+     answers.
+  5. **E5 carries a seed band.** R2's headline — index-induced scale bias sits below the holdout
+     noise floor — is stated against a measured floor rather than a single run's one number.
+  6. **E4's runtime numbers carry a repeat.** At least the run-to-run spread of a subset is
+     measured, given every 200-frame cell ran at `near_physical_ceiling` and 19.4 observed an
+     unexplained ~2x environmental slowdown. Any shipped timing table reports `nfev` beside
+     wall-clock (MF-03).
+  7. **E2 carries a band.** The real-rig headline — the abstract's second number — is measured
+     across calibration/holdout splits by varying `config.seed`. Its scope is stated exactly:
+     split variance on fixed data, NOT measurement variance.
+  8. **Two zero-runtime analyses of already-committed data land.** E7's `focal_drift_pct` /
+     `standoff_m` columns are analyzed for the L149 focal/standoff degeneracy WP6 planned and
+     MF-05 never reported; and a bootstrap CI over the 7,762 committed inter-corner comparisons
+     gives the real-rig headline a stated interval, labelled as metric sampling variance only.
+  9. **Every band lands in MANUSCRIPT-FINDINGS.md** as an MF entry naming its citable artifact,
+     and MF-09's edit map is updated wherever a band changes what may be claimed.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 19.5 to break down)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the

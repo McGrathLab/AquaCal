@@ -3,15 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.4 CLOSED 2026-08-05 -- plan 10 Task 3 checkpoint approved by the user; all six honesty checks PASS. Next: Phase 20."
-last_updated: "2026-08-05T22:30:00.000Z"
-last_activity: 2026-08-05 -- Phase 19.4 closed (10/10 plans)
+stopped_at: "Phase 19.5 INSERTED 2026-08-05 -- Experiment Coverage and Uncertainty Bands, scoped
+  and entered in ROADMAP.md but NOT planned. Next: /gsd:plan-phase 19.5. Phase 19.4 closed
+  2026-08-05 (10/10 plans, commit 6532000)."
+last_updated: "2026-08-06T01:04:23.558Z"
+last_activity: 2026-08-05 -- Phase 19.5 inserted after 19.4 (scoped, unplanned)
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 8
   total_plans: 83
   completed_plans: 83
-  percent: 73
+  percent: 67
 ---
 
 # Project State
@@ -21,9 +23,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 20 — Refractive Index Helper (19.4 closed 2026-08-05)
+**Current focus:** Phase 19.5 — Experiment Coverage and Uncertainty Bands (inserted 2026-08-05,
+not yet planned). Phase 20 follows.
 
 ## Current Position
+
+Phase: **19.5 — Experiment Coverage and Uncertainty Bands — INSERTED 2026-08-05, NOT PLANNED.**
+  Next command: `/gsd:plan-phase 19.5`. Entered in ROADMAP.md after 19.4 with nine success
+  criteria; requirements are still TBD.
+
+  **Why it exists.** Phases 19.2-19.4 established that the experiments are *correct*. This phase
+  establishes what may be *claimed* from them. Only E1 and E7 have seed bands; E4, E5 and E6 are
+  single-seed and therefore carry no accuracy claim under D-19.3-17 — and E6 is the entire R1.4
+  substitute *and* content that appears nowhere in the submitted manuscript. Two reviewer
+  comments (R1.2 accuracy, R1.3 scaling) still have no experimental answer at all.
+
+  **The enabler, and it was a side effect.** 19.4's fix made the grid family's clearance floor
+  seed-invariant — `generate_camera_array` now returns one shared `height_above_water`, so
+  `GRID_DEPTH_RANGE` is correct by construction. The ~5.8%-of-seeds legality trap that made E4
+  and E6 un-sweepable is **gone**. The bands D-19.3-17 demands are now only a runtime cost.
+
+  **Scope decided by the user 2026-08-05:** Tier A (zero-runtime) + Tier B (overnight sweeps) +
+  the E2 replicate band are IN. The Stage-2 basin-of-attraction study for R4.3 is **OUT**.
+  **Sequencing:** cheap-first, then ONE risk-first queue under one frozen git sha (19.4 pattern).
+  **Constraint:** experiment scripts only; any unavoidable hook takes the inert D-32/E3 pattern.
+
+  ---
+  *Historical context from the preceding phase, retained:*
 
 Phase: **19.4 — Single Flat Interface — CLOSED 2026-08-05.** All 10 plans complete; plan 10's
   Task 3 human checkpoint APPROVED with all six honesty checks PASS. SC-1..SC-8 discharged and
@@ -144,6 +170,11 @@ so the code work must land with room to spare. The Hooks → Per-Camera Interfac
 - Phase 19.2 inserted after Phase 19.1: Experiment Execution and Provenance — E3/E4/E5/E6 + provenance close-out (EXP-07..11), split out of the original 19.1 along the source brief's wave 3/wave 4 boundary so E2's real-rig re-run is a phase gate rather than one item among eleven (URGENT)
 - Phase 19.3 inserted after Phase 19.2: Scenario Geometry and Convergence - synthetic boards protrude through the water surface, invalidating optimality as a convergence diagnostic (URGENT)
 - Phase 19.4 inserted after Phase 19.3: Grid-Family Clearance Floor Fix -- GRID_DEPTH_RANGE frozen at import from a seed-42 array makes E4/E6 legal at only ~6% of seeds (URGENT)
+- Phase 19.5 inserted after Phase 19.4 (the SDK placed it after Phase 19; relocated by hand so it
+  reads in sequence): Experiment Coverage and Uncertainty Bands -- seed bands for E4/E5/E6
+  (unlocked by 19.4's shared-interface fix making the clearance floor seed-invariant), an E2
+  real-rig replicate band, and the first experimental answer to R1.2 and R1.3, before Phase 20
+  (URGENT)
 
 ### Decisions
 
