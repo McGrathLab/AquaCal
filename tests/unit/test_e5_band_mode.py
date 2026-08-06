@@ -53,6 +53,7 @@ class TestCli:
             _validate_e5_args(parser, args)
 
 
+@pytest.mark.slow
 class TestBandMode:
     """--smoke --seeds 42,43 runs 2 seeds x 2 smoke n_assumed points ==
     {N_TRUE, N_ASSUMED_BAND[-1]} -- mirrors `_run_smoke_at`'s own smoke band.
@@ -112,6 +113,7 @@ class TestBandMode:
 
 
 class TestSingleSeedPathUnaffected:
+    @pytest.mark.slow
     def test_non_band_smoke_run_writes_no_seed_band_csv(self, tmp_path):
         # `_run_smoke` always writes to its own ephemeral temp directory
         # regardless of --out (unlike the --seeds band path), so this only

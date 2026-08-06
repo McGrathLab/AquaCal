@@ -82,6 +82,7 @@ def band_run_dir(tmp_path_factory):
     return out_dir
 
 
+@pytest.mark.slow
 class TestBandMode:
     def test_band_csv_written_at_smoke_scale(self, band_run_dir):
         band_path = band_run_dir / "generalization_sweep_band.csv"
@@ -125,6 +126,7 @@ class TestBandMode:
         assert result.stdout == ""
 
 
+@pytest.mark.slow
 class TestSeedIsolation:
     """T-19.5-06-01 (mandatory): E6's checkpoint cache is seed-blind, so a
     two-seed band MUST produce two distinct e6_configs/ directories -- one

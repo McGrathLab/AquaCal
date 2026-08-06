@@ -833,6 +833,7 @@ def test_oversized_cell_is_measured_not_predicted(monkeypatch, tmp_path):
     assert row["status_reason"]
 
 
+@pytest.mark.slow
 def test_smoke_cell_reports_clean_memory_pressure(tmp_path):
     """A comfortably-sized smoke cell reports the clean memory-pressure
     value (D-33 gap 3) -- exercised through the real subprocess hop, the
@@ -1099,6 +1100,7 @@ def test_xy_extent_over_array_span_is_equal_across_layouts():
     assert GRID_XY_EXTENT_RATIO == pytest.approx(0.54, abs=0.05)
 
 
+@pytest.mark.slow
 def test_run_grid_cell_holdout_matches_calibration_geometry(tmp_path, monkeypatch):
     """The held-out trajectory built inside `run_grid_cell` must be built
     from the SAME depth_range/xy_extent/camera XY layout as the cell's own
