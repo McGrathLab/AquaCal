@@ -125,6 +125,15 @@ CSV_TO_RECORD: dict[str, str] = {
     "e7_trace_shared_refined.csv": (
         "experiments/results/e7_benchmark_shared_refined.json"
     ),
+    "exp1_band.csv": (
+        "its own seed column is its ONLY seed provenance, spanning seeds "
+        "42-51; experiments/results/e1_benchmark_refractive.json + "
+        "e1_benchmark_nonrefractive.json supply version/git_sha/environment "
+        "but NOT this band's seeds -- both are SEEDLESS_LEGACY_RECORDS and "
+        "carry no seed key at all, and band mode deliberately does not "
+        "overwrite them (doing so would replace the single-seed production "
+        "record with the last band seed's values)"
+    ),
     "exp1_parameter_errors.csv": (
         "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json (E1 calibrates both models)"
@@ -163,6 +172,15 @@ CSV_TO_RECORD: dict[str, str] = {
         "e7_benchmark_shared_refined.json + e7_benchmark_percamera_fixed.json "
         "+ e7_benchmark_percamera_refined.json (four arms)"
     ),
+    "interface_ablation_band.csv": (
+        "its own seed column is its ONLY seed provenance, spanning seeds "
+        "42-51; the four experiments/results/e7_benchmark_{shared,percamera}_"
+        "{fixed,refined}.json supply version/git_sha/environment but NOT this "
+        "band's seeds -- all four are SEEDLESS_LEGACY_RECORDS and carry no "
+        "seed key at all, and band mode deliberately does not overwrite them "
+        "(doing so would replace the single-seed production record with the "
+        "last band seed's values)"
+    ),
     "newton_iterations.csv": "experiments/results/e3_provenance.json (E3 tier 2)",
     "reconstruction_errors.csv": "experiments/results/benchmark.json (E2, same run)",
     "structural_scaling.csv": (
@@ -174,6 +192,25 @@ CSV_TO_RECORD: dict[str, str] = {
     ),
     "reprojection_residuals.csv": "experiments/results/benchmark.json (E2, same run)",
 }
+
+
+def _read_csv_columns(path: pathlib.Path) -> list[str]:
+    """Column names of ``path``, read without loading the whole frame."""
+    return list(pd.read_csv(path, nrows=0).columns)
+
+
+def _seed_span(seeds: "pd.Series") -> str:
+    """Render a band's seed coverage as the string its map entry must contain.
+
+    Contiguous runs collapse to ``"seeds 42-51"``; anything else is listed in
+    full as ``"seeds 42, 44, 47"``. Derived from the data on every call so the
+    expected text cannot drift from the artifact it describes.
+    """
+    unique = sorted(int(s) for s in seeds.dropna().unique())
+    contiguous = unique == list(range(unique[0], unique[-1] + 1))
+    if contiguous:
+        return f"seeds {unique[0]}-{unique[-1]}"
+    return "seeds " + ", ".join(str(s) for s in unique)
 
 
 def _discover_json_files() -> list[pathlib.Path]:
@@ -484,6 +521,48 @@ class TestCsvProvenanceMap:
             f"{path.name} is committed under experiments/results/ but has no "
             "entry in CSV_TO_RECORD -- add one naming the provenance record "
             "that covers it (T-19.2-50)."
+        )
+
+    @pytest.mark.parametrize(
+        "path", _CSV_FILES, ids=[_pytest_id(p) for p in _CSV_FILES]
+    )
+    def test_multi_seed_band_declares_its_seed_coverage(self, path):
+        """A multi-seed band must declare its seed span in CSV_TO_RECORD.
+
+        A band CSV spans N seeds, but the sidecars it sits next to record a
+        single run -- E1's and E7's are `SEEDLESS_LEGACY_RECORDS` carrying no
+        seed key whatsoever, and band mode deliberately does not overwrite
+        them. Pointing such a band at those sidecars and stopping there
+        silently implies a coverage they do not provide, which is how
+        `exp1_band.csv` and `interface_ablation_band.csv` sat unregistered
+        from Phase 19.4 until Phase 19.5's post-merge gate caught them.
+
+        So the band's own `seed` column is treated as its seed provenance and
+        is required to be complete, and the map entry must state the span that
+        column actually contains. The expected span is computed FROM the CSV,
+        never hard-coded: re-running a band over different seeds fails here
+        until the entry is corrected, rather than leaving a stale claim behind.
+
+        Applies to any committed CSV carrying two or more distinct seeds, so
+        a future band inherits the gate by existing (T-19.5-W1).
+        """
+        if "seed" not in _read_csv_columns(path):
+            pytest.skip(f"{path.name} carries no seed column")
+        seeds = pd.read_csv(path)["seed"]
+        if seeds.dropna().nunique() < 2:
+            pytest.skip(f"{path.name} is single-seed, not a band")
+
+        assert not seeds.isna().any(), (
+            f"{path.name} spans multiple seeds but has null seed cells -- its "
+            "own seed column is its only seed provenance and must be complete"
+        )
+        record = CSV_TO_RECORD.get(path.name, "")
+        expected = _seed_span(seeds)
+        assert expected in record, (
+            f"{path.name} spans {seeds.nunique()} seeds ({expected}) but its "
+            f"CSV_TO_RECORD entry does not say so. Add the span verbatim as "
+            f"'{expected}' so no reader mistakes a single-run sidecar for "
+            "coverage of the whole band (T-19.5-W1)."
         )
 
     def test_csv_to_record_has_no_stale_entries(self):
