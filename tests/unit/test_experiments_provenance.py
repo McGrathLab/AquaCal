@@ -129,6 +129,17 @@ CSV_TO_RECORD: dict[str, str] = {
         "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json (E1 calibrates both models)"
     ),
+    "e7_focal_standoff.csv": (
+        "no record of its own: a zero-solve re-analysis (plan 19.5-03) of the "
+        "ten committed seeds in experiments/results/interface_ablation_band.csv, "
+        "whose four arms are covered by experiments/results/"
+        "e7_benchmark_{shared,percamera}_{fixed,refined}.json; each row also "
+        "carries its own scope column naming the band it re-reads"
+    ),
+    "fd_jacobian_accuracy.csv": (
+        "experiments/results/fd_jacobian_accuracy.json (its own run-level "
+        "sidecar, plan 19.5-02)"
+    ),
     "exp2_depth_generalization.csv": (
         "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json (same E1 run)"
@@ -154,6 +165,13 @@ CSV_TO_RECORD: dict[str, str] = {
     ),
     "newton_iterations.csv": "experiments/results/e3_provenance.json (E3 tier 2)",
     "reconstruction_errors.csv": "experiments/results/benchmark.json (E2, same run)",
+    "structural_scaling.csv": (
+        "no calibration record exists or could exist: every row is closed-form "
+        "structure (plan 19.5-01, COV-01) with no solve anywhere in its path, "
+        "so there is no seed, no runtime and no environment to record; each row "
+        "carries its own record_source column marking it computed (sparsity "
+        "built directly) or predicted (closed form)"
+    ),
     "reprojection_residuals.csv": "experiments/results/benchmark.json (E2, same run)",
 }
 
