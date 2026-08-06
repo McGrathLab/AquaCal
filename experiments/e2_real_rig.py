@@ -22,11 +22,15 @@ rename a column.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import logging
+import re
 import shutil
 import sys
 import tempfile
 from pathlib import Path
+from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -35,6 +39,7 @@ from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
     exit_code_for,
+    parse_seed_list,
     resolve_out_dir,
     validate_args,
     write_experiment_csv,
@@ -673,6 +678,159 @@ def _run_full(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# COV-07: seed-variant config generation (split/holdout band, D-19.5-05)
+# ---------------------------------------------------------------------------
+
+_SEED_LINE_RE = re.compile(r"^seed:(\s|$)")
+_TOP_LEVEL_KEY_RE = re.compile(r"^(\S)")
+_OUTPUT_DIR_LINE_RE = re.compile(r"^(\s+)output_dir:\s*(.*)$")
+
+
+def _line_ending(line: str) -> str:
+    """Return the line-ending characters of `line` (`\\r\\n`, `\\n`, or `''`)."""
+    if line.endswith("\r\n"):
+        return "\r\n"
+    if line.endswith("\n"):
+        return "\n"
+    return ""
+
+
+def _find_top_level_index(lines: list[str], key: str) -> int | None:
+    """Return the index of the top-level (column-0) `{key}:` line, or `None`."""
+    pattern = re.compile(rf"^{re.escape(key)}:\s*(#.*)?$")
+    for i, line in enumerate(lines):
+        if pattern.match(line):
+            return i
+    return None
+
+
+def build_seed_variant_config(source_text: str, seed: int, output_dir: str) -> str:
+    """Return `source_text` with `seed:` and `paths.output_dir` set (COV-07).
+
+    A pure text-to-text transform: the top-level `seed:` key is replaced if
+    present or inserted (immediately before the top-level `paths:` block, or
+    at end of file if there is no `paths:` block) if absent, and the
+    `paths.output_dir` value is replaced in place. Every other line --
+    comments, blank lines, key order, camera lists, video paths -- survives
+    byte-for-byte. A `yaml.safe_load`/`safe_dump` round-trip is deliberately
+    NOT used: it destroys comments and reorders keys, which would make the
+    "only two keys changed" assertion this function exists to satisfy
+    unverifiable.
+
+    Args:
+        source_text: The full text of a source `config.yaml`.
+        seed: The value to write into the top-level `seed:` key.
+        output_dir: The value to write into `paths.output_dir` (written as a
+            double-quoted YAML scalar, verbatim).
+
+    Returns:
+        The transformed config text.
+
+    Raises:
+        ValueError: If no `paths.output_dir` line is found to rewrite.
+    """
+    lines = source_text.splitlines(keepends=True)
+    default_ending = "\r\n" if "\r\n" in source_text else "\n"
+
+    # --- seed: replace if present, else insert before `paths:` (or at EOF) ---
+    seed_idx = next(
+        (i for i, line in enumerate(lines) if _SEED_LINE_RE.match(line)), None
+    )
+    if seed_idx is not None:
+        ending = _line_ending(lines[seed_idx]) or default_ending
+        lines[seed_idx] = f"seed: {seed}{ending}"
+    else:
+        paths_idx = _find_top_level_index(lines, "paths")
+        insert_idx = paths_idx if paths_idx is not None else len(lines)
+        ending = default_ending
+        if insert_idx > 0:
+            ending = _line_ending(lines[insert_idx - 1]) or default_ending
+        lines.insert(insert_idx, f"seed: {seed}{ending}")
+
+    # --- paths.output_dir: replace value in place, scoped to the paths block ---
+    paths_idx = _find_top_level_index(lines, "paths")
+    output_dir_idx = None
+    indent = None
+    if paths_idx is not None:
+        for i in range(paths_idx + 1, len(lines)):
+            line = lines[i]
+            stripped = line.rstrip("\r\n")
+            if stripped == "":
+                continue
+            if _TOP_LEVEL_KEY_RE.match(stripped):
+                break  # left the paths: block
+            match = _OUTPUT_DIR_LINE_RE.match(line)
+            if match:
+                output_dir_idx = i
+                indent = match.group(1)
+                break
+
+    if output_dir_idx is None:
+        raise ValueError(
+            "build_seed_variant_config: no 'paths.output_dir' line found in "
+            "source_text to rewrite"
+        )
+
+    quoted_output_dir = json.dumps(output_dir)
+    ending = _line_ending(lines[output_dir_idx]) or default_ending
+    lines[output_dir_idx] = f"{indent}output_dir: {quoted_output_dir}{ending}"
+
+    return "".join(lines)
+
+
+def emit_seed_variant_configs(
+    source_path: Path, seeds: Sequence[int], band_dir: Path
+) -> list[Path]:
+    """Write one seed-variant `config.yaml` per seed into `band_dir` (COV-07).
+
+    Each variant differs from `source_path` in exactly two keys: the
+    top-level `seed:` and `paths.output_dir` (set to
+    `band_dir / f"seed_{seed}"`). Refuses to write if `band_dir` resolves
+    inside `source_path.parent` -- the release tree that produced the
+    manuscript's Section 3 numbers must never be a variant's write target
+    (T-19.5-07-01).
+
+    Args:
+        source_path: Path to the source `config.yaml` (read-only; never
+            modified by this function).
+        seeds: The seeds to emit variants for, in order.
+        band_dir: Directory to write `config_seed{seed}.yaml` files into.
+
+    Returns:
+        The list of written variant config paths, in seed order.
+
+    Raises:
+        ValueError: If `band_dir` resolves inside `source_path.parent`.
+    """
+    source_path = Path(source_path).resolve()
+    resolved_band_dir = Path(band_dir).resolve()
+    source_dir = source_path.parent
+
+    if resolved_band_dir == source_dir or source_dir in resolved_band_dir.parents:
+        raise ValueError(
+            f"emit_seed_variant_configs: band_dir {resolved_band_dir} resolves "
+            f"inside the source config's own directory {source_dir}; a band run "
+            "would overwrite or pollute the release tree that produced the "
+            "manuscript's Section 3 numbers. Choose a band_dir outside it."
+        )
+
+    resolved_band_dir.mkdir(parents=True, exist_ok=True)
+    source_text = source_path.read_text()
+
+    written: list[Path] = []
+    for seed in seeds:
+        output_dir = resolved_band_dir / f"seed_{seed}"
+        variant_text = build_seed_variant_config(
+            source_text, seed, output_dir.as_posix()
+        )
+        variant_path = resolved_band_dir / f"config_seed{seed}.yaml"
+        variant_path.write_text(variant_text)
+        written.append(variant_path)
+
+    return written
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build E2's CLI parser: the shared five-flag contract, no extra flags.
 
@@ -695,7 +853,109 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "follows."
         ),
     )
+    parser.add_argument(
+        "--emit-band-configs",
+        action="store_true",
+        default=False,
+        help=(
+            "COV-07: emit N seed-variant config.yaml files (each differing "
+            "from --config in exactly the top-level seed: key and "
+            "paths.output_dir) plus e2_band_scope.json into --band-dir, and "
+            "exit without running any calibration. Requires --config and "
+            "--band-dir; cannot be combined with --check or --smoke."
+        ),
+    )
+    parser.add_argument(
+        "--band-seeds",
+        type=str,
+        default="42,43,44",
+        help=(
+            "Comma-separated seed list for --emit-band-configs (D-19.5-07's "
+            "design decision: seed 42 reproduces the currently committed "
+            "record). Default '42,43,44'."
+        ),
+    )
+    parser.add_argument(
+        "--band-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory to write seed-variant configs into for "
+            "--emit-band-configs. Must not resolve inside --config's own "
+            "directory -- the release tree that produced the manuscript's "
+            "Section 3 numbers must never be a variant's write target."
+        ),
+    )
     return parser
+
+
+def _validate_e2_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Enforce COV-07's `--emit-band-configs` cross-flag constraints (D-19.5-07).
+
+    Args:
+        parser: The parser `args` was produced from (used only to call
+            `parser.error()`, which prints usage and exits nonzero).
+        args: The parsed namespace to validate.
+
+    Raises:
+        SystemExit: Via `parser.error()`, when `--emit-band-configs` is
+            combined with `--check`/`--smoke`, or given without both
+            `--config` and `--band-dir`. Also raised by the shared
+            `validate_args` for `--check`/`--force` together.
+    """
+    validate_args(parser, args)
+    if args.emit_band_configs and (args.check or args.smoke):
+        parser.error("--emit-band-configs cannot be combined with --check or --smoke")
+    if args.emit_band_configs and args.config is None:
+        parser.error("--emit-band-configs requires --config")
+    if args.emit_band_configs and args.band_dir is None:
+        parser.error("--emit-band-configs requires --band-dir")
+
+
+def _run_emit_band_configs(args: argparse.Namespace) -> int:
+    """Emit COV-07's seed-variant configs and band-scope sidecar; no calibration.
+
+    Writes `band_dir / config_seed{seed}.yaml` for each seed in
+    `args.band_seeds`, plus `band_dir / e2_band_scope.json` recording the
+    source config's path and hash, the seeds, and the band's scope statement
+    (D-19.5-05: this band bounds split variance, NOT measurement variance).
+
+    Args:
+        args: Parsed CLI namespace. `args.config` and `args.band_dir` are
+            both required (enforced by `_validate_e2_args`).
+
+    Returns:
+        0. Errors propagate as exceptions/`SystemExit`, not a nonzero return.
+    """
+    source_path = Path(args.config).resolve()
+    band_dir = Path(args.band_dir).resolve()
+    seeds = parse_seed_list(args.band_seeds)
+
+    variant_paths = emit_seed_variant_configs(source_path, seeds, band_dir)
+    for path in variant_paths:
+        print(f"Wrote {path}")
+
+    source_config_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    scope_record = {
+        "source_config": str(source_path),
+        "source_config_sha256": source_config_sha256,
+        "seeds": list(seeds),
+        "n": len(seeds),
+        "scope": (
+            "This band varies the calibration/holdout split seed "
+            "(config.seed, threaded to split_detections) on fixed real data. "
+            "It bounds split variance, NOT measurement variance -- the "
+            "underlying frames, detections, and camera videos are identical "
+            "across every seed in this band (D-19.5-05)."
+        ),
+    }
+    scope_path = band_dir / "e2_band_scope.json"
+    scope_path.write_text(json.dumps(scope_record, indent=2, sort_keys=True))
+    print(f"Wrote {scope_path}")
+
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -709,9 +969,12 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_arg_parser()
     args = parser.parse_args(argv)
-    validate_args(parser, args)
+    _validate_e2_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if args.emit_band_configs:
+        return _run_emit_band_configs(args)
 
     if args.smoke:
         return _run_smoke(args)
