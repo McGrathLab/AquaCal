@@ -1,0 +1,48 @@
+{
+  "ci_95": {
+    "reconstruction_mae_mm": [
+      0.21534863231889842,
+      0.3115045930362214
+    ],
+    "reconstruction_rmse_mm": [
+      0.41823682597857825,
+      0.8269663214421463
+    ],
+    "signed_mean_mm": [
+      0.015275526209482772,
+      0.07891755165541987
+    ]
+  },
+  "cluster_column": "frame_idx",
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "72dbc36fa49ea23a8f6e9788557e72b2f562d152",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "experiment": "reconstruction_bootstrap",
+  "git_sha": "72dbc36fa49ea23a8f6e9788557e72b2f562d152",
+  "n_frames": 52,
+  "n_resamples": 10000,
+  "n_rows": 7762,
+  "point_estimate_matches_real_rig_metrics": true,
+  "point_estimates": {
+    "reconstruction_mae_mm": 0.2581771755739236,
+    "reconstruction_rmse_mm": 0.628138580850984,
+    "signed_mean_mm": 0.043189012764625896
+  },
+  "schema_version": 1,
+  "scope": "metric sampling variance only -- this interval resamples the inter-corner comparisons of ONE calibration; it is not a calibration band and must never be presented as one (D-19.5-05).",
+  "seconds": 24.40600000001723,
+  "seed": 42,
+  "solver_config": {
+    "seed": 42
+  }
+}
