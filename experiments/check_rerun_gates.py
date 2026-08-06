@@ -51,15 +51,6 @@ from typing import Literal
 
 import pandas as pd
 
-from aquacal.datasets.synthetic import board_clearance_floor, generate_camera_array
-from experiments.e4_benchmark_grid import (
-    GRID_BOARD_CONFIG,
-    GRID_DEPTH_RANGE,
-    GRID_HEIGHT_ABOVE_WATER,
-    GRID_LAYOUT,
-    GRID_SPACING,
-)
-
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
 _GUARD_COLUMN = "degenerate_observations_at_solution"
@@ -120,6 +111,28 @@ def legality_probe(
         calibration draw and one for the holdout draw -- so a FAIL names
         exactly which combination is illegal.
     """
+    # LAZY IMPORT, deliberately not at module level: this module is also
+    # invoked as a bare script (`python experiments/check_rerun_gates.py
+    # <out_dir>`, both rerun_19_4.sh's and rerun_19_5.sh's run_gate_check),
+    # under which Python adds only the script's OWN directory to sys.path,
+    # not the repo root -- a module-level `from experiments.e4_benchmark_grid
+    # import ...` would make every ordinary gate check (check_e1..check_e7,
+    # none of which needs this) fail with `ModuleNotFoundError: No module
+    # named 'experiments'` on that invocation path. Deferring the import to
+    # here keeps the existing bare-script invocation working, and costs
+    # nothing since legality_probe is only ever called from a context where
+    # cwd is the repo root (prelaunch_gate.sh's and rerun_19_5.sh's own
+    # heredoc invocations, and this test file, all of which run with the
+    # repo root on sys.path).
+    from aquacal.datasets.synthetic import board_clearance_floor, generate_camera_array
+    from experiments.e4_benchmark_grid import (
+        GRID_BOARD_CONFIG,
+        GRID_DEPTH_RANGE,
+        GRID_HEIGHT_ABOVE_WATER,
+        GRID_LAYOUT,
+        GRID_SPACING,
+    )
+
     results: list[GateResult] = []
     for seed in seeds:
         for n_cameras in camera_counts:
