@@ -323,6 +323,15 @@ Which phases cover which requirements. Populated during roadmap creation.
 | GEOM-04 | Phase 19.3 | Complete |
 | GEOM-05 | Phase 19.3 | Complete |
 | GEOM-06 | Phase 19.3 | Complete |
+| SC-1 | Phase 19.4 | Complete |
+| SC-2 | Phase 19.4 | Complete |
+| SC-3 | Phase 19.4 | Complete |
+| SC-4 | Phase 19.4 | Complete |
+| SC-5 | Phase 19.4 | Complete |
+| SC-5a | Phase 19.4 | Complete |
+| SC-6 | Phase 19.4 | Complete |
+| SC-7 | Phase 19.4 | Complete |
+| SC-8 | Phase 19.4 | Complete |
 | INDEX-01 | Phase 20 | Pending |
 | INDEX-02 | Phase 20 | Pending |
 | INDEX-03 | Phase 20 | Pending |
@@ -338,6 +347,23 @@ Which phases cover which requirements. Populated during roadmap creation.
 - v1 requirements: 46 total
 - Mapped to phases: 46
 - Unmapped: 0 ✓
+
+### Phase 19.4 success criteria — the artifact or test satisfying each
+
+Phase 19.4's Success Criteria in ROADMAP.md ARE its requirement set (no v1 `*-NN` IDs map to it).
+Each is discharged by a named artifact or test, not by assertion:
+
+| SC | Satisfied by |
+|----|--------------|
+| SC-1 | `tests/unit/test_synthetic_scenario_geometry.py` — `test_create_scenario_water_zs_single_shared_plane` (all three presets), `test_generate_real_rig_array_water_zs_single_shared_plane`, `test_generate_camera_array_water_zs_single_shared_plane` (over layouts, camera counts and seeds) |
+| SC-2 | `src/aquacal/datasets/synthetic.py::generate_camera_array` — jitter moved to `C_z`; verified by `test_generate_camera_array_hc_preservation_matches_replayed_rng_stream`, `..._jitter_relocated_to_camera_height`, `..._zero_variation_is_true_no_op` |
+| SC-3 | **Byte-comparison `2a623f9..0ffbe15`**: `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`, `exp3_xy_vs_z_anisotropy.csv`, `index_sensitivity.csv`, `interface_ablation.csv` all UNCHANGED; the eight E1/E3/E5/E7 sidecars differ only in `git_sha` and `seconds`. Completes plan 04's source-level proof, and covers E5 — never `--check`ed before |
+| SC-4 | `experiments/e4_benchmark_grid.py:296::derive_grid_depth_range`; floor re-derived to 1.176215948246 (a ~5.6 mm drop from the pre-fix constant), seed-invariant by construction; visible in `generalization_sweep.csv` `depth_range_min` (1.181852 → 1.176216 on the two scale configs) |
+| SC-5 | `experiments/results/**` regenerated at one git sha `2a623f9` (commit `0ffbe15`); pre-fix baselines archived in `experiments/archive/e{4,6}-2026-08-04-pre-interface-fix/`; MF-08 carries the 19.4 movement table |
+| SC-5a | `experiments/results/exp1_band.csv` and `experiments/results/interface_ablation_band.csv` — both committed, both regenerable via `--seeds`; every banded number in MF-05/MF-08 now names one of them |
+| SC-6 | Fail-fast in E4 and E6 with `--no-fail-fast` opt-out (plan 07); `tests/unit/test_rerun_gates.py` |
+| SC-7 | `experiments/rerun_19_4.sh` risk-first stage order, executed once; `rerun_19_4_state.tsv` records 8/8 stages exit 0; `ALL gate3_git_sha_consistency` PASS |
+| SC-8 | `19.4-COVERAGE-MATRIX.md` — CONFIRMED verdict; the queue ran plan 03's approved stage list verbatim, `STAGES=(e6_repeat1 e4 e6_repeat2 e6_seed43 e7 e1 e5 e3)` |
 
 ---
 *Requirements defined: 2026-07-23*

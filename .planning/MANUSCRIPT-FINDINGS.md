@@ -389,8 +389,12 @@ calibrated value, that sentence needs the same correction the source comments re
 2026-08-01 and CHANGED THE CONCLUSION from "always" to "usually" — see the paired-difference
 section, which supersedes the five-seed claim.**
 **Found:** 2026-07-31, plan 19.2-24 + D-36 five-seed sweep (10/10 runs succeeded)
-**Source of truth:** `Desktop/Aqua/AquaCal/seed_sweep_19_2/e7_interface_ablation/seed_{42..46}/`;
-analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
+**Source of truth (COMMITTED as of 2026-08-05, phase 19.4):**
+**`experiments/results/interface_ablation_band.csv`** — every banded number in this entry
+regenerates from that file. It supersedes the gitignored working copies this entry originally
+cited (`Desktop/Aqua/AquaCal/seed_sweep_19_2/e7_interface_ablation/seed_{42..46}/` and
+`seed_sweep_19_3/`), which are retained only as historical provenance; analysis in
+`.planning/phases/19.2-.../analyze_e7_spread.py`
 **Where the prose is:** wherever the shared-vs-per-camera interface comparison is claimed
 
 > **D-36's criterion: AMENDED to the paired difference — user decision, 2026-07-31.**
@@ -453,6 +457,23 @@ analysis in `.planning/phases/19.2-.../analyze_e7_spread.py`
 > | `percamera_fixed` | 1.419 | 2.254 | 0.835 | 1.787 |
 > | `shared_refined` | 0.491 | 7.050 | 6.558 | 2.950 |
 > | `percamera_refined` | 2.059 | 7.240 | 5.182 | 3.794 |
+
+> **REPRODUCED, NOT REPLACED — phase 19.4, 2026-08-05.** E7 is INERT under 19.4's
+> single-flat-interface fix: its production `"realistic"` scenario resolves to
+> `generate_real_rig_array()`'s frozen shared `WATER_Z` and never reaches
+> `generate_camera_array`. The re-run recomputed this entry's statistics from the newly
+> committed **`experiments/results/interface_ablation_band.csv`** and they match exactly —
+> `fixed` 10/10 shared-better, range [+0.919, +1.879], no zero crossing; `refined` 8/10,
+> crosses zero, range [-0.471, +2.524]; and all sixteen cells of the per-arm table above.
+> **What changed is not the numbers but their standing:** they now have a committed,
+> regenerable artifact behind them instead of gitignored scratch output.
+>
+> **One nuance a reviewer may raise.** This entry's p-values are ONE-SIDED sign tests
+> (0.00098 = 2⁻¹⁰; 0.055 = 56/1024). Two-sided they are **0.00195** and **0.109**. The
+> `fixed` pairing clears 0.05 either way; `refined` does not clear it under either
+> convention, which reinforces — rather than changes — this entry's existing
+> "a tendency, not a rule" framing for `refined`. The one-sided choice is not corrected
+> here because it is the published framing; it is recorded so the decision is visible.
 
 ### Per-arm spread — what bounds any ABSOLUTE claim
 
@@ -698,6 +719,42 @@ comparison is supportable.
 | **E4** | worst-cell RMS 0.92 -> 0.71 px (16x50), 0.85 -> 0.71 (12x50); 3D error ~3.5e-5 -> ~2.9e-5 m | 3e-2 -> 4e-3 (12x100) | un-instrumented -> **0** on all 9 cells | **NONE** — no seed band |
 | **E5** | reconstruction RMSE +0.009 mm across the band; the 1.341 outlier (0.80 px) resolved to 0.71 | n/a (not recorded) | **0** | **NONE** — single seed, see below |
 | **E6** | index/1.42 **5e+01 -> 1e-02**; scale/half_scale **3e+01 -> 8e-03**; layout/ring intrinsic **4e+00 -> 2e-03**; all 14 <= 1e-02 on BOTH passes | see left | per-config 3-38 -> **0** | **NONE** — no seed band |
+
+> ### RE-MEASURED AGAIN under phase 19.4's single-flat-interface fix (2026-08-05)
+>
+> The table above records movement under phase 19.3's **depth** fix and is retained unchanged as
+> the historical record. Phase 19.4 corrected a *different* upstream defect — the ground truth gave
+> each camera its own water surface (see MF-10) — and re-ran the suite once under a single git sha,
+> `2a623f9`. **Only E4 and E6 moved. E1, E3, E5 and E7 are inert and were confirmed unchanged by
+> byte-comparison**, which corrects this entry's earlier implication that E7's numbers move: they
+> do not.
+>
+> **Source of truth:** `experiments/results/` at `0ffbe15`, against
+> `experiments/archive/e{4,6}-2026-08-04-pre-interface-fix/` (verified content-identical to the
+> pre-run committed baseline at `2a623f9`).
+>
+> | exp | movement under the interface fix | status / guard | accuracy claim |
+> |---|---|---|---|
+> | **E4** | `n_observations` -0.15% to -0.40% (9 cells); `validation_3d_error_mean` 0.0350 -> 0.0335 mm on average but moves BOTH directions per cell (-17% to +9%); `reprojection_rms` unchanged within ±0.06%; optimality stays <= 2e-02 throughout | all 9 cells `ok` before and after; guard count **0** before and after | **NONE — reports movement, no accuracy claim** (D-19.3-17: E4 has no seed band) |
+> | **E6** | `water_z_error_mm_mean` is the whole story: **~3.41 mm in every configuration before, 0.027-2.518 mm (mean 0.67) after**. Pre-fix it was near-CONSTANT — exactly 3.4057 in 10 of 14 rows, unresponsive to index, layout or scale. `depth_range_min` moved on the 2 scale configs only (1.181852 -> 1.176216, the re-derived clearance floor) | all 14 configs `ok` before and after — legal-configuration count **14 -> 14**; guard count **0** before and after | **NONE — reports movement, no accuracy claim** (D-19.3-17: E6 has no seed band) |
+>
+> **Why the E6 number is the phase's clearest evidence.** A water-surface error that sits at
+> 3.4057 mm regardless of refractive index, rig layout, or scene scale is not responding to the
+> experiment's variable — it is the ground-truth defect showing through. After the fix the same
+> column varies with configuration, as an estimate should. This is a MECHANISM statement, not an
+> effect size: one seed, one trajectory.
+>
+> **E4's accuracy column moves in both directions** and its mean shift (0.0350 -> 0.0335 mm) is far
+> inside the seed-to-seed variation this design cannot measure. Do not read it as an improvement.
+>
+> **Banded numbers in this entry now name their artifacts.** The E1 deepest-point ratio spread
+> (97-178x) and the "2 of 10 seeds exceed 2 mm" finding both regenerate from the newly committed
+> **`experiments/results/exp1_band.csv`**; E7's band regenerates from
+> **`experiments/results/interface_ablation_band.csv`**. Neither previously existed outside
+> gitignored `seed_sweep_19_3/` output.
+>
+> **Unchanged by 19.4:** E1's `14,949` guard count reproduces exactly, so the bookkeeping finding
+> below stands as written.
 | **E7** | shared_fixed water_z err 0.92 -> **0.63 mm**; percamera_fixed 3.18 -> **2.24 mm**; `fixed` pairing now **10/10** shared-better, no zero crossing | — | **0** on all four arms | **supported** — corrected-geometry band |
 
 ### Accuracy claims: what is and is not supportable
@@ -1253,5 +1310,67 @@ MF-08 is still outstanding and is deliberately not made here. See
 > extrapolated test depth is two orders of magnitude larger than the refractive model's
 > (approximately 205-252 mm against 1.4-2.1 mm). We also now state the random seed used for the
 > reported run, which the original submission omitted.
+
+---
+
+## MF-10 — Synthetic validation ran against a ground truth where each camera had its own water surface
+
+**Status:** OPEN — needs a disclosure sentence in §3 before resubmission
+**Found:** 2026-08-04, phase 19.4 planning, by auditing the scenario generators rather than by
+running anything
+**Corrected and re-measured:** 2026-08-05, phase 19.4 plan 09 (queue run at git sha `2a623f9`,
+artifacts committed `0ffbe15`)
+**Source of truth:** `19.4-RESCOPE-PROPOSAL.md` (the five-source audit and the pixel measurement);
+`experiments/results/` at `0ffbe15` against
+`experiments/archive/e{4,6}-2026-08-04-pre-interface-fix/`
+**Where the prose is:** §3 Synthetic validation — the scenario description, not the results.
+Follow MF-09's location conventions before editing.
+**Relates to:** MF-08 (its E4/E6 rows are re-measured under this fix)
+
+### The defect, stated precisely
+
+The method, and the manuscript describing it, rest on a **single flat refracting interface**: one
+water surface, shared by every camera. `generate_camera_array` did not build that. It gave **each
+camera its own water surface**, so the synthetic ground truth that validated the method violated
+the premise the method assumes.
+
+An audit of all five scenario sources found **two affected**. The other three — including
+`generate_real_rig_array()`, which E1, E5 and E7 run in production — use a frozen shared
+`WATER_Z` and were never affected. This is why only E4 and E6 moved.
+
+**The magnitude, measured rather than argued.** Over **31,680 corner observations**, the
+displacement between the per-camera surfaces and a single shared one was **mean 1.42 px, max
+6.33 px**, against a reprojection RMS of ~0.4-0.9 px. *The modelling error was larger than the
+residual being reported.* That is what makes this disclosable rather than negligible.
+
+**The 1.42 px figure is one seed and one trajectory. It is NOT an effect size** and must never be
+quoted as one. Its only job is to establish that the defect was real and dominant relative to the
+residual — a threshold judgment, not a measurement of impact.
+
+### What it changed, and what it did not
+
+Re-running the full suite once under a single git sha moved **only E4 and E6**. E1, E3, E5 and E7
+were confirmed inert by byte-comparison of their committed artifacts, not merely by source-level
+argument. Detailed movement is tabulated in MF-08's 19.4 subsection; neither E4 nor E6 carries an
+accuracy claim, because neither has a seed band.
+
+The clearest signature is E6's `water_z_error_mm_mean`: **~3.41 mm in every configuration before
+the fix — exactly 3.4057 in 10 of 14 rows, unmoved by refractive index, layout or scale — and
+0.027-2.518 mm after**. An error that ignores the experiment's own variable is the ground truth
+showing through, not the estimator.
+
+### The consequence for the manuscript is favourable, and should be stated plainly
+
+**The correction strengthens E7's published conclusion rather than weakening it.** E7 compares a
+shared interface model against a per-camera one. On the corrected geometry there genuinely *is*
+one surface, so "shared" is the correct model — and the `fixed` pairing is unanimous, 10/10 with
+no zero crossing (`experiments/results/interface_ablation_band.csv`). The earlier geometry was, if
+anything, biased *against* the conclusion the paper draws.
+
+**Recommended disclosure.** A sentence in §3 stating that the synthetic scenario generator was
+found to place a separate interface per camera, that this was corrected and the affected
+experiments re-measured before resubmission, and that the corrected geometry is the one reported.
+Reviewers who read the generator would find this first; disclosing it costs a sentence, and not
+disclosing it costs the paper's credibility on exactly the point it claims as its contribution.
 
 ---

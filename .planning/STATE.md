@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
-last_updated: "2026-08-04T17:51:38.478Z"
-last_activity: 2026-08-04 -- Phase 19.4 execution started
+stopped_at: "Phase 19.4 CLOSED 2026-08-05 -- plan 10 Task 3 checkpoint approved by the user; all six honesty checks PASS. Next: Phase 20."
+last_updated: "2026-08-05T22:30:00.000Z"
+last_activity: 2026-08-05 -- Phase 19.4 closed (10/10 plans)
 progress:
   total_phases: 11
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 83
-  completed_plans: 73
-  percent: 64
+  completed_plans: 83
+  percent: 73
 ---
 
 # Project State
@@ -21,11 +21,28 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.4 — Single Flat Interface
+**Current focus:** Phase 20 — Refractive Index Helper (19.4 closed 2026-08-05)
 
 ## Current Position
 
-Phase: **19.4 — Single Flat Interface — EXECUTING.** 10 plans in 6 waves, plan-checker PASSED.
+Phase: **19.4 — Single Flat Interface — CLOSED 2026-08-05.** All 10 plans complete; plan 10's
+  Task 3 human checkpoint APPROVED with all six honesty checks PASS. SC-1..SC-8 discharged and
+  mapped in REQUIREMENTS.md. Authoritative record: `19.4-10-SUMMARY.md`.
+
+  **The verdict.** Only E4 and E6 moved. E1, E3, E5 and E7 are UNCHANGED by byte-comparison
+  (`2a623f9..0ffbe15`) — their data CSVs are absent from the diff entirely, and their sidecars
+  differ only in `git_sha` and `seconds`. E5's runtime check, deferred since plan 04, is done.
+  **E4 and E6 report movement with NO accuracy claim** (D-19.3-17 — neither has a seed band).
+  E6's signature: `water_z_error_mm_mean` was *exactly* 3.4057 in 10 of 14 configs pre-fix —
+  unresponsive to index, layout and scale alike — and 0.027–2.518 mm after. MF-05 reproduced
+  exactly from the new committed band; MF-10 records the defect and its correction.
+
+  **Next: Phase 20** (Refractive Index Helper), then 21, 22. Deadline: SoftwareX **2026-08-21**.
+
+  ---
+  *Historical context from this phase, retained:*
+
+Phase: **19.4 — Single Flat Interface — (executed).** 10 plans in 6 waves, plan-checker PASSED.
   (Preceded by Phase 19.3, CLOSED 2026-08-04, commit `d406001` (`feat!:`), suite 1283 passed /
   6 skipped / 0 failed — GEOM-01..06 all satisfied. **Only E7 carries an accuracy claim**;
   D-19.3-17 applied strictly demoted E1 and E5.)

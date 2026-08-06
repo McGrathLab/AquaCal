@@ -448,12 +448,12 @@ Plans:
 - [x] 19.4-02-PLAN.md — wave 1 — move `generate_camera_array`'s jitter from `water_z` to `C_z` and add the scenario-invariant one-water_z test (SC-1, SC-2, D-19.4-09)
 - [x] 19.4-03-PLAN.md — wave 1 — pre-run reviewer-intent coverage matrix; GATES the queue (SC-8, D-19.4-17)
 - [x] 19.4-05-PLAN.md — wave 1 — shared `parse_seed_list`/`run_seed_band` in `_io.py` plus E7's `--seeds` band (SC-5a, D-19.4-14)
-- [ ] 19.4-04-PLAN.md — wave 2 — `derive_grid_depth_range` helper, floor re-derived to 1.176215948246, E1/E3/E5/E7 inertness proof (SC-3, SC-4, D-19.4-12/15)
-- [ ] 19.4-06-PLAN.md — wave 2 — E1's `--seeds` band over the depth-generalization rows (SC-5a, D-19.4-14)
-- [ ] 19.4-07-PLAN.md — wave 3 — fail-fast in E4 and E6 with a `--no-fail-fast` opt-out (SC-6, D-19.4-11)
-- [ ] 19.4-08-PLAN.md — wave 4 — write the risk-first resumable queue, extend the gate script, narrow the prelaunch gate (SC-7, D-19.4-16)
-- [ ] 19.4-09-PLAN.md — wave 5 — execute the ~9 h 30 min production queue once, under one git sha (SC-5, SC-7, D-19.4-13/16)
-- [ ] 19.4-10-PLAN.md — wave 6 — inertness verdict by byte-comparison, MF-05/MF-08 updates, new interface finding, phase closure (SC-3, SC-5, SC-5a, SC-8)
+- [x] 19.4-04-PLAN.md — wave 2 — `derive_grid_depth_range` helper, floor re-derived to 1.176215948246, E1/E3/E5/E7 inertness proof (SC-3, SC-4, D-19.4-12/15)
+- [x] 19.4-06-PLAN.md — wave 2 — E1's `--seeds` band over the depth-generalization rows (SC-5a, D-19.4-14)
+- [x] 19.4-07-PLAN.md — wave 3 — fail-fast in E4 and E6 with a `--no-fail-fast` opt-out (SC-6, D-19.4-11)
+- [x] 19.4-08-PLAN.md — wave 4 — write the risk-first resumable queue, extend the gate script, narrow the prelaunch gate (SC-7, D-19.4-16)
+- [x] 19.4-09-PLAN.md — wave 5 — execute the ~9 h 30 min production queue once, under one git sha (SC-5, SC-7, D-19.4-13/16)
+- [x] 19.4-10-PLAN.md — wave 6 — inertness verdict by byte-comparison, MF-05/MF-08 updates, new interface finding, phase closure (SC-3, SC-5, SC-5a, SC-8)
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
