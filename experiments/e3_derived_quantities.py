@@ -495,6 +495,69 @@ def _build_computed_cpr_row(
     }
 
 
+def predict_jacobian_shape(
+    n_cameras: int,
+    n_frames: int,
+    *,
+    refine_intrinsics: bool,
+    normal_fixed: bool,
+    shared_interface: bool,
+    visibility: float = 1.0,
+    n_corners: int = 4,
+) -> tuple[int, int]:
+    """Predict `build_jacobian_sparsity`'s `(n_residuals, n_params)` shape by pure counting.
+
+    Derived from the same parameter-block layout `build_jacobian_sparsity` encodes (read live
+    from its source, `_optim_common.py:330-344`), never guessed: 2 tilt params if
+    `normal_fixed=False` (else 0), 6 extrinsic DoF per non-reference camera, one dense water_z
+    column if `shared_interface` else one per camera, 6 DoF per board frame, and 4 intrinsic
+    parameters per camera when `refine_intrinsics`. This is counting only -- no array is ever
+    allocated.
+
+    `n_residuals` assumes full visibility (`visibility=1.0`): every camera observes every frame
+    with `n_corners` corners and 2 residuals (x, y) per corner, exactly `_make_detections`'
+    tier-3 usage (`visibility=1.0` is the only value COV-01 sweeps). A `visibility` below 1.0
+    depends on `_make_detections`' own RNG draw and is not counting-derivable; this function
+    raises rather than silently returning a wrong shape.
+
+    Args:
+        n_cameras: Number of cameras.
+        n_frames: Number of board frames.
+        refine_intrinsics: Whether intrinsics are in the parameter vector.
+        normal_fixed: If False, 2 tilt params are prepended to the parameter vector.
+        shared_interface: If True, one dense water_z column; if False, one per camera.
+        visibility: Detection visibility fraction. Only `1.0` (full visibility) is supported.
+        n_corners: Corners detected per (camera, frame) pair at full visibility.
+
+    Returns:
+        `(n_residuals, n_params)`, matching `build_jacobian_sparsity(...).shape` exactly at
+        every size where building the real array is affordable.
+
+    Raises:
+        NotImplementedError: If `visibility != 1.0`.
+    """
+    if visibility != 1.0:
+        raise NotImplementedError(
+            "predict_jacobian_shape only supports visibility=1.0 (full connectivity); "
+            "n_residuals below full visibility depends on _make_detections' RNG draw and "
+            "is not derivable by counting alone."
+        )
+    n_tilt_params = 0 if normal_fixed else 2
+    n_extrinsic_params = 6 * (n_cameras - 1)
+    n_water_z_params = 1 if shared_interface else n_cameras
+    n_pose_params = 6 * n_frames
+    n_intrinsic_params = 4 * n_cameras if refine_intrinsics else 0
+    n_params = (
+        n_tilt_params
+        + n_extrinsic_params
+        + n_water_z_params
+        + n_pose_params
+        + n_intrinsic_params
+    )
+    n_residuals = 2 * n_cameras * n_frames * n_corners
+    return (n_residuals, n_params)
+
+
 def _build_copied_cpr_row(
     config_key: str,
     n_cameras: int,
