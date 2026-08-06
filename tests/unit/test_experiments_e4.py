@@ -37,7 +37,11 @@ from aquacal.datasets.synthetic import (
     generate_camera_array,
     generate_camera_intrinsics,
 )
-from experiments._io import write_direct_call_benchmark
+from experiments._io import (
+    build_experiment_arg_parser,
+    write_direct_call_benchmark,
+    write_experiment_csv,
+)
 from experiments.e4_benchmark_grid import (
     _NULL_METRICS,
     DECLARED_CELLS,
@@ -46,21 +50,26 @@ from experiments.e4_benchmark_grid import (
     GRID_COLUMNS,
     GRID_DEPTH_RANGE,
     GRID_HEIGHT_ABOVE_WATER,
+    GRID_KEY_COLUMNS,
     GRID_SCENARIO_NAME,
     GRID_SPACING,
     GRID_XY_EXTENT_RATIO,
     MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
     MEMORY_PRESSURE_NEAR_CEILING,
+    REPEAT_CELLS,
     SKIPPED_EXIT_CODE,
     _array_xy_span,
     _classify_memory_pressure,
     _invoke_subprocess_with_status_mapping,
+    _validate_e4_args,
+    build_arg_parser,
     build_grid_dataframe,
     build_grid_scenario,
     default_xy_extent_for_layout,
     run_cell_subprocess,
     run_grid_cell,
+    splice_repeat_records,
     write_grid_latex,
 )
 from experiments.e4_benchmark_grid import subprocess as e4_subprocess
@@ -1189,3 +1198,281 @@ def test_every_declared_grid_cell_constructs_legally_at_production_frame_count()
                 f"cell ({n_cameras}, {n_frames}) frame {pose.frame_idx}: "
                 f"a corner is at or above max(water_zs)={max_water_z}"
             )
+
+
+# ---------------------------------------------------------------------------
+# COV-06 (plan 19.5-08): splice_repeat_records and the --splice-repeat CLI
+# ---------------------------------------------------------------------------
+
+
+def _repeat_row(
+    n_cameras: int,
+    n_frames: int,
+    seconds1: float | None,
+    seconds2: float | None,
+    nfev: float | None,
+    *,
+    n_observations: int = 100,
+    normal_fixed: bool = False,
+    shared_interface: bool = True,
+    seed: int = 42,
+) -> dict:
+    """One hand-built row carrying exactly the columns `splice_repeat_records`
+    reads -- no `benchmark.json`, no `write_direct_call_benchmark`, no I/O."""
+    return {
+        "cell_key": f"cameras_{n_cameras}_frames_{n_frames}",
+        "n_cameras": n_cameras,
+        "n_frames": n_frames,
+        "seed": seed,
+        "normal_fixed": normal_fixed,
+        "shared_interface": shared_interface,
+        "n_observations": n_observations,
+        "seconds_stage3_interface_optimization": seconds1,
+        "seconds_stage3_intrinsic_pass": seconds2,
+        "nfev_stage3_interface_optimization": nfev,
+    }
+
+
+def _repeat_frame(rows: list[dict]) -> pd.DataFrame:
+    return pd.DataFrame(rows)
+
+
+class TestSpliceRepeatRecords:
+    def test_two_runs_produce_six_rows_with_a_repeat_column(self):
+        run1 = _repeat_frame([_repeat_row(n, 100, 60.0, 40.0, 10) for n in (8, 12, 16)])
+        run2 = _repeat_frame([_repeat_row(n, 100, 65.0, 42.0, 11) for n in (8, 12, 16)])
+
+        result = splice_repeat_records([run1, run2], REPEAT_CELLS)
+
+        assert len(result) == 6
+        assert set(result["repeat"].unique()) == {1, 2}
+        counts = result.groupby(["n_cameras", "n_frames"]).size()
+        assert (counts == 2).all()
+
+    def test_raises_naming_missing_cell(self):
+        run1 = _repeat_frame([_repeat_row(n, 100, 60.0, 40.0, 10) for n in (8, 12, 16)])
+        # run2 lacks (16, 100).
+        run2 = _repeat_frame([_repeat_row(n, 100, 65.0, 42.0, 11) for n in (8, 12)])
+
+        with pytest.raises(ValueError, match=re.escape("(16, 100)")):
+            splice_repeat_records([run1, run2], REPEAT_CELLS)
+
+    def test_raises_on_null_nfev_beside_nonnull_seconds(self):
+        run1 = _repeat_frame([_repeat_row(n, 100, 60.0, 40.0, 10) for n in (8, 12, 16)])
+        run2 = _repeat_frame(
+            [
+                _repeat_row(8, 100, 65.0, 42.0, None),  # nfev missing
+                _repeat_row(12, 100, 65.0, 42.0, 11),
+                _repeat_row(16, 100, 65.0, 42.0, 11),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="nfev"):
+            splice_repeat_records([run1, run2], REPEAT_CELLS)
+
+    def test_raises_when_runs_disagree_on_n_observations(self):
+        run1 = _repeat_frame([_repeat_row(n, 100, 60.0, 40.0, 10) for n in (8, 12, 16)])
+        run2 = _repeat_frame(
+            [
+                _repeat_row(8, 100, 65.0, 42.0, 11, n_observations=999),
+                _repeat_row(12, 100, 65.0, 42.0, 11),
+                _repeat_row(16, 100, 65.0, 42.0, 11),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="n_observations"):
+            splice_repeat_records([run1, run2], REPEAT_CELLS)
+
+    def test_spread_pct_matches_expected_value_for_known_totals(self):
+        # (8, 100) totals 100s (run1) and 200s (run2): spread = (200-100)/150*100.
+        run1 = _repeat_frame([_repeat_row(8, 100, 60.0, 40.0, 10)])
+        run2 = _repeat_frame([_repeat_row(8, 100, 120.0, 80.0, 11)])
+
+        result = splice_repeat_records([run1, run2], [(8, 100)])
+
+        expected_pct = (200.0 - 100.0) / 150.0 * 100.0
+        assert result["seconds_total"].tolist() == [100.0, 200.0]
+        np.testing.assert_allclose(
+            result["seconds_total_spread_pct"].tolist(),
+            [expected_pct, expected_pct],
+        )
+
+    def test_no_pvalue_or_interval_column_is_ever_produced(self):
+        run1 = _repeat_frame([_repeat_row(8, 100, 60.0, 40.0, 10)])
+        run2 = _repeat_frame([_repeat_row(8, 100, 65.0, 42.0, 11)])
+
+        result = splice_repeat_records([run1, run2], [(8, 100)])
+
+        forbidden_substrings = ("pvalue", "p_value", "ci_low", "ci_high", "interval")
+        for column in result.columns:
+            lowered = column.lower()
+            assert not any(term in lowered for term in forbidden_substrings), (
+                f"column {column!r} looks like a p-value/interval; n=2 supports "
+                "only a spread (T-19.5-08-03)"
+            )
+
+    def test_is_pure_no_file_opened(self, monkeypatch):
+        run1 = _repeat_frame([_repeat_row(8, 100, 60.0, 40.0, 10)])
+        run2 = _repeat_frame([_repeat_row(8, 100, 65.0, 42.0, 11)])
+
+        import builtins
+
+        real_open = builtins.open
+
+        def _forbid_open(*args, **kwargs):
+            raise AssertionError(
+                "splice_repeat_records must open no file -- it is a pure "
+                "function over already-loaded DataFrames"
+            )
+
+        monkeypatch.setattr(builtins, "open", _forbid_open)
+        try:
+            splice_repeat_records([run1, run2], [(8, 100)])
+        finally:
+            monkeypatch.setattr(builtins, "open", real_open)
+
+
+class TestSpliceRepeatCli:
+    def test_help_lists_splice_repeat(self, capsys):
+        parser = build_arg_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--help"])
+        captured = capsys.readouterr()
+        assert "--splice-repeat" in captured.out
+
+    def test_splice_repeat_combined_with_check_names_both_flags(self, capsys):
+        parser = build_arg_parser()
+        args = parser.parse_args(["--splice-repeat", "some_dir", "--check"])
+        with pytest.raises(SystemExit):
+            _validate_e4_args(parser, args)
+        captured = capsys.readouterr()
+        assert "--splice-repeat" in captured.err
+        assert "--check" in captured.err
+
+    def test_splice_repeat_combined_with_smoke_names_both_flags(self, capsys):
+        parser = build_arg_parser()
+        args = parser.parse_args(["--splice-repeat", "some_dir", "--smoke"])
+        with pytest.raises(SystemExit):
+            _validate_e4_args(parser, args)
+        captured = capsys.readouterr()
+        assert "--splice-repeat" in captured.err
+        assert "--smoke" in captured.err
+
+    def test_shared_five_flag_contract_unchanged(self):
+        parser = build_experiment_arg_parser()
+        options = sorted(
+            a.option_strings[0] for a in parser._actions if a.option_strings
+        )
+        assert options == ["--check", "--force", "--out", "--seed", "--smoke"]
+
+    def test_splice_repeat_cli_writes_six_row_csv_without_solving(
+        self, tmp_path, monkeypatch
+    ):
+        # Run 1: a committed-shaped benchmark_grid.csv in a throwaway --out dir.
+        out_dir = tmp_path / "out"
+        cells_dir = out_dir / "e4_cells"
+        for n_cameras, n_frames in DECLARED_CELLS:
+            _write_fake_cell(
+                cells_dir / f"cameras_{n_cameras}_frames_{n_frames}",
+                n_cameras,
+                n_frames,
+            )
+        e2_path = out_dir / "e2_benchmark.json"
+        _write_fake_e2_record(e2_path)
+        cell_statuses = [
+            {
+                "n_cameras": n,
+                "n_frames": f,
+                "status": "ok",
+                "status_reason": "",
+                "exit_code": 0,
+            }
+            for n, f in DECLARED_CELLS
+        ]
+        df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+        write_experiment_csv(
+            df, out_dir / "benchmark_grid.csv", key_columns=GRID_KEY_COLUMNS, force=True
+        )
+
+        # Run 2: the repeat directory -- same seed as run 1 (a genuine repeat
+        # of the same problem, not a different seed), only the three
+        # REPEAT_CELLS.
+        repeat_dir = tmp_path / "repeat"
+        repeat_cells_dir = repeat_dir / "e4_cells"
+        for n_cameras, n_frames in REPEAT_CELLS:
+            _write_fake_cell(
+                repeat_cells_dir / f"cameras_{n_cameras}_frames_{n_frames}",
+                n_cameras,
+                n_frames,
+            )
+
+        def _forbid_calibrate(*args, **kwargs):
+            raise AssertionError(
+                "--splice-repeat must perform no solve: calibrate_synthetic was called"
+            )
+
+        monkeypatch.setattr(e4_grid_module, "calibrate_synthetic", _forbid_calibrate)
+
+        exit_code = e4_grid_module.main(
+            ["--splice-repeat", str(repeat_dir), "--out", str(out_dir)]
+        )
+        assert exit_code == 0
+
+        repeat_csv = out_dir / "benchmark_grid_repeat.csv"
+        assert repeat_csv.exists()
+        written = pd.read_csv(repeat_csv)
+        assert len(written) == 6
+        assert set(written["repeat"].unique()) == {1, 2}
+        assert "scope" in written.columns
+        assert (written["scope"].str.len() > 0).all()
+
+    def test_splice_repeat_test_never_writes_into_committed_results_tree(
+        self, tmp_path, monkeypatch
+    ):
+        out_dir = tmp_path / "out"
+        cells_dir = out_dir / "e4_cells"
+        for n_cameras, n_frames in DECLARED_CELLS:
+            _write_fake_cell(
+                cells_dir / f"cameras_{n_cameras}_frames_{n_frames}",
+                n_cameras,
+                n_frames,
+            )
+        e2_path = out_dir / "e2_benchmark.json"
+        _write_fake_e2_record(e2_path)
+        cell_statuses = [
+            {
+                "n_cameras": n,
+                "n_frames": f,
+                "status": "ok",
+                "status_reason": "",
+                "exit_code": 0,
+            }
+            for n, f in DECLARED_CELLS
+        ]
+        df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+        write_experiment_csv(
+            df, out_dir / "benchmark_grid.csv", key_columns=GRID_KEY_COLUMNS, force=True
+        )
+
+        repeat_dir = tmp_path / "repeat"
+        repeat_cells_dir = repeat_dir / "e4_cells"
+        for n_cameras, n_frames in REPEAT_CELLS:
+            _write_fake_cell(
+                repeat_cells_dir / f"cameras_{n_cameras}_frames_{n_frames}",
+                n_cameras,
+                n_frames,
+            )
+
+        exit_code = e4_grid_module.main(
+            ["--splice-repeat", str(repeat_dir), "--out", str(out_dir)]
+        )
+        assert exit_code == 0
+
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "experiments/results/"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.stdout.strip() == ""
