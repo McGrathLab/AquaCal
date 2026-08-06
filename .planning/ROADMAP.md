@@ -523,13 +523,13 @@ current production output when unset.
   9. **Every band lands in MANUSCRIPT-FINDINGS.md** as an MF entry naming its citable artifact,
      and MF-09's edit map is updated wherever a band changes what may be claimed.
 
-**Plans:** 11 plans (5 waves) -- cheap-first, then ONE risk-first queue (D-19.5-02)
+**Plans:** 4/11 plans executed
 
 Plans:
-- [ ] 19.5-01-PLAN.md -- COV-01: structural scaling sweep to N=128, 13/17 group pinning, the 500 M dense/sparse boundary located analytically (leaves `cpr_grouping.csv` untouched)
-- [ ] 19.5-02-PLAN.md -- COV-02: FD Jacobian accuracy vs a Richardson reference, step sweep, Newton 1e-9 floor adjudicated -- `experiments/` only, no `src/` change
-- [ ] 19.5-03-PLAN.md -- COV-08a: E7 focal/standoff paired re-analysis across the ten committed seeds and four arms
-- [ ] 19.5-04-PLAN.md -- COV-08b: frame-clustered bootstrap over the 7,762 committed comparisons (52 frames), scoped "metric sampling variance only"
+- [x] 19.5-01-PLAN.md -- COV-01: structural scaling sweep to N=128, 13/17 group pinning, the 500 M dense/sparse boundary located analytically (leaves `cpr_grouping.csv` untouched)
+- [x] 19.5-02-PLAN.md -- COV-02: FD Jacobian accuracy vs a Richardson reference, step sweep, Newton 1e-9 floor adjudicated -- `experiments/` only, no `src/` change
+- [x] 19.5-03-PLAN.md -- COV-08a: E7 focal/standoff paired re-analysis across the ten committed seeds and four arms
+- [x] 19.5-04-PLAN.md -- COV-08b: frame-clustered bootstrap over the 7,762 committed comparisons (52 frames), scoped "metric sampling variance only"
 - [ ] 19.5-05-PLAN.md -- COV-05: E5 `--seeds` band, named apart from its existing `n_assumed_band` (code only)
 - [ ] 19.5-06-PLAN.md -- COV-03/04: E6 `--seeds` band with mandatory per-seed isolated dirs, plus an opt-in `cameras` axis (code only)
 - [ ] 19.5-07-PLAN.md -- COV-07: E2 seed-variant config generator; `--seed` is a red herring on the `--config` path (code only)
