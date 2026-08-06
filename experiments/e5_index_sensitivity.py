@@ -52,7 +52,7 @@ import json
 import logging
 import sys
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pandas as pd
@@ -71,7 +71,9 @@ from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
     exit_code_for,
+    parse_seed_list,
     resolve_out_dir,
+    run_seed_band,
     validate_args,
     write_experiment_csv,
 )
@@ -137,6 +139,12 @@ E5_COLUMNS: list[str] = [
     "num_frames",
 ]
 E5_KEY_COLUMNS = ["n_assumed"]
+
+# Distinct from E5_KEY_COLUMNS (D-19.5-05, the naming_hazard): this band
+# varies the SEED across the fixed N_ASSUMED_BAND sweep, not the assumed
+# index at one seed. "seed" leads the key so the band CSV is unambiguously
+# keyed by (seed, n_assumed), never confusable with `run_band`'s index band.
+E5_SEED_BAND_KEY_COLUMNS = ["seed", "n_assumed"]
 
 # The real-rig board is the same literal the package's "realistic" preset
 # builds inline -- imported from E4's grid module (plan 19.2-07's output)
@@ -663,6 +671,87 @@ def _run_full(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_seed_band(
+    seeds: Sequence[int], out_dir: Path, smoke: bool, force: bool
+) -> None:
+    """`--seeds`: run E5's index-sensitivity band once per seed, bounding
+    seed-to-seed noise around the scale-bias measurement (D-19.5-05, COV-05).
+
+    Unlike `run_band` (which sweeps `n_assumed` at ONE fixed seed -- the
+    index band), this sweeps the SEED across the SAME `n_assumed` sweep,
+    running `run_band` once per seed via `run_seed_band` and concatenating.
+    Writes ONLY `index_sensitivity_seed_band.csv` and
+    `e5_seed_band_provenance.json` -- it must never touch the committed
+    single-seed `index_sensitivity.csv` / `e5_provenance.json` (T-19.5-05-01).
+
+    The sidecar is `build_provenance_sidecar`'s ordinary shape (keyed off the
+    LAST seed run, mirroring E1's `_run_band` convention for a single-seed
+    provenance record standing in for N solves) with `solver_config["seeds"]`
+    added and a `scope` string stating in the artifact itself -- not just by
+    inference -- that this band varies the seed, not the assumed index
+    (T-19.5-05-02).
+
+    Args:
+        seeds: The seeds to run, in order (parsed via `parse_seed_list`).
+        out_dir: Resolved output directory for both artifacts.
+        smoke: If True, runs 2 band points at 4 frames per seed (mirrors
+            `_run_smoke_at`'s scale) instead of the full `N_ASSUMED_BAND` at
+            `E5_N_FRAMES`.
+        force: Forwarded to nothing here -- the band CSV write always forces
+            (regenerating a band on demand is the point, matching E1/E7's
+            convention), and the sidecar is always (re)written fresh for a
+            band run.
+    """
+    band = [N_TRUE, N_ASSUMED_BAND[-1]] if smoke else N_ASSUMED_BAND
+    n_frames = 4 if smoke else E5_N_FRAMES
+
+    discard_stats: dict[str, int] = {}
+
+    def _runner(seed: int) -> pd.DataFrame:
+        point_stats: dict[str, int] = {}
+        df = run_band(
+            band=band,
+            n_true=N_TRUE,
+            n_frames=n_frames,
+            seed=seed,
+            metrics_path=_default_metrics_path(),
+            refine_intrinsics=E5_REFINE_INTRINSICS,
+            discard_stats_out=point_stats,
+        )
+        for key, value in point_stats.items():
+            discard_stats[key] = discard_stats.get(key, 0) + value
+        return df
+
+    band_df = run_seed_band(_runner, seeds)
+    band_path = out_dir / "index_sensitivity_seed_band.csv"
+    write_experiment_csv(
+        band_df,
+        band_path,
+        key_columns=E5_SEED_BAND_KEY_COLUMNS,
+        # Force is implied for the band CSV only, matching E1/E7's
+        # convention -- regenerating a band on demand is the whole point.
+        force=True,
+    )
+
+    sidecar = build_provenance_sidecar(seeds[-1], discard_stats=discard_stats)
+    sidecar["solver_config"]["seeds"] = list(seeds)
+    sidecar["scope"] = (
+        "This band varies the SEED across the fixed N_ASSUMED_BAND sweep of "
+        "the assumed refractive index, and bounds seed-to-seed noise in E5's "
+        "scale-bias measurement. It is DISTINCT from n_assumed_band (also "
+        "present in this sidecar), which varies the assumed index at ONE "
+        "seed and bounds nothing about seed noise -- conflating the two is "
+        "exactly what demoted E5's accuracy claim under D-19.3-17 "
+        "(D-19.5-05)."
+    )
+    sidecar_path = out_dir / "e5_seed_band_provenance.json"
+    sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(sidecar_path, "w") as f:
+        json.dump(sidecar, f, indent=2, sort_keys=True)
+
+    print(f"Wrote {band_path} and {sidecar_path}")
+
+
 def _run_check(args: argparse.Namespace) -> int:
     """Recompute the full band fresh and compare against the committed baseline (D-22).
 
@@ -734,23 +823,53 @@ def _run_smoke(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build E5's CLI parser: the shared five-flag contract, no extra flags."""
+    """Build E5's CLI parser: the shared five-flag contract, extended with a
+    script-local `--seeds` flag (D-19.5-05)."""
     parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
     )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        default=None,
+        help="Comma-separated seed list (e.g. '42,43,44') to run a "
+        "reproducible SEED band instead of a single seed, emitting "
+        "index_sensitivity_seed_band.csv and e5_seed_band_provenance.json "
+        "(D-19.5-05). Mutually exclusive with --check. Distinct from the "
+        "existing n_assumed_band, which varies the assumed refractive index "
+        "at one seed and bounds nothing about seed noise -- this flag varies "
+        "the SEED across that same index sweep. The band CSV write always "
+        "overwrites (force implied for that file only); a --seeds run never "
+        "writes index_sensitivity.csv or e5_provenance.json.",
+    )
     return parser
+
+
+def _validate_e5_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Extend the shared five-flag validation with `--seeds`'s constraints
+    (D-19.5-05, mirrors `_validate_e1_args`/`_validate_e7_args`)."""
+    validate_args(parser, args)
+    if args.seeds is not None and args.check:
+        parser.error("--seeds cannot be combined with --check")
 
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e5_index_sensitivity`."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
-    validate_args(parser, args)
+    _validate_e5_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.check:
         return _run_check(args)
+    if args.seeds is not None:
+        seeds = parse_seed_list(args.seeds)
+        out_dir = resolve_out_dir(args.out)
+        _run_seed_band(seeds, out_dir, smoke=args.smoke, force=args.force)
+        return 0
     if args.smoke:
         return _run_smoke(args, parser)
     return _run_full(args)
