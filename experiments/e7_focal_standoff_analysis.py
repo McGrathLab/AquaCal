@@ -33,10 +33,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import sys
 from math import comb
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from experiments._io import (
@@ -69,6 +71,16 @@ def focal_standoff_association(df: pd.DataFrame, arm: str) -> dict:
     mix within-seed association with between-seed scenario-difficulty
     variation that both columns share.
 
+    `n_seeds` counts every seed present for `arm` in `df`, including seeds
+    whose correlation is undefined (e.g. a `fixed` arm where
+    `focal_drift_pct` never varies -- intrinsics are never refined, so its
+    within-seed standard deviation is exactly zero and Pearson correlation is
+    mathematically undefined, not merely small). Such seeds contribute no
+    sign to the sign test but are not dropped from `n_seeds`: a `fixed` arm
+    genuinely has ten committed seeds, and reporting `n_seeds == 0` for it
+    would misrepresent an arm that has no focal-drift signal by construction
+    as one for which no seeds were evaluated.
+
     Args:
         df: A DataFrame with at least columns `arm`, `seed`, `focal_drift_pct`,
             `standoff_m`.
@@ -77,29 +89,40 @@ def focal_standoff_association(df: pd.DataFrame, arm: str) -> dict:
     Returns:
         A dict with keys:
           - `arm`: the arm analyzed.
-          - `n_seeds`: number of seeds with a computable per-seed correlation.
-          - `per_seed_correlation`: dict of `{seed: correlation}` (NaN dropped).
+          - `n_seeds`: total number of distinct seeds present for `arm`.
+          - `per_seed_correlation`: dict of `{seed: correlation}`, one entry
+            per seed in `n_seeds` (value is `float("nan")` where undefined).
           - `n_seeds_negative` / `n_seeds_positive`: sign counts of the
-            per-seed correlations (a NaN correlation, e.g. from constant
-            `standoff_m` within a seed, counts toward neither).
-          - `mean_within_seed_correlation`: mean of the per-seed correlations
-            (NaN-dropped).
-          - `p_one_sided`: exact one-sided sign-test p-value. `2 ** -n_seeds`
-            when every counted seed's sign agrees; the exact upper-tail
-            binomial otherwise. Field is named `p_one_sided` -- never read it
-            as two-sided (T-19.5-03-02).
+            per-seed correlations. May sum to less than `n_seeds` when some
+            seeds have an undefined (NaN) correlation.
+          - `mean_within_seed_correlation`: mean of the defined per-seed
+            correlations (NaN-dropped for this mean only), or NaN if none is
+            defined.
+          - `p_one_sided`: exact one-sided sign-test p-value over `n_seeds`
+            trials with `n_agree = max(n_seeds_negative, n_seeds_positive)`
+            successes: `2 ** -n_seeds` when every seed's sign agrees, the
+            exact upper-tail binomial otherwise (an undefined-correlation
+            seed counts as neither sign, weakening the test exactly as a
+            non-response would). Field is named `p_one_sided` -- never read
+            it as two-sided (T-19.5-03-02).
     """
     arm_df = df[df["arm"] == arm]
     per_seed_corr: dict[int, float] = {}
     for seed, group in arm_df.groupby("seed"):
-        corr = group["focal_drift_pct"].corr(group["standoff_m"])
-        if pd.notna(corr):
-            per_seed_corr[int(seed)] = float(corr)
+        # A `fixed` arm's zero-variance `focal_drift_pct` produces an
+        # expected, already-handled 0/0 in numpy's correlation internals
+        # (Pearson r is genuinely undefined there, not merely close to
+        # zero) -- silence the RuntimeWarning rather than let it obscure
+        # real numeric issues elsewhere in the run.
+        with np.errstate(invalid="ignore"):
+            corr = group["focal_drift_pct"].corr(group["standoff_m"])
+        per_seed_corr[int(seed)] = float(corr) if pd.notna(corr) else float("nan")
 
     n_seeds = len(per_seed_corr)
-    n_pos = sum(1 for c in per_seed_corr.values() if c > 0)
-    n_neg = sum(1 for c in per_seed_corr.values() if c < 0)
-    mean_corr = sum(per_seed_corr.values()) / n_seeds if n_seeds > 0 else float("nan")
+    defined = [c for c in per_seed_corr.values() if not math.isnan(c)]
+    n_pos = sum(1 for c in defined if c > 0)
+    n_neg = sum(1 for c in defined if c < 0)
+    mean_corr = sum(defined) / len(defined) if defined else float("nan")
 
     if n_seeds == 0:
         p_one_sided = float("nan")

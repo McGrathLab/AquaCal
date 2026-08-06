@@ -77,6 +77,33 @@ class TestFocalStandoffAssociation:
         assert "p_one_sided" in result
         assert "p_value" not in result
 
+    def test_constant_focal_drift_counts_seeds_but_gives_no_signature(self):
+        """A `fixed` arm never refines intrinsics, so `focal_drift_pct` is
+        identically 0 within every seed -- correlation is undefined (0/0),
+        not merely small. `n_seeds` must still count the seeds actually
+        present (they are real, committed band rows), while the sign test
+        sees zero agreeing signs and returns no_signature, never
+        `underpowered` (the seeds are there; there is simply no signal)."""
+        rows = []
+        for seed in (42, 43, 44):
+            for cam_idx in range(4):
+                rows.append(
+                    {
+                        "arm": "shared_fixed",
+                        "seed": seed,
+                        "camera": f"cam{cam_idx}",
+                        "standoff_m": 1.0 + cam_idx * 0.1,
+                        "focal_drift_pct": 0.0,
+                    }
+                )
+        df = pd.DataFrame(rows)
+        result = focal_standoff_association(df, "shared_fixed")
+        assert result["n_seeds"] == 3
+        assert result["n_seeds_negative"] == 0
+        assert result["n_seeds_positive"] == 0
+        assert result["p_one_sided"] == pytest.approx(1.0)
+        assert degeneracy_verdict(result) == "no_signature"
+
 
 class TestDegeneracyVerdict:
     def test_significant_p_gives_signature_present(self):
