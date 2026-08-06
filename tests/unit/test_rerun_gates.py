@@ -15,11 +15,16 @@ from experiments.check_rerun_gates import (
     GateResult,
     check_band_csv,
     check_e1,
+    check_e2_band,
     check_e3,
     check_e4,
+    check_e4_repeat,
     check_e5,
+    check_e5_seed_band,
     check_e6,
+    check_e6_seed_band,
     check_e7,
+    legality_probe,
     main,
     run_all_gates,
 )
@@ -714,3 +719,350 @@ def test_band_gate_fails_when_sidecar_records_no_seeds(tmp_path):
     )
     assert results[0].verdict == "FAIL"
     assert "cannot be verified" in results[0].detail
+
+
+# ---------------------------------------------------------------------------
+# D-19.5-04's legality_probe (plan 19.5-09 Task 1).
+# ---------------------------------------------------------------------------
+
+
+class TestLegalityProbe:
+    def test_single_seed_single_n_cameras_returns_two_results(self):
+        results = legality_probe([42], [12])
+        assert len(results) == 2
+        gates = {r.gate for r in results}
+        assert any("calibration" in g for g in gates)
+        assert any("holdout" in g for g in gates)
+        for r in results:
+            assert "seed=42" in r.gate
+            assert "n_cameras=12" in r.gate
+
+    def test_full_queue_seed_list_returns_30_results_all_pass_under_60s(self):
+        import time
+
+        seeds = [42, 43, 44, 45, 46]
+        camera_counts = [8, 12, 16]
+        start = time.monotonic()
+        results = legality_probe(seeds, camera_counts)
+        elapsed = time.monotonic() - start
+
+        assert len(results) == 30
+        assert elapsed < 60, f"legality_probe took {elapsed:.1f}s, expected < 60s"
+        fails = [r for r in results if r.verdict != "PASS"]
+        assert not fails, (
+            "legality_probe FAILed at one or more (seed, n_cameras, draw) "
+            f"combinations -- this changes the queue's seed list, report it "
+            f"loudly: {fails}"
+        )
+
+    def test_performs_no_calibration(self):
+        """AST-level proof that this module never references least_squares
+        or calibrate_synthetic -- legality_probe is a structural check only.
+        """
+        import ast
+
+        module_path = (
+            Path(__file__).resolve().parents[2] / "experiments" / "check_rerun_gates.py"
+        )
+        tree = ast.parse(module_path.read_text(encoding="utf-8"))
+        forbidden = {"least_squares", "calibrate_synthetic"}
+        found: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in forbidden:
+                found.add(node.id)
+            elif isinstance(node, ast.Attribute) and node.attr in forbidden:
+                found.add(node.attr)
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    name = alias.asname or alias.name
+                    if name in forbidden:
+                        found.add(name)
+        assert not found, (
+            f"check_rerun_gates.py references forbidden symbol(s): {found}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# check_e6_seed_band (plan 19.5-09 Task 2, COV-03/COV-04).
+# ---------------------------------------------------------------------------
+
+
+def _write_e6_band_csv(
+    path: Path,
+    seeds: list[int],
+    *,
+    status_by_row: str | None = None,
+    non_ok_seed: int | None = None,
+) -> None:
+    """One baseline row + one 'cameras' row per camera value, per seed."""
+    rows: dict[str, list] = {"seed": [], "axis": [], "axis_value": [], "status": []}
+    for seed in seeds:
+        rows["seed"].append(seed)
+        rows["axis"].append("index")
+        rows["axis_value"].append(1.333)
+        status = "ok"
+        if non_ok_seed is not None and seed == non_ok_seed:
+            status = "failed"
+        rows["status"].append(status_by_row or status)
+        for cameras in (8, 12, 16):
+            rows["seed"].append(seed)
+            rows["axis"].append("cameras")
+            rows["axis_value"].append(cameras)
+            rows["status"].append(status_by_row or "ok")
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def _write_e6_band_sidecar(
+    path: Path, seeds: list[int], *, git_sha: str = "e" * 40
+) -> None:
+    _write_json(
+        path,
+        {
+            "experiment": "e6_seed_band",
+            "git_sha": git_sha,
+            "environment": {"git_sha": git_sha},
+            "solver_config": {"seeds": list(seeds)},
+            "include_cameras_axis": True,
+            "scope": "varies seed; bounds seed-to-seed accuracy variance",
+        },
+    )
+
+
+class TestCheckE6SeedBand:
+    def test_na_when_csv_absent(self, tmp_path):
+        results = check_e6_seed_band(tmp_path)
+        assert len(results) == 1
+        assert results[0].verdict == "N/A"
+
+    def test_pass_path_five_seeds_all_ok(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", seeds)
+        results = check_e6_seed_band(tmp_path)
+        assert results, "no results returned"
+        assert all(r.verdict != "FAIL" for r in results), results
+
+    def test_fails_on_four_distinct_seeds_instead_of_five(self, tmp_path):
+        seeds = [42, 43, 44, 45]
+        _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", seeds)
+        results = check_e6_seed_band(tmp_path)
+        seed_count_result = [r for r in results if r.gate.endswith("seed_count")][0]
+        assert seed_count_result.verdict == "FAIL"
+        assert "4" in seed_count_result.detail
+
+    def test_fails_on_non_ok_status_naming_the_seed(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        _write_e6_band_csv(
+            tmp_path / "generalization_sweep_band.csv", seeds, non_ok_seed=44
+        )
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", seeds)
+        results = check_e6_seed_band(tmp_path)
+        status_result = [r for r in results if r.gate.endswith("status_counts")][0]
+        assert status_result.verdict == "FAIL"
+        assert "44" in status_result.detail
+
+    def test_never_raises_on_missing_sidecar(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
+        results = check_e6_seed_band(tmp_path)  # no sidecar written
+        assert any(r.verdict == "FAIL" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# check_e5_seed_band (plan 19.5-09 Task 2, COV-05).
+# ---------------------------------------------------------------------------
+
+
+class TestCheckE5SeedBand:
+    def test_na_when_csv_absent(self, tmp_path):
+        results = check_e5_seed_band(tmp_path)
+        assert len(results) == 1
+        assert results[0].verdict == "N/A"
+
+    def test_pass_path_five_seeds_with_full_sidecar(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        rows = {"seed": [s for s in seeds for _ in range(2)]}
+        rows["n_assumed"] = list(range(len(rows["seed"])))
+        pd.DataFrame(rows).to_csv(
+            tmp_path / "index_sensitivity_seed_band.csv", index=False
+        )
+        _write_json(
+            tmp_path / "e5_seed_band_provenance.json",
+            {
+                "solver_config": {"seeds": seeds},
+                "n_assumed_band": [1.30, 1.333, 1.36],
+                "scope": "varies seed; bounds seed noise, NOT index sensitivity",
+            },
+        )
+        results = check_e5_seed_band(tmp_path)
+        assert all(r.verdict != "FAIL" for r in results), results
+
+    def test_fails_when_sidecar_has_seeds_but_no_n_assumed_band(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        rows = {"seed": [s for s in seeds for _ in range(2)]}
+        rows["n_assumed"] = list(range(len(rows["seed"])))
+        pd.DataFrame(rows).to_csv(
+            tmp_path / "index_sensitivity_seed_band.csv", index=False
+        )
+        _write_json(
+            tmp_path / "e5_seed_band_provenance.json",
+            {
+                "solver_config": {"seeds": seeds},
+                "scope": "varies seed",
+            },
+        )
+        results = check_e5_seed_band(tmp_path)
+        n_assumed_result = [r for r in results if r.gate.endswith("n_assumed_band")][0]
+        assert n_assumed_result.verdict == "FAIL"
+
+    def test_never_raises_when_sidecar_missing(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46]
+        rows = {"seed": [s for s in seeds for _ in range(2)]}
+        pd.DataFrame(rows).to_csv(
+            tmp_path / "index_sensitivity_seed_band.csv", index=False
+        )
+        results = check_e5_seed_band(tmp_path)  # no sidecar written
+        assert any(r.verdict == "FAIL" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# check_e2_band (plan 19.5-09 Task 2, COV-07).
+# ---------------------------------------------------------------------------
+
+
+def _e2_metrics_record(mean_reprojection_px: float = 0.9) -> dict:
+    return {
+        "mean_reprojection_px": mean_reprojection_px,
+        "inter_corner_mae_mm": 1.2,
+        "n_comparisons": 7762,
+        "provenance": {"mean_reprojection_px": "result.diagnostics..."},
+    }
+
+
+class TestCheckE2Band:
+    def test_na_when_band_dir_absent(self, tmp_path):
+        results = check_e2_band(tmp_path / "does_not_exist")
+        assert len(results) == 1
+        assert results[0].verdict == "N/A"
+
+    def test_pass_path_three_distinct_records_matches_committed(self, tmp_path):
+        band_dir = tmp_path / "results_e2_band"
+        committed = tmp_path / "real_rig_metrics.json"
+        _write_json(committed, _e2_metrics_record(mean_reprojection_px=0.9))
+        _write_json(
+            band_dir / "seed_42_e2_out" / "real_rig_metrics.json",
+            _e2_metrics_record(mean_reprojection_px=0.9),
+        )
+        _write_json(
+            band_dir / "seed_43_e2_out" / "real_rig_metrics.json",
+            _e2_metrics_record(mean_reprojection_px=0.95),
+        )
+        _write_json(
+            band_dir / "seed_44_e2_out" / "real_rig_metrics.json",
+            _e2_metrics_record(mean_reprojection_px=1.0),
+        )
+        _write_json(
+            band_dir / "e2_band_scope.json",
+            {
+                "scope": (
+                    "bounds split variance, NOT measurement variance across "
+                    "the calibration/holdout partition"
+                )
+            },
+        )
+        results = check_e2_band(band_dir, committed_metrics_path=committed)
+        assert all(r.verdict != "FAIL" for r in results), results
+
+    def test_fails_when_all_three_records_are_identical(self, tmp_path):
+        band_dir = tmp_path / "results_e2_band"
+        for seed in (42, 43, 44):
+            _write_json(
+                band_dir / f"seed_{seed}_e2_out" / "real_rig_metrics.json",
+                _e2_metrics_record(mean_reprojection_px=0.9),
+            )
+        _write_json(
+            band_dir / "e2_band_scope.json",
+            {"scope": "bounds split variance, NOT measurement variance"},
+        )
+        results = check_e2_band(
+            band_dir, committed_metrics_path=tmp_path / "missing.json"
+        )
+        identical_result = [r for r in results if r.gate.endswith("not_identical")][0]
+        assert identical_result.verdict == "FAIL"
+
+    def test_fails_when_scope_missing_required_phrase(self, tmp_path):
+        band_dir = tmp_path / "results_e2_band"
+        for seed, val in ((42, 0.9), (43, 0.95), (44, 1.0)):
+            _write_json(
+                band_dir / f"seed_{seed}_e2_out" / "real_rig_metrics.json",
+                _e2_metrics_record(mean_reprojection_px=val),
+            )
+        _write_json(band_dir / "e2_band_scope.json", {"scope": "something else"})
+        results = check_e2_band(
+            band_dir, committed_metrics_path=tmp_path / "missing.json"
+        )
+        scope_result = [r for r in results if r.gate.endswith(":scope")][0]
+        assert scope_result.verdict == "FAIL"
+
+    def test_never_raises_on_partial_records(self, tmp_path):
+        band_dir = tmp_path / "results_e2_band"
+        _write_json(
+            band_dir / "seed_42_e2_out" / "real_rig_metrics.json",
+            _e2_metrics_record(),
+        )
+        results = check_e2_band(band_dir)  # only 1 of 3 records, no scope file
+        assert any(r.verdict == "FAIL" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# check_e4_repeat (plan 19.5-09 Task 2, COV-06).
+# ---------------------------------------------------------------------------
+
+
+def _e4_repeat_row(n_cameras: int, n_frames: int, repeat: int, *, nfev=12) -> dict:
+    return {
+        "n_cameras": n_cameras,
+        "n_frames": n_frames,
+        "repeat": repeat,
+        "seconds_stage3_interface_optimization": 100.0 + repeat,
+        "nfev_stage3_interface_optimization": nfev,
+    }
+
+
+class TestCheckE4Repeat:
+    def test_na_when_csv_absent(self, tmp_path):
+        results = check_e4_repeat(tmp_path)
+        assert len(results) == 1
+        assert results[0].verdict == "N/A"
+
+    def test_pass_path_six_rows_three_cells_two_repeats(self, tmp_path):
+        rows = [
+            _e4_repeat_row(n_cameras, 100, repeat)
+            for n_cameras in (8, 12, 16)
+            for repeat in (1, 2)
+        ]
+        pd.DataFrame(rows).to_csv(tmp_path / "benchmark_grid_repeat.csv", index=False)
+        results = check_e4_repeat(tmp_path)
+        assert all(r.verdict != "FAIL" for r in results), results
+
+    def test_fails_on_null_nfev_beside_wallclock_value(self, tmp_path):
+        rows = [
+            _e4_repeat_row(n_cameras, 100, repeat)
+            for n_cameras in (8, 12, 16)
+            for repeat in (1, 2)
+        ]
+        rows[0]["nfev_stage3_interface_optimization"] = None
+        pd.DataFrame(rows).to_csv(tmp_path / "benchmark_grid_repeat.csv", index=False)
+        results = check_e4_repeat(tmp_path)
+        nfev_result = [r for r in results if r.gate.endswith("nfev_beside_wallclock")][
+            0
+        ]
+        assert nfev_result.verdict == "FAIL"
+
+    def test_never_raises_on_missing_columns(self, tmp_path):
+        pd.DataFrame({"n_cameras": [8]}).to_csv(
+            tmp_path / "benchmark_grid_repeat.csv", index=False
+        )
+        results = check_e4_repeat(tmp_path)
+        assert any(r.verdict == "FAIL" for r in results)
