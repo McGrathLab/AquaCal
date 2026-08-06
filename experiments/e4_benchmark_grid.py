@@ -95,7 +95,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -136,6 +136,17 @@ FRAME_COUNTS = [50, 100, 200]
 DECLARED_CELLS: list[tuple[int, int]] = [
     (n_cameras, n_frames) for n_cameras in CAMERA_COUNTS for n_frames in FRAME_COUNTS
 ]
+
+# COV-06 (plan 19.5-08): the repeat subset for E4's runtime spread. Exactly
+# the three 100-frame cells, for two reasons, both load-bearing (see the
+# plan's design_decision section):
+# 1. These are exactly the cells MF-03's runtime-inversion finding rests on
+#    (E4's runtime INVERTS with camera count at n_frames=200), so a repeat
+#    here tests the claim that is actually made.
+# 2. The 200-frame cells are the near_physical_ceiling ones (11.3 GiB peak on
+#    a 15.7 GiB box, 72% of RAM) -- repeating those risks an OOM that would
+#    abort the whole overnight queue for a number nobody is quoting.
+REPEAT_CELLS: list[tuple[int, int]] = [(8, 100), (12, 100), (16, 100)]
 
 GRID_NOISE_STD = 0.5
 GRID_LAYOUT = "grid"
@@ -1505,6 +1516,148 @@ def write_grid_latex(df: pd.DataFrame, path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# COV-06: splicing two runs' cell rows into one repeat frame (plan 19.5-08)
+# ---------------------------------------------------------------------------
+
+# Columns compared for "same problem" preconditions before a timing
+# comparison across repeats is considered meaningful (T-19.5-08-01).
+_REPEAT_IDENTITY_COLUMNS: tuple[str, ...] = (
+    "n_observations",
+    "normal_fixed",
+    "shared_interface",
+    "seed",
+)
+
+
+def splice_repeat_records(
+    frames: Sequence[pd.DataFrame], cells: Sequence[tuple[int, int]]
+) -> pd.DataFrame:
+    """Splice N independent E4 runs' rows for `cells` into one repeat frame (COV-06).
+
+    A pure function over already-loaded DataFrames -- it opens no file and
+    runs no solve. Each element of `frames` is one independent run's rows
+    (e.g. the committed `benchmark_grid.csv` as run 1, a repeat directory's
+    aggregated cells as run 2); this function only filters to `cells`,
+    concatenates, labels each run with a 1-based `repeat` column (in
+    argument order), validates that the splice is defensible, and adds two
+    derived columns.
+
+    Refuses (raises `ValueError`, naming the offending cell(s)) rather than
+    silently producing a misleading spread when:
+    - any frame is missing one of `cells` (T-19.5-08-01: a partial repeat
+      must not be presented as a spread);
+    - any spliced row has a null `nfev_stage3_interface_optimization` while
+      its `seconds_stage3_interface_optimization` is non-null (T-19.5-08-02:
+      MF-03 requires nfev beside every wall-clock figure);
+    - the frames disagree, for the same cell, on any of
+      `_REPEAT_IDENTITY_COLUMNS` (`n_observations`, `normal_fixed`,
+      `shared_interface`, `seed`) -- these are the "same problem"
+      preconditions that make a timing comparison meaningful.
+
+    Adds `seconds_total` (the null-safe sum of the two stage seconds
+    columns -- ordinary `+` already propagates `NaN` without raising) and,
+    per cell, `seconds_total_spread_pct` (the run-to-run spread, `(max -
+    min) / mean * 100`, broadcast to every row of that cell). Computes no
+    p-value and no confidence interval: n=2 supports a spread, nothing more
+    (T-19.5-08-03).
+
+    Args:
+        frames: One DataFrame per independent run, in the order the
+            `repeat` column should number them (1-based).
+        cells: The `(n_cameras, n_frames)` pairs to splice. Typically
+            `REPEAT_CELLS`.
+
+    Returns:
+        The spliced frame, filtered to `cells`, sorted by `(n_cameras,
+        n_frames, repeat)`.
+
+    Raises:
+        ValueError: Per the refusal conditions above.
+    """
+    cell_set = set(cells)
+    pieces: list[pd.DataFrame] = []
+    for repeat_index, frame in enumerate(frames, start=1):
+        keys = list(zip(frame["n_cameras"], frame["n_frames"]))
+        present = {
+            (int(n_cameras), int(n_frames))
+            for n_cameras, n_frames in keys
+            if pd.notna(n_cameras) and pd.notna(n_frames)
+        }
+        missing = cell_set - present
+        if missing:
+            raise ValueError(
+                f"splice_repeat_records: run {repeat_index} of {len(frames)} "
+                f"is missing cell(s) {sorted(missing)} -- a partial repeat "
+                "cannot be presented as a spread (T-19.5-08-01)"
+            )
+        mask = [
+            pd.notna(n_cameras)
+            and pd.notna(n_frames)
+            and (int(n_cameras), int(n_frames)) in cell_set
+            for n_cameras, n_frames in keys
+        ]
+        filtered = frame.loc[mask].copy()
+        filtered["repeat"] = repeat_index
+        pieces.append(filtered)
+
+    spliced = pd.concat(pieces, ignore_index=True)
+
+    wallclock_col = "seconds_stage3_interface_optimization"
+    nfev_col = "nfev_stage3_interface_optimization"
+    bad_nfev = spliced[spliced[wallclock_col].notna() & spliced[nfev_col].isna()]
+    if not bad_nfev.empty:
+        bad_cells = sorted(
+            {(int(row.n_cameras), int(row.n_frames)) for row in bad_nfev.itertuples()}
+        )
+        raise ValueError(
+            f"splice_repeat_records: cell(s) {bad_cells} have a non-null "
+            f"{wallclock_col} but a null {nfev_col} -- MF-03 requires nfev "
+            f"beside every wall-clock figure (T-19.5-08-02)"
+        )
+
+    for n_cameras, n_frames in cells:
+        cell_rows = spliced[
+            (spliced["n_cameras"] == n_cameras) & (spliced["n_frames"] == n_frames)
+        ]
+        for column in _REPEAT_IDENTITY_COLUMNS:
+            if cell_rows[column].nunique(dropna=False) > 1:
+                raise ValueError(
+                    f"splice_repeat_records: cell ({n_cameras}, {n_frames}) "
+                    f"disagrees on {column!r} across runs: "
+                    f"{cell_rows[column].tolist()} -- these are not the same "
+                    "problem, so a timing comparison is not meaningful "
+                    "(T-19.5-08-01)"
+                )
+
+    spliced["seconds_total"] = (
+        spliced["seconds_stage3_interface_optimization"]
+        + spliced["seconds_stage3_intrinsic_pass"]
+    )
+
+    spread_by_cell: dict[tuple[int, int], float] = {}
+    for n_cameras, n_frames in cells:
+        cell_rows = spliced[
+            (spliced["n_cameras"] == n_cameras) & (spliced["n_frames"] == n_frames)
+        ]
+        values = cell_rows["seconds_total"].dropna()
+        if len(values) < 2 or values.mean() == 0:
+            spread_by_cell[(n_cameras, n_frames)] = float("nan")
+        else:
+            spread_by_cell[(n_cameras, n_frames)] = (
+                (values.max() - values.min()) / values.mean() * 100.0
+            )
+
+    spliced["seconds_total_spread_pct"] = [
+        spread_by_cell.get((int(n_cameras), int(n_frames)), float("nan"))
+        for n_cameras, n_frames in zip(spliced["n_cameras"], spliced["n_frames"])
+    ]
+
+    return spliced.sort_values(
+        by=["n_cameras", "n_frames", "repeat"], kind="stable"
+    ).reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1534,6 +1687,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "row, the run always exits 0) -- the sole intended use is "
         "19.2-21's pre-authorised 16x200 failing cell.",
     )
+    parser.add_argument(
+        "--splice-repeat",
+        type=Path,
+        default=None,
+        help="COV-06 (plan 19.5-08): splice a completed repeat run into "
+        "benchmark_grid_repeat.csv. Performs NO solve -- loads the "
+        "committed benchmark_grid.csv (run 1) and aggregates "
+        "<--splice-repeat directory>/e4_cells/ (run 2), splices "
+        "REPEAT_CELLS via splice_repeat_records, and writes "
+        "benchmark_grid_repeat.csv under --out. Mutually exclusive with "
+        "--check and --smoke.",
+    )
     return parser
 
 
@@ -1544,6 +1709,8 @@ def _validate_e4_args(
     validate_args(parser, args)
     if args.cell is not None and (args.check or args.smoke):
         parser.error("--cell cannot be combined with --check or --smoke")
+    if args.splice_repeat is not None and (args.check or args.smoke):
+        parser.error("--splice-repeat cannot be combined with --check or --smoke")
 
 
 def _parse_cell(parser: argparse.ArgumentParser, cell_str: str) -> tuple[int, int]:
@@ -1564,6 +1731,106 @@ def _parse_cell(parser: argparse.ArgumentParser, cell_str: str) -> tuple[int, in
             f"{sorted(_ALLOWED_CELL_VALUES)}"
         )
     return n_cameras, n_frames  # type: ignore[return-value]
+
+
+def _aggregate_repeat_run(cells_dir: Path) -> pd.DataFrame:
+    """Build a repeat run's splice-ready frame from its own `e4_cells/` tree.
+
+    Reuses `aggregate()` (E4's existing per-cell flattening) and
+    `_extract_assembled_row` (E4's existing column extraction) unmodified --
+    no second aggregator, no re-derivation of any metric. Adds only
+    `n_cameras`/`n_frames`, read off the same aggregate row, so the result
+    carries the columns `splice_repeat_records` needs.
+
+    Args:
+        cells_dir: A repeat directory's `e4_cells/` subdirectory (i.e.
+            `<repeat_out_dir>/e4_cells`).
+
+    Returns:
+        One row per cell found under `cells_dir`.
+    """
+    agg = aggregate(cells_dir)
+    rows: list[dict] = []
+    for _, agg_row in agg.iterrows():
+        row = {
+            "n_cameras": int(agg_row["problem_shape.n_cameras"]),
+            "n_frames": int(agg_row["problem_shape.n_frames"]),
+        }
+        row.update(_extract_assembled_row(agg_row))
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+# D-19.5-05: every band this phase produces states what it varies and what it
+# therefore bounds. This repeat varies only wall-clock across two runs of the
+# SAME three 100-frame cells on ONE machine (n=2 per cell) -- it is not a
+# distribution and not an environment-independent figure.
+_SPLICE_REPEAT_SCOPE = (
+    "COV-06 repeat (plan 19.5-08): run-to-run wall-clock variation of three "
+    "100-frame cells (8,100)/(12,100)/(16,100) on ONE machine, n=2 per cell. "
+    "Bounds run-to-run spread on this machine ONLY -- not a distribution, "
+    "not an environment-independent figure (D-19.5-05)."
+)
+
+
+def _run_splice_repeat(args: argparse.Namespace) -> int:
+    """`--splice-repeat <repeat_out_dir>`: splice a completed repeat, no solve.
+
+    Loads the committed `experiments/results/benchmark_grid.csv` as run 1
+    (the published record -- never re-run here, see the plan's
+    design_decision), aggregates `<repeat_out_dir>/e4_cells/` as run 2, and
+    calls `splice_repeat_records([run1, run2], REPEAT_CELLS)`. Writes
+    `benchmark_grid_repeat.csv` (key columns `n_cameras`, `n_frames`,
+    `repeat`) under `--out`, always overwriting -- regenerating the splice
+    IS the point, the same convention `_run_band`-style callers use for
+    their own band CSVs.
+
+    Args:
+        args: Parsed CLI namespace; `args.splice_repeat` names the repeat
+            run's output directory, `args.out` the destination directory.
+
+    Returns:
+        0 on success.
+
+    Raises:
+        FileNotFoundError: If the committed `benchmark_grid.csv` is not
+            found under `--out`.
+        ValueError: Whatever `splice_repeat_records` raises (a partial or
+            mismatched repeat).
+    """
+    out_dir = resolve_out_dir(args.out)
+    committed_path = out_dir / "benchmark_grid.csv"
+    if not committed_path.exists():
+        raise FileNotFoundError(
+            f"--splice-repeat requires a committed benchmark_grid.csv at "
+            f"{committed_path} to use as run 1 -- it is never re-run here."
+        )
+    run1 = pd.read_csv(committed_path)
+
+    repeat_out_dir = Path(args.splice_repeat)
+    run2 = _aggregate_repeat_run(repeat_out_dir / "e4_cells")
+
+    spliced = splice_repeat_records([run1, run2], REPEAT_CELLS)
+    spliced["scope"] = _SPLICE_REPEAT_SCOPE
+
+    write_experiment_csv(
+        spliced,
+        out_dir / "benchmark_grid_repeat.csv",
+        key_columns=["n_cameras", "n_frames", "repeat"],
+        force=True,
+    )
+
+    for n_cameras, n_frames in REPEAT_CELLS:
+        cell_rows = spliced[
+            (spliced["n_cameras"] == n_cameras) & (spliced["n_frames"] == n_frames)
+        ]
+        spread_pct = cell_rows["seconds_total_spread_pct"].iloc[0]
+        print(
+            f"cameras={n_cameras} frames={n_frames}: "
+            f"seconds_total_spread_pct={spread_pct}"
+        )
+
+    return 0
 
 
 def _run_check(args: argparse.Namespace) -> int:
@@ -1702,6 +1969,9 @@ def main(argv: list[str] | None = None) -> int:
     _validate_e4_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if args.splice_repeat is not None:
+        return _run_splice_repeat(args)
 
     if args.cell is not None:
         n_cameras, n_frames = _parse_cell(parser, args.cell)
