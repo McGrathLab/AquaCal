@@ -240,3 +240,6 @@ seed_sweep_19_3/
 # Dry-run state from experiments/rerun_19_5.sh -- control-flow rehearsal
 # only, never a record of a real run (see that script's STATE_FILE block).
 experiments/rerun_19_5_state.dryrun.tsv
+
+# Pre-launch gate log (phase 19.5) -- rerunnable, not an artifact
+experiments/prelaunch_gate_19_5.log
