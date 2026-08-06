@@ -3,11 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.5 INSERTED 2026-08-05 -- Experiment Coverage and Uncertainty Bands, scoped
-  and entered in ROADMAP.md but NOT planned. Next: /gsd:plan-phase 19.5. Phase 19.4 closed
-  2026-08-05 (10/10 plans, commit 6532000)."
-last_updated: "2026-08-06T01:04:23.558Z"
-last_activity: 2026-08-05 -- Phase 19.5 inserted after 19.4 (scoped, unplanned)
+stopped_at: "Phase 19.5 PLANNED 2026-08-05 -- 11 plans in 5 waves, plan-checker PASSED with no
+  blockers, COV-01..COV-09 all covered. Next: /gsd:execute-phase 19.5."
+last_updated: "2026-08-06T01:55:05.397Z"
+last_activity: 2026-08-05 -- Phase 19.5 planned (11 plans, 5 waves)
 progress:
   total_phases: 12
   completed_phases: 8
@@ -23,14 +22,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.5 — Experiment Coverage and Uncertainty Bands (inserted 2026-08-05,
-not yet planned). Phase 20 follows.
+**Current focus:** Phase 19.5 — Experiment Coverage and Uncertainty Bands (planned 2026-08-05,
+ready to execute). Phase 20 follows.
 
 ## Current Position
 
-Phase: **19.5 — Experiment Coverage and Uncertainty Bands — INSERTED 2026-08-05, NOT PLANNED.**
-  Next command: `/gsd:plan-phase 19.5`. Entered in ROADMAP.md after 19.4 with nine success
-  criteria; requirements are still TBD.
+Phase: **19.5 — Experiment Coverage and Uncertainty Bands — PLANNED 2026-08-05.**
+  11 plans in 5 waves, **plan-checker PASSED with no blockers**. Requirements COV-01..COV-09.
+  Next command: `/gsd:execute-phase 19.5`.
+
+  **Runtime budget, surfaced before it is spent:** ~15 h nominal, ~24 h at 19.4's observed 1.6x
+  overrun; **26 h ceiling proposed**. Seeds E6 42-46, E5 42-46, E2 42-44; E4 repeat is the three
+  100-frame cells. Five seeds is the floor for a sign-test claim (2^-5 = 0.031 one-sided).
+
+  **Three correctness traps found during planning, each now enforced by an acceptance criterion
+  rather than prose:** (a) E6's `_SCENARIO_IDENTITY_KEYS` omits `seed`, so a `--seeds` loop
+  sharing one `--out` silently resumes seed 42's cached result — per-seed isolated directories
+  are mandatory, the same workaround `rerun_19_4.sh` already used; (b) E2's `--seed` is never
+  read on the `--config` path, so COV-07 generates config copies instead of sweeping a CLI flag,
+  and the variant changes **two** keys (`seed`, and `paths.output_dir`, which otherwise points at
+  the `release_calibration` tree holding the paper's §3 numbers); (c) the COV-08 bootstrap must
+  resample `frame_idx` clusters, not rows — 7,762 comparisons span 52 frames, and a per-row
+  bootstrap would understate the interval.
+
+  **Wave 4 (plan 10) is the orchestrator's, not an executor's** — it runs the single queue,
+  changes no code, and commits nothing until the queue finishes.
 
   **Why it exists.** Phases 19.2-19.4 established that the experiments are *correct*. This phase
   establishes what may be *claimed* from them. Only E1 and E7 have seed bands; E4, E5 and E6 are
