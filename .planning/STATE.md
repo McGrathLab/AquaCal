@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: "Phase 19.5 PLANNED 2026-08-05 -- 11 plans in 5 waves, plan-checker PASSED with no
-  blockers, COV-01..COV-09 all covered. Next: /gsd:execute-phase 19.5."
-last_updated: "2026-08-06T01:55:05.397Z"
-last_activity: 2026-08-05 -- Phase 19.5 planned (11 plans, 5 waves)
+stopped_at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
+last_updated: "2026-08-06T01:58:38.087Z"
+last_activity: 2026-08-06 -- Phase 19.5 execution started
 progress:
   total_phases: 12
   completed_phases: 8
-  total_plans: 83
+  total_plans: 94
   completed_plans: 83
   percent: 67
 ---
@@ -22,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.5 — Experiment Coverage and Uncertainty Bands (planned 2026-08-05,
+**Current focus:** Phase 19.5 — experiment-coverage-and-uncertainty-bands
 ready to execute). Phase 20 follows.
 
 ## Current Position
 
-Phase: **19.5 — Experiment Coverage and Uncertainty Bands — PLANNED 2026-08-05.**
+Phase: 19.5 (experiment-coverage-and-uncertainty-bands) — EXECUTING
   11 plans in 5 waves, **plan-checker PASSED with no blockers**. Requirements COV-01..COV-09.
   Next command: `/gsd:execute-phase 19.5`.
 
@@ -127,16 +126,16 @@ Phase: 19.3 (scenario-geometry-and-convergence) — was EXECUTING
   **Ships a breaking public-API change -- the milestone cuts v2.0.0, not v1.9.x.**
   Phase 19.3 was created mid-session during 19.2 as a directory plus a seed and never went
   through phase creation; its roadmap entry and requirements were backfilled 2026-08-01.
-Plan: 1 of 10
+Plan: 1 of 11
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 19.4
+Status: Executing Phase 19.5
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-04 -- Phase 19.4 execution started
+Last activity: 2026-08-06 -- Phase 19.5 execution started
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
