@@ -41,12 +41,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
+
+from aquacal.datasets.synthetic import board_clearance_floor, generate_camera_array
+from experiments.e4_benchmark_grid import (
+    GRID_BOARD_CONFIG,
+    GRID_DEPTH_RANGE,
+    GRID_HEIGHT_ABOVE_WATER,
+    GRID_LAYOUT,
+    GRID_SPACING,
+)
 
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
@@ -72,6 +84,85 @@ class GateResult:
     gate: str
     verdict: Verdict
     detail: str
+
+
+def legality_probe(
+    seeds: Sequence[int], camera_counts: Sequence[int]
+) -> list[GateResult]:
+    """D-19.5-04's empirical re-verification of the 19.4 clearance-floor fix,
+    at the queue's own seed list and `n_cameras` values, BEFORE any long
+    stage runs.
+
+    For each `(seed, n_cameras)` this performs the SAME two draws E4 and E6
+    perform internally before any solve -- the calibration draw at `seed`
+    and the holdout draw at `seed + 1_000_000`
+    (`experiments/e4_benchmark_grid.py:902`,
+    `experiments/e6_generalization_sweep.py:821`) -- builds the grid-family
+    camera array for each draw via `generate_camera_array`, and checks
+    whether the frozen `GRID_DEPTH_RANGE[0]` clears (is `>=`) that draw's own
+    derived `board_clearance_floor`. A draw whose derived floor exceeds the
+    frozen minimum is illegal: `build_grid_scenario` would then be asked to
+    place a board within a depth range that cannot keep every corner
+    submerged at that draw's water surface.
+
+    This is a STRUCTURAL check over camera geometry only. It performs NO
+    calibration solve -- no `least_squares`, no `calibrate_synthetic`, no
+    pipeline call of any kind -- and completes in seconds, not minutes.
+
+    Args:
+        seeds: The calibration seeds the queue intends to run (the holdout
+            draw at `seed + 1_000_000` is derived automatically for each).
+        camera_counts: The `n_cameras` values the queue intends to run.
+
+    Returns:
+        One `GateResult` per `(seed, n_cameras, draw)` -- e.g.
+        `legality_probe([42], [12])` returns exactly 2 results, one for the
+        calibration draw and one for the holdout draw -- so a FAIL names
+        exactly which combination is illegal.
+    """
+    results: list[GateResult] = []
+    for seed in seeds:
+        for n_cameras in camera_counts:
+            for draw_name, draw_seed in (
+                ("calibration", seed),
+                ("holdout", seed + 1_000_000),
+            ):
+                _, _, water_zs = generate_camera_array(
+                    n_cameras=n_cameras,
+                    layout=GRID_LAYOUT,
+                    spacing=GRID_SPACING,
+                    height_above_water=GRID_HEIGHT_ABOVE_WATER,
+                    seed=draw_seed,
+                )
+                floor = board_clearance_floor(GRID_BOARD_CONFIG, water_zs, 15.0)
+                gate = f"legality_probe:seed={seed}:n_cameras={n_cameras}:{draw_name}"
+                if GRID_DEPTH_RANGE[0] >= floor:
+                    results.append(
+                        GateResult(
+                            "ALL",
+                            gate,
+                            "PASS",
+                            f"seed={seed} n_cameras={n_cameras} {draw_name} draw "
+                            f"(draw_seed={draw_seed}): derived floor {floor:.6f} "
+                            f"<= frozen GRID_DEPTH_RANGE[0] "
+                            f"{GRID_DEPTH_RANGE[0]:.6f} -- legal",
+                        )
+                    )
+                else:
+                    results.append(
+                        GateResult(
+                            "ALL",
+                            gate,
+                            "FAIL",
+                            f"seed={seed} n_cameras={n_cameras} {draw_name} draw "
+                            f"(draw_seed={draw_seed}): derived floor {floor:.6f} "
+                            f"EXCEEDS frozen GRID_DEPTH_RANGE[0] "
+                            f"{GRID_DEPTH_RANGE[0]:.6f} -- this seed/n_cameras "
+                            "combination is illegal and must not enter the "
+                            "queue's seed list (D-19.5-04)",
+                        )
+                    )
+    return results
 
 
 def _load_json(path: Path) -> dict | None:
@@ -686,6 +777,777 @@ def check_band_csv(
     ]
 
 
+# ---------------------------------------------------------------------------
+# Phase 19.5's four new band gates (plan 19.5-09, COV-03/04/05/06/07).
+#
+# Each gate reads STATUS COUNTS or STRUCTURAL properties from the artifact
+# itself -- never a process exit code -- matching this project's established
+# rule that E4/E6 record a failure as a row and can still exit 0 (MF-07).
+# ---------------------------------------------------------------------------
+
+_E6_BAND_CSV = "generalization_sweep_band.csv"
+_E6_BAND_SIDECAR = "e6_seed_band_provenance.json"
+_E6_EXPECTED_SEED_COUNT = 5
+_E6_EXPECTED_CAMERA_VALUES = (8, 12, 16)
+
+
+def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
+    """COV-03/COV-04's E6 seed band: `generalization_sweep_band.csv` against
+    `e6_seed_band_provenance.json`.
+
+    Checks the CSV has exactly 5 distinct seeds contributing equal row
+    counts, the `cameras` axis (COV-04) is present at all three camera
+    counts, every row's `status` reads `"ok"` (a non-`"ok"` count is a FAIL
+    naming the offending seed -- E6 exits 0 even when every configuration
+    failed, MF-07), the sidecar's `solver_config["seeds"]` matches the CSV's
+    distinct seeds, and the sidecar carries a `git_sha`.
+    """
+    csv_path = out_dir / _E6_BAND_CSV
+    if not csv_path.exists():
+        return [
+            GateResult(
+                "E6",
+                "gate_e6_seed_band",
+                "N/A",
+                f"{_E6_BAND_CSV} not present (its stage has not run yet)",
+            )
+        ]
+
+    try:
+        band = pd.read_csv(csv_path)
+    except (OSError, ValueError) as exc:
+        return [
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:read",
+                "FAIL",
+                f"{_E6_BAND_CSV} unreadable: {type(exc).__name__}: {exc}",
+            )
+        ]
+
+    if "seed" not in band.columns:
+        return [
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:seed_column",
+                "FAIL",
+                f"{_E6_BAND_CSV} has no 'seed' column",
+            )
+        ]
+
+    results: list[GateResult] = []
+    distinct_seeds = sorted({int(s) for s in band["seed"].tolist()})
+
+    if len(distinct_seeds) != _E6_EXPECTED_SEED_COUNT:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:seed_count",
+                "FAIL",
+                f"{_E6_BAND_CSV} carries {len(distinct_seeds)} distinct seed(s) "
+                f"{distinct_seeds}, expected exactly {_E6_EXPECTED_SEED_COUNT}",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:seed_count",
+                "PASS",
+                f"{_E6_BAND_CSV}: {_E6_EXPECTED_SEED_COUNT} distinct seeds "
+                f"{distinct_seeds}",
+            )
+        )
+
+    per_seed_counts = band.groupby("seed").size()
+    if per_seed_counts.nunique() > 1:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:row_count",
+                "FAIL",
+                f"row counts differ per seed: {per_seed_counts.to_dict()} -- a "
+                "partial seed would silently under-report",
+            )
+        )
+    else:
+        rows_per_seed = int(per_seed_counts.iloc[0]) if len(per_seed_counts) else 0
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:row_count",
+                "PASS",
+                f"row count = {len(band)}, uniform across seeds "
+                f"({rows_per_seed} rows/seed)",
+            )
+        )
+
+    if {"axis", "axis_value"}.issubset(band.columns):
+        cameras_rows = band[band["axis"] == "cameras"]
+        cameras_values = sorted({int(v) for v in cameras_rows["axis_value"].tolist()})
+        missing = [v for v in _E6_EXPECTED_CAMERA_VALUES if v not in cameras_values]
+        if missing:
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:cameras_axis",
+                    "FAIL",
+                    f"cameras axis missing value(s) {missing}; found {cameras_values}",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:cameras_axis",
+                    "PASS",
+                    f"cameras axis present at {cameras_values}",
+                )
+            )
+    else:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:cameras_axis",
+                "FAIL",
+                f"{_E6_BAND_CSV} has no 'axis'/'axis_value' columns to locate "
+                "the cameras axis",
+            )
+        )
+
+    if "status" in band.columns:
+        status_by_seed = (
+            band.groupby("seed")["status"].value_counts().unstack(fill_value=0)
+        )
+        non_ok_seeds: dict[int, dict[str, int]] = {}
+        for seed_val, row in status_by_seed.iterrows():
+            non_ok = {
+                str(status): int(count)
+                for status, count in row.items()
+                if status != "ok" and count > 0
+            }
+            if non_ok:
+                non_ok_seeds[int(seed_val)] = non_ok
+        if non_ok_seeds:
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:status_counts",
+                    "FAIL",
+                    f"non-'ok' status counts found: {non_ok_seeds} -- read from "
+                    "the CSV's own 'status' column, never the process exit code",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:status_counts",
+                    "PASS",
+                    f"every row status=='ok' across all {len(distinct_seeds)} seeds",
+                )
+            )
+    else:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:status_counts",
+                "FAIL",
+                f"{_E6_BAND_CSV} has no 'status' column -- cannot confirm "
+                "convergence per row (E6 exits 0 even when every "
+                "configuration fails)",
+            )
+        )
+
+    sidecar = _load_json(out_dir / _E6_BAND_SIDECAR)
+    if sidecar is None or "_load_error" in sidecar:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar",
+                "FAIL",
+                f"{_E6_BAND_SIDECAR} missing or unreadable",
+            )
+        )
+        return results
+
+    recorded_seeds = (sidecar.get("solver_config") or {}).get("seeds")
+    if not isinstance(recorded_seeds, list):
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar_seeds",
+                "FAIL",
+                f"{_E6_BAND_SIDECAR} carries no solver_config['seeds'] list",
+            )
+        )
+    elif sorted({int(s) for s in recorded_seeds}) != distinct_seeds:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar_seeds",
+                "FAIL",
+                f"sidecar solver_config['seeds']={sorted(recorded_seeds)} does "
+                f"not match the CSV's distinct seeds {distinct_seeds}",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar_seeds",
+                "PASS",
+                "sidecar solver_config['seeds'] matches the CSV's distinct seeds",
+            )
+        )
+
+    git_sha = sidecar.get("git_sha") or (sidecar.get("environment") or {}).get(
+        "git_sha"
+    )
+    if not git_sha:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar_git_sha",
+                "FAIL",
+                f"{_E6_BAND_SIDECAR} carries no git_sha",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E6",
+                "gate_e6_seed_band:sidecar_git_sha",
+                "PASS",
+                f"{_E6_BAND_SIDECAR} git_sha={git_sha}",
+            )
+        )
+
+    return results
+
+
+_E5_BAND_CSV = "index_sensitivity_seed_band.csv"
+_E5_BAND_SIDECAR = "e5_seed_band_provenance.json"
+_E5_EXPECTED_SEED_COUNT = 5
+
+
+def check_e5_seed_band(out_dir: Path) -> list[GateResult]:
+    """COV-05's E5 seed band: `index_sensitivity_seed_band.csv` against
+    `e5_seed_band_provenance.json`.
+
+    Checks the CSV has exactly 5 distinct seeds, and the sidecar carries
+    BOTH `solver_config["seeds"]` AND the pre-existing `n_assumed_band`,
+    plus a non-empty `scope` string -- the D-19.5-05 distinguishability
+    requirement (this band bounds seed noise, NOT index sensitivity) stated
+    in the artifact itself, enforced here at the gate.
+    """
+    csv_path = out_dir / _E5_BAND_CSV
+    if not csv_path.exists():
+        return [
+            GateResult(
+                "E5",
+                "gate_e5_seed_band",
+                "N/A",
+                f"{_E5_BAND_CSV} not present (its stage has not run yet)",
+            )
+        ]
+
+    try:
+        band = pd.read_csv(csv_path)
+    except (OSError, ValueError) as exc:
+        return [
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:read",
+                "FAIL",
+                f"{_E5_BAND_CSV} unreadable: {type(exc).__name__}: {exc}",
+            )
+        ]
+
+    if "seed" not in band.columns:
+        return [
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:seed_column",
+                "FAIL",
+                f"{_E5_BAND_CSV} has no 'seed' column",
+            )
+        ]
+
+    results: list[GateResult] = []
+    distinct_seeds = sorted({int(s) for s in band["seed"].tolist()})
+
+    if len(distinct_seeds) != _E5_EXPECTED_SEED_COUNT:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:seed_count",
+                "FAIL",
+                f"{_E5_BAND_CSV} carries {len(distinct_seeds)} distinct seed(s) "
+                f"{distinct_seeds}, expected exactly {_E5_EXPECTED_SEED_COUNT}",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:seed_count",
+                "PASS",
+                f"{_E5_BAND_CSV}: {_E5_EXPECTED_SEED_COUNT} distinct seeds "
+                f"{distinct_seeds}",
+            )
+        )
+
+    sidecar = _load_json(out_dir / _E5_BAND_SIDECAR)
+    if sidecar is None or "_load_error" in sidecar:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:sidecar",
+                "FAIL",
+                f"{_E5_BAND_SIDECAR} missing or unreadable",
+            )
+        )
+        return results
+
+    solver_config = sidecar.get("solver_config") or {}
+    if "seeds" not in solver_config:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:sidecar_seeds",
+                "FAIL",
+                f"{_E5_BAND_SIDECAR} carries no solver_config['seeds']",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:sidecar_seeds",
+                "PASS",
+                f"{_E5_BAND_SIDECAR} carries solver_config['seeds']",
+            )
+        )
+
+    if "n_assumed_band" not in sidecar and "n_assumed_band" not in solver_config:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:n_assumed_band",
+                "FAIL",
+                f"{_E5_BAND_SIDECAR} carries 'seeds' but no 'n_assumed_band' -- "
+                "the D-19.5-05 distinguishability requirement (this band "
+                "varies seed, not the assumed index) is not stated in the "
+                "artifact",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:n_assumed_band",
+                "PASS",
+                f"{_E5_BAND_SIDECAR} carries n_assumed_band alongside seeds",
+            )
+        )
+
+    scope = sidecar.get("scope") or solver_config.get("scope")
+    if not scope:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:scope",
+                "FAIL",
+                f"{_E5_BAND_SIDECAR} carries no non-empty 'scope' string",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E5",
+                "gate_e5_seed_band:scope",
+                "PASS",
+                f"{_E5_BAND_SIDECAR} scope: {scope!r}",
+            )
+        )
+
+    return results
+
+
+_E2_BAND_SCOPE_JSON = "e2_band_scope.json"
+_E2_METRICS_FILENAME = "real_rig_metrics.json"
+_E2_METRICS_RTOL = 1e-6
+_E2_SEED_DIR_RE = re.compile(r"seed_(\d+)_e2_out")
+_E2_EXPECTED_RECORD_COUNT = 3
+
+
+def _numeric_mismatches(
+    expected: dict, actual: dict, *, rtol: float, path: str = ""
+) -> list[str]:
+    """Recursively compare numeric leaves shared by `expected` and `actual`.
+
+    Keys present in only one dict are ignored (this is a reproduction check
+    on shared numeric quantities, not a full schema diff). The `provenance`
+    key is skipped entirely -- it documents WHERE each number came from, not
+    a number itself.
+    """
+    mismatches: list[str] = []
+    for key, expected_value in expected.items():
+        if key == "provenance" or key not in actual:
+            continue
+        actual_value = actual[key]
+        full_path = f"{path}.{key}" if path else key
+        if isinstance(expected_value, dict) and isinstance(actual_value, dict):
+            mismatches += _numeric_mismatches(
+                expected_value, actual_value, rtol=rtol, path=full_path
+            )
+        elif isinstance(expected_value, list) and isinstance(actual_value, list):
+            for i, (e, a) in enumerate(zip(expected_value, actual_value)):
+                if isinstance(e, int | float) and isinstance(a, int | float):
+                    if not math.isclose(e, a, rel_tol=rtol, abs_tol=1e-9):
+                        mismatches.append(f"{full_path}[{i}]: {e} != {a}")
+        elif isinstance(expected_value, int | float) and isinstance(
+            actual_value, int | float
+        ):
+            if not math.isclose(
+                expected_value, actual_value, rel_tol=rtol, abs_tol=1e-9
+            ):
+                mismatches.append(f"{full_path}: {expected_value} != {actual_value}")
+    return mismatches
+
+
+def check_e2_band(
+    band_dir: Path,
+    committed_metrics_path: Path | None = None,
+) -> list[GateResult]:
+    """COV-07's E2 calibration/holdout split-variance band.
+
+    `band_dir` is the directory `--emit-band-configs`/`--band-dir` wrote
+    into (e.g. `experiments/results_e2_band/`), NOT `experiments/results/`
+    itself -- `emit_seed_variant_configs`'s release-tree write refusal means
+    this band's per-seed metric records live in their own isolated
+    directory, under `seed_{seed}_e2_out/real_rig_metrics.json` (plan
+    19.5-07's exact `--out` naming).
+
+    Checks: exactly 3 per-seed metric records exist; their metric values are
+    NOT byte-identical to each other (identical values mean the seed never
+    reached the split -- RESEARCH Pitfall 5's stated warning sign); the
+    seed-42 record matches `committed_metrics_path` within a stated
+    tolerance; `e2_band_scope.json` carries both "split variance" and "NOT
+    measurement variance" (D-19.5-05).
+
+    Args:
+        band_dir: The E2 band directory.
+        committed_metrics_path: The committed production
+            `real_rig_metrics.json` to compare seed 42 against. Defaults to
+            `experiments/results/real_rig_metrics.json`.
+    """
+    if committed_metrics_path is None:
+        committed_metrics_path = Path("experiments/results/real_rig_metrics.json")
+
+    if not band_dir.exists():
+        return [
+            GateResult(
+                "E2",
+                "gate_e2_band",
+                "N/A",
+                f"{band_dir} not present (its stage has not run yet)",
+            )
+        ]
+
+    results: list[GateResult] = []
+    records: dict[int, dict] = {}
+    for seed_dir in sorted(band_dir.glob("seed_*_e2_out")):
+        metrics_path = seed_dir / _E2_METRICS_FILENAME
+        record = _load_json(metrics_path)
+        if record is None or "_load_error" in record:
+            results.append(
+                GateResult(
+                    "E2",
+                    f"gate_e2_band:{seed_dir.name}",
+                    "FAIL",
+                    f"{seed_dir.name}/{_E2_METRICS_FILENAME} missing or unreadable",
+                )
+            )
+            continue
+        match = _E2_SEED_DIR_RE.match(seed_dir.name)
+        if match is not None:
+            records[int(match.group(1))] = record
+
+    if len(records) != _E2_EXPECTED_RECORD_COUNT:
+        results.append(
+            GateResult(
+                "E2",
+                "gate_e2_band:record_count",
+                "FAIL",
+                f"found {len(records)} per-seed metric record(s) under "
+                f"{band_dir}, expected exactly {_E2_EXPECTED_RECORD_COUNT}",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E2",
+                "gate_e2_band:record_count",
+                "PASS",
+                f"{_E2_EXPECTED_RECORD_COUNT} per-seed metric records found: "
+                f"seeds {sorted(records)}",
+            )
+        )
+
+    if len(records) >= 2:
+        distinct_payloads = {json.dumps(r, sort_keys=True) for r in records.values()}
+        if len(distinct_payloads) == 1:
+            results.append(
+                GateResult(
+                    "E2",
+                    "gate_e2_band:not_identical",
+                    "FAIL",
+                    "all per-seed metric records are byte-identical -- the "
+                    "split never reached a different holdout partition "
+                    "(RESEARCH Pitfall 5)",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E2",
+                    "gate_e2_band:not_identical",
+                    "PASS",
+                    f"{len(distinct_payloads)} distinct metric record(s) "
+                    f"across {len(records)} seeds",
+                )
+            )
+
+    if 42 in records:
+        committed = _load_json(committed_metrics_path)
+        if committed is None or "_load_error" in committed:
+            results.append(
+                GateResult(
+                    "E2",
+                    "gate_e2_band:seed42_reproduction",
+                    "FAIL",
+                    f"committed {committed_metrics_path} missing or unreadable",
+                )
+            )
+        else:
+            mismatches = _numeric_mismatches(
+                committed, records[42], rtol=_E2_METRICS_RTOL
+            )
+            if mismatches:
+                results.append(
+                    GateResult(
+                        "E2",
+                        "gate_e2_band:seed42_reproduction",
+                        "FAIL",
+                        f"seed-42 band record diverges from the committed "
+                        f"{committed_metrics_path}: {mismatches}",
+                    )
+                )
+            else:
+                results.append(
+                    GateResult(
+                        "E2",
+                        "gate_e2_band:seed42_reproduction",
+                        "PASS",
+                        f"seed-42 band record matches {committed_metrics_path} "
+                        f"within rtol={_E2_METRICS_RTOL}",
+                    )
+                )
+
+    scope = _load_json(band_dir / _E2_BAND_SCOPE_JSON)
+    if scope is None or "_load_error" in scope:
+        results.append(
+            GateResult(
+                "E2",
+                "gate_e2_band:scope",
+                "FAIL",
+                f"{_E2_BAND_SCOPE_JSON} missing or unreadable under {band_dir}",
+            )
+        )
+    else:
+        scope_text = str(scope.get("scope", ""))
+        if "split variance" in scope_text and "NOT measurement variance" in scope_text:
+            results.append(
+                GateResult(
+                    "E2",
+                    "gate_e2_band:scope",
+                    "PASS",
+                    f"{_E2_BAND_SCOPE_JSON} scope states both required phrases",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E2",
+                    "gate_e2_band:scope",
+                    "FAIL",
+                    f"{_E2_BAND_SCOPE_JSON} scope missing required phrase(s): "
+                    f"{scope_text!r}",
+                )
+            )
+
+    return results
+
+
+_E4_REPEAT_CSV = "benchmark_grid_repeat.csv"
+_E4_REPEAT_CELLS = ((8, 100), (12, 100), (16, 100))
+_E4_REPEAT_SECONDS_COLUMN = "seconds_stage3_interface_optimization"
+_E4_REPEAT_NFEV_COLUMN = "nfev_stage3_interface_optimization"
+
+
+def check_e4_repeat(out_dir: Path) -> list[GateResult]:
+    """COV-06's E4 timing repeat: `benchmark_grid_repeat.csv`.
+
+    Checks: the CSV has 6 rows over the three `REPEAT_CELLS` and two
+    `repeat` values; every row with a non-null
+    `seconds_stage3_interface_optimization` has a non-null
+    `nfev_stage3_interface_optimization` (MF-03 -- wall-clock without nfev
+    beside it is unreportable).
+    """
+    csv_path = out_dir / _E4_REPEAT_CSV
+    if not csv_path.exists():
+        return [
+            GateResult(
+                "E4",
+                "gate_e4_repeat",
+                "N/A",
+                f"{_E4_REPEAT_CSV} not present (its stage has not run yet)",
+            )
+        ]
+
+    try:
+        df = pd.read_csv(csv_path)
+    except (OSError, ValueError) as exc:
+        return [
+            GateResult(
+                "E4",
+                "gate_e4_repeat:read",
+                "FAIL",
+                f"{_E4_REPEAT_CSV} unreadable: {type(exc).__name__}: {exc}",
+            )
+        ]
+
+    results: list[GateResult] = []
+
+    if len(df) != 6:
+        results.append(
+            GateResult(
+                "E4",
+                "gate_e4_repeat:row_count",
+                "FAIL",
+                f"{_E4_REPEAT_CSV} has {len(df)} row(s), expected 6 (3 cells x "
+                "2 repeats)",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "E4", "gate_e4_repeat:row_count", "PASS", f"{_E4_REPEAT_CSV}: 6 rows"
+            )
+        )
+
+    if {"n_cameras", "n_frames"}.issubset(df.columns):
+        cells = sorted({(int(r.n_cameras), int(r.n_frames)) for r in df.itertuples()})
+        missing_cells = [c for c in _E4_REPEAT_CELLS if c not in cells]
+        if missing_cells:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:cells",
+                    "FAIL",
+                    f"missing repeat cell(s) {missing_cells}; found {cells}",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:cells",
+                    "PASS",
+                    f"all three repeat cells present: {cells}",
+                )
+            )
+    else:
+        results.append(
+            GateResult(
+                "E4",
+                "gate_e4_repeat:cells",
+                "FAIL",
+                f"{_E4_REPEAT_CSV} missing 'n_cameras'/'n_frames' column(s)",
+            )
+        )
+
+    if "repeat" in df.columns:
+        distinct_repeats = sorted({int(r) for r in df["repeat"].tolist()})
+        if distinct_repeats != [1, 2]:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:repeat_labels",
+                    "FAIL",
+                    f"expected repeat values [1, 2], found {distinct_repeats}",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:repeat_labels",
+                    "PASS",
+                    "repeat labels [1, 2] present",
+                )
+            )
+    else:
+        results.append(
+            GateResult(
+                "E4",
+                "gate_e4_repeat:repeat_labels",
+                "FAIL",
+                f"{_E4_REPEAT_CSV} has no 'repeat' column",
+            )
+        )
+
+    if {_E4_REPEAT_SECONDS_COLUMN, _E4_REPEAT_NFEV_COLUMN}.issubset(df.columns):
+        bad_rows = df[
+            df[_E4_REPEAT_SECONDS_COLUMN].notna() & df[_E4_REPEAT_NFEV_COLUMN].isna()
+        ]
+        if len(bad_rows) > 0:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:nfev_beside_wallclock",
+                    "FAIL",
+                    f"{len(bad_rows)} row(s) carry a wall-clock "
+                    f"{_E4_REPEAT_SECONDS_COLUMN} with no "
+                    f"{_E4_REPEAT_NFEV_COLUMN} (MF-03)",
+                )
+            )
+        else:
+            results.append(
+                GateResult(
+                    "E4",
+                    "gate_e4_repeat:nfev_beside_wallclock",
+                    "PASS",
+                    f"every row with a non-null {_E4_REPEAT_SECONDS_COLUMN} has "
+                    f"a non-null {_E4_REPEAT_NFEV_COLUMN}",
+                )
+            )
+    else:
+        results.append(
+            GateResult(
+                "E4",
+                "gate_e4_repeat:nfev_beside_wallclock",
+                "FAIL",
+                f"{_E4_REPEAT_CSV} missing {_E4_REPEAT_SECONDS_COLUMN!r} or "
+                f"{_E4_REPEAT_NFEV_COLUMN!r} column",
+            )
+        )
+
+    return results
+
+
 def _collect_all_json_paths(out_dir: Path) -> list[Path]:
     """Every JSON artifact this run's gates read, for the cross-artifact
     git_sha consistency check."""
@@ -767,6 +1629,21 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
         "E7", out_dir, "interface_ablation_band.csv", "e7_benchmark_*.json"
     )
     results += check_band_csv("E1", out_dir, "exp1_band.csv", "e1_benchmark_*.json")
+    # Phase 19.5's four new band gates (plan 19.5-09, COV-03/04/05/06/07).
+    # check_e6_seed_band/check_e5_seed_band/check_e4_repeat all read directly
+    # under out_dir. check_e2_band's artifacts live under an ISOLATED sibling
+    # directory (out_dir.parent / "results_e2_band"), not out_dir itself --
+    # emit_seed_variant_configs refuses to write into the release tree, and
+    # this queue keeps the band in-repo but out of out_dir's own tree so a
+    # `--check`/gate run against out_dir never confuses band output with the
+    # single production run's own artifacts.
+    results += check_e6_seed_band(out_dir)
+    results += check_e5_seed_band(out_dir)
+    results += check_e4_repeat(out_dir)
+    results += check_e2_band(
+        out_dir.parent / "results_e2_band",
+        committed_metrics_path=out_dir / "real_rig_metrics.json",
+    )
     results.append(_check_git_sha_consistency(out_dir))
     return results
 
