@@ -48,16 +48,17 @@ cd "$REPO_ROOT" || { echo "FATAL: cannot cd to repo root"; exit 1; }
 
 PYTHON_BIN="${PRELAUNCH_GATE_PYTHON:-$HOME/anaconda3/envs/AquaCal/python.exe}"
 SHA_FILE="experiments/rerun_19_5_frozen_sha.txt"
-# Phase 19.5's archiving plan (if any). ARCHIVES_PRESENT is UNCHANGED logic
-# from 19.4 (plan 19.5-09 Task 1 renames only SHA_FILE and this variable's
-# target, per that plan's own instruction). KNOWN CAVEAT, surfaced here
-# rather than silently: phase 19.5 makes NO non-inert `src/` change
-# (D-19.5-03) and therefore archived NOTHING -- there is no
+# Phase 19.5's archiving plan (if any). Phase 19.5 makes NO non-inert `src/`
+# change (D-19.5-03) and therefore archived NOTHING -- there is no
 # `experiments/archive/eN-*-pre-interface-fix` set this phase, unlike 19.4.
-# Pointed at this phase's own plan 09 SUMMARY, which states this caveat
-# explicitly; if this check FAILs for that reason at launch time, that is
-# EXPECTED given 19.5's scope, not a real defect -- see
-# `.planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-09-SUMMARY.md`.
+#
+# RESOLVED 2026-08-06 (was: "this check is EXPECTED to FAIL, treat it as
+# benign"). A gate everyone knows to ignore is worse than no gate -- it is how
+# a real failure gets waved through six months later. ARCHIVES_PRESENT now
+# returns a third verdict, N/A, when it can PROVE its premise does not apply:
+# the SUMMARY declares the absence AND no commit naming this phase touched
+# src/. A phase that did move src/ and is missing its archives still FAILs.
+# So "FAIL means stop" stays literally true and needs no asterisk.
 PLAN03_SUMMARY=".planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-09-SUMMARY.md"
 SUPERSEDED_BRANCH="worktree-agent-a1a99b5a5289e9e05"
 
@@ -65,6 +66,13 @@ FAILURES=()
 
 pass() { echo "PASS $1"; }
 fail() { echo "FAIL $1 -- $2"; FAILURES+=("$1"); }
+# N/A is a THIRD verdict, not a soft failure: the check ran, its premise did
+# not apply, and it therefore says nothing either way. It must not enter
+# FAILURES -- but it must also never be reachable just because a check could
+# not find what it was looking for, or it becomes a way to launder a real
+# FAIL. Every na() call site must prove the premise is inapplicable.
+# check_rerun_gates.py already uses this vocabulary (`[N/A ]` verdicts).
+na() { echo "N/A  $1 -- $2"; }
 
 echo "=============================================================="
 echo " Phase 19.5 pre-launch freeze gate"
@@ -208,7 +216,30 @@ else
   EXPECTED_DIRS="$(grep -oE 'experiments/archive/e[0-9]+-2026-08-04-pre-interface-fix' "$PLAN03_SUMMARY" \
                     | sort -u)"
   if [ -z "$EXPECTED_DIRS" ]; then
-    fail ARCHIVES_PRESENT "no archive directories could be parsed out of $PLAN03_SUMMARY"
+    # No archive set was declared. That is EITHER a phase that genuinely had
+    # nothing to archive, OR a phase that archived something and forgot to
+    # say so -- and those must not collapse to the same verdict. Distinguish
+    # them with two independent conditions, BOTH required:
+    #
+    #   (a) the SUMMARY declares the absence in words, so a human asserted it;
+    #   (b) no commit naming this phase touched src/, so the machine agrees.
+    #
+    # (b) is the one that cannot be talked around: archiving exists to
+    # preserve a pre-fix baseline, so a phase that changed no src/ has no
+    # baseline to preserve and the check's premise is genuinely absent. If
+    # src/ DID move, a missing archive set is a real FAIL and stays one.
+    PHASE_SRC_COMMITS="$(git log --oneline --grep='19\.5' -- src/ 2>/dev/null)"
+    if grep -qiE 'archived nothing|archives? nothing' "$PLAN03_SUMMARY" \
+       && [ -z "$PHASE_SRC_COMMITS" ]; then
+      na ARCHIVES_PRESENT \
+        "phase 19.5 declares it archived nothing (D-19.5-03 keeps src/ inert) and no commit naming 19.5 touched src/ -- nothing to archive, so this check's premise does not apply"
+    else
+      if [ -n "$PHASE_SRC_COMMITS" ]; then
+        echo "  commits naming this phase that touched src/:"
+        echo "$PHASE_SRC_COMMITS" | sed 's/^/    /'
+      fi
+      fail ARCHIVES_PRESENT "no archive directories could be parsed out of $PLAN03_SUMMARY (and the no-archive premise is not established: see above)"
+    fi
   else
     echo "expected archive set, read from plan 03's SUMMARY:"
     MISSING=""
