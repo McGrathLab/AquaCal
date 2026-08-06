@@ -243,3 +243,9 @@ experiments/rerun_19_5_state.dryrun.tsv
 
 # Pre-launch gate log (phase 19.5) -- rerunnable, not an artifact
 experiments/prelaunch_gate_19_5.log
+
+# The production queue log IS a citable artifact -- it is the human-readable
+# record of which seeds were requested (see the 19.4 band-sidecar todo, which
+# cites rerun_19_4.log for exactly that). Un-ignore it against *.log above so
+# plan 10 commits it without needing "git add -f".
+!experiments/rerun_19_5.log

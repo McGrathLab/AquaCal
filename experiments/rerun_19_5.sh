@@ -286,11 +286,21 @@ run_stage_prelaunch_probe() {
     return $?
   fi
   log "prelaunch_probe: legality_probe over seeds ${E6_BAND_SEEDS} x n_cameras ${PROBE_N_CAMERAS}"
+  # Seeds and camera counts come from the shell variables the rest of this
+  # script actually uses -- NEVER a literal list repeated here. A hardcoded
+  # copy silently diverged from E6_BAND_SEEDS when the band went from five
+  # seeds to six on 2026-08-06: the log line above announced 42-47 while the
+  # probe below still checked 42-46, so the one seed most in need of checking
+  # was the one skipped, and the output asserted otherwise. Caught before
+  # launch. Do not reintroduce a literal here.
+  PROBE_SEEDS="${E6_BAND_SEEDS}" PROBE_CAMS="${PROBE_N_CAMERAS}" \
   "${GATE_PYTHON}" - <<'PY'
+import os
+
 from experiments.check_rerun_gates import legality_probe
 
-seeds = [42, 43, 44, 45, 46]
-camera_counts = [8, 12, 16]
+seeds = [int(s) for s in os.environ["PROBE_SEEDS"].split(",") if s.strip()]
+camera_counts = [int(c) for c in os.environ["PROBE_CAMS"].split(",") if c.strip()]
 results = legality_probe(seeds, camera_counts)
 n_fail = sum(1 for r in results if r.verdict == "FAIL")
 for r in results:
