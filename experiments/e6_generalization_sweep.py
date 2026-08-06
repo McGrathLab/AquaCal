@@ -139,6 +139,17 @@ INDEX_AXIS_VALUES: list[float] = [1.333, 1.36, 1.39, 1.42, 1.45, 1.48, 1.51, 1.5
 # array size (D-11).
 LAYOUT_AXIS_VALUES: list[str] = ["grid", "ring", "line"]
 
+# COV-04: camera-count axis, band-mode-only (D-19.5-06 design_decision).
+# BASELINE_N_CAMERAS (12) is the first-class baseline this axis passes
+# through, same as every other axis. 8 and 16 match E4's own camera-count
+# grid (experiments.e4_benchmark_grid) exactly, so this accuracy axis and
+# E4's timing axis are directly comparable at the same camera counts. Unlike
+# INDEX_AXIS_VALUES/LAYOUT_AXIS_VALUES, this list is never consulted by
+# `build_axis_configurations()`'s default call (`include_cameras_axis=False`)
+# -- see that function's docstring and the module-level design decision this
+# implements.
+CAMERAS_AXIS_VALUES: list[int] = [8, 12, 16]
+
 # Three (label, depth_range, xy_extent, spacing) settings. "default" (None,
 # None, None) is `build_grid_scenario`'s own default geometry -- D-29's
 # real-rig-like GRID_HEIGHT_ABOVE_WATER / GRID_DEPTH_RANGE / GRID_SPACING and
@@ -293,25 +304,44 @@ _SMOKE_N_FRAMES = 8
 # ---------------------------------------------------------------------------
 
 
-def build_axis_configurations() -> list[dict]:
-    """Expand the three axes into one flat list of configuration dicts.
+def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
+    """Expand the axes into one flat list of configuration dicts.
 
-    Each dict carries `axis`, `axis_value` (always a string, since the three
-    axes' values are heterogeneous -- a float index, a layout name, a scale
-    label -- and a tidy format needs one shared column), `is_baseline`,
-    `config_key`, and the scene keywords `n_cameras`, `layout`, `n_water`,
-    `depth_range`, `xy_extent`, `spacing` needed by `build_grid_scenario`.
+    Each dict carries `axis`, `axis_value` (always a string, since the axes'
+    values are heterogeneous -- a float index, a layout name, a scale label,
+    an int camera count -- and a tidy format needs one shared column),
+    `is_baseline`, `config_key`, and the scene keywords `n_cameras`,
+    `layout`, `n_water`, `depth_range`, `xy_extent`, `spacing` needed by
+    `build_grid_scenario`.
 
-    The baseline configuration appears once per axis (three entries total),
-    each with a DIFFERENT `axis`/`axis_value` but the SAME `config_key`
-    (`"baseline"`) -- `run_configuration` computes the underlying scene once
-    per distinct `config_key`, so the three baseline rows share one run
-    rather than tripling it.
+    The baseline configuration appears once per axis (three entries total,
+    four when `include_cameras_axis=True`), each with a DIFFERENT
+    `axis`/`axis_value` but the SAME `config_key` (`"baseline"`) --
+    `run_configuration` computes the underlying scene once per distinct
+    `config_key`, so the baseline rows share one run rather than duplicating
+    it.
+
+    Args:
+        include_cameras_axis: COV-04/D-19.5-06's design decision. When
+            `False` (the default, used by `_run_full`, `_run_check`,
+            `_run_smoke`, and `build_smoke_configurations`), the returned
+            list is byte-for-byte identical to this function's pre-COV-04
+            behavior -- the committed `generalization_sweep.csv` and
+            `--check` stay unaffected. When `True` (used only by the
+            `--seeds` band path, `_run_seed_band`), a fourth loop over
+            `CAMERAS_AXIS_VALUES` is appended, emitting `axis="cameras"`
+            rows with `depth_range=None`, `xy_extent=None`, `spacing=None`
+            so the geometry derives from `n_cameras` alone, exactly as the
+            baseline's own geometry does.
 
     Returns:
         A list of length `len(INDEX_AXIS_VALUES) + len(LAYOUT_AXIS_VALUES) +
-        len(SCALE_AXIS_VALUES)`, with exactly 3 entries carrying
-        `is_baseline=True`.
+        len(SCALE_AXIS_VALUES)` (plus `len(CAMERAS_AXIS_VALUES)` when
+        `include_cameras_axis=True`), with exactly 3 entries carrying
+        `is_baseline=True` (4 when `include_cameras_axis=True`). The first
+        14 entries are always identical, element-for-element, to the
+        default call's full return value -- the cameras axis only appends,
+        never reorders.
     """
     configs: list[dict] = []
 
@@ -365,6 +395,24 @@ def build_axis_configurations() -> list[dict]:
                 "spacing": spacing,
             }
         )
+
+    if include_cameras_axis:
+        for value in CAMERAS_AXIS_VALUES:
+            is_baseline = value == BASELINE_N_CAMERAS
+            configs.append(
+                {
+                    "axis": "cameras",
+                    "axis_value": str(value),
+                    "is_baseline": is_baseline,
+                    "config_key": "baseline" if is_baseline else f"cameras_{value}",
+                    "n_cameras": value,
+                    "layout": BASELINE_LAYOUT,
+                    "n_water": BASELINE_N_WATER,
+                    "depth_range": None,
+                    "xy_extent": None,
+                    "spacing": None,
+                }
+            )
 
     return configs
 
