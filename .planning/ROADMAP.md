@@ -523,10 +523,20 @@ current production output when unset.
   9. **Every band lands in MANUSCRIPT-FINDINGS.md** as an MF entry naming its citable artifact,
      and MF-09's edit map is updated wherever a band changes what may be claimed.
 
-**Plans:** 0 plans
+**Plans:** 11 plans (5 waves) -- cheap-first, then ONE risk-first queue (D-19.5-02)
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 19.5 to break down)
+- [ ] 19.5-01-PLAN.md -- COV-01: structural scaling sweep to N=128, 13/17 group pinning, the 500 M dense/sparse boundary located analytically (leaves `cpr_grouping.csv` untouched)
+- [ ] 19.5-02-PLAN.md -- COV-02: FD Jacobian accuracy vs a Richardson reference, step sweep, Newton 1e-9 floor adjudicated -- `experiments/` only, no `src/` change
+- [ ] 19.5-03-PLAN.md -- COV-08a: E7 focal/standoff paired re-analysis across the ten committed seeds and four arms
+- [ ] 19.5-04-PLAN.md -- COV-08b: frame-clustered bootstrap over the 7,762 committed comparisons (52 frames), scoped "metric sampling variance only"
+- [ ] 19.5-05-PLAN.md -- COV-05: E5 `--seeds` band, named apart from its existing `n_assumed_band` (code only)
+- [ ] 19.5-06-PLAN.md -- COV-03/04: E6 `--seeds` band with mandatory per-seed isolated dirs, plus an opt-in `cameras` axis (code only)
+- [ ] 19.5-07-PLAN.md -- COV-07: E2 seed-variant config generator; `--seed` is a red herring on the `--config` path (code only)
+- [ ] 19.5-08-PLAN.md -- COV-06: E4 repeat splice over the three 100-frame cells, `nfev` beside wall-clock (code only)
+- [ ] 19.5-09-PLAN.md -- Writes `rerun_19_5.sh`, the four new band gates and the D-19.5-04 legality probe. Budget: ~15 h nominal, ~24 h at 19.4's 1.6x, **26 h ceiling**
+- [ ] 19.5-10-PLAN.md -- **Orchestrator only.** Runs the one queue. Changes no code. Commit nothing during the run
+- [ ] 19.5-11-PLAN.md -- COV-09: MF-11+ entries naming citable artifacts, MF-09 edit-map updates, six-check honesty gate
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the
