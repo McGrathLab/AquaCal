@@ -51,8 +51,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -68,7 +70,9 @@ from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
     exit_code_for,
+    parse_seed_list,
     resolve_out_dir,
+    run_seed_band,
     validate_args,
     write_experiment_csv,
 )
@@ -277,6 +281,11 @@ assert len(E6_COLUMNS) == 31 and len(set(E6_COLUMNS)) == 31
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
+# COV-03: the band CSV's key columns -- E6's own per-row key plus the `seed`
+# `run_seed_band` stamps on every row (D-19.5-06, Pattern 1's "band-CSV
+# column convention").
+E6_SEED_BAND_KEY_COLUMNS = ["seed", "axis", "axis_value"]
+
 # Columns whose value is null for any row whose status is not "ok".
 _METRIC_COLUMNS: list[str] = [
     "optimality_stage3_interface_optimization",
@@ -417,9 +426,17 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
     return configs
 
 
-def build_smoke_configurations() -> list[dict]:
-    """The baseline plus one non-baseline value from each axis (six rows, four scenes)."""
-    configs = build_axis_configurations()
+def build_smoke_configurations(include_cameras_axis: bool = False) -> list[dict]:
+    """The baseline plus one non-baseline value from each axis.
+
+    Default (`include_cameras_axis=False`, used by plain `--smoke`): six
+    rows, four scenes, byte-identical to this function's pre-COV-04
+    behavior. `include_cameras_axis=True` (used only by `--smoke --seeds`,
+    Task 2) adds the cameras axis's baseline row (sharing `config_key`
+    `"baseline"`, so it does not add a fifth scene by itself) plus one
+    non-baseline cameras value, for eight rows / five scenes.
+    """
+    configs = build_axis_configurations(include_cameras_axis=include_cameras_axis)
     baseline = [c for c in configs if c["is_baseline"]]
     non_baseline_by_axis: dict[str, dict] = {}
     for c in configs:
@@ -1040,6 +1057,143 @@ def run_sweep(
 
 
 # ---------------------------------------------------------------------------
+# --seeds band mode (COV-03/COV-04, D-19.5-06)
+# ---------------------------------------------------------------------------
+
+
+def _band_smoke_configurations() -> list[dict]:
+    """`--smoke --seeds`'s reduced config set: the shared baseline scene plus
+    the cameras axis's one non-baseline value (COV-04's new surface).
+
+    Deliberately smaller than plain `--smoke`'s own
+    `build_smoke_configurations()` (which covers every axis, 6 rows/4
+    scenes) -- band mode multiplies per-configuration cost by the seed
+    count, and a single ~30s-per-configuration E6 solve (measured
+    2026-08-06, baseline scene, 8 frames) means the full axis set at two
+    seeds would exceed the executor's pytest budget. Two configurations
+    (one shared baseline scene, one cameras-axis scene) at two seeds is
+    still enough to prove both mandatory things: the isolated per-seed
+    `e6_configs/` directories (T-19.5-06-01) and that the new n_cameras
+    axis reaches band mode at all (COV-04).
+    """
+    configs = build_axis_configurations(include_cameras_axis=True)
+    baseline = next(c for c in configs if c["is_baseline"])
+    cameras_non_baseline = next(
+        c for c in configs if c["axis"] == "cameras" and not c["is_baseline"]
+    )
+    return [baseline, cameras_non_baseline]
+
+
+def _run_seed_band(
+    seeds: list[int],
+    out_dir: Path,
+    smoke: bool,
+    force: bool,
+    fail_fast: bool,
+) -> None:
+    """`--seeds`: run E6's per-configuration sweep once per seed, over the
+    17-configuration axis set (index + layout + scale + cameras), and emit
+    the band CSV plus its provenance sidecar (COV-03/COV-04, D-19.5-06).
+
+    Never writes `generalization_sweep.csv` at `out_dir` -- only
+    `generalization_sweep_band.csv` and `e6_seed_band_provenance.json`.
+    """
+    environment = capture_environment()
+    n_frames = _SMOKE_N_FRAMES if smoke else BASELINE_N_FRAMES
+    refine_intrinsics = not smoke
+    per_seed_status_counts: dict[int, dict[str, int]] = {}
+
+    def _runner(seed: int) -> pd.DataFrame:
+        # E6's checkpoint cache is seed-blind: _SCENARIO_IDENTITY_KEYS omits
+        # `seed`, and `seed` is not in E6's `config` dict at all (see that
+        # tuple's own module-level comment above). A `--seeds` loop that
+        # reused one `--out` directory would find `e6_configs/{config_key}
+        # .json` already on disk from the PREVIOUS seed, treat it as a valid
+        # cache hit, and silently report seed 42's numbers labelled as a
+        # later seed. The isolated per-seed directory below -- wiped and
+        # recreated before every seed -- is the shipped workaround
+        # (`experiments/rerun_19_4.sh`'s `run_stage_e6_seed43`), copied here
+        # verbatim rather than fixing `_SCENARIO_IDENTITY_KEYS` itself (an
+        # explicit Deferred Idea). This is correctness, not hygiene: without
+        # it, a two-seed band silently collapses to one seed run twice.
+        seed_dir = out_dir / "e6_band" / f"seed_{seed}"
+        if seed_dir.exists():
+            shutil.rmtree(seed_dir)
+        seed_dir.mkdir(parents=True, exist_ok=True)
+
+        configs = build_axis_configurations(include_cameras_axis=True)
+        if smoke:
+            configs = _band_smoke_configurations()
+        df = run_sweep(
+            configs,
+            seed,
+            n_frames,
+            seed_dir,
+            refine_intrinsics=refine_intrinsics,
+            # seed_dir was just wiped and recreated above, so no checkpoint
+            # exists yet -- force only matters if a caller reuses an
+            # already-populated seed_dir (e.g. a resumed band run).
+            force=force,
+            environment=environment,
+            is_smoke=smoke,
+            fail_fast=fail_fast,
+        )
+        per_seed_status_counts[seed] = df["status"].value_counts().astype(int).to_dict()
+        return df
+
+    start = time.monotonic()
+    band_df = run_seed_band(_runner, seeds)
+    elapsed_seconds = time.monotonic() - start
+
+    write_experiment_csv(
+        band_df,
+        out_dir / "generalization_sweep_band.csv",
+        key_columns=E6_SEED_BAND_KEY_COLUMNS,
+        # Force is implied for the band CSV only (mirrors E1/E7's --seeds
+        # convention): regenerating the band on demand is the entire point
+        # of it being reproducible.
+        force=True,
+    )
+
+    with open(out_dir / "e6_seed_band_provenance.json", "w") as f:
+        json.dump(
+            {
+                "experiment": "e6_seed_band",
+                "schema_version": 1,
+                "git_sha": environment.get("git_sha"),
+                "seconds": elapsed_seconds,
+                "environment": environment,
+                "solver_config": {"seeds": list(seeds)},
+                "include_cameras_axis": True,
+                "status_counts_by_seed": {
+                    str(seed): counts for seed, counts in per_seed_status_counts.items()
+                },
+                # D-19.5-05: this band varies ONLY the seed (scenario/
+                # detection-generation randomness), across every
+                # configuration in build_axis_configurations(
+                # include_cameras_axis=True) -- it bounds seed-to-seed
+                # accuracy variance on E6's index/layout/scale/cameras
+                # axes. It does NOT bound anything about a real physical
+                # rig, tank, or medium (E2 anchors that separately), and a
+                # `status != "ok"` count in status_counts_by_seed means
+                # that seed did not converge for at least one
+                # configuration -- read the counts, never the process exit
+                # code (E4/E6's silent-failure trap).
+                "scope": (
+                    "varies: seed (scenario/detection-generation "
+                    "randomness) across every index/layout/scale/cameras "
+                    "axis configuration. bounds: seed-to-seed accuracy "
+                    "variance on this synthetic sweep only -- not a "
+                    "physical-rig or real-data claim (D-19.5-05)."
+                ),
+            },
+            f,
+            indent=2,
+            sort_keys=True,
+        )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1062,7 +1216,31 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "the sole intended use is 19.2-21's pre-authorised failing-cell "
         "precedent. --smoke is unaffected in either mode.",
     )
+    parser.add_argument(
+        "--seeds",
+        type=str,
+        default=None,
+        help="Comma-separated seed list (e.g. '42,43,44') to run a "
+        "reproducible band instead of a single seed (COV-03), over the "
+        "17-configuration axis set that additionally includes the "
+        "n_cameras axis (COV-04). Emits generalization_sweep_band.csv and "
+        "e6_seed_band_provenance.json. Mutually exclusive with --check. A "
+        "--seeds run never writes generalization_sweep.csv. Each seed runs "
+        "into its own isolated out_dir/e6_band/seed_<N>/ directory -- "
+        "mandatory, not tidiness, since E6's checkpoint cache is seed-blind "
+        "(see _run_seed_band's docstring).",
+    )
     return parser
+
+
+def _validate_e6_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Extend the shared five-flag validation with `--seeds`'s constraint
+    (COV-03, mirrors `experiments.e1_refractive_comparison._validate_e1_args`)."""
+    validate_args(parser, args)
+    if args.seeds is not None and args.check:
+        parser.error("--seeds cannot be combined with --check")
 
 
 def _reconstitute_row(config: dict, configs_dir: Path, default_seed: int) -> dict:
@@ -1298,12 +1476,24 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e6_generalization_sweep`."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
-    validate_args(parser, args)
+    _validate_e6_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.check:
         return _run_check(args)
+
+    if args.seeds is not None:
+        seeds = parse_seed_list(args.seeds)
+        out_dir = resolve_out_dir(args.out)
+        _run_seed_band(
+            seeds,
+            out_dir,
+            smoke=args.smoke,
+            force=args.force,
+            fail_fast=not args.no_fail_fast,
+        )
+        return 0
 
     if args.smoke:
         return _run_smoke(args)
