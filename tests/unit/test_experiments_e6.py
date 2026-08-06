@@ -274,6 +274,79 @@ def test_camera_count_not_swept():
     assert all(c["n_cameras"] == m.BASELINE_N_CAMERAS for c in configs)
 
 
+# ---------------------------------------------------------------------------
+# COV-04: the n_cameras axis, opt-in and inert by default (plan 19.5-06 Task 1)
+# ---------------------------------------------------------------------------
+
+
+def test_default_call_unchanged_14_configs_3_baseline():
+    """build_axis_configurations() with no arguments still returns exactly
+    14 dicts with exactly 3 carrying is_baseline=True -- the cameras axis
+    must never leak into the default call."""
+    configs = m.build_axis_configurations()
+    assert len(configs) == 14
+    assert sum(1 for c in configs if c["is_baseline"]) == 3
+    assert all(c["axis"] != "cameras" for c in configs)
+
+
+def test_opt_in_call_17_configs_4_baseline():
+    """build_axis_configurations(include_cameras_axis=True) returns exactly
+    17 dicts with exactly 4 carrying is_baseline=True."""
+    configs = m.build_axis_configurations(include_cameras_axis=True)
+    assert len(configs) == 17
+    assert sum(1 for c in configs if c["is_baseline"]) == 4
+    cameras_configs = [c for c in configs if c["axis"] == "cameras"]
+    assert len(cameras_configs) == 3
+    assert {c["axis_value"] for c in cameras_configs} == {"8", "12", "16"}
+
+
+def test_opt_in_call_first_14_equal_default_call():
+    """The cameras axis only appends -- it never reorders the first 14
+    entries relative to the default call's own return value."""
+    default_configs = m.build_axis_configurations()
+    opt_in_configs = m.build_axis_configurations(include_cameras_axis=True)
+    assert opt_in_configs[:14] == default_configs
+
+
+def test_cameras_axis_non_baseline_rows_have_no_scale_geometry():
+    """Every axis == 'cameras' non-baseline dict has xy_extent is None and
+    spacing is None -- geometry is derived from n_cameras alone, exactly as
+    the baseline's own geometry is."""
+    configs = m.build_axis_configurations(include_cameras_axis=True)
+    cameras_non_baseline = [
+        c for c in configs if c["axis"] == "cameras" and not c["is_baseline"]
+    ]
+    assert len(cameras_non_baseline) == 2
+    for c in cameras_non_baseline:
+        assert c["xy_extent"] is None
+        assert c["spacing"] is None
+        assert c["depth_range"] is None
+
+
+def test_cameras_axis_baseline_shares_baseline_config_key():
+    """The cameras=12 (BASELINE_N_CAMERAS) row is_baseline=True and shares
+    config_key 'baseline' with the other three axes' baseline rows (the same
+    scene, computed once)."""
+    configs = m.build_axis_configurations(include_cameras_axis=True)
+    cameras_baseline = [
+        c for c in configs if c["axis"] == "cameras" and c["is_baseline"]
+    ]
+    assert len(cameras_baseline) == 1
+    assert cameras_baseline[0]["config_key"] == "baseline"
+    assert cameras_baseline[0]["n_cameras"] == m.BASELINE_N_CAMERAS
+
+    baseline_keys = {c["config_key"] for c in configs if c["is_baseline"]}
+    assert baseline_keys == {"baseline"}
+
+
+def test_scenario_identity_keys_still_excludes_seed():
+    """_SCENARIO_IDENTITY_KEYS remains without 'seed' -- the isolated-
+    directory workaround (Task 2), not a fix to the identity tuple, is how
+    the seed-blind checkpoint cache is handled."""
+    assert "seed" not in m._SCENARIO_IDENTITY_KEYS
+    assert "n_cameras" in m._SCENARIO_IDENTITY_KEYS
+
+
 def test_status_vocabulary():
     """The row builder's status values come from {ok, degenerate, failed, skipped_existing}
     (D-19.3-11 adds "degenerate")."""
