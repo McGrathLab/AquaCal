@@ -549,3 +549,87 @@ class TestRunCheckHonoursSeed:
             _run_check(tmp_path, seed=7)
 
         mock_build.assert_called_once_with(n_frames=100, seed=7)
+
+
+class TestStructuralScalingDf:
+    """COV-01 Task 2: `build_structural_scaling_df` -- the widened structural sweep, its own
+    separate artifact, never touching `cpr_grouping.csv`/`.tex` (T-19.5-01-02).
+    """
+
+    def test_structural_scaling_columns_match_declared_schema(self):
+        from experiments.e3_derived_quantities import (
+            SCALING_COLUMNS,
+            build_structural_scaling_df,
+        )
+
+        df = build_structural_scaling_df()
+        assert list(df.columns) == SCALING_COLUMNS
+        assert len(SCALING_COLUMNS) == 13
+
+    def test_structural_scaling_row_count_matches_configs(self):
+        from experiments.e3_derived_quantities import (
+            SCALING_CONFIGS,
+            build_structural_scaling_df,
+        )
+
+        df = build_structural_scaling_df()
+        assert len(df) == len(SCALING_CONFIGS)
+
+    def test_computed_rows_pin_group_count_at_13_or_17(self):
+        """The pinning claim COV-01 must substantiate: n_groups is invariant to n_cameras
+        and n_frames across the whole computed range, 13 without intrinsics / 17 with."""
+        from experiments.e3_derived_quantities import build_structural_scaling_df
+
+        df = build_structural_scaling_df()
+        computed = df[df["record_source"] == "computed"]
+        assert len(computed) > 0
+
+        not_intrinsics = computed[~computed["refine_intrinsics"]]
+        assert len(not_intrinsics) > 0
+        assert (not_intrinsics["n_groups"] == 13).all()
+
+        with_intrinsics = computed[computed["refine_intrinsics"]]
+        assert len(with_intrinsics) > 0
+        assert (with_intrinsics["n_groups"] == 17).all()
+
+    def test_sweep_straddles_the_dense_sparse_boundary(self):
+        from experiments.e3_derived_quantities import build_structural_scaling_df
+
+        df = build_structural_scaling_df()
+        assert (df["exceeds_dense_threshold"]).any()
+        assert (~df["exceeds_dense_threshold"]).any()
+
+    def test_exceeds_dense_threshold_consistent_with_jacobian_elements(self):
+        from experiments.e3_derived_quantities import (
+            _DENSE_THRESHOLD_ELEMENTS,
+            build_structural_scaling_df,
+        )
+
+        df = build_structural_scaling_df()
+        expected = df["jacobian_elements"] > _DENSE_THRESHOLD_ELEMENTS
+        assert (df["exceeds_dense_threshold"] == expected).all()
+
+    def test_predicted_rows_never_allocate_and_have_null_derived_fields(self):
+        from experiments.e3_derived_quantities import build_structural_scaling_df
+
+        df = build_structural_scaling_df()
+        predicted = df[df["record_source"] == "predicted"]
+        assert len(predicted) > 0
+        assert predicted["n_groups"].isna().all()
+        assert predicted["nnz"].isna().all()
+        assert predicted["fd_reduction"].isna().all()
+
+    def test_never_touches_cpr_grouping_csv_or_tex(self, tmp_path):
+        """`build_structural_scaling_df` takes no path argument and reads no file --
+        the separate-tier guarantee (design_decision, T-19.5-01-02) is structural, not just
+        behavioral: there is no `cpr_grouping` write call or E2-benchmark read in its call
+        graph to touch."""
+        import inspect
+
+        from experiments.e3_derived_quantities import build_structural_scaling_df
+
+        source = inspect.getsource(build_structural_scaling_df)
+        assert "write_cpr_latex" not in source
+        assert "_build_copied_cpr_row" not in source
+        assert "_E2_BENCHMARK_JSON_PATH" not in source
+        assert "write_experiment_csv" not in source

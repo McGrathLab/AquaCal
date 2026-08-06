@@ -243,6 +243,23 @@ def _solver_tolerances() -> tuple[float, float, float]:
     return (diag.ftol, diag.xtol, diag.gtol)
 
 
+def _import_e3_module():
+    """Import `experiments.e3_derived_quantities`, bootstrapping `sys.path` the same way
+    that module bootstraps its own import of this file (symmetric to `_import_declared_constants`
+    over there) -- the repository root, not the working directory, is the source of truth.
+    """
+    import os
+
+    repo_root_str = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    if repo_root_str not in sys.path:
+        sys.path.insert(0, repo_root_str)
+    from experiments.e3_derived_quantities import CPR_CONFIGS, predict_jacobian_shape
+
+    return CPR_CONFIGS, predict_jacobian_shape
+
+
 class DeclaredConstant(NamedTuple):
     """One row of the E3 tier 1 declared-constants table.
 
@@ -417,3 +434,121 @@ class TestDeclaredConstantsRowsAreWellFormed:
         assert entry.declared_value is not None
         if isinstance(entry.declared_value, tuple):
             assert len(entry.declared_value) > 0
+
+
+class TestPredictJacobianShape:
+    """COV-01 Task 1: `predict_jacobian_shape` must reproduce `build_jacobian_sparsity`'s
+    real `(n_residuals, n_params)` shape exactly, at every size affordable to build for real.
+    """
+
+    @pytest.mark.parametrize(
+        "n_cameras,n_frames,normal_fixed,refine_intrinsics",
+        [
+            (3, 3, False, False),
+            (16, 200, False, False),
+            (8, 100, False, True),
+            (12, 100, False, True),
+            (13, 200, False, True),
+            (16, 200, False, True),
+        ],
+        ids=[
+            "3cam_3frame",
+            "16cam_200frame_notintr",
+            "8cam_100frame_intr",
+            "12cam_100frame_intr",
+            "13cam_200frame_intr",
+            "16cam_200frame_intr",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "shared_interface", [True, False], ids=["shared", "percamera"]
+    )
+    def test_predict_jacobian_shape_matches_real_over_cpr_configs(
+        self, n_cameras, n_frames, normal_fixed, refine_intrinsics, shared_interface
+    ):
+        """Every entry of `CPR_CONFIGS`, crossed with both interface modes -- the exact
+        grid `build_cpr_grouping_df` (E3 tier 3) already computes for real."""
+        from aquacal.calibration._optim_common import build_jacobian_sparsity
+
+        _, predict_jacobian_shape = _import_e3_module()
+        from experiments.e3_derived_quantities import _make_detections
+
+        detections = _make_detections(n_cameras, n_frames, visibility=1.0, seed=0)
+        camera_order = [f"cam{i}" for i in range(n_cameras)]
+        frame_order = list(range(n_frames))
+        real_shape = build_jacobian_sparsity(
+            detections,
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=frame_order,
+            min_corners=1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        ).shape
+
+        predicted_shape = predict_jacobian_shape(
+            n_cameras,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        assert predicted_shape == real_shape
+
+    @pytest.mark.parametrize(
+        "n_cameras,n_frames",
+        [(20, 50), (24, 100)],
+        ids=["20cam_50frame", "24cam_100frame"],
+    )
+    @pytest.mark.parametrize(
+        "refine_intrinsics", [False, True], ids=["notintr", "intr"]
+    )
+    @pytest.mark.parametrize(
+        "shared_interface", [True, False], ids=["shared", "percamera"]
+    )
+    def test_predict_jacobian_shape_matches_real_off_cpr_configs(
+        self, n_cameras, n_frames, refine_intrinsics, shared_interface
+    ):
+        """Two configurations NOT in `CPR_CONFIGS`, so agreement is not coincidental."""
+        from aquacal.calibration._optim_common import build_jacobian_sparsity
+
+        _, predict_jacobian_shape = _import_e3_module()
+        from experiments.e3_derived_quantities import _make_detections
+
+        detections = _make_detections(n_cameras, n_frames, visibility=1.0, seed=0)
+        camera_order = [f"cam{i}" for i in range(n_cameras)]
+        frame_order = list(range(n_frames))
+        real_shape = build_jacobian_sparsity(
+            detections,
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=frame_order,
+            min_corners=1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=False,
+            shared_interface=shared_interface,
+        ).shape
+
+        predicted_shape = predict_jacobian_shape(
+            n_cameras,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=False,
+            shared_interface=shared_interface,
+        )
+
+        assert predicted_shape == real_shape
+
+    def test_predict_jacobian_shape_visibility_other_than_one_raises(self):
+        _, predict_jacobian_shape = _import_e3_module()
+        with pytest.raises(NotImplementedError):
+            predict_jacobian_shape(
+                3,
+                3,
+                refine_intrinsics=False,
+                normal_fixed=False,
+                shared_interface=True,
+                visibility=0.5,
+            )

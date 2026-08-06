@@ -37,6 +37,7 @@ never reads E4's grid CSV.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import logging
 import sys
@@ -49,6 +50,7 @@ import pandas as pd
 from aquacal.calibration._optim_common import (
     build_jacobian_sparsity,
     build_structural_column_groups,
+    make_sparse_jacobian_func,
 )
 from aquacal.config.schema import (
     BoardConfig,
@@ -167,6 +169,56 @@ _COPIED_ROW_STAGE = "stage3_intrinsic_pass"
 # artifact, not a fresh run).
 _E2_BENCHMARK_JSON_PATH = (
     Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
+)
+
+SCALING_COLUMNS = [
+    "n_cameras",
+    "n_frames",
+    "refine_intrinsics",
+    "normal_fixed",
+    "shared_interface",
+    "n_residuals",
+    "n_params",
+    "n_groups",
+    "fd_reduction",
+    "nnz",
+    "jacobian_elements",
+    "exceeds_dense_threshold",
+    "record_source",
+]
+SCALING_KEY_COLUMNS = ["n_cameras", "n_frames", "refine_intrinsics"]
+
+# COV-01's structural scaling sweep (R1.3): tilt-enabled, shared-interface configuration --
+# the production default -- swept far past the reviewer's N>10. Crossed with n_frames and
+# refine_intrinsics; normal_fixed=False and shared_interface=True are fixed for every row.
+SCALING_N_CAMERAS: list[int] = [3, 4, 6, 8, 12, 13, 16, 20, 24, 32, 48, 64, 96, 128]
+SCALING_N_FRAMES: list[int] = [50, 100, 200]
+SCALING_REFINE_INTRINSICS: tuple[bool, bool] = (False, True)
+SCALING_NORMAL_FIXED = False
+SCALING_SHARED_INTERFACE = True
+
+SCALING_CONFIGS: list[tuple[int, int, bool]] = [
+    (n_cameras, n_frames, refine_intrinsics)
+    for n_cameras in SCALING_N_CAMERAS
+    for n_frames in SCALING_N_FRAMES
+    for refine_intrinsics in SCALING_REFINE_INTRINSICS
+]
+
+# Hard cap (T-19.5-01-01, design_decision) on the number of elements
+# (n_residuals * n_params) this sweep will actually allocate a real int8 array for. Rows
+# past this cap are built from `predict_jacobian_shape` alone -- counting only, no array --
+# so the sweep can reach n_cameras=128 without ever attempting a multi-GB allocation.
+# Deliberately well below `_DENSE_THRESHOLD_ELEMENTS` (the library's own dense/sparse
+# switchover): the sweep must locate that boundary as a *disclosed row-level fact*, which
+# requires some `computed` rows to fall on both sides of it.
+_ALLOCATION_CAP_ELEMENTS = 200_000_000
+
+# Read live from `make_sparse_jacobian_func`'s own signature default (never a second,
+# independently-hardcoded literal) -- this IS the dense/sparse boundary
+# `exceeds_dense_threshold` locates, already asserted live in the committed
+# `code_constants.csv` as `dense_threshold_elements`.
+_DENSE_THRESHOLD_ELEMENTS = int(
+    inspect.signature(make_sparse_jacobian_func).parameters["dense_threshold"].default
 )
 
 
@@ -495,6 +547,160 @@ def _build_computed_cpr_row(
     }
 
 
+def predict_jacobian_shape(
+    n_cameras: int,
+    n_frames: int,
+    *,
+    refine_intrinsics: bool,
+    normal_fixed: bool,
+    shared_interface: bool,
+    visibility: float = 1.0,
+    n_corners: int = 4,
+) -> tuple[int, int]:
+    """Predict `build_jacobian_sparsity`'s `(n_residuals, n_params)` shape by pure counting.
+
+    Derived from the same parameter-block layout `build_jacobian_sparsity` encodes (read live
+    from its source, `_optim_common.py:330-344`), never guessed: 2 tilt params if
+    `normal_fixed=False` (else 0), 6 extrinsic DoF per non-reference camera, one dense water_z
+    column if `shared_interface` else one per camera, 6 DoF per board frame, and 4 intrinsic
+    parameters per camera when `refine_intrinsics`. This is counting only -- no array is ever
+    allocated.
+
+    `n_residuals` assumes full visibility (`visibility=1.0`): every camera observes every frame
+    with `n_corners` corners and 2 residuals (x, y) per corner, exactly `_make_detections`'
+    tier-3 usage (`visibility=1.0` is the only value COV-01 sweeps). A `visibility` below 1.0
+    depends on `_make_detections`' own RNG draw and is not counting-derivable; this function
+    raises rather than silently returning a wrong shape.
+
+    Args:
+        n_cameras: Number of cameras.
+        n_frames: Number of board frames.
+        refine_intrinsics: Whether intrinsics are in the parameter vector.
+        normal_fixed: If False, 2 tilt params are prepended to the parameter vector.
+        shared_interface: If True, one dense water_z column; if False, one per camera.
+        visibility: Detection visibility fraction. Only `1.0` (full visibility) is supported.
+        n_corners: Corners detected per (camera, frame) pair at full visibility.
+
+    Returns:
+        `(n_residuals, n_params)`, matching `build_jacobian_sparsity(...).shape` exactly at
+        every size where building the real array is affordable.
+
+    Raises:
+        NotImplementedError: If `visibility != 1.0`.
+    """
+    if visibility != 1.0:
+        raise NotImplementedError(
+            "predict_jacobian_shape only supports visibility=1.0 (full connectivity); "
+            "n_residuals below full visibility depends on _make_detections' RNG draw and "
+            "is not derivable by counting alone."
+        )
+    n_tilt_params = 0 if normal_fixed else 2
+    n_extrinsic_params = 6 * (n_cameras - 1)
+    n_water_z_params = 1 if shared_interface else n_cameras
+    n_pose_params = 6 * n_frames
+    n_intrinsic_params = 4 * n_cameras if refine_intrinsics else 0
+    n_params = (
+        n_tilt_params
+        + n_extrinsic_params
+        + n_water_z_params
+        + n_pose_params
+        + n_intrinsic_params
+    )
+    n_residuals = 2 * n_cameras * n_frames * n_corners
+    return (n_residuals, n_params)
+
+
+def _build_structural_scaling_row(
+    n_cameras: int, n_frames: int, refine_intrinsics: bool
+) -> dict:
+    """Build one `structural_scaling.csv` row (COV-01 Task 2).
+
+    Below `_ALLOCATION_CAP_ELEMENTS`, builds the real sparsity pattern and groups it
+    structurally (`record_source="computed"`) -- identical machinery to
+    `_build_computed_cpr_row`, never a hand-rolled grouping. Above the cap, the shape comes
+    from `predict_jacobian_shape` alone (`record_source="predicted"`); `n_groups`/`nnz`/
+    `fd_reduction` are null and no array is ever allocated (T-19.5-01-01).
+    """
+    n_residuals_predicted, n_params_predicted = predict_jacobian_shape(
+        n_cameras,
+        n_frames,
+        refine_intrinsics=refine_intrinsics,
+        normal_fixed=SCALING_NORMAL_FIXED,
+        shared_interface=SCALING_SHARED_INTERFACE,
+    )
+    jacobian_elements_predicted = n_residuals_predicted * n_params_predicted
+
+    if jacobian_elements_predicted <= _ALLOCATION_CAP_ELEMENTS:
+        detections = _make_detections(n_cameras, n_frames, visibility=1.0, seed=0)
+        camera_order = [f"cam{i}" for i in range(n_cameras)]
+        frame_order = list(range(n_frames))
+        jac_sparsity = build_jacobian_sparsity(
+            detections,
+            reference_camera="cam0",
+            camera_order=camera_order,
+            frame_order=frame_order,
+            min_corners=1,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=SCALING_NORMAL_FIXED,
+            shared_interface=SCALING_SHARED_INTERFACE,
+        )
+        groups = build_structural_column_groups(
+            jac_sparsity,
+            n_cameras,
+            n_frames,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=SCALING_NORMAL_FIXED,
+            shared_interface=SCALING_SHARED_INTERFACE,
+        )
+        n_residuals, n_params = jac_sparsity.shape
+        assert (n_residuals, n_params) == (n_residuals_predicted, n_params_predicted), (
+            "predict_jacobian_shape disagreed with the real array at "
+            f"n_cameras={n_cameras}, n_frames={n_frames}, "
+            f"refine_intrinsics={refine_intrinsics}"
+        )
+        n_groups = int(groups.max()) + 1
+        nnz = int(jac_sparsity.sum())
+        fd_reduction = n_params / n_groups
+        record_source = "computed"
+    else:
+        n_residuals, n_params = n_residuals_predicted, n_params_predicted
+        n_groups = None
+        nnz = None
+        fd_reduction = None
+        record_source = "predicted"
+
+    jacobian_elements = n_residuals * n_params
+    return {
+        "n_cameras": n_cameras,
+        "n_frames": n_frames,
+        "refine_intrinsics": refine_intrinsics,
+        "normal_fixed": SCALING_NORMAL_FIXED,
+        "shared_interface": SCALING_SHARED_INTERFACE,
+        "n_residuals": n_residuals,
+        "n_params": n_params,
+        "n_groups": n_groups,
+        "fd_reduction": fd_reduction,
+        "nnz": nnz,
+        "jacobian_elements": jacobian_elements,
+        "exceeds_dense_threshold": jacobian_elements > _DENSE_THRESHOLD_ELEMENTS,
+        "record_source": record_source,
+    }
+
+
+def build_structural_scaling_df() -> pd.DataFrame:
+    """COV-01: the structural scaling sweep answering R1.3, zero solve time.
+
+    One row per `SCALING_CONFIGS` entry (`n_cameras` up to 128, well past the reviewer's
+    N>10). Never reads or writes `cpr_grouping.csv`/`.tex` -- a completely separate tier and
+    artifact (design_decision, T-19.5-01-02).
+    """
+    rows = [
+        _build_structural_scaling_row(n_cameras, n_frames, refine_intrinsics)
+        for n_cameras, n_frames, refine_intrinsics in SCALING_CONFIGS
+    ]
+    return pd.DataFrame(rows, columns=SCALING_COLUMNS)
+
+
 def _build_copied_cpr_row(
     config_key: str,
     n_cameras: int,
@@ -743,6 +949,21 @@ def _write_tier3(out_dir: Path, include_per_camera: bool, force: bool) -> None:
     write_derived_values_latex(out_dir, cpr_df, force=force)
 
 
+def _write_tier4(out_dir: Path, force: bool) -> None:
+    """Write `structural_scaling.csv` (COV-01, Task 2) -- full-run path only.
+
+    Never touches `cpr_grouping.csv`/`.tex` (design_decision, T-19.5-01-02) and costs zero
+    solve time (structural counting/grouping only, per `_build_structural_scaling_row`).
+    """
+    scaling_df = build_structural_scaling_df()
+    write_experiment_csv(
+        scaling_df,
+        out_dir / "structural_scaling.csv",
+        key_columns=SCALING_KEY_COLUMNS,
+        force=force,
+    )
+
+
 def _run_check(out_dir: Path, seed: int) -> int:
     """`--check`: compare a fresh run against committed baselines, tier by tier.
 
@@ -834,6 +1055,7 @@ def main(argv: list[str] | None = None) -> int:
     _write_tier3(
         out_dir, include_per_camera=args.include_per_camera_latex, force=args.force
     )
+    _write_tier4(out_dir, force=args.force)
     return 0
 
 
