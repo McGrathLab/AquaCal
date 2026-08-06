@@ -523,7 +523,7 @@ current production output when unset.
   9. **Every band lands in MANUSCRIPT-FINDINGS.md** as an MF entry naming its citable artifact,
      and MF-09's edit map is updated wherever a band changes what may be claimed.
 
-**Plans:** 8/11 plans executed
+**Plans:** 9/11 plans executed
 
 Plans:
 - [x] 19.5-01-PLAN.md -- COV-01: structural scaling sweep to N=128, 13/17 group pinning, the 500 M dense/sparse boundary located analytically (leaves `cpr_grouping.csv` untouched)
@@ -534,7 +534,7 @@ Plans:
 - [x] 19.5-06-PLAN.md -- COV-03/04: E6 `--seeds` band with mandatory per-seed isolated dirs, plus an opt-in `cameras` axis (code only)
 - [x] 19.5-07-PLAN.md -- COV-07: E2 seed-variant config generator; `--seed` is a red herring on the `--config` path (code only)
 - [x] 19.5-08-PLAN.md -- COV-06: E4 repeat splice over the three 100-frame cells, `nfev` beside wall-clock (code only)
-- [ ] 19.5-09-PLAN.md -- Writes `rerun_19_5.sh`, the four new band gates and the D-19.5-04 legality probe. Budget: ~15 h nominal, ~24 h at 19.4's 1.6x, **26 h ceiling**
+- [x] 19.5-09-PLAN.md -- Writes `rerun_19_5.sh`, the four new band gates and the D-19.5-04 legality probe. Budget: ~15 h nominal, ~24 h at 19.4's 1.6x, **26 h ceiling**
 - [ ] 19.5-10-PLAN.md -- **Orchestrator only.** Runs the one queue. Changes no code. Commit nothing during the run
 - [ ] 19.5-11-PLAN.md -- COV-09: MF-11+ entries naming citable artifacts, MF-09 edit-map updates, six-check honesty gate
 
