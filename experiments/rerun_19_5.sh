@@ -6,16 +6,27 @@
 # concurrent production runs -- in RISK-FIRST order:
 #
 #   1. prelaunch_probe  (~5 min)    cumulative ~5 min     <-- HARD ABORT on FAIL
-#   2. e6_band          (~8.8 h)    cumulative ~8.8 h      <-- highest-risk stage
-#   3. e4_repeat        (~0.8 h)    cumulative ~9.6 h
-#   4. e2_band          (~3.5 h)    cumulative ~13.1 h
-#   5. e5_band          (~1.8 h)    cumulative ~14.9 h  (~15 h nominal)
+#   2. e6_band          (~10.6 h)   cumulative ~10.6 h     <-- highest-risk stage
+#   3. e4_repeat        (~0.8 h)    cumulative ~11.4 h
+#   4. e2_band          (~3.5 h)    cumulative ~14.9 h
+#   5. e5_band          (~2.2 h)    cumulative ~17.1 h  (~17 h nominal)
 #
-# At 19.4's observed 1.6x overrun this totals ~24 h. PROPOSED WALL-CLOCK
-# CEILING: 26 HOURS (plan 19.5-09's runtime_budget; no ceiling was set by the
-# user, this is the planner's proposal, surfaced so the number is visible
-# before it is spent). If exceeded, the orchestrator stops after the
-# currently-running stage completes and reports which stages landed.
+# REVISED 2026-08-06 for six-seed E6/E5 bands (was ~15 h nominal at five
+# seeds). E6 runs ~1.76 h/seed and E5 ~0.36 h/seed, so the sixth seed adds
+# ~2.2 h nominal. At 19.4's observed 1.6x overrun this totals ~27 h.
+#
+# WALL-CLOCK CEILING: the planner proposed 26 h at five seeds. The six-seed
+# projection (~27 h) exceeds it. The user approved the sixth seed on
+# 2026-08-06 with that consequence stated explicitly, so the ceiling is
+# RAISED TO 30 HOURS rather than left silently violated. If exceeded, the
+# orchestrator stops after the currently-running stage completes and reports
+# which stages landed -- risk-first ordering means COV-03/COV-04 are already
+# banked by hour ~11.
+#
+# The 1.6x figure is 19.4's OBSERVED overrun, cause unresolved
+# (19.4-RUNTIME-OBSERVATION.md, n=1). It is used here as a budgeting factor
+# only. Do NOT read a stage's actual runtime as evidence about any code
+# change -- that attribution is a standing prohibition in this project.
 #
 # WHY e6_band IS FIRST AND NOT THE CHEAPEST STAGE. It is the longest, it
 # carries TWO requirements (COV-03 and COV-04), and it is the only stage
@@ -25,12 +36,25 @@
 # hour 18. Risk-first ordering banks the highest-value stage first: if the
 # ceiling is ever exceeded, COV-03/COV-04 are already banked.
 #
-# WHY 5 SEEDS AND NOT 10 (E6, E5) / 3 (E2). A ten-seed unanimous sign test
-# gives p = 2^-10 one-sided; five gives p = 2^-5 = 0.031, which still clears
-# 0.05 one-sided -- five is the floor for a claim and the ceiling for the
-# budget. E2 gets three: D-19.5-05 already narrows E2's band to split
-# variance on FIXED data, three runs support a stated range with n=3 (not an
-# interval), and seed 42 reproduces the committed record for free.
+# WHY 6 SEEDS AND NOT 5 OR 10 (E6, E5) / 3 (E2). A ten-seed unanimous sign
+# test gives p = 2^-10 one-sided. FIVE gives p = 2^-5 = 0.031 one-sided but
+# 2 x 2^-5 = 0.0625 TWO-SIDED, which does NOT clear 0.05 -- so a five-seed
+# result is significant or not depending purely on which convention a reader
+# applies. This project has already been bitten by exactly that ambiguity:
+# MF-05's p-values are one-sided (0.00098 = 2^-10) and a prior reading
+# conflated the two conventions, which is why plan 19.5-03 named its field
+# `p_one_sided` rather than `p`. At ten seeds the distinction was academic
+# (two-sided still 0.00195); at five it is decisive.
+#
+# SIX seeds gives two-sided p = 2 x 2^-6 = 0.031, clearing 0.05 under EITHER
+# convention. One extra seed buys immunity to the argument, at ~+1.8 h on E6
+# and ~+0.36 h on E5. Raised to the user before launch 2026-08-06 and approved
+# with the ceiling consequence stated (see the runtime budget above).
+#
+# E2 gets three: D-19.5-05 already narrows E2's band to split variance on
+# FIXED data, three runs support a stated range with n=3 (not an interval),
+# and seed 42 reproduces the committed record for free. E2 runs no sign test,
+# so the one-sided/two-sided question does not arise for it.
 #
 # ============================================================================
 # ABORT PROTOCOL -- PRE-COMMITTED (restated verbatim from rerun_19_4.sh, not
@@ -147,12 +171,25 @@ cd "${REPO_ROOT}" || exit 1
 OUT_DIR="experiments/results"
 OUT_DIR_E4_REPEAT="experiments/results_e4_repeat"
 OUT_DIR_E2_BAND="experiments/results_e2_band"
-STATE_FILE="experiments/rerun_19_5_state.tsv"
+# A DRY RUN MUST NOT WRITE THE REAL RUN'S STATE FILE. Automatic resume skips
+# any stage carrying a completion line, so a dry run -- which "completes" all
+# five stages in about a second -- would otherwise leave a state file that
+# makes the NEXT real launch a silent no-op: five stages skipped, exit 0, no
+# artifacts, and a queue that looks like it succeeded. Found 2026-08-06 by
+# dry-running this script and inspecting what it left behind. Separate paths
+# are the structural fix; remembering to delete the file is not.
+if [ -n "${RERUN_19_5_DRY_RUN:-}" ]; then
+  STATE_FILE="experiments/rerun_19_5_state.dryrun.tsv"
+else
+  STATE_FILE="experiments/rerun_19_5_state.tsv"
+fi
 
-# D-19.5's five-seed bands (E6, E5) and three-seed band (E2) -- see the
-# header's "WHY 5 SEEDS AND NOT 10 / 3" rationale above.
-E6_BAND_SEEDS="42,43,44,45,46"
-E5_BAND_SEEDS="42,43,44,45,46"
+# D-19.5's six-seed bands (E6, E5) and three-seed band (E2) -- see the
+# header's "WHY 6 SEEDS AND NOT 5 OR 10 / 3" rationale above. The pre-launch
+# legality probe reads E6_BAND_SEEDS from THIS file rather than keeping its
+# own copy, so these lists cannot silently diverge from what is probed.
+E6_BAND_SEEDS="42,43,44,45,46,47"
+E5_BAND_SEEDS="42,43,44,45,46,47"
 E2_BAND_SEEDS="42,43,44"
 
 # The three camera counts the prelaunch legality probe and E4's repeat cells

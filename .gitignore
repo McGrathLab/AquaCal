@@ -236,3 +236,7 @@ experiments/results/exp2_spatial_errors.csv
 # summarised into MANUSCRIPT-FINDINGS.md rather than committed.
 seed_sweep_19_2/
 seed_sweep_19_3/
+
+# Dry-run state from experiments/rerun_19_5.sh -- control-flow rehearsal
+# only, never a record of a real run (see that script's STATE_FILE block).
+experiments/rerun_19_5_state.dryrun.tsv

@@ -97,11 +97,26 @@ echo "--- 2. LEGALITY_PROBE -----------------------------------------"
 if [ ! -x "$PYTHON_BIN" ] && ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   fail LEGALITY_PROBE "interpreter not found at $PYTHON_BIN (Git Bash 'python' is Anaconda base, not the AquaCal env)"
 else
+  # Read the seed list from rerun_19_5.sh rather than keeping a second copy
+  # here. A duplicated hardcoded list is the one way this check can pass while
+  # the queue runs a seed nobody probed -- exactly the failure the probe
+  # exists to prevent. Union of E6's and E5's lists, since both are probed.
+  QUEUE_SH="$REPO_ROOT/experiments/rerun_19_5.sh"
+  PROBE_SEEDS="$(
+    grep -E '^(E6|E5)_BAND_SEEDS=' "$QUEUE_SH" \
+      | cut -d'"' -f2 | tr ',' '\n' | sort -n -u | paste -sd, -
+  )"
+  if [ -z "$PROBE_SEEDS" ]; then
+    fail LEGALITY_PROBE "could not read E6/E5_BAND_SEEDS from $QUEUE_SH"
+  fi
+  echo "LEGALITY_PROBE: seeds read from rerun_19_5.sh = ${PROBE_SEEDS}"
   LEGALITY_LOG="$(mktemp)"
-  "$PYTHON_BIN" - <<'PY' >"$LEGALITY_LOG" 2>&1
+  PROBE_SEEDS="$PROBE_SEEDS" "$PYTHON_BIN" - <<'PY' >"$LEGALITY_LOG" 2>&1
+import os
+
 from experiments.check_rerun_gates import legality_probe
 
-seeds = [42, 43, 44, 45, 46]
+seeds = [int(s) for s in os.environ["PROBE_SEEDS"].split(",") if s.strip()]
 camera_counts = [8, 12, 16]
 results = legality_probe(seeds, camera_counts)
 n_fail = sum(1 for r in results if r.verdict == "FAIL")
