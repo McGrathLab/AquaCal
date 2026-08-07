@@ -722,6 +722,98 @@ def test_band_gate_fails_when_sidecar_records_no_seeds(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# D-260807-dcv: band-owned sidecar (band_sidecar=) preferred over the legacy
+# eN_benchmark_*.json glob, for both E1 and E7.
+# ---------------------------------------------------------------------------
+
+
+def test_band_gate_passes_with_e1_band_owned_sidecar(tmp_path):
+    seeds = [42, 43]
+    _write_band(tmp_path / "exp1_band.csv", seeds)
+    _write_json(
+        tmp_path / "e1_seed_band_provenance.json",
+        {"solver_config": {"seeds": seeds}},
+    )
+    results = check_band_csv(
+        "E1",
+        tmp_path,
+        "exp1_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
+    assert results[0].verdict == "PASS", results[0].detail
+    assert "e1_seed_band_provenance.json" in results[0].detail
+
+
+def test_band_gate_passes_with_e7_band_owned_sidecar(tmp_path):
+    seeds = [42, 43]
+    _write_band(tmp_path / "interface_ablation_band.csv", seeds)
+    _write_json(
+        tmp_path / "e7_seed_band_provenance.json",
+        {"solver_config": {"seeds": seeds}},
+    )
+    results = check_band_csv(
+        "E7",
+        tmp_path,
+        "interface_ablation_band.csv",
+        "e7_benchmark_*.json",
+        band_sidecar="e7_seed_band_provenance.json",
+    )
+    assert results[0].verdict == "PASS", results[0].detail
+    assert "e7_seed_band_provenance.json" in results[0].detail
+
+
+def test_band_gate_fails_when_band_owned_sidecar_records_different_length(tmp_path):
+    _write_band(tmp_path / "exp1_band.csv", [42, 43])
+    _write_json(
+        tmp_path / "e1_seed_band_provenance.json",
+        {"solver_config": {"seeds": list(range(42, 52))}},
+    )
+    results = check_band_csv(
+        "E1",
+        tmp_path,
+        "exp1_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
+    assert results[0].verdict == "FAIL"
+    assert "must never be quoted as a full one" in results[0].detail
+
+
+def test_band_gate_falls_back_to_legacy_glob_when_band_sidecar_absent(tmp_path):
+    """Backwards compatible: band_sidecar is passed but not on disk, the
+    legacy eN_benchmark_*.json glob still works."""
+    seeds = [42, 43, 44]
+    _write_band(tmp_path / "exp1_band.csv", seeds)
+    _write_json(
+        tmp_path / "e1_benchmark_refractive.json",
+        {"solver_config": {"seeds": seeds}},
+    )
+    results = check_band_csv(
+        "E1",
+        tmp_path,
+        "exp1_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
+    assert results[0].verdict == "PASS", results[0].detail
+    assert "e1_benchmark_refractive.json" in results[0].detail
+
+
+def test_band_gate_fails_with_no_sidecar_of_either_kind_names_glob(tmp_path):
+    _write_band(tmp_path / "exp1_band.csv", [42, 43])
+    results = check_band_csv(
+        "E1",
+        tmp_path,
+        "exp1_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
+    assert results[0].verdict == "FAIL"
+    assert "e1_benchmark_*.json" in results[0].detail
+
+
+# ---------------------------------------------------------------------------
 # D-19.5-04's legality_probe (plan 19.5-09 Task 1).
 # ---------------------------------------------------------------------------
 

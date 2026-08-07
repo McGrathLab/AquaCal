@@ -679,6 +679,7 @@ def check_band_csv(
     out_dir: Path,
     csv_name: str,
     sidecar_glob: str,
+    band_sidecar: str | None = None,
 ) -> list[GateResult]:
     """Gate the `--seeds` band CSVs introduced by D-19.4-14 (SC-5a).
 
@@ -688,6 +689,15 @@ def check_band_csv(
     tables on trust. The gate therefore checks the property that makes the
     artifact trustworthy -- that it really contains the N independent seeds its
     provenance claims -- not merely that a file appeared.
+
+    D-260807-dcv: band mode must never overwrite the single-seed
+    `e{1,7}_benchmark_*.json` production records, so the seeds a band run
+    actually covers have nowhere to be recorded in them -- hence the
+    band-owned sidecar (`band_sidecar`, e.g. `e1_seed_band_provenance.json`),
+    which is preferred over the legacy `eN_benchmark_*.json` glob
+    (`sidecar_glob`) when both are given. The legacy glob remains as a
+    backwards-compatible fallback for any out_dir that predates the
+    band-owned sidecar.
 
     Verdicts:
         N/A   the band CSV is absent (its stage has not run yet).
@@ -701,7 +711,13 @@ def check_band_csv(
         experiment: Experiment label, e.g. `"E7"`.
         out_dir: Root output directory.
         csv_name: Band CSV filename, e.g. `"interface_ablation_band.csv"`.
-        sidecar_glob: Glob for the provenance sidecars carrying `seeds`.
+        sidecar_glob: Glob for the legacy provenance sidecars carrying
+            `seeds` (the `eN_benchmark_*.json` fallback).
+        band_sidecar: Exact filename of the band-owned provenance sidecar
+            (e.g. `"e1_seed_band_provenance.json"`), checked FIRST when
+            given. Not a glob -- `Path.glob` matches an exact filename
+            pattern with no wildcards fine, so no second code path is
+            needed.
 
     Returns:
         One `GateResult` for this band artifact.
@@ -743,16 +759,23 @@ def check_band_csv(
 
     distinct = sorted({int(s) for s in band["seed"].tolist()})
 
+    # Band-owned sidecar first (preferred, D-260807-dcv), then the legacy
+    # eN_benchmark_*.json glob (backwards-compatible fallback).
+    search_patterns = ([band_sidecar] if band_sidecar else []) + [sidecar_glob]
+
     recorded: list[int] | None = None
     sidecar_used: str | None = None
-    for path in sorted(out_dir.glob(sidecar_glob)):
-        record = _load_json(path)
-        if not isinstance(record, dict):
-            continue
-        seeds = record.get("solver_config", {}).get("seeds")
-        if isinstance(seeds, list) and seeds:
-            recorded = [int(s) for s in seeds]
-            sidecar_used = path.name
+    for pattern in search_patterns:
+        for path in sorted(out_dir.glob(pattern)):
+            record = _load_json(path)
+            if not isinstance(record, dict):
+                continue
+            seeds = record.get("solver_config", {}).get("seeds")
+            if isinstance(seeds, list) and seeds:
+                recorded = [int(s) for s in seeds]
+                sidecar_used = path.name
+                break
+        if recorded is not None:
             break
 
     if recorded is None:
@@ -1648,9 +1671,19 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
     # E6 bands cost ~39 h together and neither carries an accuracy claim, so
     # they are a Deferred Idea, not an omission.
     results += check_band_csv(
-        "E7", out_dir, "interface_ablation_band.csv", "e7_benchmark_*.json"
+        "E7",
+        out_dir,
+        "interface_ablation_band.csv",
+        "e7_benchmark_*.json",
+        band_sidecar="e7_seed_band_provenance.json",
     )
-    results += check_band_csv("E1", out_dir, "exp1_band.csv", "e1_benchmark_*.json")
+    results += check_band_csv(
+        "E1",
+        out_dir,
+        "exp1_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
     # Phase 19.5's four new band gates (plan 19.5-09, COV-03/04/05/06/07).
     # check_e6_seed_band/check_e5_seed_band/check_e4_repeat all read directly
     # under out_dir. check_e2_band's artifacts live under an ISOLATED sibling

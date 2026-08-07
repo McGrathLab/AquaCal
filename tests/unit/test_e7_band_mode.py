@@ -79,6 +79,26 @@ class TestBandMode:
                 record = json.load(f)
             assert record["solver_config"]["seeds"] == [42, 43]
 
+    def test_band_mode_writes_band_owned_sidecar(self, tmp_path):
+        main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
+        sidecar_path = tmp_path / "e7_seed_band_provenance.json"
+        assert sidecar_path.exists()
+        with open(sidecar_path) as f:
+            record = json.load(f)
+        assert record["experiment"] == "e7_seed_band"
+        assert record["schema_version"] == 1
+        assert record["solver_config"]["seeds"] == [42, 43]
+        assert record["git_sha"]
+        assert isinstance(record["seconds"], (int, float))
+        assert isinstance(record["environment"], dict)
+        assert record["scope"]
+
+    def test_ablation_columns_unchanged(self, tmp_path):
+        """E7 gains only the sidecar -- ABLATION_COLUMNS must not change."""
+        main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
+        df = pd.read_csv(tmp_path / "interface_ablation_band.csv")
+        assert list(df.columns[: len(ABLATION_COLUMNS)]) == ABLATION_COLUMNS
+
     def test_no_results_dir_modified(self, tmp_path):
         """Nothing under experiments/results/ is touched by a --seeds run."""
         import subprocess

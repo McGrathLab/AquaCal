@@ -21,22 +21,29 @@ Emits into `--out`:
     compared by --check.
   e1_benchmark_refractive.json, e1_benchmark_nonrefractive.json -- two distinct
     direct-call provenance records (D-09), one per model, because E1 calibrates twice.
-  exp1_band.csv -- written only by `--seeds` (see below); never written by any
-    of the three modes above.
+  exp1_band.csv, e1_seed_band_provenance.json -- written only by `--seeds`
+    (see below); never written by any of the three modes above.
 
-**`--seeds` band mode (D-19.4-14, SC-5a).** `--seeds 42,43,...` runs E1's
-depth-generalization path once per listed seed and emits `exp1_band.csv`
-(one row per seed x test_depth x model -- 10 seeds x 8 depths x 2 models =
-160 rows at production scale), the same row shape as
-`exp2_depth_generalization.csv` plus a `seed` column. This is the committed,
+**`--seeds` band mode (D-19.4-14, SC-5a, D-260807-dcv).** `--seeds 42,43,...`
+runs E1's depth-generalization path once per listed seed and emits
+`exp1_band.csv` (one row per seed x test_depth x model -- 10 seeds x 8 depths
+x 2 models = 160 rows at production scale). Its columns are
+`exp2_depth_generalization.csv`'s columns PLUS `exp3_xy_vs_z_anisotropy.csv`'s
+four non-key columns (`xy_rmse_mm`, `z_rmse_mm`, `anisotropy_ratio`,
+`n_points`) PLUS `seed` -- this GAINS COLUMNS on the artifact that already
+existed rather than adding a sibling file. `exp3_xy_vs_z_anisotropy.csv`
+itself is still written only by the single-seed run. This is the committed,
 regenerable artifact behind MF-08's 97-178x deepest-point ratio spread and
 the "2 of 10 seeds exceed 2 mm" finding, both of which previously lived only
-in gitignored `seed_sweep_19_3/` output. **E1 carries NO accuracy claim
-(D-19.3-17 demoted it)** -- this band exists for reproducibility, not
-because E1's numbers move: E1's production `SCENARIO_NAME = "realistic"`
-resolves to `generate_real_rig_array()`'s frozen shared `water_z` and is
-INERT under this phase's interface fix (it never reaches
-`generate_camera_array`). A `--seeds` run NEVER writes
+in gitignored `seed_sweep_19_3/` output -- and now, with `z_rmse_mm` merged
+in, is also the regenerable source for the abstract/L281 ~135x headline
+ratio, which was previously computable only from the seedless
+`exp3_xy_vs_z_anisotropy.csv` or that same gitignored sweep output. **E1
+carries NO accuracy claim (D-19.3-17 demoted it)** -- this band exists for
+reproducibility, not because E1's numbers move: E1's production
+`SCENARIO_NAME = "realistic"` resolves to `generate_real_rig_array()`'s
+frozen shared `water_z` and is INERT under this phase's interface fix (it
+never reaches `generate_camera_array`). A `--seeds` run NEVER writes
 `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
 `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those remain
 exclusively the single-seed run's artifacts. The band CSV write always
@@ -46,7 +53,10 @@ artifact's overwrite behavior changes. `--seeds` is mutually exclusive with
 `e1_benchmark_nonrefractive.json` written during a band run additively
 carries a `seeds` list holding the resolved seed list, reflecting the LAST
 seed's diagnostics/timings/accuracy (one provenance record cannot represent
-N independent solves).
+N independent solves) -- these are seedless legacy records that band mode
+must never overwrite with a single seed's values, which is why the band's
+OWN provenance lives in a separate, band-owned `e1_seed_band_provenance.json`
+sidecar (see below).
 
 E1's reproduction bar (D-19, AMENDED 2026-07-27): within CHECK_RTOL is fully autonomous.
 A divergence touching none of D-19's named headline numbers gets a written mechanism and
@@ -75,8 +85,10 @@ compares the count to anything.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
+import time
 from pathlib import Path
 
 import cv2
@@ -93,6 +105,7 @@ from aquacal.datasets import (
     generate_dense_xy_grid,
     generate_synthetic_detections,
 )
+from aquacal.io import capture_environment
 from aquacal.validation.reconstruction import triangulate_charuco_corners
 from experiments._io import (
     build_experiment_arg_parser,
@@ -173,6 +186,15 @@ EXP3_COLUMNS = [
     "n_points",
 ]
 SPATIAL_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m", "signed_error_mm"]
+
+# D-260807-dcv: the manuscript's ~135x headline ratio (main.tex L68/L281) is raw
+# `z_rmse_mm` at the deepest test point, and `z_rmse_mm` previously lived ONLY in
+# the seedless `exp3_xy_vs_z_anisotropy.csv` and in gitignored `seed_sweep_19_3/`
+# output -- so the published 10-seed band was not regenerable from any committed
+# artifact. `_run_band` now merges EXP3's non-key columns onto the band CSV so
+# the headline quantity travels with the band. EXP2_COLUMNS/EXP3_COLUMNS
+# themselves are untouched -- the single-seed CSVs they pin stay byte-identical.
+BAND_MERGED_COLUMNS = EXP2_COLUMNS + [c for c in EXP3_COLUMNS if c not in EXP2_COLUMNS]
 
 
 def compute_scale_bias(signed_mean_m: float, square_size_m: float) -> float:
@@ -307,6 +329,40 @@ def _run_one_model(scenario, n_water, seed):
             n_degenerate,
         )
     return result, detections, timings, diagnostics, discard_stats
+
+
+def merge_band_columns(df_exp2: pd.DataFrame, df_exp3: pd.DataFrame) -> pd.DataFrame:
+    """Merge EXP3's non-key columns (including `z_rmse_mm`) onto an EXP2 frame.
+
+    `_build_dataframes` returns both frames built from the SAME `depths` list
+    object and the SAME per-depth loop (L359-446), so their `(test_depth_m,
+    model)` keys are identical float/str values from a single source -- a
+    float-keyed merge is safe here specifically because both sides share that
+    one generation site, not in general. `validate="one_to_one"` is kept as
+    the executable guard rather than relying on that invariant silently: a
+    duplicated key in either input raises instead of silently fanning out
+    into extra rows. `seed` is deliberately NOT a merge key -- `run_seed_band`
+    stamps the `seed` column onto the returned frame AFTER the runner
+    returns, so neither `df_exp2` nor `df_exp3` carries it yet.
+
+    Args:
+        df_exp2: `exp2_depth_generalization.csv`-shaped frame, columns
+            `EXP2_COLUMNS`.
+        df_exp3: `exp3_xy_vs_z_anisotropy.csv`-shaped frame, columns
+            `EXP3_COLUMNS`.
+
+    Returns:
+        A frame with columns `BAND_MERGED_COLUMNS` (EXP2_COLUMNS then EXP3's
+        non-key columns) and the same row count as `df_exp2`.
+    """
+    merged = pd.merge(
+        df_exp2,
+        df_exp3,
+        on=EXP3_KEY_COLUMNS,
+        how="left",
+        validate="one_to_one",
+    )
+    return merged.reindex(columns=BAND_MERGED_COLUMNS)
 
 
 def _build_dataframes(scenario, results, seed, test_depths=None):
@@ -686,15 +742,19 @@ def _run_check(args: argparse.Namespace) -> int:
 
 def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
     """`--seeds`: run E1's depth-generalization path once per seed, emit the
-    band CSV and per-model provenance (D-19.4-14, SC-5a).
+    band CSV and per-model provenance (D-19.4-14, SC-5a, D-260807-dcv).
 
     Writes `exp1_band.csv` (force implied -- see the module docstring's
-    "--seeds band mode" section) and both `e1_benchmark_<model>.json`
-    sidecars, additively carrying `solver_config["seeds"] = seeds`.
-    Deliberately does NOT write `exp1_parameter_errors.csv`,
-    `exp2_depth_generalization.csv`, `exp2_spatial_errors.csv`, or
-    `exp3_xy_vs_z_anisotropy.csv` -- those remain exclusively the
-    single-seed run's artifacts.
+    "--seeds band mode" section), now carrying `BAND_MERGED_COLUMNS` --
+    `EXP2_COLUMNS` plus EXP3's non-key columns (`xy_rmse_mm`, `z_rmse_mm`,
+    `anisotropy_ratio`, `n_points`) via `merge_band_columns`, so the
+    manuscript's headline `z_rmse_mm` ratio is regenerable from this
+    artifact -- and `e1_seed_band_provenance.json`, plus both
+    `e1_benchmark_<model>.json` sidecars, additively carrying
+    `solver_config["seeds"] = seeds`. Deliberately does NOT write
+    `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
+    `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those
+    remain exclusively the single-seed run's artifacts.
 
     The benchmark payload (`problem_shape`/`timings`/`diagnostics`/
     `accuracy`) is taken from the LAST seed in `seeds`'s run, since a single
@@ -705,6 +765,13 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     """
     scenario_name = "ideal" if smoke else SCENARIO_NAME
     depths = [1.30] if smoke else None
+
+    # Captured ONCE before the seed loop -- capture_environment() shells out to
+    # `git rev-parse` per call, and a per-cell call is what split an artifact's
+    # recorded SHA before (CLAUDE.md / knowledge-base "Commit nothing during a
+    # production run").
+    environment = capture_environment()
+    start = time.monotonic()
 
     last_results: dict = {}
     last_timings_by_model: dict = {}
@@ -730,7 +797,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             diagnostics_by_model[label] = diagnostics
             discard_stats_by_model[label] = discard_stats
 
-        _df_exp1, df_exp2, _df_spatial, _df_exp3 = _build_dataframes(
+        _df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
             scenario, results, seed, test_depths=depths
         )
 
@@ -740,9 +807,10 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         last_discard_stats_by_model = discard_stats_by_model
         last_scenario = scenario
 
-        return df_exp2
+        return merge_band_columns(df_exp2, df_exp3)
 
     band_df = run_seed_band(_runner, seeds)
+    elapsed_seconds = time.monotonic() - start
     write_experiment_csv(
         band_df,
         out_dir / "exp1_band.csv",
@@ -751,6 +819,47 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         # the band on demand is the entire point of it being reproducible.
         force=True,
     )
+
+    # Band-owned provenance (D-260807-dcv, mirrors E5/E6's pattern): the
+    # e1_benchmark_<model>.json records below are seedless legacy records that
+    # band mode must never overwrite with a single seed's values, so the
+    # seeds actually run here have nowhere else to be recorded.
+    sidecar_path = out_dir / "e1_seed_band_provenance.json"
+    with open(sidecar_path, "w") as f:
+        json.dump(
+            {
+                "experiment": "e1_seed_band",
+                "schema_version": 1,
+                "git_sha": environment.get("git_sha"),
+                "seconds": elapsed_seconds,
+                "environment": environment,
+                "solver_config": {"seeds": list(seeds)},
+                # D-260807-dcv: this band varies ONLY the seed, across E1's
+                # depth-generalization and xy-vs-z anisotropy sweep on the
+                # "realistic" synthetic scenario -- it bounds seed-to-seed
+                # variance of those metrics on that synthetic scenario only,
+                # not a physical-rig or real-data claim. z_rmse_mm is the
+                # column the manuscript's deepest-test-point
+                # refractive-vs-non-refractive ratio is computed from; this
+                # band exists so that ratio is regenerable from a committed
+                # artifact.
+                "scope": (
+                    "This band varies the SEED across E1's depth-generalization "
+                    "and xy-vs-z anisotropy sweep on the 'realistic' synthetic "
+                    "scenario, and bounds seed-to-seed variance of "
+                    "exp1_band.csv's metrics -- including z_rmse_mm, the column "
+                    "the manuscript's deepest-test-point refractive-vs-"
+                    "non-refractive ratio is computed from -- on that synthetic "
+                    "scenario only. It is NOT a physical-rig or real-data claim, "
+                    "and this sidecar neither asserts nor denies an accuracy "
+                    "claim for E1 (D-19.3-17 already demoted E1's own)."
+                ),
+            },
+            f,
+            indent=2,
+            sort_keys=True,
+        )
+    print(f"Wrote {sidecar_path}")
 
     for label, n_water in MODELS:
         result, _detections = last_results[label]

@@ -56,24 +56,32 @@ Emits, per D-17: `interface_ablation.csv` (one row per camera x arm),
 `interface_ablation_conditioning.json` + `.npz` (per-arm conditioning,
 interface spread, and height/distance correlation), one `e7_trace_<arm>.csv`
 per arm, and one `e7_benchmark_<arm>.json` direct-call provenance record per
-arm (D-09).
+arm (D-09). `--seeds` band mode additionally emits
+`e7_seed_band_provenance.json` (see below).
 
-**`--seeds` band mode (D-19.4-14, SC-5a).** `--seeds 42,43,...` runs the same
-four-arm loop once per listed seed and emits `interface_ablation_band.csv`
-(one row per seed x camera x arm -- 10 seeds x 12 cameras x 4 arms = 480 rows
-at production scale) instead of `interface_ablation.csv`. **A `--seeds` run
-NEVER writes `interface_ablation.csv`** -- the single-seed production
-artifact is only ever produced by a plain `--seed` run, so a band run can
-never overwrite the artifact the E7-inertness gate compares against. The
-band CSV write always overwrites (force is implied for that one file only --
-regenerating the band on demand is the entire point of it being a
-reproducible artifact); no other artifact's overwrite behavior is affected
-by `--seeds`. `--seeds` is mutually exclusive with `--check` (a band run is
-a new compute pass, not a comparison). Each `e7_benchmark_<arm>.json`
-written during a band run additively carries a `seeds` list holding the
-resolved seed list (EXP-11 pattern). E7's production scenario is inert under
-this phase's `src` fix (see the CORRECTION note below); the `--seeds` band
-exists for reproducibility of MF-05's numbers, not because they move.
+**`--seeds` band mode (D-19.4-14, SC-5a, D-260807-dcv).** `--seeds 42,43,...`
+runs the same four-arm loop once per listed seed and emits
+`interface_ablation_band.csv` (one row per seed x camera x arm -- 10 seeds x
+12 cameras x 4 arms = 480 rows at production scale) and
+`e7_seed_band_provenance.json`, instead of `interface_ablation.csv`. E7's
+CSV already carries its claim quantity (`camera_height_drift_mm`) -- no
+column was added or reordered in `ABLATION_COLUMNS`; E7 gains only the
+sidecar. **A `--seeds` run NEVER writes `interface_ablation.csv`** -- the
+single-seed production artifact is only ever produced by a plain `--seed`
+run, so a band run can never overwrite the artifact the E7-inertness gate
+compares against. The band CSV write always overwrites (force is implied for
+that one file only -- regenerating the band on demand is the entire point of
+it being a reproducible artifact); no other artifact's overwrite behavior is
+affected by `--seeds`. `--seeds` is mutually exclusive with `--check` (a
+band run is a new compute pass, not a comparison). Each
+`e7_benchmark_<arm>.json` written during a band run additively carries a
+`seeds` list holding the resolved seed list (EXP-11 pattern) -- these are
+seedless legacy records that band mode must never overwrite, so the seeds
+actually run have nowhere else to be recorded, which is why the band's own
+provenance lives in the separate, band-owned `e7_seed_band_provenance.json`.
+E7's production scenario is inert under this phase's `src` fix (see the
+CORRECTION note below); the `--seeds` band exists for reproducibility of
+MF-05's numbers, not because they move.
 
 **D-19.3-11: this module RECORDS the final-solution guard count; it does
 not GATE on it.** E7 has no per-arm `status` column -- each arm's
@@ -108,6 +116,7 @@ from aquacal.calibration.interface_estimation import optimize_interface
 from aquacal.calibration.refinement import joint_refinement
 from aquacal.core.board import BoardGeometry
 from aquacal.datasets import create_scenario, generate_synthetic_detections
+from aquacal.io import capture_environment
 from aquacal.validation.conditioning import save_conditioning_report
 from experiments._io import (
     build_experiment_arg_parser,
@@ -655,20 +664,33 @@ def _run_check(out_dir: Path) -> int:
 
 def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
     """`--seeds`: run the four-arm loop once per seed, emit the band CSV and
-    per-arm provenance (D-19.4-14, SC-5a).
+    per-arm provenance (D-19.4-14, SC-5a, D-260807-dcv).
 
     Writes `interface_ablation_band.csv` (force implied -- see the module
-    docstring's "--seeds band mode" section) and one `e7_benchmark_<arm>.json`
-    per arm, additively carrying `solver_config["seeds"] = seeds`. Deliberately
-    does NOT write `interface_ablation.csv`, conditioning JSON/NPZ, or trace
-    CSVs -- those remain exclusively the single-seed run's artifacts.
+    docstring's "--seeds band mode" section), `e7_seed_band_provenance.json`,
+    and one `e7_benchmark_<arm>.json` per arm, additively carrying
+    `solver_config["seeds"] = seeds`. Deliberately does NOT write
+    `interface_ablation.csv`, conditioning JSON/NPZ, or trace CSVs -- those
+    remain exclusively the single-seed run's artifacts. E7's CSV columns
+    (`ABLATION_COLUMNS`) are unchanged by this plan -- E7 already carries its
+    claim quantity (`camera_height_drift_mm`); only the sidecar is new.
 
     The benchmark payload (`problem_shape`/`timings`/`diagnostics`/`accuracy`)
     is taken from the LAST seed in `seeds`' run, since a single provenance
     record cannot represent N independent solves; `seeds` records which N were
     actually run so a reader is never left assuming it reflects only the last
-    one.
+    one. The `e{1,7}_benchmark_<arm>.json` records are seedless legacy
+    records that band mode must never overwrite, so the seeds actually run
+    have nowhere else to be recorded -- hence the separate, band-owned
+    `e7_seed_band_provenance.json` sidecar.
     """
+    # Captured ONCE before the seed loop -- capture_environment() shells out
+    # to `git rev-parse` per call, and a per-cell call is what split an
+    # artifact's recorded SHA before (CLAUDE.md / knowledge-base "Commit
+    # nothing during a production run").
+    environment = capture_environment()
+    start = time.monotonic()
+
     last_results: list[ArmResult] = []
     last_scenario = None
 
@@ -682,6 +704,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         return pd.DataFrame(rows, columns=ABLATION_COLUMNS)
 
     band_df = run_seed_band(_runner, seeds)
+    elapsed_seconds = time.monotonic() - start
     write_experiment_csv(
         band_df,
         out_dir / "interface_ablation_band.csv",
@@ -690,6 +713,36 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         # the band on demand is the entire point of it being reproducible.
         force=True,
     )
+
+    sidecar_path = out_dir / "e7_seed_band_provenance.json"
+    with open(sidecar_path, "w") as f:
+        json.dump(
+            {
+                "experiment": "e7_seed_band",
+                "schema_version": 1,
+                "git_sha": environment.get("git_sha"),
+                "seconds": elapsed_seconds,
+                "environment": environment,
+                "solver_config": {"seeds": list(seeds)},
+                # D-260807-dcv: this band varies the SEED across the four
+                # fixed/refined x shared/per-camera arms, and bounds
+                # seed-to-seed variability of camera_height_drift_mm, the
+                # per-arm pairing behind MF-05. It does not assert or deny
+                # an accuracy claim.
+                "scope": (
+                    "This band varies the SEED across the four "
+                    "fixed/refined x shared/per-camera arms, and bounds "
+                    "seed-to-seed variability of camera_height_drift_mm, "
+                    "the per-arm pairing behind MF-05. It is NOT a "
+                    "physical-rig or real-data claim, and this sidecar "
+                    "neither asserts nor denies an accuracy claim for E7."
+                ),
+            },
+            f,
+            indent=2,
+            sort_keys=True,
+        )
+    print(f"Wrote {sidecar_path}")
 
     for arm in last_results:
         problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(
