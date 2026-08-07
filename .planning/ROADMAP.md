@@ -71,7 +71,7 @@ must settle the stage-key schema before benchmark.json locks it in.
  (completed 2026-07-24)
 - [x] **Phase 19: Benchmark Instrumentation** - Every calibration run produces a trustworthy, machine-readable performance record
  (completed 2026-07-24)
-- [ ] **Phase 19.5: Experiment Coverage and Uncertainty Bands** (INSERTED) - Every experiment the reviewer response leans on carries a measured uncertainty band or says plainly that it does not, and R1.2/R1.3 get their first experimental answer
+- [x] **Phase 19.5: Experiment Coverage and Uncertainty Bands** (INSERTED) - Every experiment the reviewer response leans on carries a measured uncertainty band or says plainly that it does not, and R1.2/R1.3 get their first experimental answer
   (Phases 19.1-19.4 are likewise inserted decimals; see Phase Details. 19.5 is the next phase.)
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
 - [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
@@ -534,9 +534,9 @@ Plans:
 - [x] 19.5-06-PLAN.md -- COV-03/04: E6 `--seeds` band with mandatory per-seed isolated dirs, plus an opt-in `cameras` axis (code only)
 - [x] 19.5-07-PLAN.md -- COV-07: E2 seed-variant config generator; `--seed` is a red herring on the `--config` path (code only)
 - [x] 19.5-08-PLAN.md -- COV-06: E4 repeat splice over the three 100-frame cells, `nfev` beside wall-clock (code only)
-- [x] 19.5-09-PLAN.md -- Writes `rerun_19_5.sh`, the four new band gates and the D-19.5-04 legality probe. Budget: ~15 h nominal, ~24 h at 19.4's 1.6x, **26 h ceiling**
-- [ ] 19.5-10-PLAN.md -- **Orchestrator only.** Runs the one queue. Changes no code. Commit nothing during the run
-- [ ] 19.5-11-PLAN.md -- COV-09: MF-11+ entries naming citable artifacts, MF-09 edit-map updates, six-check honesty gate
+- [x] 19.5-09-PLAN.md -- Writes `rerun_19_5.sh`, the four new band gates and the D-19.5-04 legality probe. Budget as planned: ~15 h nominal, **26 h ceiling** -- revised before launch to ~17 h / **30 h** for six-seed bands
+- [x] 19.5-10-PLAN.md -- **Orchestrator only.** Ran the one queue 2026-08-06/07: five stages, 16 h 31 m (0.97x of nominal), 102/102 E6 rows `ok`, no commit mid-run, one frozen sha `2a2f0fa`
+- [x] 19.5-11-PLAN.md -- COV-09: MF-11..MF-17 written, MF-09 edit map updated, COV-01..COV-09 discharged with a per-requirement artifact table
 
 ### Phase 20: Refractive Index Helper
 **Goal**: Users can estimate `n_water` from environmental conditions and transfer the

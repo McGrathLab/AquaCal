@@ -1,54 +1,81 @@
 {
   "version": "1.0",
-  "timestamp": "2026-07-24T22:45:00.000Z",
+  "timestamp": "2026-08-07T19:10:00.000Z",
   "level": "milestone",
   "milestone": "v1.9",
   "milestone_name": "Publication Prep",
   "status": "paused_between_phases",
-  "phases_total": 7,
-  "phases_complete": 4,
-  "completed_phases": ["16", "17", "18", "19"],
+  "phases_total": 12,
+  "phases_complete": 9,
+  "completed_phases": ["16", "17", "18", "19", "19.1", "19.2", "19.3", "19.4", "19.5"],
   "current_phase": null,
-  "next_phase": "20",
-  "next_phase_name": "refractive-index-helper",
-  "next_phase_state": "not_started (no CONTEXT.md, no plans; INDEX-01/02/03, fully standalone)",
+  "next_phase": "21",
+  "next_phase_name": "new-feature-documentation-and-dataset-refresh",
+  "next_phase_state": "not_started. NOTE: Phase 20 (Refractive Index Helper) is DEFERRED by user decision on 2026-08-07, on measured evidence -- see open_decisions. Phase 21 lists Phase 20 among its dependencies, but that dependency is documentation-shaped: if 20 does not land there is simply one less capability to document. It does not block.",
   "repo_state": {
     "branch": "main",
-    "head": "ade7921",
+    "head": "see git log -- last commits are phase 19.5 closure",
     "working_tree": "clean",
-    "worktrees": "none",
-    "tests": "846 passed, 31 deselected (pytest -m 'not slow', on main checkout)",
-    "docs_build": "sphinx -W --keep-going exits 0",
+    "worktrees": "one stray, worktree-agent-a1a99b5a5289e9e05, present and UNMERGED. This is correct and deliberate -- superseded 19.2-21 evidence that must never be merged.",
+    "tests": "1792 passed, 27 skipped, 0 failed (full unfiltered pytest tests/, ~60 min, at b13a3e0)",
+    "gates": "101 PASS / 7 N/A / 8 FAIL via `python experiments/check_rerun_gates.py experiments/results`",
     "pushed": false,
-    "note_on_next_push": "22 feat: commits from phases 16-19 are unpushed; the next push to main triggers python-semantic-release and cuts v1.9.0"
+    "note_on_next_push": "Everything since Phase 16 is unpushed. The next push triggers python-semantic-release. The milestone cuts v2.0.0, not v1.9.x -- 19.3 made `board` a required parameter of the public generate_board_trajectory. Never hand-edit version or CHANGELOG."
   },
+  "what_phase_19_5_delivered": {
+    "summary": "Every experiment the reviewer response leans on now carries a measured uncertainty band or says plainly that it does not. COV-01..COV-09 all discharged, with a per-requirement satisfying-artifact table in REQUIREMENTS.md.",
+    "authoritative_record": ".planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-11-SUMMARY.md (plan 11) and 19.5-10-SUMMARY.md (the production queue)",
+    "production_queue": "Ran 2026-08-06T16:24:41Z to 2026-08-07T08:55:27Z. Five stages, 16 h 31 m, 0.97x of nominal -- nothing like 19.4's 1.6x. No commit landed mid-run. One frozen sha 2a2f0fa across 92 of 114 run-window files, with no other sha anywhere.",
+    "new_findings": "MF-11 (accuracy improves to N=12 then plateaus), MF-12 (the line layout does not locate the water surface), MF-13 (index insensitivity; E5's accuracy claim restored), MF-14 (wall-clock noise floor at identical nfev), MF-15 (E2 split variance), MF-16 (E1's band regenerable; MF-08's citation corrected), MF-17 (E7's vacuous fixed arms)."
+  },
+  "read_first_for_manuscript_work": [
+    ".planning/MANUSCRIPT-FINDINGS.md MF-09 -- the edit map, including its 2026-08-07 UPDATE block naming the three new prose destinations and the two figure changes",
+    ".planning/MANUSCRIPT-FINDINGS.md MF-16 -- what L68 and L281 should become, and why ~135x survives while 257 mm does not",
+    "The live paper is in OneDrive, NOT Desktop: 'OneDrive - Georgia Institute of Technology/Thesis/Spinoffs/papers/aquacal/main.tex'. Desktop/main.pdf is a stale export that says the opposite in places."
+  ],
   "open_decisions_for_user": [
     {
-      "id": "mistyped-fix-commit",
-      "summary": "34497f9 is a docstring-only repair mistyped as fix(18): instead of docs(18:)",
-      "impact": "No version impact (feat: already forces the v1.9.0 minor bump). Adds one misleading line to the CHANGELOG Bug Fixes section.",
-      "cost_to_fix": "Rewriting the message means rebasing through merge commits.",
-      "status": "user acknowledged as fine on 2026-07-24; left unrewritten"
+      "id": "phase-20-deferred",
+      "summary": "Phase 20 (Refractive Index Helper, INDEX-01..03) is deferred until after the Zenodo/manuscript work.",
+      "rationale": "Decided on measured evidence, not schedule pressure. MF-13: across the full +/-0.010 assumed-index sweep, reconstruction MAE moves 0.0040 mm against a seed sd of 0.0205 mm -- the effect is ~5x below seed noise. Scale bias at the CORRECT index (0.0483%) is larger than the change a +/-0.01 error produces. A hand-entered 1.333 is adequate for accuracy at this geometry.",
+      "status": "deferred, not dropped. The roadmap should cite MF-13's exact wording rather than asserting insensitivity independently."
     },
     {
-      "id": "tutorial-notebook-stale-stage4",
-      "summary": "docs/tutorials/01_full_pipeline.ipynb and 02_synthetic_validation.ipynb carry captured OUTPUT cells still showing old 'Stage 4' console strings",
-      "impact": "Published tutorials display vocabulary the code no longer emits.",
-      "scope": "Belongs to Phase 21 (DATA-03 / dataset+tutorial refresh). Regenerating requires a real 48-87 min calibration run.",
-      "status": "deferred to Phase 21, in no plan's files_modified"
+      "id": "post-zenodo-rerun-batch",
+      "summary": "A batch of small repairs the user chose to defer until after the Zenodo regeneration, when the whole suite can be re-run on one sha.",
+      "items": [
+        "The six seedless-legacy provenance FAILs (e1_benchmark_*.json x2, e7_benchmark_*.json x4) -- closable by stamping solver_config['seed'] in the production write path and re-running those single-seed runs. Would take gates to 2 FAIL. Regenerates artifacts the manuscript cites, so it is a deliberate call.",
+        "E1's non-refractive baseline could be run with water_z PINNED at ground truth: MF-08 measured that this reproduces every number to ~4 s.f. while driving the guard count to 0 and optimality from 9e+02 to 5e-01. It would make the pinhole baseline's diagnostics clean on their face instead of needing a paragraph of explanation. Cost: the published 248.3 shifts in the 4th significant figure.",
+        "gate3_git_sha_consistency is BLIND to the run it certifies -- _collect_all_json_paths walks a fixed legacy set (e4_cells/*/benchmark.json, e6_configs/*.json) that excludes this phase's sidecars. It PASSed reporting a 19.4-era sha while the run's own artifacts carried a different one. Provenance had to be verified by hand. Widen it.",
+        "E4's benchmark_grid.csv real_rig row has an EMPTY guard count (spliced from E2's record, which lacks the field) -- instrument E2's record, or have the gate treat a spliced row as N/A.",
+        "E4's per-cell benchmark.json is overwritten by repeat 2, so repeat 1's per-stage detail survives only in the committed repeat_stdout.log. Repeat-2 rows also carry an empty cell_key and status.",
+        "MF-12's proposed metrics: add water_z_error_mm_signed and a per-camera interface_standoff_error_mm (h_c = water_z - C_z), ALONGSIDE the existing mean-absolute column, not instead of it.",
+        "E6 calls compute_per_camera_errors WITHOUT gauge_correct_z (defaults False), so its Z errors include a global datum offset the library documents as 'not a real geometric error'.",
+        "Todo filed 2026-08-06: E5's band tests re-run the band per test (317 s for 5) where E6 shares one module fixture (94 s for 6)."
+      ],
+      "status": "all deferred by user decision 2026-08-07; none blocks manuscript work"
     },
     {
-      "id": "bench06-stage4-wording",
-      "summary": "REQUIREMENTS.md BENCH-06 text still reads 'Stage 3 and Stage 4'",
-      "impact": "Stale vocabulary in a now-satisfied requirement.",
-      "status": "left as historical record (.planning/ is not swept); noted in 19-CONTEXT.md D-11"
+      "id": "layout-line-conditioning-test",
+      "summary": "MF-12 states its mechanism as a hypothesis. The test that would settle it is cheap and the instrumentation already exists.",
+      "detail": "Run Phase 16's HOOK-03 conditioning diagnostic on a line-layout solve and a grid solve at the same seed and compare the camera-height / interface-distance correlation block. The hypothesis predicts a markedly higher off-diagonal for line. One calibration each, no new code. Would turn 'we observed a coupling' into 'we measured the conditioning that causes it', which feeds WP6's degeneracy argument directly.",
+      "status": "not started; suggested for after Zenodo"
     }
   ],
-  "next_action": "Phase 20 is unplanned and standalone. To proceed: /gsd:discuss-phase 20 then /gsd:plan-phase 20 then /gsd:execute-phase 20. Nothing blocks it. Do NOT auto-advance — the user paused here deliberately.",
+  "binding_lessons": [
+    "Never let a subagent background a long run and return -- it stalls permanently. NEW as of 2026-08-07: a TARGETED test file can also exceed the 600 s ceiling, so 'run the files you touched' is an unsafe instruction. tests/unit/test_e1_band_mode.py runs real band solves and took 28 minutes. Name specific fast tests, or have the orchestrator run them.",
+    "Executor worktrees fork from a stale base -- observed a fourth time on 2026-08-07 (forked from b4da55b, the v1.8.0 tag, 609 commits behind). Assert the real HEAD sha as EXPECTED_BASE, or dispatch on the main checkout.",
+    "A gate FAIL that everyone has learned to expect stops being read. gate4_band's E1 instance was documented as benign for two phases while it was flagging that the manuscript's headline number had no committed artifact. A tolerated failure needs a re-derivation, not an annotation.",
+    "Commit nothing during a production run -- a per-cell git rev-parse splits an artifact's recorded sha.",
+    "Exit codes are not evidence: E4 and E6 record failures as rows and still exit 0. Read status counts out of the CSVs.",
+    "Optimality is quoted to ONE significant figure, never finer. No runtime figure is ever attributed to a code change."
+  ],
+  "next_action": "Phase 21 (dataset/tutorial refresh, the real manuscript blocker -- it needs a real 48-87 min calibration run and clears the stale 'Stage 4' notebook outputs). To proceed: /gsd:discuss-phase 21, then /gsd:plan-phase 21, then /gsd:execute-phase 21. Manuscript prose edits can start immediately and in parallel, from MF-09's edit map.",
   "resume_reading": [
     ".planning/STATE.md (authoritative current position)",
-    ".planning/ROADMAP.md (phase 20-22 detail)",
-    ".planning/phases/19-benchmark-instrumentation/19-VERIFICATION.md (what was just delivered)"
+    ".planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-11-SUMMARY.md",
+    ".planning/MANUSCRIPT-FINDINGS.md (MF-09's edit map first, then MF-11..MF-17)",
+    ".planning/knowledge-base.md (three new entries added 2026-08-07)"
   ],
-  "context_notes": "Milestone paused after Phase 19 completion at the user's request. Phases 16-19 all complete and verified. Two milestone-wide lessons were captured to auto-memory this session and MUST be honored when executing future phases with worktree isolation: (1) executor worktrees can fork from a stale base (v1.8.0 tag) and self-corrupt unless the dispatch prompt asserts the real HEAD sha as EXPECTED_BASE; observed 3x. (2) The editable install resolves aquacal to the MAIN checkout, so a worktree's bare pytest tests main's code, not its own -- every worktree executor must export PYTHONPATH=$(pwd)/src and prove the import path. Both compound: a stale base plus a main-repo import means an agent validates the wrong code at the wrong commit and still reports green. The orchestrator's own post-merge gate on the main checkout is therefore the only guaranteed-authoritative test run."
+  "context_notes": "Phase 19.5 closed 2026-08-07. The SoftwareX deadline is 2026-08-21. The one thing a fresh agent should not have to rediscover: E1's 97-178x band and E7's band are BOTH now regenerable from committed artifacts with band-owned sidecars, which they were not on 2026-08-06 -- quick task 260807-dcv fixed E1's missing z_rmse_mm column and added e{1,7}_seed_band_provenance.json, and both bands were re-run and reproduced their published values exactly (E1 to every digit, E7 byte-identically)."
 }

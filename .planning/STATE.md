@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
+stopped_at: Phase 19.5 CLOSED 2026-08-07 -- 11/11 plans, COV-01..COV-09 discharged, MF-11..MF-17 written. Next is Phase 21.
 last_updated: "2026-08-06T01:58:38.087Z"
-last_activity: 2026-08-06 -- Phase 19.5 execution started
+last_activity: 2026-08-07 -- Phase 19.5 closed; E1/E7 band provenance repaired
 progress:
   total_phases: 12
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 94
-  completed_plans: 83
-  percent: 67
+  completed_plans: 85
+  percent: 75
 ---
 
 # Project State
@@ -21,18 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.5 — experiment-coverage-and-uncertainty-bands
-ready to execute). Phase 20 follows.
+**Current focus:** Phase 19.5 COMPLETE — next is Phase 21 (Zenodo dataset refresh). Phase 20 is deferred by user decision on measured evidence (MF-13).
 
 ## Current Position
 
-Phase: 19.5 (experiment-coverage-and-uncertainty-bands) — EXECUTING
-  11 plans in 5 waves, **plan-checker PASSED with no blockers**. Requirements COV-01..COV-09.
-  Next command: `/gsd:execute-phase 19.5`.
+Phase: 19.5 (experiment-coverage-and-uncertainty-bands) — **COMPLETE 2026-08-07**
+  11/11 plans. COV-01..COV-09 all discharged with a per-requirement artifact table in
+  REQUIREMENTS.md. Findings MF-11..MF-17 written; MF-09's edit map updated.
+  Next phase: **21** (Phase 20 deferred — see below). Next command: `/gsd:discuss-phase 21`.
 
-  **Runtime budget, surfaced before it is spent:** ~15 h nominal, ~24 h at 19.4's observed 1.6x
-  overrun; **26 h ceiling proposed**. Seeds E6 42-46, E5 42-46, E2 42-44; E4 repeat is the three
-  100-frame cells. Five seeds is the floor for a sign-test claim (2^-5 = 0.031 one-sided).
+  **Runtime, actual.** Six seeds were approved before launch (not five: 2 x 2^-5 = 0.0625 fails a
+  two-sided test, 2 x 2^-6 = 0.031 clears it), which moved the budget to ~17 h nominal and the
+  ceiling 26 h -> 30 h. The queue ran **16 h 31 m, 0.97x of nominal** — nothing like 19.4's 1.6x.
+  Seeds: E6 42-47, E5 42-47, E2 42-44; E4 repeat = the three 100-frame cells at two repeats.
 
   **Three correctness traps found during planning, each now enforced by an acceptance criterion
   rather than prose:** (a) E6's `_SCENARIO_IDENTITY_KEYS` omits `seed`, so a `--seeds` loop
@@ -44,8 +45,9 @@ Phase: 19.5 (experiment-coverage-and-uncertainty-bands) — EXECUTING
   resample `frame_idx` clusters, not rows — 7,762 comparisons span 52 frames, and a per-row
   bootstrap would understate the interval.
 
-  **Wave 4 (plan 10) is the orchestrator's, not an executor's** — it runs the single queue,
-  changes no code, and commits nothing until the queue finishes.
+  **Wave 4 (plan 10) was the orchestrator's, and that held** — one queue, no code change, no
+  commit between launch and completion, one frozen sha `2a2f0fa` across 92 of 114 run-window
+  files and no other sha anywhere.
 
   **Why it exists.** Phases 19.2-19.4 established that the experiments are *correct*. This phase
   establishes what may be *claimed* from them. Only E1 and E7 have seed bands; E4, E5 and E6 are
@@ -130,12 +132,12 @@ Plan: 1 of 11
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 19.5
+Status: Phase 19.5 COMPLETE (2026-08-07)
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-06 -- Phase 19.5 execution started
+Last activity: 2026-08-07 -- Phase 19.5 closed; E1/E7 band provenance repaired
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.

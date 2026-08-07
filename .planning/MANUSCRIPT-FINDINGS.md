@@ -1313,6 +1313,42 @@ MF-08 is still outstanding and is deliberately not made here. See
 
 ---
 
+
+### UPDATE 2026-08-07 — what phase 19.5's bands changed in this map
+
+The rows above stand. Four things are added or resolved, and one row's cited artifact was wrong
+until today.
+
+**The `~135x` row is now backed by a committed artifact — it was not before.** The row cites the
+97-178x band, but the band was regenerable only from gitignored `seed_sweep_19_3/` output:
+`exp1_band.csv` carried a scale-corrected `rmse_mm`, not the raw `z_rmse_mm` the ratio is built
+from. Quick task 260807-dcv added the column and re-ran the ten seeds, which reproduced the band
+exactly. See **MF-16**. Anyone editing L68/L281 should now cite `exp1_band.csv` directly.
+
+**`~135x` survives; `257 mm` does not.** The ratio of the two arms' means at 2.5 m is **135.4x**,
+so the published figure holds as a ratio of means over n=10 rather than as seed 42's value
+(128.1x). The millimetre figure should become **~229 mm (n=10, range 199-252)**. This resolves the
+"see caveat" on the `257 mm` row.
+
+**Three new destinations, none of which existed when this map was written:**
+
+| where | what to add | source |
+|---|---|---|
+| R1.3's response | accuracy improves from N=8 to N=12 (~6 sd) then **plateaus**; N=12 and N=16 indistinguishable (~0.4 sd), n=6 seeds per point | MF-11 |
+| R2's response, §3 index discussion | index-induced scale bias stays below the holdout noise floor across seeds 42-47 (n=6); reconstruction effect of +/-0.01 is ~5x below seed noise | MF-13 |
+| §3 layout discussion / deployment guidance | collinear arrays do not locate the water surface reliably (worst seed 18.9 mm, 12x worse camera XY error), and the failure is invisible to reprojection and reconstruction | MF-12 |
+
+**Two figure changes.** `fig:aquacal-exp3-rmse` and the depth-generalization figure can now carry
+**per-depth error bars** (10 seeds x 8 depths x 2 models). They reveal the non-monotone dip at
+1.4 m and that the refractive arm is far more stable, not merely more accurate — sd 0.17-0.31 mm
+against 6-17 mm. Captions must state these are calibration-scenario variance against a **fixed
+test set** (`depth_seed` is hardcoded), not full replication spread.
+
+**One standing prohibition is reinforced, not changed.** MF-14 measures a ~1.85x wall-clock spread
+at identical `nfev` on the same machine and sha. Any timing sentence must report `nfev` beside
+wall-clock, and no runtime difference anywhere in the paper may be attributed to a code change.
+
+
 ## MF-10 — Synthetic validation ran against a ground truth where each camera had its own water surface
 
 **Status:** OPEN — needs a disclosure sentence in §3 before resubmission
@@ -1372,5 +1408,346 @@ found to place a separate interface per camera, that this was corrected and the 
 experiments re-measured before resubmission, and that the corrected geometry is the one reported.
 Reviewers who read the generator would find this first; disclosing it costs a sentence, and not
 disclosing it costs the paper's credibility on exactly the point it claims as its contribution.
+
+---
+
+## MF-11 — E6's seed band: accuracy improves with camera count and then plateaus at 12
+
+**Status:** OPEN — R1.3's "stably adapts to N>10" has no measured answer in the current prose
+**Found:** 2026-08-07, phase 19.5 plan 10 (the production queue), analysed plan 11
+**Source of truth:** `experiments/results/generalization_sweep_band.csv` (102 rows, seeds 42-47,
+17 configurations per seed) + `experiments/results/e6_seed_band_provenance.json`, both at git sha
+`2a2f0fa`
+**Where the prose is:** R1.3's response; §3 wherever camera count is discussed. Follow MF-09's
+location conventions before editing.
+**Discharges:** COV-03, COV-04.
+
+### The band
+
+**102 rows, `status="ok"` on every one** — `ok=17` for each of seeds 42-47 individually, zero
+non-`ok`. This is the seed band D-19.3-17 requires before E6 may carry an accuracy claim at all,
+and E6 did not have one until now.
+
+### Accuracy vs camera count (COV-04) — the new result
+
+`reconstruction_mae_mm`, n=6 seeds per point:
+
+| N | mean (mm) | sd | min | max |
+|---|---|---|---|---|
+| 8 | 0.3773 | 0.0067 | 0.3670 | 0.3837 |
+| 12 | 0.3345 | 0.0057 | 0.3266 | 0.3428 |
+| 16 | 0.3371 | 0.0076 | 0.3272 | 0.3475 |
+
+**8 to 12 improves by 0.043 mm, roughly 6 sd — real. 12 to 16 differs by 0.0026 mm, about 0.4 sd
+— within noise.** Accuracy improves with camera count and then **plateaus at 12**; N=12 and N=16
+are indistinguishable at this geometry.
+
+R1.3 asked whether the method "stably adapts to N>10". Nothing measured accuracy-vs-N before —
+E4 measured timing-vs-N only. **This is a measurement, not an explanation:** the plateau is what
+was observed, and no mechanism for it is claimed.
+
+### COV-03's two named seed-fragile spots, adjudicated
+
+| spot | metric | band (n=6) | verdict |
+|---|---|---|---|
+| `scale/double_scale` | intrinsic-pass optimality | 2e-3 to 2e-2 (1 s.f.) | **Converged at every seed.** Varies ~7x across seeds but every value is small. Not fragile in the way that mattered. |
+| `layout/line` | `water_z_error_mm_mean` | 1.258 - 18.855 mm | **Fragile — see MF-12, which this entry does not attempt to summarise.** |
+
+Optimality is quoted to ONE significant figure throughout; it varies ~2x run to run and no finer
+statement is supportable.
+
+---
+
+## MF-12 — The line layout's 18.9 mm water-surface error is ~80% datum shift; the real standoff error is ~2.4 mm
+
+**Status:** OPEN — no prose warns against collinear arrays, and the metric that reported this
+cannot distinguish the two cases
+**Found:** 2026-08-07, phase 19.5 plan 11, analysing plan 10's band; **mechanism measured the same
+day** by re-solving the configuration and reading signed values
+**Source of truth:** `experiments/results/generalization_sweep_band.csv`, `layout` axis, at
+`2a2f0fa`, plus a zero-artifact re-solve of `layout/line` and `layout/grid` at seed 43
+**Where the prose is:** §3's layout discussion and any deployment guidance on camera placement.
+**Relates to:** MF-11 (same band); the knowledge-base entry "A mean-absolute error metric can hide
+whether two errors add or cancel".
+
+### What the band reported
+
+Ranked by spread **ratio**, `layout/line` is unremarkable — five index configurations exceed it
+(up to 47x) purely because their minima sit near zero, which inflates a ratio without meaning.
+**Ranked by magnitude it is the clear outlier:**
+
+| config | `water_z_error_mm_mean` | max |
+|---|---|---|
+| **layout/line** | **5.245 mm** | **18.855 mm** |
+| scale/double_scale | 1.716 | 2.518 |
+| layout/grid (baseline) | 1.025 | 1.687 |
+| layout/ring | 0.778 | 1.357 |
+
+Camera XY position error is also **12x** grid's (1.838 mm against 0.155 mm), and one seed of six
+reached 18.9 mm — a heavy tail, not a uniform degradation.
+
+### What it actually is
+
+`water_z_error_mm_mean` is a mean **absolute** error, so the committed artifacts cannot say whether
+the surface error and the camera-Z error **add** or **cancel**. Re-solving both layouts at seed 43
+and reading signed values settles it:
+
+| | LINE | GRID |
+|---|---|---|
+| water_z error (signed) | **-18.8547 mm** | -0.8326 mm |
+| camera Z error, raw (signed mean) | **-18.4955 mm** | -0.2184 mm |
+| camera Z error, **gauge-corrected** | 1.6814 | 0.0199 |
+| **`h_c` error (signed mean)** | **-0.3592 mm** | -0.6142 mm |
+| gauge correction removes | **79.5%** of the Z-error magnitude | **4.6%** |
+
+`Cz_raw` reproduces the committed `z_position_error_mm_mean` of -18.4955 exactly, so the re-solve
+is faithful to the production run.
+
+**The surface and the cameras move together, in the same direction, by nearly the same amount.**
+The physical camera-to-surface gap `h_c = water_z - C_z` — the quantity that actually enters the
+refraction geometry — is off by **0.36 mm in the signed mean**, against an 18.85 mm world-frame
+surface error. Roughly **80% of the apparent error is a global Z datum shift**: the rig and the
+water surface slid through the world frame together.
+
+The 79.5%-vs-4.6% contrast is the discriminator. A grid array barely admits such a shift; a
+collinear array admits it almost freely. **This is the camera-height / interface-distance
+degeneracy** Phase 16's HOOK-03 conditioning diagnostics were built to measure (success criterion 3
+names that parameter block, for the WP6 argument) — a collinear array has no baseline perpendicular
+to its own axis, so the geometric diversity that would pin the datum is largely absent.
+
+### The residual is real, and smaller by an order of magnitude
+
+Removing the datum does not clear the line layout. Per-camera `h_c` errors, excluding `cam0` (the
+reference, pinned at `C_z = 0` by construction, so its `h_c` error is *identically* the `water_z`
+error) and `cam1` (which the solve leaves poorly constrained):
+
+- **LINE: ~2.4 mm** mean absolute
+- **GRID: ~0.6 mm** mean absolute
+
+So the line layout is genuinely about **4x worse at recovering the physical interface standoff** —
+a real finding, and one worth stating in deployment guidance — but it is **not** an 18.9 mm failure
+to locate the water surface. The headline number is dominated by a gauge artifact that no accuracy
+metric should charge against the method.
+
+### Why it hides from every accuracy metric
+
+The worst seed's error costs **0.11 px** of reprojection RMS (0.815 vs 0.705) and **0.045 mm** of
+reconstruction MAE (0.382 vs 0.337). A coordinated datum shift is very nearly unobservable in the
+data — which is exactly why it is a datum shift rather than an error.
+
+**This is the project's weak-observability signature**: recovered geometry drifts while error
+metrics stay clean. It is a concrete reason a low reprojection error cannot certify rig geometry.
+The novel part here is that most of the drift turned out to be **gauge, not geometry** — the
+opposite of what the raw column suggested.
+
+### The metric defect this exposed
+
+Two problems, both fixable and neither yet fixed:
+
+1. **`water_z_error_mm_mean` is mean-absolute**, so it destroys the sign that distinguishes a
+   harmless datum shift from a real standoff failure. Add `water_z_error_mm_signed`.
+2. **E6 calls `compute_per_camera_errors(result, scenario)` without `gauge_correct_z`**, which
+   defaults to `False`. The library documents that flag as removing "a global datum offset the
+   optimizer applied to the entire rig (an artifact of choosing where Z=0 is, not a real geometric
+   error)". E6's Z errors are therefore reported uncorrected, and `layout/line`'s are ~80% artifact.
+
+**Proposed for the post-Zenodo re-run:** report `water_z_error_mm_signed` and a per-camera
+`interface_standoff_error_mm` **alongside** the existing column, not instead of it — if the rig and
+surface drift together, `h_c` looks perfect while the reconstruction is displaced, so replacing one
+with the other would trade a visible failure mode for an invisible one. Exclude the reference
+camera from any `h_c` mean, or report it separately: its `h_c` error equals the `water_z` error by
+construction and otherwise dominates the average.
+
+### Still worth doing
+
+The conditioning diagnostic would convert the mechanism from strongly-evidenced to directly
+measured: run Phase 16's HOOK-03 diagnostic on a line solve and a grid solve at the same seed and
+compare the camera-height / interface-distance correlation block. One calibration each, no new
+code. The gauge-correction contrast already predicts what it will show.
+
+---
+
+## MF-13 — Index sensitivity sits far below seed noise; E5 regains a bounded accuracy claim
+
+**Status:** OPEN — R2's headline is currently stated against one run's number
+**Found:** 2026-08-07, phase 19.5 plan 10, analysed plan 11
+**Source of truth:** `experiments/results/index_sensitivity_seed_band.csv` (66 rows, seeds 42-47,
+11 assumed indices per seed) + `experiments/results/e5_seed_band_provenance.json`, at `2a2f0fa`
+**Where the prose is:** R2's response and §3's refractive-index discussion.
+**Discharges:** COV-05. **Supersedes:** MF-08's "E5 — NONE" verdict, and the reason given for it.
+
+### The measurement
+
+Across the full swept range of +/-0.010 in assumed index, against seed noise at each point:
+
+| metric | effect of +/-0.01 | seed sd | verdict |
+|---|---|---|---|
+| reconstruction MAE | 0.0040 mm | 0.0205 mm | **noise is 5.1x larger** |
+| reconstruction RMSE | 0.0071 mm | 0.0396 mm | **noise is 5.6x larger** |
+| reprojection RMS | 0.0024 px | 0.0020 px | comparable, and **not monotone** in delta_n |
+| scale bias | 0.0245 pp | 0.0110 pp | ~2 sd |
+
+`scale_bias_over_floor` runs **0.035 - 0.058**: index-induced bias is 3-6% of the holdout noise
+floor, at every seed.
+
+Two further points the data supports. At the **correct** index the scale bias is 0.0483% —
+*larger* than the change a +/-0.01 error produces, so getting the index right does not remove the
+dominant bias and is not its cause. And for scale, fresh water 1.333 to seawater ~1.339 is
+delta_n ~0.006 while temperature contributes ~1e-4 per degC, so the swept range covers realistic
+misestimation generously.
+
+### The claim this licenses, and its limit
+
+E5 was demoted under D-19.3-17 because `e5_provenance.json` varies the **assumed index**, not the
+seed, and so could not bound seed noise. **That gap is now closed**, and the claim is restored in
+this bounded form and no wider:
+
+> Index-induced scale bias remains below the holdout noise floor across seeds 42-47 (n=6).
+
+**It must NOT become "the method is insensitive to refractive index."** That generalises past a
++/-0.010 sweep at one geometry with 30 frames, and says nothing about gross errors such as
+mistaking water for acrylic.
+
+This wording is also the evidence the roadmap cites for deferring Phase 20 (the temperature/
+salinity helper): a hand-entered 1.333 is adequate for accuracy at this geometry.
+
+---
+
+## MF-14 — A wall-clock noise floor at constant computational work
+
+**Status:** OPEN — any shipped timing table must report nfev beside wall-clock
+**Found:** 2026-08-07, phase 19.5 plan 10
+**Source of truth:** `experiments/results/benchmark_grid_repeat.csv` (6 rows, 3 cells x 2
+repeats) + `experiments/results_e4_repeat/repeat_stdout.log`, at `2a2f0fa`
+**Discharges:** COV-06. **Strengthens:** MF-03.
+
+| cell | nfev | repeat 1 | repeat 2 | ratio | `seconds_total_spread_pct` |
+|---|---|---|---|---|---|
+| 8x100 | 29 | 678.18 s | 360.35 s | 1.88x | 61.21 |
+| 12x100 | 20 | 577.89 s | 302.72 s | 1.91x | 62.50 |
+| 16x100 | 40 | 1120.98 s | 598.80 s | 1.87x | 60.73 |
+
+**`nfev` is identical within every cell** while wall-clock moves ~1.85x, first-run-slower in all
+three. Same code, same git sha, same machine, minutes apart, with the two repeats scheduled
+back-to-back specifically so neither met different memory pressure.
+
+This is an empirical **noise floor for wall-clock at constant computational work**, and it is the
+same order of magnitude as 19.4's unexplained ~2x observation. It does **not** explain 19.4 —
+different stages, n=1 there — but it establishes that a ~2x wall-clock difference sits inside this
+machine's demonstrated run-to-run range with the algorithm held fixed. It is the strongest
+support MF-03's nfev-beside-wall-clock requirement has.
+
+**The standing prohibition holds:** no runtime figure here is attributed to any code change, in
+either direction.
+
+*Recording gaps, reported not fixed:* repeat-2 rows carry an empty `cell_key` and `status`, and
+each cell's `benchmark.json` is overwritten by repeat 2, so repeat 1's per-stage detail survives
+only in the committed `repeat_stdout.log`.
+
+---
+
+## MF-15 — E2's band measures split variance on fixed data, and says so
+
+**Status:** OPEN — the scope qualifier must appear in prose, not only in the artifact
+**Found:** 2026-08-07, phase 19.5 plan 10
+**Source of truth:** `experiments/results_e2_band/seed_{42,43,44}_e2_out/real_rig_metrics.json`
+plus `e2_band_scope.json`, at `2a2f0fa`
+**Discharges:** COV-07.
+
+Three seeds, three **distinct** metric records. **Seed 42 reproduces the committed
+`experiments/results/real_rig_metrics.json` exactly** — identical key sets and not one differing
+value, which is stronger than the gate's `rtol=1e-6` check.
+
+**Scope, which must be stated wherever the band is quoted:** this is **split variance on fixed
+data, NOT measurement variance.** `config.seed` threads into `split_detections`; it does not
+resample the rig, the images, or the detections. A reader who took it for reproducibility spread
+would be overstating it.
+
+---
+
+## MF-16 — E1's band is now regenerable, and the "upper bounds" caveat is unnecessary
+
+**Status:** OPEN — L68 and L281 need the millimetre figure corrected
+**Found:** 2026-08-07, quick task 260807-dcv
+**Source of truth:** `experiments/results/exp1_band.csv` (160 rows, 12 columns, seeds 42-51) plus
+`experiments/results/e1_seed_band_provenance.json`, at git sha `cda9d0e`
+**Where the prose is:** the abstract's improvement ratio (L68) and §3's deepest-point sentence
+(L281).
+**Corrects:** MF-08's artifact citation for the 97-178x spread.
+
+### MF-08's citation was wrong
+
+MF-08 states the spread "regenerates from `experiments/results/exp1_band.csv`". It did not. That
+CSV carried `rmse_mm`, a **scale-corrected** residual; computing the ratio from it gives
+**1.1x-2.9x**, a different quantity by two orders of magnitude. The raw `z_rmse_mm` the ratio is
+built from lived only in the seedless `exp3_xy_vs_z_anisotropy.csv` (seed 42, no seed column) and
+in gitignored `seed_sweep_19_3/` output. **No committed artifact held a 10-seed band of the
+quantity the abstract's headline uses.**
+
+Root cause was a code gap: `_run_band`'s runner computed four dataframes and returned only
+`df_exp2`, discarding the one holding `z_rmse_mm`. Re-running the band would have reproduced the
+same gap indefinitely. Fixed in `cda9d0e`; the band re-run at `fea64a9` now carries the column.
+
+### The band, reproduced exactly
+
+| seed | 42 | 43 | 44 | 45 | 46 | 47 | 48 | 49 | 50 | 51 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ratio | 128.1 | **178.0** | **97.3** | 153.4 | 157.8 | 131.4 | 134.0 | 158.9 | 99.1 | 156.5 |
+
+**97.3x - 178.0x, mean 139.5, sd 25.1 (population), n=10** — every value matching what was
+measured on 2026-08-03. E1's determinism is now confirmed three times over.
+
+### The "upper bounds" caveat is NOT needed
+
+An earlier reading treated `gate1_guard_count`'s 14,949 guards on the non-refractive arm as
+evidence the baseline had not converged, which would have made the ratios upper bounds. **MF-08
+had already settled this the other way.** At `n_water = 1.0` the refractive model reduces to
+pinhole, so `water_z` cannot affect any projection while still gating the domain test — an exact
+null direction. Sweeping `water_z` over 1.5 m leaves the cost constant to 13 significant figures
+while the guard count climbs to 14,949, and pinning `water_z` at ground truth reproduces every
+non-refractive number to ~4 significant figures with guard count 0 and optimality 5e-01. The
+comparison is unaffected by the guard.
+
+### What the prose should say
+
+The paper reads "257 mm ... approximately 135x" (L281) and "~135x" (L68). Corrected-geometry seed
+42 is 248.3 mm / 128.1x — but the **ratio of the two arms' means at 2.5 m is 135.4x**, essentially
+the published figure. So:
+
+- **`~135x` stands**, as a ratio of means over n=10 rather than as one seed's value.
+- **`257 mm` is stale** and should become **~229 mm (n=10, range 199-252)**.
+- §3 has room to state the band, `97-178x`, which the abstract does not need to carry.
+
+Two caveats that **are** required. The deepest test point sits **~0.6 m outside the calibrated
+volume** (1.18-1.90 m), and the non-refractive curve is non-monotone — 49.5 mm at 1.1 m, a minimum
+of 9.5 mm at 1.3 m, 248 mm at 2.5 m — so the headline ratio is the most favourable point in the
+sweep by a wide margin. And the evaluation test set is **not reseeded** (`depth_seed = 42 +
+int(depth*100)` is hardcoded, verified by `n_points` being byte-identical across all ten seeds),
+so the band measures calibration-scenario variance against a fixed test set, not full replication.
+
+### Per-depth error bars are now available
+
+10 seeds x 8 depths x 2 models, for both figures. The regenerated figures should carry them: they
+show the non-monotone dip at 1.4 m, and that the refractive arm is not merely better but **far
+more stable** (sd 0.17-0.31 mm against 6-17 mm) — arguably a stronger argument than the ratio, and
+currently invisible. The caption must state that they are calibration-scenario variance against a
+fixed test set.
+
+---
+
+## MF-17 — E7's `fixed` arms are vacuous, not null
+
+**Status:** OPEN — a reader cannot currently tell the two apart
+**Found:** 2026-08-06, phase 19.5 plan 03; confirmed plan 11
+**Source of truth:** `experiments/results/e7_focal_standoff.csv`
+**Discharges:** COV-08 (in part).
+
+The `refined` arms answer the L149 focal/standoff degeneracy question WP6 planned and MF-05 never
+reported. **The `fixed`-arm rows are vacuous by construction** — intrinsics are never refined, so
+focal-drift variance is identically zero — yet the CSV labels them `no_signature`, the same label
+a genuine null carries.
+
+**Those two rows must not become a manuscript claim.** A statistic that is undefined by
+construction is not evidence of absence.
 
 ---

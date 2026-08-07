@@ -146,6 +146,87 @@ every one of the five stalls with zero work lost — including plan 05, whose co
 existed only as uncommitted files that would have died with its worktree.
 **Added**: 2026-08-04
 
+### A targeted test file can also exceed the 600 s ceiling — naming files is not a safe instruction
+
+**Context**: The existing rule (§ "A subagent executor that backgrounds a long test run will stall")
+says never give an executor the full suite, and instead give it a *targeted* command covering only
+the files its plan touches. In quick task 260807-dcv the executor was told exactly that — "run the
+files you touched" — and stalled anyway, with the same signature: it backgrounded the run and ended
+its turn.
+
+**Insight**: The instruction was the defect, not the agent. `tests/unit/test_e1_band_mode.py` runs
+real band solves; the same command later auto-backgrounded on the *orchestrator* and took **28
+minutes**. "The files your plan touches" is not a proxy for "fast": an experiment repo has unit
+test files that each drive a full calibration. Name the *specific fast tests*, or state plainly
+that the orchestrator runs the tests and the executor runs none. Before dispatching, it is worth
+checking whether any named file is marked `slow` or drives a solve.
+
+The executor's work was intact — all six files were correctly edited — so the recovery is to verify
+against git and take over the remaining verify/commit steps, not to re-dispatch.
+
+**References**: `.planning/quick/260807-dcv-e1-e7-band-provenance-emit-z-rmse-column/`, CLAUDE.md
+§ "Never let a subagent background a long run and return".
+**Added**: 2026-08-07
+
+### A gate FAIL that everyone has learned to expect stops being read
+
+**Context**: `gate4_band` FAILed for E1 and E7 from phase 19.4 onward. It was documented as
+"recording-only, tracked", carried through 19.4's closure and all of 19.5, and re-stated as benign
+in several handoffs. In phase 19.5 plan 11 it turned out that E1's instance was flagging something
+real: the manuscript's headline `~135x` ratio had **no committed artifact containing the quantity
+it is computed from**. The band was regenerable only from a gitignored sweep directory, and MF-08
+positively asserted the wrong file as its source.
+
+**Insight**: The two FAILs looked identical and were not. E7's really was benign — its band CSV
+carries its claim quantity and reproduces MF-05 unaided. E1's was a live provenance hole on the
+paper's most prominent number. A shared label ("recording-only") had merged them, and the merge
+survived two phases because nobody re-derived *why* each one failed.
+
+This is the same shape as the phase's other three integration defects — the unregistered CSVs, the
+CI-lane bloat, the E5/E6 fixture asymmetry — each locally correct, each invisible to its own
+executor, each surfacing only at an integration gate. What is missing in all four is an owner for
+the cross-plan question. The additional lesson here is narrower and sharper: **a tolerated failure
+needs a re-derivation, not an annotation.** If a gate is expected to fail, the expectation should
+be re-checked at each phase boundary against what the gate actually asserts, or it should be
+converted to an explicit N/A that states the premise it is waiving (as `ARCHIVES_PRESENT` was in
+19.5).
+
+**References**: `.planning/MANUSCRIPT-FINDINGS.md` MF-16; `experiments/check_rerun_gates.py`
+`check_band_csv`; phase 19.5 plan 10 SUMMARY.
+**Added**: 2026-08-07
+
+### A mean-absolute error metric can hide whether two errors add or cancel
+
+**Context**: E6's `layout/line` configuration reported an 18.9 mm `water_z_error_mm_mean` at one
+seed of six — 7.5x the worst value of any other configuration. Its `z_position_error_mm_mean` was
+-18.5 mm, and the two tracked each other across seeds at r = +0.997. It was not possible to tell
+from the committed artifacts whether the water surface and the cameras had moved *together* (a
+datum shift, physically harmless) or *apart* (a real standoff failure), because
+`water_z_error_mm_mean` is a mean of absolute values and destroys the sign.
+
+**Insight**: Re-solving the configuration and reading signed values showed both errors were
+negative and nearly equal: the physical camera-to-surface gap `h_c = water_z - C_z` was off by only
+0.36 mm in the mean, against an 18.85 mm world-frame surface error. Roughly 80% of the apparent
+camera-Z error is a global datum offset. The discriminator is a same-seed comparison against the
+grid baseline: gauge correction removes **79.5%** of the line layout's camera-Z error magnitude and
+only **4.6%** of the grid's — a collinear array admits the datum shift almost freely, a grid array
+barely at all. The residual after removing it is real but an order of magnitude smaller (~2.4 mm
+against grid's ~0.6 mm). The library already has
+`compute_per_camera_errors(..., gauge_correct_z=True)` for exactly this, documented as removing
+"an artifact of choosing where Z=0 is, not a real geometric error". **E6 does not pass it**, so its
+Z errors are reported uncorrected.
+
+Two rules follow. Report a **signed** error alongside any mean-absolute one when the quantity can
+trade off against another parameter. And for a gauge-dependent coordinate, also report the
+gauge-invariant physical quantity — here `h_c`, which `interface_distance` is explicitly *not*
+(see § "`interface_distance` is a Z-coordinate, not a physical gap"). Report both: `h_c` alone
+would hide a rig that slid bodily through the world frame.
+
+**References**: `.planning/MANUSCRIPT-FINDINGS.md` MF-12;
+`src/aquacal/datasets/pipelines.py:compute_per_camera_errors`;
+`experiments/e6_generalization_sweep.py:compute_water_z_error_mm_mean`.
+**Added**: 2026-08-07
+
 ### Neither CLAUDE.md nor .claude/ is tracked in this repo
 **Context**: Attempted to record the pitfall above in `.claude/rules/`, believing it was tracked.
 **Insight**: `.gitignore:214` ignores `.claude/` and `:216` ignores `CLAUDE.md`. `git ls-files
