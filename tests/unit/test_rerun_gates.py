@@ -737,16 +737,16 @@ class TestLegalityProbe:
             assert "seed=42" in r.gate
             assert "n_cameras=12" in r.gate
 
-    def test_full_queue_seed_list_returns_30_results_all_pass_under_60s(self):
+    def test_full_queue_seed_list_returns_36_results_all_pass_under_60s(self):
         import time
 
-        seeds = [42, 43, 44, 45, 46]
+        seeds = [42, 43, 44, 45, 46, 47]
         camera_counts = [8, 12, 16]
         start = time.monotonic()
         results = legality_probe(seeds, camera_counts)
         elapsed = time.monotonic() - start
 
-        assert len(results) == 30
+        assert len(results) == 36
         assert elapsed < 60, f"legality_probe took {elapsed:.1f}s, expected < 60s"
         fails = [r for r in results if r.verdict != "PASS"]
         assert not fails, (
@@ -834,15 +834,15 @@ class TestCheckE6SeedBand:
         assert len(results) == 1
         assert results[0].verdict == "N/A"
 
-    def test_pass_path_five_seeds_all_ok(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+    def test_pass_path_six_seeds_all_ok(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46, 47]
         _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
         _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", seeds)
         results = check_e6_seed_band(tmp_path)
         assert results, "no results returned"
         assert all(r.verdict != "FAIL" for r in results), results
 
-    def test_fails_on_four_distinct_seeds_instead_of_five(self, tmp_path):
+    def test_fails_on_four_distinct_seeds_instead_of_six(self, tmp_path):
         seeds = [42, 43, 44, 45]
         _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
         _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", seeds)
@@ -852,7 +852,7 @@ class TestCheckE6SeedBand:
         assert "4" in seed_count_result.detail
 
     def test_fails_on_non_ok_status_naming_the_seed(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+        seeds = [42, 43, 44, 45, 46, 47]
         _write_e6_band_csv(
             tmp_path / "generalization_sweep_band.csv", seeds, non_ok_seed=44
         )
@@ -863,7 +863,7 @@ class TestCheckE6SeedBand:
         assert "44" in status_result.detail
 
     def test_never_raises_on_missing_sidecar(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+        seeds = [42, 43, 44, 45, 46, 47]
         _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", seeds)
         results = check_e6_seed_band(tmp_path)  # no sidecar written
         assert any(r.verdict == "FAIL" for r in results)
@@ -880,8 +880,8 @@ class TestCheckE5SeedBand:
         assert len(results) == 1
         assert results[0].verdict == "N/A"
 
-    def test_pass_path_five_seeds_with_full_sidecar(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+    def test_pass_path_six_seeds_with_full_sidecar(self, tmp_path):
+        seeds = [42, 43, 44, 45, 46, 47]
         rows = {"seed": [s for s in seeds for _ in range(2)]}
         rows["n_assumed"] = list(range(len(rows["seed"])))
         pd.DataFrame(rows).to_csv(
@@ -899,7 +899,7 @@ class TestCheckE5SeedBand:
         assert all(r.verdict != "FAIL" for r in results), results
 
     def test_fails_when_sidecar_has_seeds_but_no_n_assumed_band(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+        seeds = [42, 43, 44, 45, 46, 47]
         rows = {"seed": [s for s in seeds for _ in range(2)]}
         rows["n_assumed"] = list(range(len(rows["seed"])))
         pd.DataFrame(rows).to_csv(
@@ -917,7 +917,7 @@ class TestCheckE5SeedBand:
         assert n_assumed_result.verdict == "FAIL"
 
     def test_never_raises_when_sidecar_missing(self, tmp_path):
-        seeds = [42, 43, 44, 45, 46]
+        seeds = [42, 43, 44, 45, 46, 47]
         rows = {"seed": [s for s in seeds for _ in range(2)]}
         pd.DataFrame(rows).to_csv(
             tmp_path / "index_sensitivity_seed_band.csv", index=False
