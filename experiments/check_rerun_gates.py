@@ -800,7 +800,14 @@ def check_band_csv(
 
 _E6_BAND_CSV = "generalization_sweep_band.csv"
 _E6_BAND_SIDECAR = "e6_seed_band_provenance.json"
-_E6_EXPECTED_SEED_COUNT = 5
+# SIX, not five. A five-seed unanimous sign test gives p = 0.031 one-sided but
+# 0.0625 TWO-sided, so its significance would depend on which convention a
+# reader applies -- the exact ambiguity that made plan 19.5-03 name its field
+# `p_one_sided`. Six gives 0.031 under either convention. Raised to the user
+# before the production launch on 2026-08-06 and approved with the runtime cost
+# stated (the ceiling moved 26 h -> 30 h to pay for it). This constant stayed at
+# 5 through that change and FAILed the run it was meant to certify.
+_E6_EXPECTED_SEED_COUNT = 6
 _E6_EXPECTED_CAMERA_VALUES = (8, 12, 16)
 
 
@@ -1041,7 +1048,9 @@ def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
 
 _E5_BAND_CSV = "index_sensitivity_seed_band.csv"
 _E5_BAND_SIDECAR = "e5_seed_band_provenance.json"
-_E5_EXPECTED_SEED_COUNT = 5
+# Six for the same reason as _E6_EXPECTED_SEED_COUNT above -- E5's band runs the
+# same seed list (42-47).
+_E5_EXPECTED_SEED_COUNT = 6
 
 
 def check_e5_seed_band(out_dir: Path) -> list[GateResult]:
