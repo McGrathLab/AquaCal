@@ -433,6 +433,7 @@ IFACE-01..05. Verification PASSED (`17-VERIFICATION.md`): full suite **799 passe
 |---|-------------|------|--------|-----------|
 | 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 8b6eb0d | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
 | 3 | use a structural column grouping for the FD Jacobian | 2026-07-23 | 3c8685c | [3-use-a-structural-column-grouping-for-the](./quick/3-use-a-structural-column-grouping-for-the/) |
+| 260807-dcv | E1 band emits z_rmse_mm (the manuscript's headline ratio) + E1/E7 band-owned sidecars; E1's ten seeds re-run and all reproduce 97.3x-178.0x exactly | 2026-08-07 | cda9d0e, fea64a9 | [260807-dcv-e1-e7-band-provenance-emit-z-rmse-column](./quick/260807-dcv-e1-e7-band-provenance-emit-z-rmse-column/) |
 
 ### Phase 16 HOOK-03 conditioning route (settled by measurement, 2026-07-23)
 
