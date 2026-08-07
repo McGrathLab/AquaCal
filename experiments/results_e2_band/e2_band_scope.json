@@ -1,0 +1,11 @@
+{
+  "n": 3,
+  "scope": "This band varies the calibration/holdout split seed (config.seed, threaded to split_detections) on fixed real data. It bounds split variance, NOT measurement variance -- the underlying frames, detections, and camera videos are identical across every seed in this band (D-19.5-05).",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "source_config": "C:\\Users\\tucke\\Desktop\\Aqua\\AquaCal\\release_calibration\\config.yaml",
+  "source_config_sha256": "6aa21c4101c1ba5ed50ed5e980cecf7a1adfb3d1b7284d05f7ee01aed1f9fbe0"
+}

@@ -249,3 +249,33 @@ experiments/prelaunch_gate_19_5.log
 # cites rerun_19_4.log for exactly that). Un-ignore it against *.log above so
 # plan 10 commits it without needing "git add -f".
 !experiments/rerun_19_5.log
+
+# E2's band working tree (experiments/results_e2_band, plan 19.5-10, COV-07).
+# run_stage_e2_band does `rm -rf` on this directory before every run, so it is
+# a working tree, not an artifact store -- committing it whole would rewrite
+# 133 files into history on every future band run. It is also ~26 MB of which
+# roughly half is byte-identical duplication: seed_N/calibration.json and
+# seed_N_e2_out/calibration.json matched by md5 on all three seeds.
+#
+# What IS citable is 21 KB of it: the three per-seed metric records that
+# gate_e2_band reads and that proved seed 42 reproduces the committed
+# experiments/results/real_rig_metrics.json within rtol=1e-6, the scope
+# declaration, and the three seed configs. Those are un-ignored below; the
+# derived bulk (full calibration dumps, reprojection residuals, spatial
+# measurements, 87 diagnostic PNGs) is not.
+experiments/results_e2_band/*
+!experiments/results_e2_band/config_seed*.yaml
+!experiments/results_e2_band/e2_band_scope.json
+!experiments/results_e2_band/seed_*_e2_out/
+experiments/results_e2_band/seed_*_e2_out/*
+!experiments/results_e2_band/seed_*_e2_out/real_rig_metrics.json
+
+# E4's repeat stdout (plan 19.5-10, COV-06). Un-ignored against *.log for the
+# same reason as rerun_19_5.log above: it is the ONLY surviving record of
+# repeat 1's per-stage numbers. Each cell's benchmark.json is overwritten by
+# repeat 2 ("Overwriting existing internals artifact ... may be stale from a
+# previous config"), so the on-disk records hold repeat 2 only. The ~1.85x
+# first-run-slower result rests on repeat 1, and without this log its nfev,
+# cost and optimality survive nowhere outside the summary row in
+# benchmark_grid_repeat.csv.
+!experiments/results_e4_repeat/repeat_stdout.log
