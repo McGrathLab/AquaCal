@@ -1,0 +1,2219 @@
+[2026-08-06T16:24:40Z] Phase 19.5 production queue starting. HEAD at queue start: 2a2f0faccef4eca243d027023e44e047041a4a1c
+[2026-08-06T16:24:40Z] Risk-first order (D-19.5-02): prelaunch_probe e6_band e4_repeat e2_band e5_band
+[2026-08-06T16:24:40Z] Resuming from stage index 1 (stages already marked complete are skipped regardless).
+[2026-08-06T16:24:40Z] Runtime budget: ~15 h nominal, ~24 h at 19.4's observed 1.6x overrun, 26 h proposed ceiling.
+[2026-08-06T16:24:40Z] >>> STAGE 1/5: prelaunch_probe starting
+[2026-08-06T16:24:40Z] prelaunch_probe: legality_probe over seeds 42,43,44,45,46,47 x n_cameras 8,12,16
+[PASS] legality_probe:seed=42:n_cameras=8:calibration -- seed=42 n_cameras=8 calibration draw (draw_seed=42): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=42:n_cameras=8:holdout -- seed=42 n_cameras=8 holdout draw (draw_seed=1000042): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=42:n_cameras=12:calibration -- seed=42 n_cameras=12 calibration draw (draw_seed=42): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=42:n_cameras=12:holdout -- seed=42 n_cameras=12 holdout draw (draw_seed=1000042): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=42:n_cameras=16:calibration -- seed=42 n_cameras=16 calibration draw (draw_seed=42): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=42:n_cameras=16:holdout -- seed=42 n_cameras=16 holdout draw (draw_seed=1000042): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=8:calibration -- seed=43 n_cameras=8 calibration draw (draw_seed=43): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=8:holdout -- seed=43 n_cameras=8 holdout draw (draw_seed=1000043): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=12:calibration -- seed=43 n_cameras=12 calibration draw (draw_seed=43): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=12:holdout -- seed=43 n_cameras=12 holdout draw (draw_seed=1000043): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=16:calibration -- seed=43 n_cameras=16 calibration draw (draw_seed=43): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=43:n_cameras=16:holdout -- seed=43 n_cameras=16 holdout draw (draw_seed=1000043): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=8:calibration -- seed=44 n_cameras=8 calibration draw (draw_seed=44): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=8:holdout -- seed=44 n_cameras=8 holdout draw (draw_seed=1000044): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=12:calibration -- seed=44 n_cameras=12 calibration draw (draw_seed=44): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=12:holdout -- seed=44 n_cameras=12 holdout draw (draw_seed=1000044): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=16:calibration -- seed=44 n_cameras=16 calibration draw (draw_seed=44): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=44:n_cameras=16:holdout -- seed=44 n_cameras=16 holdout draw (draw_seed=1000044): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=8:calibration -- seed=45 n_cameras=8 calibration draw (draw_seed=45): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=8:holdout -- seed=45 n_cameras=8 holdout draw (draw_seed=1000045): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=12:calibration -- seed=45 n_cameras=12 calibration draw (draw_seed=45): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=12:holdout -- seed=45 n_cameras=12 holdout draw (draw_seed=1000045): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=16:calibration -- seed=45 n_cameras=16 calibration draw (draw_seed=45): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=45:n_cameras=16:holdout -- seed=45 n_cameras=16 holdout draw (draw_seed=1000045): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=8:calibration -- seed=46 n_cameras=8 calibration draw (draw_seed=46): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=8:holdout -- seed=46 n_cameras=8 holdout draw (draw_seed=1000046): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=12:calibration -- seed=46 n_cameras=12 calibration draw (draw_seed=46): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=12:holdout -- seed=46 n_cameras=12 holdout draw (draw_seed=1000046): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=16:calibration -- seed=46 n_cameras=16 calibration draw (draw_seed=46): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=46:n_cameras=16:holdout -- seed=46 n_cameras=16 holdout draw (draw_seed=1000046): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=8:calibration -- seed=47 n_cameras=8 calibration draw (draw_seed=47): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=8:holdout -- seed=47 n_cameras=8 holdout draw (draw_seed=1000047): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=12:calibration -- seed=47 n_cameras=12 calibration draw (draw_seed=47): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=12:holdout -- seed=47 n_cameras=12 holdout draw (draw_seed=1000047): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=16:calibration -- seed=47 n_cameras=16 calibration draw (draw_seed=47): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+[PASS] legality_probe:seed=47:n_cameras=16:holdout -- seed=47 n_cameras=16 holdout draw (draw_seed=1000047): derived floor 1.176216 <= frozen GRID_DEPTH_RANGE[0] 1.176216 -- legal
+
+TOTAL: 36 checked, 0 FAIL
+[2026-08-06T16:24:41Z] <<< STAGE 1/5: prelaunch_probe finished exit=0
+[2026-08-06T16:24:41Z] >>> STAGE 2/5: e6_band starting
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7226e+04, final cost 9.2362e+03, first-order optimality 1.14e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 4.45e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 38, initial cost 2.5847e+05, final cost 9.1355e+03, first-order optimality 4.40e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1355e+03, final cost 9.1314e+03, first-order optimality 5.29e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.706128052685143
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 1.5048e+05, final cost 9.0531e+03, first-order optimality 5.77e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0531e+03, final cost 9.0473e+03, first-order optimality 4.02e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7054774527733221
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 9.0027e+04, final cost 8.9605e+03, first-order optimality 3.14e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9605e+03, final cost 8.9535e+03, first-order optimality 3.42e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7057738766140876
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 9.1009e+04, final cost 8.8636e+03, first-order optimality 2.82e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8636e+03, final cost 8.8579e+03, first-order optimality 4.19e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7055812548388236
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 7.5170e+04, final cost 8.7631e+03, first-order optimality 6.42e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7631e+03, final cost 8.7567e+03, first-order optimality 3.43e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7057542723648736
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 6.4117e+04, final cost 8.7001e+03, first-order optimality 3.13e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7001e+03, final cost 8.6937e+03, first-order optimality 3.84e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7052880612681389
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 6.4978e+04, final cost 8.5927e+03, first-order optimality 1.09e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5927e+03, final cost 8.5873e+03, first-order optimality 5.19e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.705587472977639
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.2215e+04, final cost 5.2008e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.2008e+03, final cost 5.1953e+03, first-order optimality 4.40e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7047698176513518
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 4.9099e+03, final cost 1.0414e+03, first-order optimality 1.19e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.0414e+03, final cost 1.0369e+03, first-order optimality 1.54e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7566242746764179
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 4.6303e+04, final cost 1.8543e+04, first-order optimality 4.22e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8543e+04, final cost 1.8536e+04, first-order optimality 5.03e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7063377702510393
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 26, initial cost 3.2665e+04, final cost 4.2007e+03, first-order optimality 2.02e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2007e+03, final cost 4.1934e+03, first-order optimality 1.13e-02.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7045914871783993
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 1.8604e+05, final cost 8.5497e+03, first-order optimality 2.65e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5497e+03, final cost 8.5450e+03, first-order optimality 6.44e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7053203214058659
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7064620430107456
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 40, initial cost 1.6626e+05, final cost 9.8920e+03, first-order optimality 2.70e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.8920e+03, final cost 9.8827e+03, first-order optimality 8.03e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.7069562396862925
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.8799e+04, final cost 9.3023e+03, first-order optimality 4.34e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.3023e+03, final cost 9.2971e+03, first-order optimality 4.13e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 5.2319e+04, final cost 9.2177e+03, first-order optimality 2.60e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2177e+03, final cost 9.2079e+03, first-order optimality 6.31e-02.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7056514966156007
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.2574e+04, final cost 9.1238e+03, first-order optimality 6.68e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1238e+03, final cost 9.1181e+03, first-order optimality 5.79e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7053778943168266
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 2.3045e+04, final cost 9.0274e+03, first-order optimality 6.06e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0274e+03, final cost 9.0229e+03, first-order optimality 7.08e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7045415617344254
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 3.6394e+04, final cost 8.9453e+03, first-order optimality 1.33e-01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9453e+03, final cost 8.9370e+03, first-order optimality 5.20e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7046744053369045
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.4399e+04, final cost 8.8779e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8779e+03, final cost 8.8744e+03, first-order optimality 3.70e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7049953521209178
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 26, initial cost 7.1571e+04, final cost 8.7979e+03, first-order optimality 3.53e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7979e+03, final cost 8.7901e+03, first-order optimality 5.15e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7045049844031243
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 5.9995e+04, final cost 8.7053e+03, first-order optimality 4.87e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7053e+03, final cost 8.7007e+03, first-order optimality 5.11e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.703645822890678
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 2.6096e+04, final cost 5.1943e+03, first-order optimality 1.74e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.1943e+03, final cost 5.1897e+03, first-order optimality 3.11e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7011962233964234
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 24, initial cost 1.1454e+04, final cost 1.3484e+03, first-order optimality 1.67e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 7, initial cost 1.3484e+03, final cost 1.3421e+03, first-order optimality 1.01e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.8150828058017515
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 6, initial cost 2.9355e+04, final cost 1.8564e+04, first-order optimality 1.85e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8564e+04, final cost 1.8558e+04, first-order optimality 8.47e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7070340311648454
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 50, initial cost 1.3892e+05, final cost 4.0828e+03, first-order optimality 2.36e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.0828e+03, final cost 4.0774e+03, first-order optimality 3.04e-03.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7007740113354737
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 2.3253e+04, final cost 8.4763e+03, first-order optimality 5.79e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.4763e+03, final cost 8.4727e+03, first-order optimality 3.46e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7032343615056951
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7048908051737319
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 2.4982e+04, final cost 9.8462e+03, first-order optimality 7.74e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.8462e+03, final cost 9.8403e+03, first-order optimality 4.82e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.7057900814586417
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 4.6872e+04, final cost 9.5189e+03, first-order optimality 7.47e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.5189e+03, final cost 9.5134e+03, first-order optimality 5.19e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7068952685066677
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 5.4480e+04, final cost 9.4246e+03, first-order optimality 3.46e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.4246e+03, final cost 9.4197e+03, first-order optimality 6.87e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7072324388351332
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 6.5864e+04, final cost 9.3451e+03, first-order optimality 5.61e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.3451e+03, final cost 9.3397e+03, first-order optimality 5.24e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7068845636457183
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 66, initial cost 1.0023e+06, final cost 9.2592e+03, first-order optimality 6.10e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2592e+03, final cost 9.2534e+03, first-order optimality 3.56e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7066782183733569
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 67, initial cost 9.1861e+05, final cost 9.1529e+03, first-order optimality 3.91e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1529e+03, final cost 9.1467e+03, first-order optimality 1.18e-02.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7064574120311405
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 65, initial cost 9.2891e+05, final cost 9.0667e+03, first-order optimality 5.22e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0667e+03, final cost 9.0621e+03, first-order optimality 3.27e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7066847051739505
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 54, initial cost 8.2495e+05, final cost 8.9859e+03, first-order optimality 6.49e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9859e+03, final cost 8.9781e+03, first-order optimality 5.64e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7065124843783244
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 7.9012e+04, final cost 8.8896e+03, first-order optimality 6.04e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8896e+03, final cost 8.8846e+03, first-order optimality 6.90e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7063117374793052
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7068952685066677
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 8.0953e+04, final cost 5.4022e+03, first-order optimality 1.87e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.4022e+03, final cost 5.3969e+03, first-order optimality 1.45e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7074364815322649
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 4.6909e+03, final cost 1.3098e+03, first-order optimality 2.52e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.3098e+03, final cost 1.3024e+03, first-order optimality 9.73e-03.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7442870954931358
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 7, initial cost 3.3566e+04, final cost 1.8819e+04, first-order optimality 1.09e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8819e+04, final cost 1.8812e+04, first-order optimality 2.55e-02.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7066907536413359
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7068952685066677
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 2.5292e+04, final cost 4.3922e+03, first-order optimality 1.71e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.3922e+03, final cost 4.3860e+03, first-order optimality 6.01e-03.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7069996427778483
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.8159e+04, final cost 8.6330e+03, first-order optimality 3.91e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.6330e+03, final cost 8.6293e+03, first-order optimality 5.45e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7064581650932472
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7068952685066677
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 2.5590e+04, final cost 1.0097e+04, first-order optimality 5.43e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0097e+04, final cost 1.0091e+04, first-order optimality 3.02e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.7078912247340783
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 4.1527e+04, final cost 1.0121e+04, first-order optimality 2.07e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0121e+04, final cost 1.0114e+04, first-order optimality 4.82e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7061242989929626
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 3.3635e+04, final cost 1.0023e+04, first-order optimality 4.10e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0023e+04, final cost 1.0018e+04, first-order optimality 8.10e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7062447076013154
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 4.2669e+04, final cost 9.9301e+03, first-order optimality 7.30e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.9301e+03, final cost 9.9249e+03, first-order optimality 2.71e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7060647552036071
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 6.5324e+04, final cost 9.8100e+03, first-order optimality 5.98e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.8100e+03, final cost 9.8055e+03, first-order optimality 1.80e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7064038370766559
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 9.4623e+04, final cost 9.7057e+03, first-order optimality 4.03e-03.
+Stage 3's second pass: Intrinsic refinement...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 4, initial cost 9.7057e+03, final cost 9.7006e+03, first-order optimality 3.68e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7059591021219292
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 1.0669e+05, final cost 9.6337e+03, first-order optimality 8.61e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.6337e+03, final cost 9.6280e+03, first-order optimality 3.17e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7060659584729114
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 22, initial cost 1.3768e+05, final cost 9.5451e+03, first-order optimality 5.87e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.5451e+03, final cost 9.5405e+03, first-order optimality 2.83e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7064529772962648
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 6.7454e+04, final cost 9.4328e+03, first-order optimality 4.06e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.4328e+03, final cost 9.4269e+03, first-order optimality 1.34e-02.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7067572346749903
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7061242989929626
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 24, initial cost 5.5502e+04, final cost 5.4029e+03, first-order optimality 3.18e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.4029e+03, final cost 5.3978e+03, first-order optimality 3.14e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7062407220266285
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 7.6661e+03, final cost 1.6637e+03, first-order optimality 2.37e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.6637e+03, final cost 1.6578e+03, first-order optimality 2.45e-03.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7076326699025159
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 4.3778e+04, final cost 1.9196e+04, first-order optimality 8.72e-03.
+Stage 3's second pass: Intrinsic refinement...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 4, initial cost 1.9196e+04, final cost 1.9191e+04, first-order optimality 8.54e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.706620694576663
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7061242989929626
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 27, initial cost 3.4297e+04, final cost 4.5672e+03, first-order optimality 6.01e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.5672e+03, final cost 4.5609e+03, first-order optimality 2.36e-03.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.705087064153615
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.9198e+04, final cost 8.9902e+03, first-order optimality 2.87e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9902e+03, final cost 8.9868e+03, first-order optimality 2.47e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7064702994101784
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7061242989929626
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 8.1319e+04, final cost 1.0627e+04, first-order optimality 2.78e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0627e+04, final cost 1.0620e+04, first-order optimality 2.42e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.7069628724036495
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 2.3557e+04, final cost 9.6696e+03, first-order optimality 2.47e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.6696e+03, final cost 9.6625e+03, first-order optimality 3.98e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7064991552217953
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 3.9704e+04, final cost 9.5775e+03, first-order optimality 6.42e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.5775e+03, final cost 9.5702e+03, first-order optimality 4.44e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7059632063718768
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.7181e+04, final cost 9.4783e+03, first-order optimality 5.67e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.4783e+03, final cost 9.4725e+03, first-order optimality 3.70e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7062180593285332
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.9785e+04, final cost 9.3858e+03, first-order optimality 5.21e-03.
+Stage 3's second pass: Intrinsic refinement...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 4, initial cost 9.3858e+03, final cost 9.3786e+03, first-order optimality 2.11e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.706207812662082
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.6647e+04, final cost 9.2995e+03, first-order optimality 4.89e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2995e+03, final cost 9.2916e+03, first-order optimality 5.67e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7058293493054458
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 5.2403e+04, final cost 9.2176e+03, first-order optimality 2.80e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2176e+03, final cost 9.2125e+03, first-order optimality 2.29e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7059955065202698
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 11, initial cost 3.8456e+04, final cost 9.1345e+03, first-order optimality 4.40e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1345e+03, final cost 9.1271e+03, first-order optimality 3.01e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7056076420164277
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.5486e+04, final cost 9.0165e+03, first-order optimality 5.30e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0165e+03, final cost 9.0112e+03, first-order optimality 3.39e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7050421491909743
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7064991552217953
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 46, initial cost 2.1323e+05, final cost 5.2742e+03, first-order optimality 2.72e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.2742e+03, final cost 5.2684e+03, first-order optimality 4.78e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7024432245419694
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 6.4528e+03, final cost 1.5251e+03, first-order optimality 1.73e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.5251e+03, final cost 1.5192e+03, first-order optimality 1.50e-03.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.708371402417398
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 4.1987e+04, final cost 1.8929e+04, first-order optimality 1.33e-01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8929e+04, final cost 1.8923e+04, first-order optimality 1.15e-02.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7057581786792764
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7064991552217953
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 6.9207e+04, final cost 4.2644e+03, first-order optimality 1.83e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2644e+03, final cost 4.2580e+03, first-order optimality 4.80e-03.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7027373905867524
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 5.7893e+04, final cost 8.6419e+03, first-order optimality 2.66e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.6419e+03, final cost 8.6380e+03, first-order optimality 1.59e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7050558253774383
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7064991552217953
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 25, initial cost 1.1481e+05, final cost 1.0222e+04, first-order optimality 3.55e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0222e+04, final cost 1.0217e+04, first-order optimality 5.85e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.706600322248388
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 2.2155e+04, final cost 9.6842e+03, first-order optimality 4.20e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.6842e+03, final cost 9.6786e+03, first-order optimality 3.08e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7062094994085115
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 2.6613e+04, final cost 9.5948e+03, first-order optimality 6.65e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.5948e+03, final cost 9.5893e+03, first-order optimality 9.50e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7060025509783309
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 4.3885e+04, final cost 9.4972e+03, first-order optimality 9.40e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.4972e+03, final cost 9.4879e+03, first-order optimality 1.19e-02.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7062746415465686
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 20, initial cost 7.7525e+04, final cost 9.4030e+03, first-order optimality 2.79e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.4030e+03, final cost 9.3972e+03, first-order optimality 4.11e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7055600314463367
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 5.8307e+04, final cost 9.3039e+03, first-order optimality 4.52e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.3039e+03, final cost 9.2957e+03, first-order optimality 4.08e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7058940989500675
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 5.2008e+04, final cost 9.2260e+03, first-order optimality 5.45e-03.
+Stage 3's second pass: Intrinsic refinement...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 4, initial cost 9.2260e+03, final cost 9.2209e+03, first-order optimality 3.40e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7056833032982603
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 5.1889e+04, final cost 9.1361e+03, first-order optimality 3.60e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1361e+03, final cost 9.1296e+03, first-order optimality 8.07e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.7053048842919393
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 3.1954e+04, final cost 9.0292e+03, first-order optimality 3.02e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0292e+03, final cost 9.0246e+03, first-order optimality 3.65e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7063359784718103
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.7062094994085115
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 3.3533e+04, final cost 5.0449e+03, first-order optimality 6.36e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.0449e+03, final cost 5.0379e+03, first-order optimality 2.08e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7029258098540793
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 1.0468e+04, final cost 1.9730e+03, first-order optimality 5.50e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.9730e+03, final cost 1.9672e+03, first-order optimality 1.95e-01.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7088083424884255
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 3.5551e+04, final cost 1.8923e+04, first-order optimality 1.25e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.8923e+04, final cost 1.8919e+04, first-order optimality 9.99e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7063108798758163
+axis=scale axis_value=default status=ok reprojection_rms_px=0.7062094994085115
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 51, initial cost 1.1269e+05, final cost 4.2044e+03, first-order optimality 1.23e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2044e+03, final cost 4.1998e+03, first-order optimality 1.60e-02.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7006293362161007
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.0650e+04, final cost 8.7538e+03, first-order optimality 2.04e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7538e+03, final cost 8.7498e+03, first-order optimality 3.30e-03.
+axis=cameras axis_value=8 status=ok reprojection_rms_px=0.7053745272859051
+axis=cameras axis_value=12 status=ok reprojection_rms_px=0.7062094994085115
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 4.5245e+04, final cost 1.0120e+04, first-order optimality 4.81e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 1.0120e+04, final cost 1.0115e+04, first-order optimality 4.16e-03.
+axis=cameras axis_value=16 status=ok reprojection_rms_px=0.706180483774475
+[2026-08-07T03:10:24Z] <<< STAGE 2/5: e6_band finished exit=0
+----- GATE VERDICT: stage=e6_band out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E1  gate4_band:exp1_band.csv                      exp1_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e1_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E6  gate_e6_seed_band:seed_count                  generalization_sweep_band.csv carries 6 distinct seed(s) [42, 43, 44, 45, 46, 47], expected exactly 5
+[PASS] E6  gate_e6_seed_band:row_count                   row count = 102, uniform across seeds (17 rows/seed)
+[PASS] E6  gate_e6_seed_band:cameras_axis                cameras axis present at [8, 12, 16]
+[PASS] E6  gate_e6_seed_band:status_counts               every row status=='ok' across all 6 seeds
+[PASS] E6  gate_e6_seed_band:sidecar_seeds               sidecar solver_config['seeds'] matches the CSV's distinct seeds
+[PASS] E6  gate_e6_seed_band:sidecar_git_sha             e6_seed_band_provenance.json git_sha=2a2f0faccef4eca243d027023e44e047041a4a1c
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[N/A ] E2  gate_e2_band                                  C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395)
+
+TOTAL: 86 PASS, 10 N/A, 11 FAIL
+----- END GATE VERDICT: stage=e6_band exit=1 -----
+[2026-08-07T03:10:25Z] >>> STAGE 3/5: e4_repeat starting
+[2026-08-07T03:10:25Z] e4_repeat: clearing experiments/results_e4_repeat before running (isolated dir)
+[2026-08-07T03:10:25Z] e4_repeat: repeat 1, cell 8x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 1.8604e+05, final cost 8.5497e+03, first-order optimality 2.65e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5497e+03, final cost 8.5450e+03, first-order optimality 6.44e-03.
+cell cameras_8_frames_100: status=ok
+[2026-08-07T03:19:00Z] e4_repeat: repeat 1, cell 12x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7226e+04, final cost 9.2362e+03, first-order optimality 1.14e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 4.45e-03.
+cell cameras_12_frames_100: status=ok
+[2026-08-07T03:26:55Z] e4_repeat: repeat 1, cell 16x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 40, initial cost 1.6626e+05, final cost 9.8920e+03, first-order optimality 2.70e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.8920e+03, final cost 9.8827e+03, first-order optimality 8.03e-03.
+cell cameras_16_frames_100: status=ok
+[2026-08-07T03:39:58Z] e4_repeat: repeat 2, cell 8x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 29, initial cost 1.8604e+05, final cost 8.5497e+03, first-order optimality 2.65e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5497e+03, final cost 8.5450e+03, first-order optimality 6.44e-03.
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e4_cells\cameras_8_frames_100\benchmark.json (may be stale from a previous config).
+cell cameras_8_frames_100: status=ok
+[2026-08-07T03:48:34Z] e4_repeat: repeat 2, cell 12x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7226e+04, final cost 9.2362e+03, first-order optimality 1.14e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 4.45e-03.
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e4_cells\cameras_12_frames_100\benchmark.json (may be stale from a previous config).
+cell cameras_12_frames_100: status=ok
+[2026-08-07T03:56:28Z] e4_repeat: repeat 2, cell 16x100
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 40, initial cost 1.6626e+05, final cost 9.8920e+03, first-order optimality 2.70e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.8920e+03, final cost 9.8827e+03, first-order optimality 8.03e-03.
+Overwriting existing internals artifact at C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e4_cells\cameras_16_frames_100\benchmark.json (may be stale from a previous config).
+cell cameras_16_frames_100: status=ok
+[2026-08-07T04:09:32Z] e4_repeat: positive re-solve signal -- 0 'already exists (resumability)' skip line(s) found in experiments/results_e4_repeat/repeat_stdout.log (0 expected for a genuine re-solve)
+[2026-08-07T04:09:32Z] e4_repeat: splicing experiments/results_e4_repeat against the committed benchmark_grid.csv
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+cameras=8 frames=100: seconds_total_spread_pct=61.20699907292604
+cameras=12 frames=100: seconds_total_spread_pct=62.495079159966025
+cameras=16 frames=100: seconds_total_spread_pct=60.72680421259623
+[2026-08-07T04:09:33Z] <<< STAGE 3/5: e4_repeat finished exit=0
+----- GATE VERDICT: stage=e4_repeat out_dir=experiments/results_e4_repeat -----
+[FAIL] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E6  gate1_guard_count                             no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e6_configs
+[FAIL] E6  gate3_provenance                              no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e6_configs
+[FAIL] E6  gate4_optimality                              no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e4_repeat\e6_configs
+[FAIL] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv not found
+[FAIL] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[N/A ] E2  gate_e2_band                                  C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a2f0faccef4eca243d027023e44e047041a4a1c)
+
+TOTAL: 10 PASS, 13 N/A, 28 FAIL
+----- END GATE VERDICT: stage=e4_repeat exit=1 -----
+[2026-08-07T04:09:33Z] >>> STAGE 4/5: e2_band starting
+[2026-08-07T04:09:33Z] e2_band: clearing experiments/results_e2_band before running (isolated dir, in-repo, outside the release tree)
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed42.yaml
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed43.yaml
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed44.yaml
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e2_band_scope.json
+[2026-08-07T04:09:34Z] e2_band: emit-band-configs exit=0
+[2026-08-07T04:09:34Z] e2_band: seed 42 calibration starting (48-87 min)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42_e2_out
+E2 real-rig run: using explicit config C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed42.yaml
+Running full calibration pipeline from explicit config...
+============================================================
+AquaCal Calibration Pipeline
+============================================================
+
+[Stage 1] Intrinsic calibration (in-air)...
+  Calibrating e3v8250 (1/13)...
+  Calibrating e3v829d (2/13)...
+  Calibrating e3v82e0 (3/13)...
+  Calibrating e3v82f9 (4/13)...
+  Calibrating e3v831e (5/13)...
+  Calibrating e3v832e (6/13)...
+  Calibrating e3v8334 (7/13)...
+  Calibrating e3v83e9 (8/13)...
+  Calibrating e3v83eb (9/13)...
+  Calibrating e3v83ee (10/13)...
+  Calibrating e3v83ef (11/13)...
+  Calibrating e3v83f0 (12/13)...
+  Calibrating e3v83f1 (13/13)...
+  e3v8250: RMS 0.512 px
+  e3v829d: RMS 0.414 px
+  e3v82e0: RMS 0.488 px
+  e3v82f9: RMS 0.287 px
+  e3v831e: RMS 0.534 px
+  e3v832e: RMS 0.502 px
+  e3v8334: RMS 0.404 px
+  e3v83e9: RMS 0.432 px
+  e3v83eb: RMS 0.452 px
+  e3v83ee: RMS 0.392 px
+  e3v83ef: RMS 0.447 px
+  e3v83f0: RMS 0.474 px
+  e3v83f1: RMS 0.465 px
+  Calibrated 13 cameras
+
+[Detection] Detecting ChArUco in underwater videos...
+  Frame 26/262 (9%)
+  Frame 52/262 (19%)
+  Frame 78/262 (29%)
+  Frame 104/262 (39%)
+  Frame 130/262 (49%)
+  Frame 156/262 (59%)
+  Frame 182/262 (69%)
+  Frame 208/262 (79%)
+  Frame 234/262 (89%)
+  Frame 260/262 (99%)
+  Frame 262/262 (100%)
+  Found 262 usable frames
+
+[Split] Holdout fraction: 0.2 (seed: 42)
+  Calibration frames: 210
+  Validation frames: 52
+
+[Stage 2] Extrinsic initialization...
+  Located e3v829d (1/12)
+  Located e3v82e0 (2/12)
+  Located e3v82f9 (3/12)
+  Located e3v832e (4/12)
+  Located e3v8334 (5/12)
+  Located e3v83ee (6/12)
+  Located e3v83ef (7/12)
+  Located e3v83e9 (8/12)
+  Located e3v831e (9/12)
+  Located e3v83f0 (10/12)
+  Located e3v83f1 (11/12)
+  Located e3v83eb (12/12)
+  Averaging poses...
+  Initialized 12 camera poses
+  Saved calibration_initial.json
+  Saved camera_rig_initial.png
+
+[Frame Selection] Subsampled 210 -> 200 frames for optimization
+
+[Stage 3] Interface and pose optimization...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         7.0022e+05                                    1.14e+07
+       1              8         3.8745e+05      3.13e+05       1.01e-02       7.55e+06
+       2              9         3.0580e+05      8.17e+04       2.02e-02       9.06e+06
+       3             11         2.4727e+05      5.85e+04       5.07e-03       8.05e+06
+       4             12         2.2510e+05      2.22e+04       5.07e-03       9.26e+06
+       5             13         2.2442e+05      6.78e+02       5.07e-03       8.61e+06
+       6             14         2.0913e+05      1.53e+04       1.27e-03       8.35e+06
+       7             15         1.9782e+05      1.13e+04       2.53e-03       7.60e+06
+       8             16         1.8726e+05      1.06e+04       2.53e-03       5.97e+06
+       9             17         1.7646e+05      1.08e+04       2.53e-03       2.33e+06
+      10             18         1.6005e+05      1.64e+04       5.07e-03       9.08e+05
+      11             19         1.3622e+05      2.38e+04       1.01e-02       6.67e+05
+      12             20         1.1342e+05      2.28e+04       2.03e-02       2.74e+05
+      13             21         8.8593e+04      2.48e+04       4.05e-02       2.35e+05
+      14             22         6.3763e+04      2.48e+04       8.11e-02       3.67e+05
+      15             23         4.7924e+04      1.58e+04       1.62e-01       2.58e+05
+      16             24         4.0103e+04      7.82e+03       3.24e-01       7.02e+05
+      17             26         3.9402e+04      7.00e+02       8.11e-02       2.81e+05
+      18             27         3.8610e+04      7.92e+02       2.03e-02       3.68e+05
+      19             29         3.8354e+04      2.56e+02       5.07e-03       3.25e+05
+      20             30         3.8181e+04      1.73e+02       5.07e-03       3.31e+05
+      21             31         3.7899e+04      2.82e+02       1.27e-03       3.85e+04
+      22             32         3.7841e+04      5.84e+01       2.53e-03       1.16e+04
+      23             33         3.7755e+04      8.57e+01       5.06e-03       5.79e+03
+      24             34         3.7636e+04      1.19e+02       1.01e-02       1.96e+03
+      25             35         3.7438e+04      1.99e+02       2.02e-02       2.23e+03
+      26             36         3.7077e+04      3.60e+02       4.05e-02       8.69e+03
+      27             37         3.6428e+04      6.50e+02       8.09e-02       3.65e+04
+      28             38         3.5296e+04      1.13e+03       1.62e-01       1.46e+05
+      29             39         3.3662e+04      1.63e+03       3.23e-01       5.81e+05
+      30             40         3.3359e+04      3.03e+02       5.72e-01       1.79e+06
+      31             41         3.2432e+04      9.27e+02       4.53e-02       8.20e+04
+      32             42         3.2429e+04      2.99e+00       1.45e-02       1.31e+03
+      33             43         3.2429e+04      2.36e-03       4.74e-04       2.00e+00
+      34             44         3.2429e+04      5.15e-06       2.83e-05       1.02e-01
+`ftol` termination condition is satisfied.
+Function evaluations 44, initial cost 7.0022e+05, final cost 3.2429e+04, first-order optimality 1.02e-01.
+  Stage 3 RMS: 0.928 pixels (1551.4s)
+  Saved internals/calibration_stage3.json
+  [Frame Rejection] No outlier frames (median=0.98 px, threshold=5.00 px). No frames dropped.
+  Estimated reference camera tilt: 2.77 degrees
+  Water surface Z: 0.9896 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=0.9896
+    e3v82e0: cam_z=0.0015  h_c=0.9881
+    e3v82f9: cam_z=0.0033  h_c=0.9863
+    e3v831e: cam_z=0.0058  h_c=0.9839
+    e3v832e: cam_z=0.0043  h_c=0.9854
+    e3v8334: cam_z=0.0021  h_c=0.9876
+    e3v83e9: cam_z=0.0208  h_c=0.9688
+    e3v83eb: cam_z=0.0129  h_c=0.9767
+    e3v83ee: cam_z=-0.0265  h_c=1.0161
+    e3v83ef: cam_z=0.0140  h_c=0.9756
+    e3v83f0: cam_z=0.0049  h_c=0.9847
+    e3v83f1: cam_z=-0.0540  h_c=1.0437
+  Camera height spread: 0.0748 m
+
+[Stage 3: intrinsic pass] Second pass, with intrinsics unlocked...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         3.2429e+04                                    4.46e+05
+       1              3         2.4070e+04      8.36e+03       4.11e+01       2.66e+06
+       2              4         2.0753e+04      3.32e+03       8.91e+01       4.45e+05
+       3              5         2.0338e+04      4.15e+02       3.93e+01       1.07e+06
+       4              6         2.0233e+04      1.05e+02       3.77e+00       1.46e+04
+       5              7         2.0233e+04      7.49e-01       1.81e+00       1.09e+03
+       6              8         2.0233e+04      1.13e-01       9.03e-01       7.25e+02
+       7              9         2.0232e+04      4.39e-02       5.68e-01       1.88e+02
+       8             10         2.0232e+04      1.76e-02       3.59e-01       2.38e+02
+       9             11         2.0232e+04      6.91e-03       2.26e-01       1.01e+02
+      10             12         2.0232e+04      2.75e-03       1.43e-01       8.17e+01
+      11             13         2.0232e+04      1.10e-03       9.02e-02       4.45e+01
+      12             14         2.0232e+04      4.38e-04       5.70e-02       3.08e+01
+      13             15         2.0232e+04      1.75e-04       3.60e-02       1.84e+01
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.2429e+04, final cost 2.0232e+04, first-order optimality 1.84e+01.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\calibration\pipeline.py:1316: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 198 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (18.38, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  ) = joint_refinement(
+  Stage 3 intrinsic pass RMS: 0.712 pixels (700.9s)
+  Water surface Z (after refinement): 1.0738 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=1.0738
+    e3v82e0: cam_z=-0.0064  h_c=1.0802
+    e3v82f9: cam_z=-0.0085  h_c=1.0824
+    e3v831e: cam_z=0.0024  h_c=1.0714
+    e3v832e: cam_z=0.0018  h_c=1.0720
+    e3v8334: cam_z=0.0058  h_c=1.0681
+    e3v83e9: cam_z=0.0166  h_c=1.0573
+    e3v83eb: cam_z=-0.0025  h_c=1.0763
+    e3v83ee: cam_z=-0.0387  h_c=1.1125
+    e3v83ef: cam_z=0.0054  h_c=1.0684
+    e3v83f0: cam_z=0.0267  h_c=1.0472
+    e3v83f1: cam_z=-0.0307  h_c=1.1045
+  Camera height spread: 0.0653 m
+  Saved internals/calibration_stage3_intrinsic_pass.json
+
+[Auxiliary camera registration] Registering 1 auxiliary camera(s) via 10-DOF refinement (extrinsics plus focal length and principal point)...
+  e3v8250: 188 frames, 16006 corners
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         1.8012e+05                                    9.34e+06
+       1              6         1.6278e+05      1.73e+04       8.33e-02       1.22e+07
+       2              8         1.0753e+05      5.52e+04       6.70e-03       7.55e+06
+       3              9         8.8344e+04      1.92e+04       1.27e-02       2.23e+06
+       4             10         8.1472e+04      6.87e+03       1.08e-02       8.39e+05
+       5             11         7.1444e+04      1.00e+04       2.24e-02       3.18e+05
+       6             12         5.2132e+04      1.93e+04       4.54e-02       4.50e+05
+       7             13         1.9612e+04      3.25e+04       1.00e-01       1.66e+06
+       8             14         1.7190e+04      2.42e+03       3.99e+00       5.60e+05
+       9             15         1.5843e+04      1.35e+03       3.78e+00       2.56e+06
+      10             16         1.3810e+04      2.03e+03       8.88e-01       5.16e+05
+      11             17         1.3516e+04      2.94e+02       2.07e+00       3.23e+04
+      12             18         1.3451e+04      6.47e+01       4.28e+00       5.29e+03
+      13             19         1.3417e+04      3.37e+01       6.75e+00       3.93e+02
+      14             20         1.3417e+04      5.26e-03       3.05e-02       1.56e+00
+      15             21         1.3417e+04      7.67e-07       9.98e-04       5.71e-02
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 1.8012e+05, final cost 1.3417e+04, first-order optimality 5.71e-02.
+  e3v8250: RMS 2.26 px, interface_d=1.0738m (intrinsics refined)
+
+[Validation] Estimating board poses for held-out frames...
+  Estimated 52 validation frame poses
+
+[Validation] Computing errors on held-out data...
+  Primary cameras:
+    Reprojection RMS: 0.928 pixels
+    3D distance error: MAE 0.26 mm, RMSE 0.63 mm (0.4% of square size)
+  Auxiliary cameras:
+    e3v8250: RMS 14.856 pixels
+
+[Diagnostics] Generating report...
+  Saved diagnostics to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42
+  Discards: degenerate_observations_at_solution=198, pnp_attempts_refractive=3548, pnp_attempts_total=3548, pnp_guard_rejected=10, pose_discarded_by_consumer=10
+
+[Save] Saving calibration result...
+  Saved to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42\calibration.json
+  Saved benchmark.json
+
+============================================================
+Calibration complete!
+  Primary cameras:
+    Reprojection RMS: 0.928 pixels
+    3D error: MAE 0.26 mm, RMSE 0.63 mm (0.4%)
+  Auxiliary cameras:
+    e3v8250: RMS 14.856 pixels
+============================================================
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42_e2_out\real_rig_metrics.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42\benchmark.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42_e2_out\benchmark.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42\calibration.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_42_e2_out\calibration.json
+E2 real-rig run complete.
+[2026-08-07T05:00:12Z] e2_band: seed 42 exit=0
+[2026-08-07T05:00:12Z] e2_band: seed 43 calibration starting (48-87 min)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43_e2_out
+E2 real-rig run: using explicit config C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed43.yaml
+Running full calibration pipeline from explicit config...
+============================================================
+AquaCal Calibration Pipeline
+============================================================
+
+[Stage 1] Intrinsic calibration (in-air)...
+  Calibrating e3v8250 (1/13)...
+  Calibrating e3v829d (2/13)...
+  Calibrating e3v82e0 (3/13)...
+  Calibrating e3v82f9 (4/13)...
+  Calibrating e3v831e (5/13)...
+  Calibrating e3v832e (6/13)...
+  Calibrating e3v8334 (7/13)...
+  Calibrating e3v83e9 (8/13)...
+  Calibrating e3v83eb (9/13)...
+  Calibrating e3v83ee (10/13)...
+  Calibrating e3v83ef (11/13)...
+  Calibrating e3v83f0 (12/13)...
+  Calibrating e3v83f1 (13/13)...
+  e3v8250: RMS 0.512 px
+  e3v829d: RMS 0.414 px
+  e3v82e0: RMS 0.488 px
+  e3v82f9: RMS 0.287 px
+  e3v831e: RMS 0.534 px
+  e3v832e: RMS 0.502 px
+  e3v8334: RMS 0.404 px
+  e3v83e9: RMS 0.432 px
+  e3v83eb: RMS 0.452 px
+  e3v83ee: RMS 0.392 px
+  e3v83ef: RMS 0.447 px
+  e3v83f0: RMS 0.474 px
+  e3v83f1: RMS 0.465 px
+  Calibrated 13 cameras
+
+[Detection] Detecting ChArUco in underwater videos...
+  Frame 26/262 (9%)
+  Frame 52/262 (19%)
+  Frame 78/262 (29%)
+  Frame 104/262 (39%)
+  Frame 130/262 (49%)
+  Frame 156/262 (59%)
+  Frame 182/262 (69%)
+  Frame 208/262 (79%)
+  Frame 234/262 (89%)
+  Frame 260/262 (99%)
+  Frame 262/262 (100%)
+  Found 262 usable frames
+
+[Split] Holdout fraction: 0.2 (seed: 43)
+  Calibration frames: 210
+  Validation frames: 52
+
+[Stage 2] Extrinsic initialization...
+  Located e3v829d (1/12)
+  Located e3v82e0 (2/12)
+  Located e3v82f9 (3/12)
+  Located e3v832e (4/12)
+  Located e3v8334 (5/12)
+  Located e3v83ee (6/12)
+  Located e3v83ef (7/12)
+  Located e3v83e9 (8/12)
+  Located e3v831e (9/12)
+  Located e3v83f0 (10/12)
+  Located e3v83f1 (11/12)
+  Located e3v83eb (12/12)
+  Averaging poses...
+  Initialized 12 camera poses
+  Saved calibration_initial.json
+  Saved camera_rig_initial.png
+
+[Frame Selection] Subsampled 210 -> 200 frames for optimization
+
+[Stage 3] Interface and pose optimization...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         7.1756e+05                                    1.09e+07
+       1              8         3.9755e+05      3.20e+05       1.01e-02       7.65e+06
+       2              9         2.8600e+05      1.12e+05       2.02e-02       8.27e+06
+       3             11         2.2515e+05      6.08e+04       5.05e-03       6.96e+06
+       4             12         2.0094e+05      2.42e+04       5.05e-03       7.16e+06
+       5             13         1.8313e+05      1.78e+04       5.05e-03       7.04e+06
+       6             14         1.6933e+05      1.38e+04       5.05e-03       7.71e+06
+       7             15         1.6200e+05      7.33e+03       5.05e-03       8.15e+06
+       8             17         1.5126e+05      1.07e+04       1.26e-03       1.24e+06
+       9             18         1.4544e+05      5.82e+03       2.53e-03       6.74e+05
+      10             19         1.3602e+05      9.43e+03       5.05e-03       5.54e+05
+      11             20         1.2369e+05      1.23e+04       1.01e-02       2.90e+05
+      12             21         1.0837e+05      1.53e+04       2.02e-02       2.11e+05
+      13             22         8.6216e+04      2.22e+04       4.04e-02       2.06e+05
+      14             23         6.4481e+04      2.17e+04       8.08e-02       3.53e+05
+      15             24         4.8919e+04      1.56e+04       1.62e-01       2.38e+05
+      16             25         4.0314e+04      8.60e+03       3.23e-01       6.71e+05
+      17             26         4.0127e+04      1.87e+02       3.23e-01       5.73e+05
+      18             27         3.7781e+04      2.35e+03       8.08e-02       2.70e+05
+      19             30         3.6999e+04      7.82e+02       5.05e-03       9.02e+04
+      20             31         3.6596e+04      4.03e+02       1.01e-02       6.05e+04
+      21             32         3.6440e+04      1.56e+02       1.01e-02       1.47e+04
+      22             33         3.6283e+04      1.57e+02       2.01e-02       3.94e+03
+      23             34         3.6027e+04      2.57e+02       4.03e-02       9.39e+03
+      24             35         3.5557e+04      4.70e+02       8.05e-02       3.70e+04
+      25             36         3.4758e+04      7.99e+02       1.61e-01       1.47e+05
+      26             37         3.3804e+04      9.54e+02       3.22e-01       5.90e+05
+      27             38         3.3485e+04      3.19e+02       2.66e-01       4.04e+05
+      28             39         3.3440e+04      4.48e+01       1.17e-02       1.60e+03
+      29             40         3.3440e+04      1.63e-02       1.36e-03       1.40e+01
+      30             41         3.3440e+04      2.35e-05       5.28e-05       1.52e-01
+`ftol` termination condition is satisfied.
+Function evaluations 41, initial cost 7.1756e+05, final cost 3.3440e+04, first-order optimality 1.52e-01.
+  Stage 3 RMS: 0.942 pixels (1384.6s)
+  Saved internals/calibration_stage3.json
+  [Frame Rejection] No outlier frames (median=0.99 px, threshold=5.00 px). No frames dropped.
+  Estimated reference camera tilt: 2.77 degrees
+  Water surface Z: 0.9903 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=0.9903
+    e3v82e0: cam_z=0.0016  h_c=0.9887
+    e3v82f9: cam_z=0.0034  h_c=0.9868
+    e3v831e: cam_z=0.0059  h_c=0.9844
+    e3v832e: cam_z=0.0043  h_c=0.9860
+    e3v8334: cam_z=0.0022  h_c=0.9880
+    e3v83e9: cam_z=0.0211  h_c=0.9691
+    e3v83eb: cam_z=0.0134  h_c=0.9768
+    e3v83ee: cam_z=-0.0261  h_c=1.0164
+    e3v83ef: cam_z=0.0145  h_c=0.9758
+    e3v83f0: cam_z=0.0054  h_c=0.9849
+    e3v83f1: cam_z=-0.0539  h_c=1.0442
+  Camera height spread: 0.0751 m
+
+[Stage 3: intrinsic pass] Second pass, with intrinsics unlocked...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         3.3440e+04                                    4.85e+05
+       1              3         2.4819e+04      8.62e+03       4.08e+01       2.55e+06
+       2              4         2.1476e+04      3.34e+03       8.75e+01       4.54e+05
+       3              5         2.0943e+04      5.33e+02       4.23e+01       1.14e+06
+       4              6         2.0825e+04      1.18e+02       4.32e+00       1.23e+04
+       5              7         2.0824e+04      9.87e-01       2.19e+00       1.12e+03
+       6              8         2.0823e+04      5.30e-02       6.10e-01       4.01e+02
+       7              9         2.0823e+04      2.02e-02       3.78e-01       1.33e+02
+       8             10         2.0823e+04      7.38e-03       2.24e-01       1.34e+02
+       9             11         2.0823e+04      2.71e-03       1.35e-01       6.53e+01
+      10             12         2.0823e+04      9.98e-04       8.19e-02       4.62e+01
+      11             13         2.0823e+04      3.65e-04       4.97e-02       2.57e+01
+      12             14         2.0823e+04      1.35e-04       3.01e-02       1.61e+01
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 3.3440e+04, final cost 2.0823e+04, first-order optimality 1.61e+01.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\calibration\pipeline.py:1316: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 210 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (16.06, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  ) = joint_refinement(
+  Stage 3 intrinsic pass RMS: 0.728 pixels (650.7s)
+  Water surface Z (after refinement): 1.0711 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=1.0711
+    e3v82e0: cam_z=-0.0042  h_c=1.0753
+    e3v82f9: cam_z=-0.0074  h_c=1.0785
+    e3v831e: cam_z=0.0066  h_c=1.0645
+    e3v832e: cam_z=0.0013  h_c=1.0698
+    e3v8334: cam_z=0.0095  h_c=1.0616
+    e3v83e9: cam_z=0.0166  h_c=1.0545
+    e3v83eb: cam_z=-0.0008  h_c=1.0719
+    e3v83ee: cam_z=-0.0377  h_c=1.1088
+    e3v83ef: cam_z=0.0049  h_c=1.0662
+    e3v83f0: cam_z=0.0288  h_c=1.0423
+    e3v83f1: cam_z=-0.0290  h_c=1.1001
+  Camera height spread: 0.0664 m
+  Saved internals/calibration_stage3_intrinsic_pass.json
+
+[Auxiliary camera registration] Registering 1 auxiliary camera(s) via 10-DOF refinement (extrinsics plus focal length and principal point)...
+  e3v8250: 182 frames, 15493 corners
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         1.6208e+05                                    9.62e+06
+       1              7         1.0849e+05      5.36e+04       1.55e-02       4.93e+06
+       2              8         9.3598e+04      1.49e+04       1.34e-02       6.62e+05
+       3              9         8.1792e+04      1.18e+04       2.60e-02       3.70e+05
+       4             10         5.9422e+04      2.24e+04       5.35e-02       5.01e+05
+       5             11         2.0590e+04      3.88e+04       1.16e-01       2.53e+06
+       6             13         1.2129e+04      8.46e+03       1.89e-01       9.86e+05
+       7             14         1.1310e+04      8.19e+02       1.16e+00       1.44e+05
+       8             15         1.1189e+04      1.21e+02       2.37e+00       1.49e+04
+       9             16         1.1111e+04      7.81e+01       5.00e+00       5.21e+03
+      10             17         1.1074e+04      3.73e+01       7.15e+00       6.91e+02
+      11             18         1.1074e+04      7.92e-03       5.15e-02       1.58e+00
+      12             19         1.1074e+04      9.05e-07       1.03e-03       5.32e-02
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 1.6208e+05, final cost 1.1074e+04, first-order optimality 5.32e-02.
+  e3v8250: RMS 1.11 px, interface_d=1.0711m (intrinsics refined)
+
+[Validation] Estimating board poses for held-out frames...
+  Estimated 52 validation frame poses
+
+[Validation] Computing errors on held-out data...
+  Primary cameras:
+    Reprojection RMS: 0.850 pixels
+    3D distance error: MAE 0.21 mm, RMSE 0.46 mm (0.4% of square size)
+  Auxiliary cameras:
+    e3v8250: RMS 16.539 pixels
+
+[Diagnostics] Generating report...
+  Saved diagnostics to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43
+  Discards: degenerate_observations_at_solution=210, pnp_attempts_refractive=3572, pnp_attempts_total=3572, pnp_guard_rejected=5, pose_discarded_by_consumer=5
+
+[Save] Saving calibration result...
+  Saved to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43\calibration.json
+  Saved benchmark.json
+
+============================================================
+Calibration complete!
+  Primary cameras:
+    Reprojection RMS: 0.850 pixels
+    3D error: MAE 0.21 mm, RMSE 0.46 mm (0.4%)
+  Auxiliary cameras:
+    e3v8250: RMS 16.539 pixels
+============================================================
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43_e2_out\real_rig_metrics.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43\benchmark.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43_e2_out\benchmark.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43\calibration.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_43_e2_out\calibration.json
+E2 real-rig run complete.
+[2026-08-07T05:47:03Z] e2_band: seed 43 exit=0
+[2026-08-07T05:47:03Z] e2_band: seed 44 calibration starting (48-87 min)
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44_e2_out
+E2 real-rig run: using explicit config C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\config_seed44.yaml
+Running full calibration pipeline from explicit config...
+============================================================
+AquaCal Calibration Pipeline
+============================================================
+
+[Stage 1] Intrinsic calibration (in-air)...
+  Calibrating e3v8250 (1/13)...
+  Calibrating e3v829d (2/13)...
+  Calibrating e3v82e0 (3/13)...
+  Calibrating e3v82f9 (4/13)...
+  Calibrating e3v831e (5/13)...
+  Calibrating e3v832e (6/13)...
+  Calibrating e3v8334 (7/13)...
+  Calibrating e3v83e9 (8/13)...
+  Calibrating e3v83eb (9/13)...
+  Calibrating e3v83ee (10/13)...
+  Calibrating e3v83ef (11/13)...
+  Calibrating e3v83f0 (12/13)...
+  Calibrating e3v83f1 (13/13)...
+  e3v8250: RMS 0.512 px
+  e3v829d: RMS 0.414 px
+  e3v82e0: RMS 0.488 px
+  e3v82f9: RMS 0.287 px
+  e3v831e: RMS 0.534 px
+  e3v832e: RMS 0.502 px
+  e3v8334: RMS 0.404 px
+  e3v83e9: RMS 0.432 px
+  e3v83eb: RMS 0.452 px
+  e3v83ee: RMS 0.392 px
+  e3v83ef: RMS 0.447 px
+  e3v83f0: RMS 0.474 px
+  e3v83f1: RMS 0.465 px
+  Calibrated 13 cameras
+
+[Detection] Detecting ChArUco in underwater videos...
+  Frame 26/262 (9%)
+  Frame 52/262 (19%)
+  Frame 78/262 (29%)
+  Frame 104/262 (39%)
+  Frame 130/262 (49%)
+  Frame 156/262 (59%)
+  Frame 182/262 (69%)
+  Frame 208/262 (79%)
+  Frame 234/262 (89%)
+  Frame 260/262 (99%)
+  Frame 262/262 (100%)
+  Found 262 usable frames
+
+[Split] Holdout fraction: 0.2 (seed: 44)
+  Calibration frames: 210
+  Validation frames: 52
+
+[Stage 2] Extrinsic initialization...
+  Located e3v829d (1/12)
+  Located e3v82e0 (2/12)
+  Located e3v82f9 (3/12)
+  Located e3v832e (4/12)
+  Located e3v8334 (5/12)
+  Located e3v83ee (6/12)
+  Located e3v83ef (7/12)
+  Located e3v83e9 (8/12)
+  Located e3v831e (9/12)
+  Located e3v83f1 (10/12)
+  Located e3v83f0 (11/12)
+  Located e3v83eb (12/12)
+  Averaging poses...
+  Initialized 12 camera poses
+  Saved calibration_initial.json
+  Saved camera_rig_initial.png
+
+[Frame Selection] Subsampled 210 -> 200 frames for optimization
+
+[Stage 3] Interface and pose optimization...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         6.8065e+05                                    1.19e+07
+       1              8         3.7799e+05      3.03e+05       1.01e-02       7.40e+06
+       2              9         2.9737e+05      8.06e+04       2.02e-02       9.32e+06
+       3             11         2.3168e+05      6.57e+04       5.06e-03       7.73e+06
+       4             12         2.0887e+05      2.28e+04       5.06e-03       8.99e+06
+       5             14         1.9366e+05      1.52e+04       1.27e-03       3.36e+06
+       6             15         1.8341e+05      1.02e+04       2.53e-03       1.07e+06
+       7             16         1.6623e+05      1.72e+04       5.06e-03       9.75e+05
+       8             17         1.4001e+05      2.62e+04       1.01e-02       7.06e+05
+       9             18         1.1451e+05      2.55e+04       2.02e-02       7.34e+05
+      10             19         8.8638e+04      2.59e+04       4.05e-02       3.13e+05
+      11             20         6.2738e+04      2.59e+04       8.10e-02       4.60e+05
+      12             21         4.6884e+04      1.59e+04       1.62e-01       2.85e+05
+      13             22         3.8444e+04      8.44e+03       3.24e-01       6.72e+05
+      14             23         3.7596e+04      8.48e+02       6.46e-01       2.34e+06
+      15             25         3.4217e+04      3.38e+03       4.05e-02       2.91e+05
+      16             28         3.4044e+04      1.73e+02       5.06e-03       3.27e+05
+      17             29         3.3752e+04      2.92e+02       1.27e-03       4.91e+04
+      18             30         3.3651e+04      1.01e+02       2.53e-03       2.76e+04
+      19             31         3.3481e+04      1.70e+02       5.06e-03       2.38e+04
+      20             32         3.3215e+04      2.66e+02       1.01e-02       1.53e+04
+      21             33         3.3008e+04      2.06e+02       2.02e-02       1.41e+04
+      22             34         3.2829e+04      1.79e+02       4.04e-02       7.88e+03
+      23             35         3.2554e+04      2.76e+02       8.07e-02       3.47e+04
+      24             36         3.2160e+04      3.94e+02       1.61e-01       1.38e+05
+      25             37         3.1963e+04      1.97e+02       2.41e-01       2.96e+05
+      26             38         3.1933e+04      3.01e+01       8.85e-03       9.27e+02
+      27             39         3.1933e+04      6.09e-03       1.06e-03       9.12e+00
+      28             40         3.1933e+04      5.50e-06       1.84e-05       6.25e-02
+`ftol` termination condition is satisfied.
+Function evaluations 40, initial cost 6.8065e+05, final cost 3.1933e+04, first-order optimality 6.25e-02.
+  Stage 3 RMS: 0.899 pixels (1298.8s)
+  Saved internals/calibration_stage3.json
+  [Frame Rejection] No outlier frames (median=1.00 px, threshold=5.00 px). No frames dropped.
+  Estimated reference camera tilt: 2.76 degrees
+  Water surface Z: 0.9904 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=0.9904
+    e3v82e0: cam_z=0.0015  h_c=0.9889
+    e3v82f9: cam_z=0.0032  h_c=0.9872
+    e3v831e: cam_z=0.0058  h_c=0.9846
+    e3v832e: cam_z=0.0041  h_c=0.9862
+    e3v8334: cam_z=0.0021  h_c=0.9882
+    e3v83e9: cam_z=0.0206  h_c=0.9698
+    e3v83eb: cam_z=0.0126  h_c=0.9778
+    e3v83ee: cam_z=-0.0266  h_c=1.0170
+    e3v83ef: cam_z=0.0138  h_c=0.9766
+    e3v83f0: cam_z=0.0048  h_c=0.9856
+    e3v83f1: cam_z=-0.0545  h_c=1.0448
+  Camera height spread: 0.0750 m
+
+[Stage 3: intrinsic pass] Second pass, with intrinsics unlocked...
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         3.1933e+04                                    4.88e+05
+       1              3         2.3615e+04      8.32e+03       4.31e+01       3.08e+06
+       2              4         2.0394e+04      3.22e+03       4.58e+01       2.07e+05
+       3              5         1.9653e+04      7.41e+02       6.35e+01       7.59e+05
+       4              6         1.9457e+04      1.95e+02       9.10e+00       1.75e+04
+       5              7         1.9456e+04      1.23e+00       2.41e+00       4.80e+03
+       6              8         1.9456e+04      1.56e-01       1.19e+00       3.88e+02
+       7              9         1.9456e+04      5.82e-02       7.29e-01       5.63e+02
+       8             10         1.9456e+04      2.53e-02       4.76e-01       1.73e+02
+       9             11         1.9456e+04      1.13e-02       3.16e-01       2.03e+02
+      10             12         1.9456e+04      4.98e-03       2.10e-01       9.35e+01
+      11             13         1.9456e+04      2.21e-03       1.40e-01       7.77e+01
+      12             14         1.9456e+04      9.84e-04       9.37e-02       4.52e+01
+      13             15         1.9456e+04      4.38e-04       6.25e-02       3.34e+01
+      14             16         1.9456e+04      1.95e-04       4.17e-02       2.08e+01
+      15             17         1.9456e+04      8.67e-05       2.78e-02       1.45e+01
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 3.1933e+04, final cost 1.9456e+04, first-order optimality 1.45e+01.
+C:\Users\tucke\PycharmProjects\AquaCal\src\aquacal\calibration\pipeline.py:1316: DegenerateObservationWarning: Stage 3's intrinsic pass finished with 183 observation(s) the refractive model could not project (corners at or above the water surface, or behind a camera). These were continued with a pinhole extension, which puts the residual on a C0-but-not-C1 kink at the refractive/pinhole boundary -- first-order optimality (14.55, termination status 2) is UNRELIABLE as a convergence measure here, and neither it nor the reprojection RMS can be trusted to judge convergence. Fix the scenario geometry so no corner sits at or above the interface; do not re-tune the solver.
+  ) = joint_refinement(
+  Stage 3 intrinsic pass RMS: 0.680 pixels (802.0s)
+  Water surface Z (after refinement): 1.0744 m
+  Camera heights above water (h_c):
+    e3v829d: cam_z=0.0000  h_c=1.0744
+    e3v82e0: cam_z=-0.0057  h_c=1.0802
+    e3v82f9: cam_z=-0.0069  h_c=1.0813
+    e3v831e: cam_z=0.0080  h_c=1.0664
+    e3v832e: cam_z=0.0021  h_c=1.0724
+    e3v8334: cam_z=0.0099  h_c=1.0645
+    e3v83e9: cam_z=0.0169  h_c=1.0575
+    e3v83eb: cam_z=-0.0028  h_c=1.0773
+    e3v83ee: cam_z=-0.0378  h_c=1.1122
+    e3v83ef: cam_z=0.0057  h_c=1.0688
+    e3v83f0: cam_z=0.0298  h_c=1.0446
+    e3v83f1: cam_z=-0.0326  h_c=1.1070
+  Camera height spread: 0.0676 m
+  Saved internals/calibration_stage3_intrinsic_pass.json
+
+[Auxiliary camera registration] Registering 1 auxiliary camera(s) via 10-DOF refinement (extrinsics plus focal length and principal point)...
+  e3v8250: 185 frames, 15754 corners
+   Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality
+       0              1         2.2531e+05                                    9.82e+06
+       1              7         1.8883e+05      3.65e+04       3.73e-02       1.06e+07
+       2              8         1.4385e+05      4.50e+04       4.27e-02       5.93e+06
+       3              9         1.1739e+05      2.65e+04       3.45e-02       6.29e+06
+       4             10         9.1440e+04      2.60e+04       3.87e-02       1.60e+06
+       5             11         6.0046e+04      3.14e+04       7.31e-02       1.83e+06
+       6             12         1.5733e+04      4.43e+04       1.58e-01       3.55e+06
+       7             13         1.3360e+04      2.37e+03       6.60e+00       3.95e+05
+       8             14         1.3238e+04      1.22e+02       8.36e+00       3.35e+03
+       9             15         1.3236e+04      1.71e+00       1.58e+00       1.45e+02
+      10             16         1.3236e+04      4.03e-04       8.85e-03       3.81e-01
+      11             17         1.3236e+04      9.00e-08       3.59e-04       2.04e-02
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 2.2531e+05, final cost 1.3236e+04, first-order optimality 2.04e-02.
+  e3v8250: RMS 2.28 px, interface_d=1.0744m (intrinsics refined)
+
+[Validation] Estimating board poses for held-out frames...
+  Estimated 52 validation frame poses
+
+[Validation] Computing errors on held-out data...
+  Primary cameras:
+    Reprojection RMS: 1.034 pixels
+    3D distance error: MAE 0.30 mm, RMSE 0.87 mm (0.5% of square size)
+  Auxiliary cameras:
+    e3v8250: RMS 16.238 pixels
+
+[Diagnostics] Generating report...
+  Saved diagnostics to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44
+  Discards: degenerate_observations_at_solution=183, pnp_attempts_refractive=3598, pnp_attempts_total=3598, pnp_guard_rejected=8, pose_discarded_by_consumer=8
+
+[Save] Saving calibration result...
+  Saved to C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44\calibration.json
+  Saved benchmark.json
+
+============================================================
+Calibration complete!
+  Primary cameras:
+    Reprojection RMS: 1.034 pixels
+    3D error: MAE 0.30 mm, RMSE 0.87 mm (0.5%)
+  Auxiliary cameras:
+    e3v8250: RMS 16.238 pixels
+============================================================
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44_e2_out\real_rig_metrics.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44\benchmark.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44_e2_out\benchmark.json
+Copied C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44\calibration.json -> C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\seed_44_e2_out\calibration.json
+E2 real-rig run complete.
+[2026-08-07T06:34:54Z] e2_band: seed 44 exit=0
+[2026-08-07T06:34:55Z] <<< STAGE 4/5: e2_band finished exit=0
+----- GATE VERDICT: stage=e2_band out_dir=experiments/results_e2_band -----
+[FAIL] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E6  gate1_guard_count                             no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e6_configs
+[FAIL] E6  gate3_provenance                              no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e6_configs
+[FAIL] E6  gate4_optimality                              no per-configuration checkpoint under C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\e6_configs
+[FAIL] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv not found
+[FAIL] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[PASS] E2  gate_e2_band:record_count                     3 per-seed metric records found: seeds [42, 43, 44]
+[PASS] E2  gate_e2_band:not_identical                    3 distinct metric record(s) across 3 seeds
+[FAIL] E2  gate_e2_band:seed42_reproduction              committed C:\Users\tucke\PycharmProjects\AquaCal\experiments\results_e2_band\real_rig_metrics.json missing or unreadable
+[PASS] E2  gate_e2_band:scope                            e2_band_scope.json scope states both required phrases
+[PASS] ALL gate3_git_sha_consistency                     no git_sha values found across any artifact to compare
+
+TOTAL: 4 PASS, 12 N/A, 32 FAIL
+----- END GATE VERDICT: stage=e2_band exit=1 -----
+[2026-08-07T06:34:55Z] >>> STAGE 5/5: e5_band starting
+Experiment output directory: C:\Users\tucke\PycharmProjects\AquaCal\experiments\results
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.7464e+04, final cost 3.7027e+03, first-order optimality 2.18e-03.
+  reprojection_rms_px=0.7087 scale_bias_pct=0.0394
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.3250e+04, final cost 3.6970e+03, first-order optimality 9.11e-04.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0414
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.7126e+04, final cost 3.6927e+03, first-order optimality 1.09e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0435
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 1.6954e+04, final cost 3.6900e+03, first-order optimality 1.20e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0456
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2361e+04, final cost 3.6887e+03, first-order optimality 9.83e-04.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0478
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2104e+04, final cost 3.6888e+03, first-order optimality 1.15e-03.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0499
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2181e+04, final cost 3.6904e+03, first-order optimality 2.49e-03.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0521
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2465e+04, final cost 3.6933e+03, first-order optimality 1.20e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0542
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.4991e+04, final cost 3.6977e+03, first-order optimality 1.97e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0564
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.2734e+04, final cost 3.7035e+03, first-order optimality 1.24e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0586
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.6653e+04, final cost 3.7107e+03, first-order optimality 1.31e-03.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0608
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.2298e+04, final cost 3.7047e+03, first-order optimality 1.94e-03.
+  reprojection_rms_px=0.7077 scale_bias_pct=0.0211
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 5.1557e+04, final cost 3.6990e+03, first-order optimality 1.15e-03.
+  reprojection_rms_px=0.7068 scale_bias_pct=0.0244
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 3.6770e+04, final cost 3.6944e+03, first-order optimality 3.07e-03.
+  reprojection_rms_px=0.7061 scale_bias_pct=0.0276
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 16, initial cost 3.7105e+04, final cost 3.6910e+03, first-order optimality 1.82e-03.
+  reprojection_rms_px=0.7055 scale_bias_pct=0.0309
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 22, initial cost 4.9328e+04, final cost 3.6887e+03, first-order optimality 4.73e-03.
+  reprojection_rms_px=0.7052 scale_bias_pct=0.0342
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.0114e+04, final cost 3.6874e+03, first-order optimality 1.78e-03.
+  reprojection_rms_px=0.7051 scale_bias_pct=0.0375
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 4.0178e+04, final cost 3.6873e+03, first-order optimality 2.43e-03.
+  reprojection_rms_px=0.7052 scale_bias_pct=0.0408
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 4.0038e+04, final cost 3.6883e+03, first-order optimality 4.66e-03.
+  reprojection_rms_px=0.7055 scale_bias_pct=0.0441
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 2.3901e+04, final cost 3.6904e+03, first-order optimality 2.97e-03.
+  reprojection_rms_px=0.7059 scale_bias_pct=0.0475
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 3.7280e+04, final cost 3.6936e+03, first-order optimality 1.54e-03.
+  reprojection_rms_px=0.7066 scale_bias_pct=0.0508
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 4.5596e+04, final cost 3.6978e+03, first-order optimality 5.33e-03.
+  reprojection_rms_px=0.7075 scale_bias_pct=0.0542
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 3.8130e+04, final cost 3.7042e+03, first-order optimality 2.37e-03.
+  reprojection_rms_px=0.7075 scale_bias_pct=0.0505
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 22, initial cost 3.7653e+04, final cost 3.6966e+03, first-order optimality 1.36e-03.
+  reprojection_rms_px=0.7066 scale_bias_pct=0.0524
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 3.7204e+04, final cost 3.6907e+03, first-order optimality 2.28e-03.
+  reprojection_rms_px=0.7058 scale_bias_pct=0.0543
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 23, initial cost 3.6793e+04, final cost 3.6866e+03, first-order optimality 1.27e-03.
+  reprojection_rms_px=0.7053 scale_bias_pct=0.0563
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 22, initial cost 3.6412e+04, final cost 3.6841e+03, first-order optimality 2.28e-03.
+  reprojection_rms_px=0.7050 scale_bias_pct=0.0582
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 22, initial cost 3.6066e+04, final cost 3.6833e+03, first-order optimality 2.25e-03.
+  reprojection_rms_px=0.7050 scale_bias_pct=0.0602
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 3.5757e+04, final cost 3.6842e+03, first-order optimality 6.46e-03.
+  reprojection_rms_px=0.7051 scale_bias_pct=0.0622
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 3.5485e+04, final cost 3.6867e+03, first-order optimality 2.23e-03.
+  reprojection_rms_px=0.7055 scale_bias_pct=0.0642
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 3.5251e+04, final cost 3.6909e+03, first-order optimality 1.17e-03.
+  reprojection_rms_px=0.7060 scale_bias_pct=0.0662
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 22, initial cost 3.5052e+04, final cost 3.6967e+03, first-order optimality 1.49e-03.
+  reprojection_rms_px=0.7068 scale_bias_pct=0.0683
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 3.4891e+04, final cost 3.7042e+03, first-order optimality 1.16e-03.
+  reprojection_rms_px=0.7078 scale_bias_pct=0.0703
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.4543e+04, final cost 4.0502e+03, first-order optimality 2.07e-03.
+  reprojection_rms_px=0.7125 scale_bias_pct=0.0181
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.4530e+04, final cost 4.0430e+03, first-order optimality 1.51e-03.
+  reprojection_rms_px=0.7118 scale_bias_pct=0.0206
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.4572e+04, final cost 4.0375e+03, first-order optimality 1.31e-03.
+  reprojection_rms_px=0.7113 scale_bias_pct=0.0232
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.4670e+04, final cost 4.0336e+03, first-order optimality 1.34e-03.
+  reprojection_rms_px=0.7110 scale_bias_pct=0.0257
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.4825e+04, final cost 4.0315e+03, first-order optimality 2.01e-03.
+  reprojection_rms_px=0.7108 scale_bias_pct=0.0283
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.5037e+04, final cost 4.0311e+03, first-order optimality 1.78e-03.
+  reprojection_rms_px=0.7107 scale_bias_pct=0.0309
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.5307e+04, final cost 4.0323e+03, first-order optimality 2.52e-03.
+  reprojection_rms_px=0.7108 scale_bias_pct=0.0335
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.5633e+04, final cost 4.0352e+03, first-order optimality 2.07e-03.
+  reprojection_rms_px=0.7111 scale_bias_pct=0.0361
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.6016e+04, final cost 4.0398e+03, first-order optimality 2.53e-03.
+  reprojection_rms_px=0.7115 scale_bias_pct=0.0387
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.6454e+04, final cost 4.0460e+03, first-order optimality 5.47e-03.
+  reprojection_rms_px=0.7120 scale_bias_pct=0.0414
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.6948e+04, final cost 4.0538e+03, first-order optimality 4.23e-03.
+  reprojection_rms_px=0.7127 scale_bias_pct=0.0440
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 1.5749e+04, final cost 3.8771e+03, first-order optimality 1.04e-03.
+  reprojection_rms_px=0.7083 scale_bias_pct=0.0463
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 1.5011e+04, final cost 3.8704e+03, first-order optimality 6.81e-04.
+  reprojection_rms_px=0.7076 scale_bias_pct=0.0483
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 1.4301e+04, final cost 3.8652e+03, first-order optimality 1.72e-03.
+  reprojection_rms_px=0.7071 scale_bias_pct=0.0503
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.3625e+04, final cost 3.8615e+03, first-order optimality 1.16e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0523
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 14, initial cost 1.2985e+04, final cost 3.8593e+03, first-order optimality 3.48e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0543
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.2386e+04, final cost 3.8585e+03, first-order optimality 2.85e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0563
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.1833e+04, final cost 3.8592e+03, first-order optimality 2.11e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0583
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 1.1329e+04, final cost 3.8614e+03, first-order optimality 1.27e-03.
+  reprojection_rms_px=0.7066 scale_bias_pct=0.0604
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.0882e+04, final cost 3.8650e+03, first-order optimality 1.94e-03.
+  reprojection_rms_px=0.7070 scale_bias_pct=0.0624
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 1.0496e+04, final cost 3.8700e+03, first-order optimality 1.08e-03.
+  reprojection_rms_px=0.7075 scale_bias_pct=0.0645
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 10, initial cost 1.0175e+04, final cost 3.8765e+03, first-order optimality 1.03e-03.
+  reprojection_rms_px=0.7081 scale_bias_pct=0.0666
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 23, initial cost 4.8782e+04, final cost 4.0793e+03, first-order optimality 3.80e-03.
+  reprojection_rms_px=0.7096 scale_bias_pct=0.0418
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 24, initial cost 4.8032e+04, final cost 4.0720e+03, first-order optimality 3.71e-03.
+  reprojection_rms_px=0.7087 scale_bias_pct=0.0443
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 4.7296e+04, final cost 4.0667e+03, first-order optimality 1.83e-03.
+  reprojection_rms_px=0.7080 scale_bias_pct=0.0469
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 17, initial cost 4.6574e+04, final cost 4.0631e+03, first-order optimality 3.62e-03.
+  reprojection_rms_px=0.7074 scale_bias_pct=0.0496
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.5868e+04, final cost 4.0615e+03, first-order optimality 3.73e-03.
+  reprojection_rms_px=0.7071 scale_bias_pct=0.0522
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.5181e+04, final cost 4.0616e+03, first-order optimality 4.94e-02.
+  reprojection_rms_px=0.7069 scale_bias_pct=0.0549
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.4512e+04, final cost 4.0636e+03, first-order optimality 5.79e-03.
+  reprojection_rms_px=0.7069 scale_bias_pct=0.0575
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.3865e+04, final cost 4.0674e+03, first-order optimality 1.03e-02.
+  reprojection_rms_px=0.7070 scale_bias_pct=0.0602
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.3239e+04, final cost 4.0730e+03, first-order optimality 6.34e-03.
+  reprojection_rms_px=0.7073 scale_bias_pct=0.0629
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.2638e+04, final cost 4.0804e+03, first-order optimality 6.11e-03.
+  reprojection_rms_px=0.7078 scale_bias_pct=0.0656
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 4.2060e+04, final cost 4.0895e+03, first-order optimality 4.23e-03.
+  reprojection_rms_px=0.7085 scale_bias_pct=0.0684
+Wrote C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\index_sensitivity_seed_band.csv and C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\e5_seed_band_provenance.json
+[2026-08-07T08:55:27Z] <<< STAGE 5/5: e5_band finished exit=0
+----- GATE VERDICT: stage=e5_band out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: non-zero guard count (14949) at the final solution -- optimality is unreliable here
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: missing provenance field(s) ['seed']
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 1 of 10 row(s) have a non-zero or missing guard count
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: missing provenance field(s) ['seed']
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e7_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E1  gate4_band:exp1_band.csv                      exp1_band.csv exists with 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51], but no sidecar matching 'e1_benchmark_*.json' records solver_config['seeds'] -- the band cannot be verified against what was actually requested
+[FAIL] E6  gate_e6_seed_band:seed_count                  generalization_sweep_band.csv carries 6 distinct seed(s) [42, 43, 44, 45, 46, 47], expected exactly 5
+[PASS] E6  gate_e6_seed_band:row_count                   row count = 102, uniform across seeds (17 rows/seed)
+[PASS] E6  gate_e6_seed_band:cameras_axis                cameras axis present at [8, 12, 16]
+[PASS] E6  gate_e6_seed_band:status_counts               every row status=='ok' across all 6 seeds
+[PASS] E6  gate_e6_seed_band:sidecar_seeds               sidecar solver_config['seeds'] matches the CSV's distinct seeds
+[PASS] E6  gate_e6_seed_band:sidecar_git_sha             e6_seed_band_provenance.json git_sha=2a2f0faccef4eca243d027023e44e047041a4a1c
+[FAIL] E5  gate_e5_seed_band:seed_count                  index_sensitivity_seed_band.csv carries 6 distinct seed(s) [42, 43, 44, 45, 46, 47], expected exactly 5
+[PASS] E5  gate_e5_seed_band:sidecar_seeds               e5_seed_band_provenance.json carries solver_config['seeds']
+[PASS] E5  gate_e5_seed_band:n_assumed_band              e5_seed_band_provenance.json carries n_assumed_band alongside seeds
+[PASS] E5  gate_e5_seed_band:scope                       e5_seed_band_provenance.json scope: "This band varies the SEED across the fixed N_ASSUMED_BAND sweep of the assumed refractive index, and bounds seed-to-seed noise in E5's scale-bias measurement. It is DISTINCT from n_assumed_band (also present in this sidecar), which varies the assumed index at ONE seed and bounds nothing about seed noise -- conflating the two is exactly what demoted E5's accuracy claim under D-19.3-17 (D-19.5-05)."
+[PASS] E4  gate_e4_repeat:row_count                      benchmark_grid_repeat.csv: 6 rows
+[PASS] E4  gate_e4_repeat:cells                          all three repeat cells present: [(8, 100), (12, 100), (16, 100)]
+[PASS] E4  gate_e4_repeat:repeat_labels                  repeat labels [1, 2] present
+[PASS] E4  gate_e4_repeat:nfev_beside_wallclock          every row with a non-null seconds_stage3_interface_optimization has a non-null nfev_stage3_interface_optimization
+[PASS] E2  gate_e2_band:record_count                     3 per-seed metric records found: seeds [42, 43, 44]
+[PASS] E2  gate_e2_band:not_identical                    3 distinct metric record(s) across 3 seeds
+[PASS] E2  gate_e2_band:seed42_reproduction              seed-42 band record matches C:\Users\tucke\PycharmProjects\AquaCal\experiments\results\real_rig_metrics.json within rtol=1e-06
+[PASS] E2  gate_e2_band:scope                            e2_band_scope.json scope states both required phrases
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395)
+
+TOTAL: 97 PASS, 7 N/A, 12 FAIL
+----- END GATE VERDICT: stage=e5_band exit=1 -----
+[2026-08-07T08:55:27Z] Phase 19.5 production queue finished all 5 stages. See experiments/rerun_19_5_state.tsv for the full stage-completion record.

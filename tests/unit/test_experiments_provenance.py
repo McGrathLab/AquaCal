@@ -108,6 +108,13 @@ CSV_TO_RECORD: dict[str, str] = {
         "(E2's pipeline record) for the real_rig_13cam_200fr row; also carries "
         "its own seed column"
     ),
+    "benchmark_grid_repeat.csv": (
+        "experiments/results/e4_cells/*/benchmark.json for the repeat cells "
+        "(plan 19.5-10, COV-06) -- three 100-frame cells at two repeats each, "
+        "single-seed by design so it is not a band; its point is run-to-run "
+        "wall-clock spread at fixed work, which is why every row carries "
+        "nfev_stage3_interface_optimization beside seconds_total (MF-03)"
+    ),
     "camera_parameters.csv": "experiments/results/benchmark.json (E2, same run)",
     "code_constants.csv": "experiments/results/e3_provenance.json (E3 tier 1)",
     "cpr_grouping.csv": (
@@ -163,9 +170,25 @@ CSV_TO_RECORD: dict[str, str] = {
         "experiments/results/e6_configs/*.json are per-configuration "
         "checkpoints with their own schema_version and provenance"
     ),
+    "generalization_sweep_band.csv": (
+        "experiments/results/e6_seed_band_provenance.json (plan 19.5-10, "
+        "COV-03 + COV-04), which records solver_config['seeds'] matching this "
+        "CSV's own seed column across seeds 42-47 -- 17 configurations per "
+        "seed, 102 rows, including the cameras axis at 8/12/16; unlike E1's "
+        "and E7's bands the sidecar here DOES cover the whole span, so the "
+        "seed column and the sidecar corroborate each other"
+    ),
     "index_sensitivity.csv": (
         "experiments/results/e5_provenance.json (E5's run-level sidecar, "
         "plan 19.2-19) -- also carries its own seed column"
+    ),
+    "index_sensitivity_seed_band.csv": (
+        "experiments/results/e5_seed_band_provenance.json (plan 19.5-10, "
+        "COV-05), which records solver_config['seeds'] matching this CSV's "
+        "own seed column across seeds 42-47 -- eleven n_assumed values per "
+        "seed, 66 rows; the sidecar's scope distinguishes this seed band from "
+        "n_assumed_band, which varies the assumed index at ONE seed and bounds "
+        "nothing about seed noise (D-19.5-05)"
     ),
     "interface_ablation.csv": (
         "experiments/results/e7_benchmark_shared_fixed.json + "
@@ -278,8 +301,19 @@ def _record_seed(record: dict) -> object | None:
     lookup covers every schema_version-carrying file in the repository today.
     """
     solver_config = record.get("solver_config")
-    if isinstance(solver_config, dict) and "seed" in solver_config:
-        return solver_config["seed"]
+    if isinstance(solver_config, dict):
+        if "seed" in solver_config:
+            return solver_config["seed"]
+        # A multi-seed band ran under no single seed, so its sidecar publishes
+        # the span as solver_config["seeds"] instead. That list IS the record's
+        # seed provenance -- richer than a scalar, not absent -- and
+        # check_rerun_gates.py's gate_e6_seed_band:sidecar_seeds independently
+        # asserts it matches the band CSV's distinct seeds. Reading only the
+        # singular key would push a live band record into
+        # SEEDLESS_LEGACY_RECORDS, hiding present provenance behind a carve-out
+        # reserved for Phase-19.1 records that genuinely carry none.
+        if "seeds" in solver_config:
+            return solver_config["seeds"]
     return None
 
 
