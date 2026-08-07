@@ -133,13 +133,19 @@ CSV_TO_RECORD: dict[str, str] = {
         "experiments/results/e7_benchmark_shared_refined.json"
     ),
     "exp1_band.csv": (
-        "its own seed column is its ONLY seed provenance, spanning seeds "
-        "42-51; experiments/results/e1_benchmark_refractive.json + "
+        "experiments/results/e1_seed_band_provenance.json (the band-owned "
+        "sidecar, quick task 260807-dcv), which records solver_config['seeds'] "
+        "matching this CSV's own seed column across seeds 42-51; "
+        "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json supply version/git_sha/environment "
         "but NOT this band's seeds -- both are SEEDLESS_LEGACY_RECORDS and "
         "carry no seed key at all, and band mode deliberately does not "
         "overwrite them (doing so would replace the single-seed production "
-        "record with the last band seed's values)"
+        "record with the last band seed's values), which is precisely why the "
+        "band needed a sidecar of its own. This CSV also carries EXP3's "
+        "xy_rmse_mm/z_rmse_mm/anisotropy_ratio/n_points: z_rmse_mm at the "
+        "deepest test point is the manuscript's headline ratio (main.tex L68, "
+        "L281) and previously existed per-seed only in gitignored sweep output"
     ),
     "exp1_parameter_errors.csv": (
         "experiments/results/e1_benchmark_refractive.json + "
