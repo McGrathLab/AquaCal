@@ -77,6 +77,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "the production run must not pass it.",
     )
     parser.add_argument(
+        "--per-camera",
+        action="store_true",
+        help="Read each video to its own length instead of iterating all "
+        "cameras synchronized. REQUIRED for the intrinsic set: those "
+        "recordings are independent and differ in length, and "
+        "`VideoSet.frame_count` is min(counts), so synchronized iteration "
+        "silently truncates every camera to the shortest one. The intrinsic "
+        "calibration path (`calibrate_intrinsics_all`) reads each video "
+        "independently, so only this mode reproduces what it saw. Do NOT use "
+        "for the extrinsic set, whose synchronization is meaningful.",
+    )
+    parser.add_argument(
         "--allow-ragged",
         action="store_true",
         help="Allow per-camera written-frame counts to differ (intrinsic "
@@ -166,28 +178,36 @@ def main(argv: list[str] | None = None) -> int:
 
     written: dict[str, int] = {cam: 0 for cam in video_paths}
 
-    vs = VideoSet(video_paths)
-    for _frame_idx, frames in vs.iterate_frames(step=args.step):
-        for cam, frame in frames.items():
-            if frame is None:
-                continue
-            if args.limit is not None and written[cam] >= args.limit:
-                continue
-            dest = out_dir / cam / f"frame{written[cam]:04d}.png"
-            ok = cv2.imwrite(
-                str(dest), frame, [cv2.IMWRITE_PNG_COMPRESSION, _PNG_COMPRESSION]
-            )
-            if not ok:
-                logger.error("ERROR: failed to write frame to %s", dest)
-                return 1
-            written[cam] += 1
-            if written[cam] % _PROGRESS_INTERVAL == 0:
-                logger.info("%s: %d frames written so far", cam, written[cam])
+    # Per-camera mode opens one VideoSet per video so each is read to its OWN
+    # length; synchronized mode opens them together, which stops at the shortest.
+    if args.per_camera:
+        video_groups = [{cam: path} for cam, path in video_paths.items()]
+    else:
+        video_groups = [video_paths]
 
-        if args.limit is not None and all(
-            written[cam] >= args.limit for cam in video_paths
-        ):
-            break
+    for group in video_groups:
+        vs = VideoSet(group)
+        for _frame_idx, frames in vs.iterate_frames(step=args.step):
+            for cam, frame in frames.items():
+                if frame is None:
+                    continue
+                if args.limit is not None and written[cam] >= args.limit:
+                    continue
+                dest = out_dir / cam / f"frame{written[cam]:04d}.png"
+                ok = cv2.imwrite(
+                    str(dest), frame, [cv2.IMWRITE_PNG_COMPRESSION, _PNG_COMPRESSION]
+                )
+                if not ok:
+                    logger.error("ERROR: failed to write frame to %s", dest)
+                    return 1
+                written[cam] += 1
+                if written[cam] % _PROGRESS_INTERVAL == 0:
+                    logger.info("%s: %d frames written so far", cam, written[cam])
+
+            if args.limit is not None and all(
+                written[cam] >= args.limit for cam in group
+            ):
+                break
 
     for cam, count in written.items():
         if count == 0:

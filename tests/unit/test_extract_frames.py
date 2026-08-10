@@ -184,6 +184,96 @@ def test_written_pngs_round_trip_lossless(tmp_path, monkeypatch, module) -> None
     assert np.array_equal(written, original)
 
 
+def _make_truncating_video_set(frames_by_camera: dict[str, list[np.ndarray]]):
+    """A VideoSet double faithful to the real one's min-length truncation.
+
+    `VideoSet.frame_count` is `min(counts)` (`io/video.py:87`) and
+    `iterate_frames` stops there, so opening videos of differing length together
+    silently drops the tail of every longer one. The other double in this module
+    yields `max` frames padded with `None`, which is more permissive than
+    reality and cannot reveal that.
+    """
+
+    class TruncatingVideoSet:
+        def __init__(self, video_paths: dict[str, str]) -> None:
+            self.video_paths = video_paths
+            self._names = list(video_paths)
+
+        def iterate_frames(self, start: int = 0, stop=None, step: int = 1):
+            n = min(len(frames_by_camera[c]) for c in self._names)
+            for idx in range(start, n, step):
+                yield idx, {c: frames_by_camera[c][idx] for c in self._names}
+
+    return TruncatingVideoSet
+
+
+def test_per_camera_mode_does_not_truncate_to_shortest_video(
+    tmp_path, monkeypatch, module
+) -> None:
+    """--per-camera reads each video to its own length (intrinsic set).
+
+    The intrinsic recordings are independent and differ in length, and
+    `calibrate_intrinsics_all` reads each one separately. Synchronized
+    iteration truncates them all to the shortest, which silently ships a
+    smaller intrinsic set than the calibration that produced the paper saw.
+    """
+    frames_by_camera = {
+        "camShort": [_make_frame(i) for i in range(2)],
+        "camLong": [_make_frame(100 + i) for i in range(5)],
+    }
+    monkeypatch.setattr(
+        module, "VideoSet", _make_truncating_video_set(frames_by_camera)
+    )
+    _patch_discovery(monkeypatch, module, list(frames_by_camera))
+
+    out_dir = tmp_path / "out"
+    rc = module.main(
+        [
+            "--video-dir",
+            str(tmp_path),
+            "--out-dir",
+            str(out_dir),
+            "--step",
+            "1",
+            "--per-camera",
+            "--allow-ragged",
+        ]
+    )
+    assert rc == 0
+
+    counts = {cam: len(list((out_dir / cam).glob("*.png"))) for cam in frames_by_camera}
+    assert counts == {"camShort": 2, "camLong": 5}, counts
+
+
+def test_synchronized_mode_still_truncates_to_shortest(
+    tmp_path, monkeypatch, module
+) -> None:
+    """Without --per-camera, iteration stops at the shortest video.
+
+    This is correct for the extrinsic set, whose cameras are genuinely
+    synchronized. Pinned so the two modes stay distinguishable.
+    """
+    frames_by_camera = {
+        "camShort": [_make_frame(i) for i in range(2)],
+        "camLong": [_make_frame(100 + i) for i in range(5)],
+    }
+    monkeypatch.setattr(
+        module, "VideoSet", _make_truncating_video_set(frames_by_camera)
+    )
+    _patch_discovery(monkeypatch, module, list(frames_by_camera))
+
+    out_dir = tmp_path / "out"
+    assert (
+        module.main(
+            ["--video-dir", str(tmp_path), "--out-dir", str(out_dir), "--step", "1"]
+        )
+        == 0
+    )
+
+    counts = {cam: len(list((out_dir / cam).glob("*.png"))) for cam in frames_by_camera}
+    assert counts == {"camShort": 2, "camLong": 2}, counts
+
+
 def test_pngs_written_at_maximum_compression(tmp_path, monkeypatch, module) -> None:
     """Frames are written at PNG level 9, the level D-07's ~4.0 GB sizing assumed.
 
