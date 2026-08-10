@@ -225,7 +225,7 @@ bundle-adjustment stage, never merged.
 | `water_z` | Current shared interface height, in metres | The single most useful column for watching the interface converge |
 | `tilt_rx` / `tilt_ry` | Interface normal tilt | `nan` when `interface.normal_fixed: true` |
 
-```csv
+```text
 iteration,n_fev,cost,step_norm,optimality,water_z,tilt_rx,tilt_ry
 1,4,9126.77891150883,0.0,2069461.4136093126,1.0309232645981559,nan,nan
 2,5,5547.744091265486,0.004022699836326897,2104253.140434162,1.0309451952806004,nan,nan
