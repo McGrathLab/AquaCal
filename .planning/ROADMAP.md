@@ -590,7 +590,7 @@ Plans:
   - [x] 21-04-PLAN.md — notebooks go fast and synthetic-only: 01's Zenodo branch deleted, 02 demoted to `RIG_SIZE = "small"`, full editorial pass, both re-executed (DATA-03)
   - [x] 21-05-PLAN.md — reword DOCS-05 / DATA-02 / DATA-03, add DATA-01b to this phase's requirement line, verify the OpenCV `<5.0` pin (DOCS-05, DATA-02, DATA-03)
 - Wave 2 (depends on 21-01):
-  - [ ] 21-06-PLAN.md — **LONG, not autonomous**: the production extraction, 12 GB of AVI -> ~4.4 GB of lossless PNG, 13 x 262 extrinsic frames plus the intrinsic set (DATA-01a)
+  - [x] 21-06-PLAN.md — **LONG, not autonomous**: the production extraction, 12 GB of AVI -> ~4.4 GB of lossless PNG, 13 x 262 extrinsic frames plus the intrinsic set (DATA-01a)
 - Wave 3 (depends on 21-06):
   - [ ] 21-07-PLAN.md — archive assembly: `config_paper.yaml` + `config_quickstart_not_paper.yaml`, the DATA-01b reference outputs, the zip, and D-15 gates 2 and 4 (DATA-01, DATA-01b, DATA-02)
 - Wave 4 (depends on 21-07, 21-03):
@@ -642,5 +642,5 @@ behavior the published artifacts actually reflect.
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
 | 19.4 Single Flat Interface | v1.9 | 10/10 | Complete   | 2026-08-05 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
-| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 6/12 | In Progress|  |
+| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 7/12 | In Progress|  |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |
