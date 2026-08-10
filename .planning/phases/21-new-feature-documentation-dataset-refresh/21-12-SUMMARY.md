@@ -154,3 +154,12 @@ None - no external service configuration required.
 ---
 *Phase: 21-new-feature-documentation-dataset-refresh*
 *Completed: 2026-08-10*
+
+## Self-Check: PASSED
+
+- FOUND: tests/unit/test_refractive_geometry.py
+- FOUND: .planning/MANUSCRIPT-FINDINGS.md
+- FOUND: .planning/phases/21-new-feature-documentation-dataset-refresh/21-12-SUMMARY.md
+- FOUND commit: 2751021 (Task 1)
+- FOUND commit: e6b5e35 (Task 2)
+- FOUND commit: 63ea7da (SUMMARY)
