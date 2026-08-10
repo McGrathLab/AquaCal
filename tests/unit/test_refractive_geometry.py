@@ -1072,3 +1072,79 @@ class TestBatchNewtonDiagnostic:
         # Recorded for the summary, not asserted: under all-points termination, a point's
         # own convergence iteration can differ from the scalar loop's per-point count.
         assert all(isinstance(d, int) for d in iteration_diffs)
+
+
+class TestUnitIndexPinholeIdentity:
+    """Verifies numerically -- not by source reading -- whether the refractive
+    projector reduces exactly to the plain pinhole projection at
+    ``n_air = n_water = 1.0``.
+
+    Plan 21-12 verification. The manuscript's non-refractive baseline (`main.tex`
+    lines 68, 268, 270, 271, 278, 280, 281, 295, including the abstract's headline)
+    runs the optimizer at n_water=1.0 and reports 14,949 `DegenerateObservationWarning`
+    hits -- a guard count of zero everywhere else. If the pinhole extension and the
+    refractive Newton solve disagree at unit index, the baseline's reported optimality
+    is meaningless rather than merely pessimistic. See
+    `.planning/MANUSCRIPT-FINDINGS.md` MF-18 and the folded todo
+    `2026-08-05-verify-non-refractive-baseline-supports-paper-claims.md`.
+    """
+
+    def test_projection_reduces_to_pinhole_at_unit_index(self, simple_camera):
+        """At n_air == n_water == 1.0, Snell's law gives theta1 == theta2 for every
+        incidence angle (sin_t_sq = n_ratio**2 * sin_i**2 with n_ratio=1), so the
+        refractive Newton solve and the plain pinhole projection must agree to machine
+        precision for below-interface points."""
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.0,
+        )
+
+        rng = np.random.default_rng(42)
+        n_points = 200
+        xy = rng.uniform(-0.6, 0.6, size=(n_points, 2))
+        z = rng.uniform(0.20, 2.0, size=n_points)  # strictly below interface (Z=0.15)
+        points = np.column_stack([xy, z])
+
+        refractive_pixels = refractive_project_batch(simple_camera, interface, points)
+        pinhole_pixels = np.array(
+            [simple_camera.project(p, apply_distortion=True) for p in points]
+        )
+
+        np.testing.assert_allclose(
+            refractive_pixels, pinhole_pixels, rtol=0, atol=1e-12
+        )
+
+        # Same identity via the scalar path, for a subset -- confirms both code paths
+        # (not just the vectorized one) reduce to pinhole.
+        for p in points[:10]:
+            scalar_pixel = refractive_project(simple_camera, interface, p)
+            pinhole_pixel = simple_camera.project(p, apply_distortion=True)
+            assert scalar_pixel is not None and pinhole_pixel is not None
+            np.testing.assert_allclose(scalar_pixel, pinhole_pixel, rtol=0, atol=1e-12)
+
+    def test_above_interface_points_are_not_pinhole_continued_at_this_layer(
+        self, simple_camera
+    ):
+        """Documents a boundary the todo's source-reading argument did not distinguish:
+        `refractive_project` / `refractive_project_batch` return None/NaN for points at
+        or above the interface (`h_q <= 0`) -- they do NOT themselves apply the pinhole
+        continuation. That continuation is one layer up, in
+        `aquacal.calibration._optim_common._extend_invalid_projections`, reached only
+        from the production residual function (`compute_residuals`). A caller of
+        `refractive_project`/`refractive_project_batch` directly sees the un-extended
+        NaN, regardless of n_air/n_water."""
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.0,
+        )
+        above = np.array([[0.05, 0.02, 0.10]])  # Z=0.10 is above interface Z=0.15
+
+        batch_result = refractive_project_batch(simple_camera, interface, above)
+        assert np.isnan(batch_result).all()
+
+        scalar_result = refractive_project(simple_camera, interface, above[0])
+        assert scalar_result is None
