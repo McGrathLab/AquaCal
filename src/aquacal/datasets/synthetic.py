@@ -518,6 +518,7 @@ def generate_board_trajectory(
     Generate board poses ensuring pose graph connectivity.
 
     Creates a trajectory that ensures:
+
     - Each frame is visible by at least min_cameras_per_frame cameras
     - The pose graph is connected (can chain from reference to all cameras)
     - Board stays within reasonable depth range underwater, with every corner
