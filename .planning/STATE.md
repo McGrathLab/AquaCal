@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
 status: executing
-stopped_at: Phase 19.5 CLOSED 2026-08-07 -- 11/11 plans, COV-01..COV-09 discharged, MF-11..MF-17 written. Next is Phase 21.
-last_updated: "2026-08-06T01:58:38.087Z"
+stopped_at: Phase 21 context gathered
+last_updated: "2026-08-10T14:43:40.215Z"
 last_activity: 2026-08-07 -- Phase 19.5 closed; E1/E7 band provenance repaired
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 94
-  completed_plans: 85
+  completed_plans: 94
   percent: 75
 ---
 
@@ -462,8 +462,8 @@ the Addendum at the end of `16-RESEARCH.md`.
 
 ## Session Continuity
 
-Last session: 2026-08-04
-Stopped at: Phase 19.3 CLOSED at plan 10's Task 3 human checkpoint. The six honesty checks were
+Last session: 2026-08-10T14:43:40.207Z
+Stopped at: Phase 21 context gathered
   walked and recorded in `19.3-10-SUMMARY.md`. One revision was made before approval: MF-08's
   E4/E6 subsection carried four statements falsified by the clearance-floor diagnosis (that E6
   cannot be seed-swept, that only seed 42 completes, that each configuration derives its own
@@ -510,7 +510,7 @@ Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified 
   pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
   look largely satisfied already, so both are audits rather than assumed work.
 
-Resume file: none — Phase 19.3 is closed and its `.continue-here.md` is **stale**
+Resume file: .planning/phases/21-new-feature-documentation-dataset-refresh/21-CONTEXT.md
   (it describes the pre-close checkpoint state). Authoritative record is
   `19.3-10-SUMMARY.md` plus `.planning/MANUSCRIPT-FINDINGS.md` MF-08/MF-09.
   For the next phase, start from `.planning/debug/e6-seed-locked-clearance-floor.md`.
