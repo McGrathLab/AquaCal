@@ -135,7 +135,7 @@ writes `depth_error_plot.png` and `depth_binned.csv` breaking reconstruction err
 `benchmark.json` (solver diagnostics and peak memory). If you enabled the optional
 `internals.save_optimization_trace` or `internals.save_conditioning` config flags, you will
 also find per-iteration trace CSVs and a conditioning `.npz` under `output/internals/`. See the
-Benchmarking & Diagnostics guide page (`guide/benchmarking.md`) for the field-by-field schema of
+[Benchmarking & Diagnostics](../guide/benchmarking.md) guide page for the field-by-field schema of
 all three.
 
 ## 5. Run it on your own rig
@@ -172,7 +172,7 @@ comparing multiple runs against each other once you have more than one calibrati
 
 - [CLI Reference](../guide/cli.md) — full command-line syntax, options, and exit codes
 - [Configuration Reference](../guide/configuration.md) — every YAML configuration key
-- Benchmarking & Diagnostics (`guide/benchmarking.md`) — reading `benchmark.json`, optimizer
+- [Benchmarking & Diagnostics](../guide/benchmarking.md) — reading `benchmark.json`, optimizer
   traces, and conditioning diagnostics
 - [Tutorial 01: Calibrate Your Rig](01_full_pipeline.ipynb) — the synthetic, Python-API
   walkthrough
