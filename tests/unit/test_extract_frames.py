@@ -182,3 +182,33 @@ def test_written_pngs_round_trip_lossless(tmp_path, monkeypatch, module) -> None
 
     written = cv2.imread(str(out_dir / "camA" / "frame0000.png"))
     assert np.array_equal(written, original)
+
+
+def test_pngs_written_at_maximum_compression(tmp_path, monkeypatch, module) -> None:
+    """Frames are written at PNG level 9, the level D-07's ~4.0 GB sizing assumed.
+
+    OpenCV's default compression writes frames roughly 2x larger. That is still
+    lossless, so no round-trip check catches it -- only size does, and by then the
+    12 GB production extraction has already run. Pin the level here.
+    """
+    import cv2
+
+    original = _make_frame(7)
+    frames_by_camera = {"camA": [original]}
+    monkeypatch.setattr(module, "VideoSet", _make_fake_video_set(frames_by_camera))
+    _patch_discovery(monkeypatch, module, list(frames_by_camera))
+
+    out_dir = tmp_path / "out"
+    assert (
+        module.main(
+            ["--video-dir", str(tmp_path), "--out-dir", str(out_dir), "--step", "1"]
+        )
+        == 0
+    )
+
+    produced = (out_dir / "camA" / "frame0000.png").stat().st_size
+
+    reference = tmp_path / "reference_level9.png"
+    cv2.imwrite(str(reference), original, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+
+    assert produced == reference.stat().st_size

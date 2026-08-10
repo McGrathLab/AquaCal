@@ -29,6 +29,13 @@ logger = logging.getLogger(__name__)
 _CAMERA_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 _PROGRESS_INTERVAL = 25
 
+# Maximum PNG compression. PNG is lossless at every level, so this trades encode
+# time for archive size only. The D-07 sizing decision (~1,205 KB/frame, ~4.0 GB
+# for the extrinsic frameset) was computed at this level; OpenCV's default writes
+# frames roughly 2x larger, which would push the archive past the size band
+# 21-06's acceptance criteria assert.
+_PNG_COMPRESSION = 9
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser.
@@ -167,7 +174,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.limit is not None and written[cam] >= args.limit:
                 continue
             dest = out_dir / cam / f"frame{written[cam]:04d}.png"
-            ok = cv2.imwrite(str(dest), frame)
+            ok = cv2.imwrite(
+                str(dest), frame, [cv2.IMWRITE_PNG_COMPRESSION, _PNG_COMPRESSION]
+            )
             if not ok:
                 logger.error("ERROR: failed to write frame to %s", dest)
                 return 1
