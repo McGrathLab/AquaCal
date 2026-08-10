@@ -4,12 +4,12 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 21 context gathered
-last_updated: "2026-08-10T14:43:40.215Z"
-last_activity: 2026-08-07 -- Phase 19.5 closed; E1/E7 band provenance repaired
+last_updated: "2026-08-10T15:32:02.836Z"
+last_activity: 2026-08-10 -- Phase 21 planning complete
 progress:
   total_phases: 12
   completed_phases: 9
-  total_plans: 94
+  total_plans: 106
   completed_plans: 94
   percent: 75
 ---
@@ -132,12 +132,12 @@ Plan: 1 of 11
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Phase 19.5 COMPLETE (2026-08-07)
+Status: Ready to execute
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-07 -- Phase 19.5 closed; E1/E7 band provenance repaired
+Last activity: 2026-08-10 -- Phase 21 planning complete
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
