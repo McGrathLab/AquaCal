@@ -584,11 +584,11 @@ with Phase 20 whenever it lands. See `21-CONTEXT.md` D-01.)
 
 Plans:
 - Wave 1 (parallel, no dependencies):
-  - [ ] 21-01-PLAN.md — `scripts/extract_frames.py`: deterministic every-30th-frame AVI -> lossless PNG extractor with zero-frame and ragged-count guards, plus unit tests (DATA-01a)
-  - [ ] 21-02-PLAN.md — new `docs/guide/benchmarking.md`: `benchmark.json` field-by-field, the eight trace CSV columns with interpretation, the conditioning JSON/NPZ; forward links from `configuration.md`; D-04 verify-only pass (DOCS-05)
-  - [ ] 21-03-PLAN.md — new `docs/tutorials/03_cli_walkthrough.md`: the docs' first end-to-end CLI worked example, every number attributed inline to the archive's own `reference_outputs/` (DOCS-05, DATA-02)
-  - [ ] 21-04-PLAN.md — notebooks go fast and synthetic-only: 01's Zenodo branch deleted, 02 demoted to `RIG_SIZE = "small"`, full editorial pass, both re-executed (DATA-03)
-  - [ ] 21-05-PLAN.md — reword DOCS-05 / DATA-02 / DATA-03, add DATA-01b to this phase's requirement line, verify the OpenCV `<5.0` pin (DOCS-05, DATA-02, DATA-03)
+  - [x] 21-01-PLAN.md — `scripts/extract_frames.py`: deterministic every-30th-frame AVI -> lossless PNG extractor with zero-frame and ragged-count guards, plus unit tests (DATA-01a)
+  - [x] 21-02-PLAN.md — new `docs/guide/benchmarking.md`: `benchmark.json` field-by-field, the eight trace CSV columns with interpretation, the conditioning JSON/NPZ; forward links from `configuration.md`; D-04 verify-only pass (DOCS-05)
+  - [x] 21-03-PLAN.md — new `docs/tutorials/03_cli_walkthrough.md`: the docs' first end-to-end CLI worked example, every number attributed inline to the archive's own `reference_outputs/` (DOCS-05, DATA-02)
+  - [x] 21-04-PLAN.md — notebooks go fast and synthetic-only: 01's Zenodo branch deleted, 02 demoted to `RIG_SIZE = "small"`, full editorial pass, both re-executed (DATA-03)
+  - [x] 21-05-PLAN.md — reword DOCS-05 / DATA-02 / DATA-03, add DATA-01b to this phase's requirement line, verify the OpenCV `<5.0` pin (DOCS-05, DATA-02, DATA-03)
 - Wave 2 (depends on 21-01):
   - [ ] 21-06-PLAN.md — **LONG, not autonomous**: the production extraction, 12 GB of AVI -> ~4.4 GB of lossless PNG, 13 x 262 extrinsic frames plus the intrinsic set (DATA-01a)
 - Wave 3 (depends on 21-06):
@@ -601,7 +601,7 @@ Plans:
   - [ ] 21-10-PLAN.md — `manifest.json`'s three fields updated together; cold-cache `load_example("real-rig")` verified end to end (DATA-02)
   - [ ] 21-11-PLAN.md — DATA-01b repo surgery: three artifacts out of git, the `check-added-large-files` exclusion removed, `reconstruction_bootstrap.py` repointed, README provenance repaired (DATA-01b)
 - Wave 7 (independent; **droppable** if the 2026-08-21 deadline forces a scope cut):
-  - [ ] 21-12-PLAN.md — folded todo: verify numerically whether the `n_water = 1.0` baseline is converged, and record the consequence for §3's refractive-vs-non-refractive claims as an MF entry (DOCS-05)
+  - [x] 21-12-PLAN.md — folded todo: verify numerically whether the `n_water = 1.0` baseline is converged, and record the consequence for §3's refractive-vs-non-refractive claims as an MF entry (DOCS-05)
 
 ### Phase 22: Release Cut
 **Goal**: The version referenced by the manuscript and the Zenodo archive is the one whose
@@ -642,5 +642,5 @@ behavior the published artifacts actually reflect.
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
 | 19.4 Single Flat Interface | v1.9 | 10/10 | Complete   | 2026-08-05 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
-| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 0/12 | Planned | - |
+| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 6/12 | In Progress|  |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |

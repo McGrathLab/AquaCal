@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Publication Prep
 status: executing
 stopped_at: Phase 21 context gathered
-last_updated: "2026-08-10T15:32:02.836Z"
-last_activity: 2026-08-10 -- Phase 21 planning complete
+last_updated: "2026-08-10T15:35:20.269Z"
+last_activity: 2026-08-10 -- Phase 21 execution started
 progress:
   total_phases: 12
   completed_phases: 9
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 19.5 COMPLETE — next is Phase 21 (Zenodo dataset refresh). Phase 20 is deferred by user decision on measured evidence (MF-13).
+**Current focus:** Phase 21 — new-feature-documentation-dataset-refresh
 
 ## Current Position
 
-Phase: 19.5 (experiment-coverage-and-uncertainty-bands) — **COMPLETE 2026-08-07**
+Phase: 21 (new-feature-documentation-dataset-refresh) — EXECUTING
   11/11 plans. COV-01..COV-09 all discharged with a per-requirement artifact table in
   REQUIREMENTS.md. Findings MF-11..MF-17 written; MF-09's edit map updated.
   Next phase: **21** (Phase 20 deferred — see below). Next command: `/gsd:discuss-phase 21`.
@@ -128,16 +128,16 @@ Phase: 19.3 (scenario-geometry-and-convergence) — was EXECUTING
   **Ships a breaking public-API change -- the milestone cuts v2.0.0, not v1.9.x.**
   Phase 19.3 was created mid-session during 19.2 as a directory plus a seed and never went
   through phase creation; its roadmap entry and requirements were backfilled 2026-08-01.
-Plan: 1 of 11
+Plan: 1 of 12
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Ready to execute
+Status: Executing Phase 21
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-10 -- Phase 21 planning complete
+Last activity: 2026-08-10 -- Phase 21 execution started
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
