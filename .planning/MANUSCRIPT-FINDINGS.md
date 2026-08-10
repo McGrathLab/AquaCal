@@ -1348,6 +1348,35 @@ test set** (`depth_seed` is hardcoded), not full replication spread.
 at identical `nfev` on the same machine and sha. Any timing sentence must report `nfev` beside
 wall-clock, and no runtime difference anywhere in the paper may be attributed to a code change.
 
+### UPDATE 2026-08-10 — MF-18 closes the convergence-certification question for L268/L271; no new edit
+
+**Group 2 and Group 5 stand unchanged.** MF-18 (phase 21 plan 12) settles, by measurement, the
+open question the folded todo raised: whether the `n_water=1.0` baseline's reported optimality
+and reprojection RMS can be trusted, given it is the only arm in the entire suite that ever
+triggers `DegenerateObservationWarning` (14,949 hits at the committed E1 record). **They can be
+trusted.** At `n_air = n_water = 1.0` the refractive projector and the pinhole model agree to
+`atol=1e-12` (`tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity::test_projection_reduces_to_pinhole_at_unit_index`),
+so this arm's C0-but-not-C1 kink has zero magnitude and the guard's disqualification does not
+bite here specifically.
+
+**No new location or edit is added by this entry.** L268's "sole experimental variable" framing
+already stands (Group 5 treats it as correct); L271's 1.376 px RMS citation is now confirmed
+admissible rather than merely unchallenged. The band-attachment edit at L68/L281 that MF-16
+already specifies (state `97-178x` alongside `~135x`) remains the only action item touching this
+comparison — MF-18 does not add to it.
+
+**One thing MF-18 explicitly does NOT license:** treating E1's absolute numbers (any of L270,
+271, 278, 280's specific values) as certified accurate in the sense of D-19.3-17's seed-band
+gate. `experiments/e1_refractive_comparison.py:42`'s "E1 carries NO accuracy claim" stands
+independently of convergence — MF-18 answers "is the solve converged," not "is the D-19.3-17
+gate satisfied." Only MF-16's ratio band clears that gate, and only for the ratio.
+
+**Instrumentation gap, not a manuscript action.** MF-18 also finds that
+`degenerate_observations_at_solution` merges above-interface and behind-camera guard hits into
+one counter with no committed way to split them. This affects nothing publishable — the
+convergence question is settled independently of the split — and is recorded as a small
+low-priority fix for the post-Zenodo repair batch, not as anything requiring a manuscript
+response.
 
 ## MF-10 — Synthetic validation ran against a ground truth where each camera had its own water surface
 
@@ -1749,5 +1778,121 @@ a genuine null carries.
 
 **Those two rows must not become a manuscript claim.** A statistic that is undefined by
 construction is not evidence of absence.
+
+---
+
+## MF-18 — At n_water=1.0 the refractive projector IS the pinhole model; the baseline is converged, but E1's own no-accuracy-claim statement still stands
+
+**Status:** OPEN — needs the reframing described below; no manuscript prose edited here
+**Found:** 2026-08-10, phase 21 plan 12, settling the folded todo
+`2026-08-05-verify-non-refractive-baseline-supports-paper-claims.md` by measurement rather than
+source reading
+**Source of truth:** `tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity::test_projection_reduces_to_pinhole_at_unit_index`
+(regenerable — run the node id directly); `experiments/results/e1_benchmark_nonrefractive.json`
+(the committed `degenerate_observations_at_solution: 14949` count); `experiments/e1_refractive_comparison.py:42`
+**Where the prose is:** `main.tex` lines 68, 268, 270, 271, 278, 280, 281, 295 (per MF-09's
+location conventions) — the entire refractive-vs-non-refractive comparison, including the
+abstract's headline.
+**Relates to:** MF-16 (the 97-178x band this baseline feeds), MF-09 (the edit map this entry
+routes into).
+
+### What was measured
+
+Constructed a camera, a horizontal interface, and 200 random below-interface points spanning a
+range of incidence angles, with `n_air = n_water = 1.0`. Projected them through
+`refractive_project_batch` (the vectorized Newton solve) and separately through
+`camera.project(..., apply_distortion=True)` (the plain pinhole model). **They agree to
+`rtol=0, atol=1e-12`** — tighter than the plan's floor tolerance — on every point, both through
+the vectorized batch path and the scalar `refractive_project` path (spot-checked on a 10-point
+subset). This is expected from the algebra (`snells_law_3d`'s `sin_t_sq = n_ratio**2 * sin_i**2`
+is identically `sin_i**2` at `n_ratio=1`, i.e. `theta1 == theta2` for every incidence angle) but
+had not been verified numerically before this plan — the todo said so explicitly.
+
+**Consequence for convergence certification: the baseline's reported optimality is pessimistic,
+not meaningless, and it IS converged.** The `n_water=1.0` arm's C0-but-not-C1 kink at the
+refractive/pinhole boundary, which `DegenerateObservationWarning` warns makes optimality
+"UNRELIABLE as a convergence measure," has **zero magnitude** on this arm specifically — the two
+models it kinks between are numerically identical there. Line 268's "refraction modeling is the
+sole experimental variable" framing **stands**: the arms differ only in refraction modeling, not
+in solve quality.
+
+### A boundary the todo's source-reading argument did not distinguish (found while writing the test)
+
+`refractive_project`/`refractive_project_batch` return `None`/`NaN` for points at or above the
+interface (`h_q <= 0`) **themselves** — they do not apply the pinhole continuation. That
+continuation is one layer up, in `_optim_common._extend_invalid_projections`, reached only from
+the production residual function (`compute_residuals`). This does not change the identity result
+above (the identity is about what the *continued* residual evaluates to, and at n_ratio=1 the
+Newton solve that finds the refraction point for below-interface observations is exactly the
+straight-line pinhole solve) — it is recorded because a reader checking `refractive_project`
+directly, rather than through the optimizer's residual path, would see un-extended NaN and could
+mistake that for a disagreement.
+
+### The degenerate observations: instrumentation gap, not a settled classification
+
+The todo asked whether any of the 14,949 guard hits on the `n_water=1.0` arm are the
+*behind-camera* kind (NaN via `_optim_common.py`'s `unextendable` path, penalized with the flat
+`INVALID_PROJECTION_PENALTY_PX = 100.0` px) rather than the *above-interface* kind (extended with
+a real pinhole pixel and a real gradient). **The committed artifact cannot answer this.**
+`e1_benchmark_nonrefractive.json`'s `problem_shape.degenerate_observations_at_solution: 14949` is
+a single merged count — `interface_estimation.py`'s guard bumps one counter
+(`n_invalid` from `compute_residuals`) for both kinds without ever separating them, and no other
+committed field distinguishes them. **This is an instrumentation gap, named rather than guessed
+around**, per the plan's explicit instruction not to guess.
+
+A small constructed case (not E1 itself, and not committed as a test — this is exploratory,
+reported for the mechanism only) confirms both kinds exist and behave as the code says: a point
+placed above the interface but still in front of the camera gets a finite pinhole-extended pixel
+(`_extend_invalid_projections` returns real coordinates); a point placed behind the camera's own
+image plane stays `NaN` after the extension attempt and falls to the flat penalty. Both paths are
+real and reachable; the committed count cannot say how E1's 14,949 hits split between them.
+**Recommended fix, out of scope for this plan:** `interface_estimation.py`'s guard could bump two
+counters instead of one — this is a small, low-risk instrumentation change belonging with
+HANDOFF.json's post-Zenodo repair batch, not urgent for the manuscript since it does not change
+what may be claimed (see below).
+
+### The independent tension this measurement does NOT resolve
+
+`experiments/e1_refractive_comparison.py:42` states plainly: **"E1 carries NO accuracy claim
+(D-19.3-17 demoted it)"** — only E7 survived that gate (MF-08). Yet every number in `main.tex`'s
+table (L68, 268, 270, 271, 278, 280, 281, 295) is an E1 output. **This measurement does not close
+that gap.** Establishing that the baseline is *converged* is a necessary condition for the
+comparison to be meaningful; it is not the same as E1 having a seed-band-backed accuracy claim.
+MF-16 restores a *ratio band* (97-178x, regenerable from `exp1_band.csv`) for the depth-axis
+improvement specifically — that licenses stating the ratio's spread, not a general accuracy claim
+for either arm's absolute numbers. Cross-referencing precisely: MF-16 licenses "the depth-axis
+improvement is two orders of magnitude, 97-178x depending on seed"; it does not license "E1's
+absolute error numbers are accurate" for either arm.
+
+### The specific hazard at L271, now resolved rather than merely flagged
+
+L271 quotes the baseline's **1.376 px** reprojection RMS as evidence of "residual systematic error
+a pinhole model cannot absorb." The `DegenerateObservationWarning` states reprojection RMS
+"cannot be trusted to judge convergence" for an arm with kinked residuals. **Because this arm's
+kink has zero magnitude (the identity above), that disqualification does not apply here** — the
+1.376 px figure is not disqualified evidence after all. The claim may still overstate what a
+single RMS number can support (a separate, softer concern about interpretation, not convergence),
+but the *specific* hazard the todo named — that the cited evidence is disallowed by the library's
+own guard — is resolved in the baseline's favor.
+
+### Recommended prose action
+
+Of the todo's four options (reframe ratios as bounds; attach the MF-08/MF-16 seed band to the
+abstract's ~135x; move the headline comparison onto a claim E7 can support; do nothing), the
+**cheapest is now correct and sufficient**: do nothing to the convergence framing at L268 and
+L271 — the baseline is converged and the cited RMS is admissible evidence. The band attachment
+MF-16 already recommends (state `97-178x` alongside `~135x`, per MF-09 Group 5) remains the right
+edit for the *ratio's* seed-sensitivity, independently of this entry. No new edit is required by
+this finding beyond what MF-16/MF-09 already specify. Route through MF-09 (below) rather than
+edited directly here.
+
+### Recommended next (not run here)
+
+Todo step 3 — restarting the `n=1.0` arm from the ground-truth pose to separate model
+misspecification from solve-path dependence — is **not** run by this plan (out of scope,
+requires an E1 run). It is now moot for the specific "is the baseline converged" question this
+todo raised (settled above), but may still be of independent interest for characterizing the
+non-refractive baseline's error decomposition. Routed to HANDOFF.json's deferred post-Zenodo
+batch alongside the related water_z-pinned-baseline item.
 
 ---

@@ -116,3 +116,34 @@ committed — investigating requires running E1, which must not happen while the
 queue holds the tree. Not a 19.4 obligation; plan 10 already owns three separate
 items. Belongs to the manuscript-revision work (phases 20–22, SoftwareX deadline
 2026-08-21).
+
+## Resolution (Phase 21, plan 12)
+
+Steps 1, 2, 4, 5 of "How to settle it" are done, by measurement rather than source
+reading. Recorded as **MF-18** in `.planning/MANUSCRIPT-FINDINGS.md`, routed through
+MF-09's edit map (UPDATE 2026-08-10 section).
+
+- **Step 1 (n=1 identity):** CONFIRMED numerically. At `n_air = n_water = 1.0`,
+  `refractive_project`/`refractive_project_batch` agree with the plain pinhole
+  projection to `atol=1e-12` for below-interface points. Pinned by
+  `tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity::test_projection_reduces_to_pinhole_at_unit_index`.
+  Consequence: the baseline's reported optimality is pessimistic, not meaningless — the
+  baseline **is** converged, and line 268's "sole experimental variable" framing stands.
+- **Step 2 (behind-camera classification):** **Cannot be settled from committed
+  artifacts** — `degenerate_observations_at_solution` in
+  `e1_benchmark_nonrefractive.json` is a single merged counter for both the
+  above-interface and behind-camera kinds, with no committed field that splits them.
+  Named as an instrumentation gap in MF-18, not guessed around. A small constructed
+  case (not committed) confirmed both mechanisms are real and reachable in the code.
+- **Step 4 (prose consequence):** the cheapest option — leave L268/L271's convergence
+  framing as-is — is now the correct one. The band-attachment edit MF-16 already
+  specifies at L68/L281 remains the only action item; MF-18 adds none.
+- **Step 5 (log as MF-NN, route through MF-09):** done — see MF-18 and MF-09's
+  "UPDATE 2026-08-10" section.
+
+**Step 3 (restart the n=1.0 arm from the ground-truth pose) is still OPEN.** It is now
+moot for the specific convergence question this todo raised, but may still be of
+independent interest for characterizing the non-refractive baseline's error
+decomposition. Routed to HANDOFF.json's deferred post-Zenodo repair batch alongside the
+related water_z-pinned-baseline item. This todo is left in `pending/` rather than moved
+to `done/` because of this open step.
