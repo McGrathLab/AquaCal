@@ -12,6 +12,7 @@ This section explains the theory behind AquaCal's calibration approach and provi
 
 - [CLI Reference](cli.md) — Command-line interface documentation for `calibrate`, `init`, and `compare`
 - [Configuration Reference](configuration.md) — Every YAML config section, including frame-trimming (`start_frame`/`stop_frame`) and outlier-rejection (`reject_outlier_frames`) options
+- [Benchmarking & Diagnostics](benchmarking.md) — `benchmark.json` schema, per-iteration optimizer trace columns, and conditioning report contents
 - [Troubleshooting](troubleshooting.md) — Common issues and solutions
 - [Glossary](glossary.md) — Definitions of key terms
 
@@ -24,6 +25,7 @@ coordinates
 optimizer
 cli
 configuration
+benchmarking
 troubleshooting
 glossary
 :::
