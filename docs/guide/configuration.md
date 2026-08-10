@@ -241,8 +241,8 @@ semantics of each flag.
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
 | `save_stage_calibrations` | bool | `true` | Dump each bundle-adjustment stage's intermediate calibration as loadable JSON |
-| `save_optimization_trace` | bool | `false` | Per-iteration CSV trace (cost, step norm, optimality) for each bundle-adjustment stage |
-| `save_conditioning` | bool | `false` | Jacobian singular-value spectrum and full parameter correlation matrix at the solution. Expensive — off by default. |
+| `save_optimization_trace` | bool | `false` | Per-iteration CSV trace (cost, step norm, optimality) for each bundle-adjustment stage — see [Benchmarking & Diagnostics](benchmarking.md) for the CSV column schema |
+| `save_conditioning` | bool | `false` | Jacobian singular-value spectrum and full parameter correlation matrix at the solution. Expensive — off by default. — see [Benchmarking & Diagnostics](benchmarking.md) for the JSON/NPZ schema |
 
 ```yaml
 internals:
@@ -314,3 +314,4 @@ the degeneracy is broken, then re-run calibration.
 - [Optimizer Pipeline](optimizer.md) — Understanding the calibration stages
 - [Troubleshooting](troubleshooting.md) — Diagnosing and fixing common calibration issues
 - [Glossary](glossary.md) — Definitions of key terms
+- [Benchmarking & Diagnostics](benchmarking.md) — `benchmark.json`, trace CSV, and conditioning output schemas

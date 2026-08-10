@@ -122,8 +122,8 @@ By default all cameras share a single global `water_z`. An opt-in config flag,
 `water_z` parameter. This exists **only for degeneracy/ablation analysis** (e.g.
 the WP6 experiment that measures the per-camera `water_z` spread) and is **not a
 recommended production setting** — the shared-interface assumption underlies the
-library's core accuracy claim. A full worked example is deferred to a later
-documentation pass.
+library's core accuracy claim. See [Benchmarking & Diagnostics](benchmarking.md) for the
+conditioning diagnostics used to quantify how tightly the shared value is constrained.
 :::
 
 ## Projection Model
