@@ -121,14 +121,103 @@ literal string appears 0 times in both configs (`grep -c` returns 0 for each), a
 `-W error::DeprecationWarning` run exited 0. This closes the folded 2026-02-24 todo's
 question for the shipped archive.
 
+## HALT - gate 1 FAILED
+
+Gate 1 ran on 2026-08-10 against the zip's exact bytes. `num_comparisons` is **exactly
+7762** — the frameset is right — but **eight of the nine quantities miss the declared
+>= 4 significant figure requirement**, by 1.8% to 13.6%.
+
+Run: `python -u -m aquacal calibrate config_paper.yaml -v`, exit 0, 53 min
+(15:44:13 -> 16:37:13), from `gate1_scratch/real-rig/` (extracted from
+`real-rig-calib.zip`, not from the staging tree). `git_sha` held at `71d1145` for the
+whole run; `n_frames_holdout` = 52.
+
+| # | Quantity | Fresh run | Reference (§3) | Delta % | Verdict |
+|---|---|---:|---:|---:|---|
+| 1 | mean primary reprojection_rms (px) | 0.824039 | 0.878634 | -6.2137 | FAIL |
+| 2a | min primary rms [`e3v829d` / `e3v829d`] | 0.553718 | 0.539376 | +2.6590 | FAIL |
+| 2b | max primary rms [`e3v83f0` / `e3v83f0`] | 2.081551 | 2.407876 | -13.5524 | FAIL |
+| 3 | aux `e3v8250` reprojection_rms (px) | 14.856381 | 15.134315 | -1.8364 | FAIL |
+| 4 | reconstruction.mean (m) | 0.000258 | 0.000268 | -3.7209 | FAIL |
+| 5 | reconstruction.rmse (m) | 0.000628 | 0.000674 | -6.8146 | FAIL |
+| 6 | reconstruction.percent_error | 0.430295 | 0.446925 | -3.7209 | FAIL |
+| 7 | reconstruction.num_comparisons | 7762 | 7762 | 0.0000 | **PASS (exact)** |
+| 8 | camera_heights.water_z (m) | 1.073840 | 1.030555 | +4.2002 | FAIL |
+| 9a | min camera height [`e3v83f0` / `e3v83e9`] | 1.047177 | 1.008284 | +3.8573 | FAIL |
+| 9b | max camera height [`e3v83ee` / `e3v83f1`] | 1.112502 | 1.081528 | +2.8639 | FAIL |
+
+Note rows 9a/9b: the **identity** of the extreme-height camera changed, not just the
+value.
+
+### The plan's three hypotheses are ruled out by evidence
+
+1. **Wrong `frame_step` in an extraction** — ruled out. Extrinsic: `CAP_PROP_FRAME_COUNT`
+   7860 / 30 = 262, and all 13 directories hold exactly 262 with no naming gaps.
+   Intrinsic: every camera's count equals its own source length / 30 (561 total).
+   Decisively, `num_comparisons` is an integer count and lands exactly on 7762 — the
+   frameset-sensitive quantity is correct.
+2. **Camera-order difference in `config_paper.yaml`** — ruled out. Verified equal to
+   `release_calibration/config.yaml` element-for-element, in order (the transposition
+   exists only in the *previously published* archive config, which was not used).
+3. **Missing or extra frame in a camera directory** — ruled out, same evidence as 1.
+
+### Leading hypothesis: library drift, not archive defect
+
+`reference_outputs/diagnostics.json` is dated **2026-02-19** and was produced by a
+release-era library (around `v1.4.2`). The fresh run is `aquacal_version 1.8.0`,
+`git_sha 71d1145`.
+
+Structural proof the reference predates the current library: the reference JSON has **no
+`frame_rejection`, `discard_stats` or `timings` keys at all** — those blocks did not
+exist when it was written. The key sets are otherwise identical.
+
+There have been **55 commits to `src/aquacal/calibration/` and `src/aquacal/core/` since
+2026-06-01**, at least one of which is an optimizer-correctness fix that must move these
+numbers:
+
+- `7e0cb90 fix(calibration): keep a gradient where the refractive model cannot project` —
+  `compute_residuals` had replaced a failed refractive projection with the **constant
+  100.0 px**, which has identically zero derivative, so every clamped observation
+  contributed no gradient. Stage 3 could report success via `xtol` while sitting at a
+  bad point.
+
+The direction of the deltas is consistent with this: the fresh run has **lower**
+reprojection RMS (0.824 vs 0.879), lower reconstruction error (0.258 vs 0.268 mm) and a
+markedly lower worst-camera RMS (2.08 vs 2.41). `water_z` moves +4.2%, which is a
+geometry shift rather than an accuracy improvement and should not be characterised as
+"better" without further work.
+
+**This is stated as a hypothesis, not a conclusion.** It is supported by the structural
+key difference and the commit history, but has not been demonstrated causally.
+
+### The decisive test (not yet run)
+
+Run `config_paper.yaml` against **this same archive** using the release-era library
+(~`v1.4.2`, the state as of 2026-02-19) and compare against §3:
+
+- If it reproduces all nine to >= 4 significant figures, the archive is vindicated and
+  the entire discrepancy is library drift. The decision then belongs to the user: publish
+  the archive and reconcile §3 against the current library, or pin the reproduction
+  version.
+- If it does **not** reproduce §3, the cause is in the archive or the config and this
+  hypothesis is wrong.
+
+Cost: one ~50 minute solve. `gate1_scratch/` has been left in place for it.
+
+### What was NOT done, per D-16
+
+- The tolerance was **not** widened.
+- §3 was **not** edited to match what the archive produces.
+- Plan 21-09 was **not** started. No DOI has been minted.
+
 ## Gates
 
 | Gate | Description | Status |
 |---|---|---|
-| 1 | Section 3 reproduction from the archive (~50 min solve) | pending — plan 21-08 |
+| 1 | Section 3 reproduction from the archive (~50 min solve) | **FAIL — see HALT above** |
 | 2 | Checksum, size, extraction layout | **PASS** |
-| 3 | CLI tutorial commands run verbatim against the archive | pending — plan 21-08 |
+| 3 | CLI tutorial commands run verbatim against the archive | blocked by gate 1 |
 | 4 | Both configs load and validate under v2.0.0 | **PASS** |
 
-**Do not proceed to the publish checkpoint (21-09) until plan 21-08 marks gates 1 and 3
-PASS.**
+**Do not proceed to the publish checkpoint (21-09). Gate 1 is FAIL and a minted DOI
+cannot be withdrawn.**
