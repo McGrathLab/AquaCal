@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.0.1 (2026-08-11)
+
+### Bug Fixes
+
+- **tests**: Compare frozen anchors with a tolerance, not exact equality
+  ([`eea0a83`](https://github.com/McGrathLab/AquaCal/commit/eea0a833201771505a332dd49998712281597077))
+
+
 ## v2.0.0 (2026-08-11)
 
 ### Bug Fixes
