@@ -118,15 +118,34 @@ class TestCapturePeakMemory:
         assert set(reading.keys()) == _EXPECTED_PEAK_MEMORY_KEYS
 
     def test_windows_dev_machine_reports_peak_wset(self):
+        """The psutil peak-working-set path, which needs BOTH Windows and psutil.
+
+        psutil is declared in the optional `[bench]` extra, not `[dev]`, so CI
+        installs run without it and `capture_peak_memory` falls back to
+        `tracemalloc_python_heap` by design (`benchmark.py:249-262` catches
+        ImportError deliberately). Asserting the psutil mode on any Windows
+        machine therefore fails on Windows CI while passing on a dev box that
+        happens to have psutil -- which is exactly what happened.
+
+        Both preconditions are now explicit, and the non-Windows case skips
+        visibly instead of silently asserting nothing.
+        """
+        if not sys.platform.startswith("win"):
+            pytest.skip("Windows-only: asserts the psutil peak-working-set path")
+        pytest.importorskip(
+            "psutil",
+            reason="psutil is in the optional [bench] extra; without it "
+            "capture_peak_memory falls back to tracemalloc by design",
+        )
+
         reading = capture_peak_memory()
-        if sys.platform.startswith("win"):
-            assert reading["mode"] == "psutil_peak_wset"
-            assert reading["peak_bytes"] > 0
-            # D-33 gap 3: commit/virtual figures must be populated (not None)
-            # on this Windows dev box, alongside the unchanged resident peak.
-            assert reading["commit_current_bytes"] > 0
-            assert reading["commit_peak_bytes"] > 0
-            assert reading["ram_total_bytes"] > 0
+        assert reading["mode"] == "psutil_peak_wset"
+        assert reading["peak_bytes"] > 0
+        # D-33 gap 3: commit/virtual figures must be populated (not None)
+        # on this Windows dev box, alongside the unchanged resident peak.
+        assert reading["commit_current_bytes"] > 0
+        assert reading["commit_peak_bytes"] > 0
+        assert reading["ram_total_bytes"] > 0
 
     def test_linux_mocked_reads_proc_status_vmhwm(self, monkeypatch, tmp_path):
         import platform
