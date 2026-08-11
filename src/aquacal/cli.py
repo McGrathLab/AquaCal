@@ -6,7 +6,10 @@ import re
 import sys
 from pathlib import Path
 
-from aquacal.calibration.pipeline import load_config, run_calibration
+from aquacal.calibration.pipeline import (
+    load_config,
+    run_calibration_from_config,
+)
 from aquacal.config.schema import CalibrationError
 from aquacal.io.serialization import load_calibration
 from aquacal.validation.comparison import compare_calibrations, write_comparison_report
@@ -187,7 +190,10 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
 
     # Run calibration
     try:
-        _result = run_calibration(config_path, verbose=args.verbose)
+        # Run from the in-memory config, not the path: cmd_calibrate may have
+        # overridden config.output_dir from -o/--output-dir, and the
+        # path-taking run_calibration re-reads the YAML, discarding it.
+        _result = run_calibration_from_config(config, verbose=args.verbose)
         return 0
     except CalibrationError as e:
         print(f"Calibration failed: {e}", file=sys.stderr)

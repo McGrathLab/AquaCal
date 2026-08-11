@@ -174,6 +174,84 @@ paths:
         captured = capsys.readouterr()
         assert "valid" in captured.out.lower()
 
+    def test_output_dir_override_reaches_the_run(self, tmp_path, monkeypatch):
+        """`-o/--output-dir` must actually change where the run writes.
+
+        Regression test: cmd_calibrate used to set ``config.output_dir`` on the
+        in-memory config and then call the path-taking ``run_calibration``,
+        which re-reads the YAML from disk -- so the override was silently
+        discarded while ``--dry-run`` still reported it as applied.
+        """
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("""
+board:
+  squares_x: 8
+  squares_y: 6
+  square_size: 0.030
+  marker_size: 0.022
+  dictionary: DICT_4X4_50
+cameras:
+  - cam0
+paths:
+  intrinsic_videos:
+    cam0: /data/i0.mp4
+  extrinsic_videos:
+    cam0: /data/e0.mp4
+  output_dir: /output_from_yaml
+""")
+        override_dir = tmp_path / "override_out"
+        captured_configs = []
+
+        def spy(config, verbose=False):
+            captured_configs.append(config)
+            return MagicMock()
+
+        monkeypatch.setattr("aquacal.cli.run_calibration_from_config", spy)
+
+        parser = create_parser()
+        args = parser.parse_args(
+            ["calibrate", str(config_file), "-o", str(override_dir)]
+        )
+        exit_code = cmd_calibrate(args)
+
+        assert exit_code == 0
+        assert len(captured_configs) == 1
+        assert captured_configs[0].output_dir == override_dir
+
+    def test_output_dir_absent_keeps_config_value(self, tmp_path, monkeypatch):
+        """Without `-o`, the config's own output_dir is what runs."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("""
+board:
+  squares_x: 8
+  squares_y: 6
+  square_size: 0.030
+  marker_size: 0.022
+  dictionary: DICT_4X4_50
+cameras:
+  - cam0
+paths:
+  intrinsic_videos:
+    cam0: /data/i0.mp4
+  extrinsic_videos:
+    cam0: /data/e0.mp4
+  output_dir: /output_from_yaml
+""")
+        captured_configs = []
+
+        def spy(config, verbose=False):
+            captured_configs.append(config)
+            return MagicMock()
+
+        monkeypatch.setattr("aquacal.cli.run_calibration_from_config", spy)
+
+        parser = create_parser()
+        args = parser.parse_args(["calibrate", str(config_file)])
+        exit_code = cmd_calibrate(args)
+
+        assert exit_code == 0
+        assert captured_configs[0].output_dir == Path("/output_from_yaml")
+
 
 class TestCmdInit:
     def test_basic_generation(self, tmp_path, capsys):
@@ -829,7 +907,7 @@ class TestMain:
             main(["--help"])
         assert exc_info.value.code == 0
 
-    @patch("aquacal.cli.run_calibration")
+    @patch("aquacal.cli.run_calibration_from_config")
     def test_integration(self, mock_run, tmp_path):
         config_file = tmp_path / "config.yaml"
         config_file.write_text("""
