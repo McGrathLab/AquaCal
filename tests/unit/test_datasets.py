@@ -955,6 +955,23 @@ def test_board_trajectory_explicit_center_zero_reproduces_pre_d27_stream():
 # regressed. Do not regenerate again without recording why.
 # ----------------------------------------------------------------------
 
+# Tolerance for every frozen-anchor comparison below.
+#
+# These anchors were captured on Windows. Compared with assert_array_equal
+# (exact float equality) they failed on the Linux CI runner by 1-2 ULP --
+# 5.55e-17 absolute, 3.4e-16 relative -- in the tvec columns only, with rvec
+# untouched. That is the centroid re-centring sum reassociating under a
+# different BLAS/libm, not a change in the generator. It went unseen because
+# the last Linux publish run predates the phase-19.3 regeneration of these
+# anchors.
+#
+# rtol=1e-12 is ~4 orders of magnitude above observed platform noise and ~10
+# orders below any real algorithmic change (the 19.3 regeneration moved tvec
+# by centimetres), so this still fails loudly if the generator drifts. Do NOT
+# tighten it back to exact equality: bit-identity across platforms is not a
+# property this generator has.
+_ANCHOR_RTOL = 1e-12
+
 _ANCHOR_RIG_TRAJECTORY_CSV = """\
 0.13778887781030985,-0.28331765834144146,2.988423371570267,0.36973622244319254,0.6307090238048252,1.8966756493207828
 -0.034637149560451996,-0.09019999508893539,2.6814435075521947,0.3872245378405243,1.0054416324546758,1.3384269622021736
@@ -1113,8 +1130,10 @@ def _parse_pose_csv(csv_text: str) -> np.ndarray:
 
 
 def test_generate_real_rig_trajectory_matches_frozen_anchor():
-    """generate_real_rig_trajectory is bit-identical to the GEOM-01 anchor
-    (D-27 containment gate item 1).
+    """generate_real_rig_trajectory matches the GEOM-01 anchor to _ANCHOR_RTOL
+    (D-27 containment gate item 1). Compared with a tolerance rather than
+    exactly -- see the _ANCHOR_RTOL comment for why bit-identity is not a
+    property this generator has across platforms.
 
     REGENERATED under D-19.3-19/D-19.3-01 (see the plan's SUMMARY for the
     before/after values and reason): the pre-fix anchor's depth_range,
@@ -1133,13 +1152,12 @@ def test_generate_real_rig_trajectory_matches_frozen_anchor():
     expected = _parse_pose_csv(_ANCHOR_RIG_TRAJECTORY_CSV)
 
     assert actual.shape == expected.shape == (100, 6)
-    np.testing.assert_array_equal(actual, expected)
+    np.testing.assert_allclose(actual, expected, rtol=_ANCHOR_RTOL)
 
 
 def test_create_scenario_realistic_matches_frozen_anchor():
-    """create_scenario("realistic") is bit-identical on board poses,
-    extrinsics, and water_zs to the GEOM-01 anchor (D-27 containment gate
-    item 2). REGENERATED under plan 19.3-01 -- see the frozen-anchor block
+    """create_scenario("realistic") matches the GEOM-01 anchor on board poses,
+    extrinsics, and water_zs to _ANCHOR_RTOL (D-27 containment gate item 2). REGENERATED under plan 19.3-01 -- see the frozen-anchor block
     comment above and the plan's SUMMARY for the old/new tvec values."""
     scenario = create_scenario("realistic", seed=42)
 
@@ -1149,7 +1167,7 @@ def test_create_scenario_realistic_matches_frozen_anchor():
     )
     expected_poses = _parse_pose_csv(_ANCHOR_REALISTIC_BOARD_POSES_CSV)
     assert actual_poses.shape == expected_poses.shape == (30, 6)
-    np.testing.assert_array_equal(actual_poses, expected_poses)
+    np.testing.assert_allclose(actual_poses, expected_poses, rtol=_ANCHOR_RTOL)
 
     expected_ext_lines = _ANCHOR_REALISTIC_EXTRINSICS_CSV.strip().splitlines()
     assert len(expected_ext_lines) == len(scenario.extrinsics) == 12
@@ -1161,9 +1179,11 @@ def test_create_scenario_realistic_matches_frozen_anchor():
         expected_water_z = values[12]
 
         ext = scenario.extrinsics[cam_name]
-        np.testing.assert_array_equal(ext.R, expected_R)
-        np.testing.assert_array_equal(ext.t, expected_t)
-        assert scenario.water_zs[cam_name] == expected_water_z
+        np.testing.assert_allclose(ext.R, expected_R, rtol=_ANCHOR_RTOL)
+        np.testing.assert_allclose(ext.t, expected_t, rtol=_ANCHOR_RTOL)
+        assert scenario.water_zs[cam_name] == pytest.approx(
+            expected_water_z, rel=_ANCHOR_RTOL
+        )
 
 
 # ----------------------------------------------------------------------
