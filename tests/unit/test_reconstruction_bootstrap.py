@@ -7,15 +7,21 @@ no calibration, no reading of the real committed
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
+import experiments.reconstruction_bootstrap as rb
 from experiments.reconstruction_bootstrap import (
     cluster_bootstrap,
     percentile_ci,
     reconstruction_statistics,
+    resolve_reconstruction_errors_path,
 )
+
+_CSV = "frame_idx,signed_error_m\n0,0.001\n"
 
 
 def _row_bootstrap(
@@ -199,3 +205,88 @@ class TestPercentileCi:
         samples = rng.normal(loc=5.0, size=5000)
         low, high = percentile_ci(samples)
         assert low < 5.0 < high
+
+
+class TestResolveReconstructionErrorsPath:
+    """DATA-01b moved `reconstruction_errors.csv` out of the repo and into the
+    published Zenodo archive, so the script resolves it at call time.
+
+    Every test here monkeypatches `load_example`. None may reach the network --
+    the real archive is 4.35 GB.
+    """
+
+    @staticmethod
+    def _forbid_download(monkeypatch):
+        """Make any archive lookup fail loudly rather than download."""
+
+        def _boom(*_args, **_kwargs):
+            raise AssertionError("load_example must not be called in this test")
+
+        monkeypatch.setattr("aquacal.datasets.load_example", _boom, raising=True)
+
+    @staticmethod
+    def _fake_archive(monkeypatch, cache_dir):
+        class _Ds:
+            cache_path = cache_dir
+
+        monkeypatch.setattr(
+            "aquacal.datasets.load_example", lambda *_a, **_k: _Ds(), raising=True
+        )
+
+    def test_explicit_path_wins(self, tmp_path, monkeypatch):
+        self._forbid_download(monkeypatch)
+        explicit = tmp_path / "mine.csv"
+        explicit.write_text(_CSV)
+        local = tmp_path / "local.csv"
+        local.write_text(_CSV)
+        monkeypatch.setattr(rb, "LOCAL_RECONSTRUCTION_ERRORS_PATH", local)
+
+        assert resolve_reconstruction_errors_path(explicit) == explicit
+
+    def test_explicit_path_that_does_not_exist_raises(self, tmp_path, monkeypatch):
+        self._forbid_download(monkeypatch)
+
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            resolve_reconstruction_errors_path(tmp_path / "nope.csv")
+
+    def test_local_file_wins_over_the_archive(self, tmp_path, monkeypatch):
+        self._forbid_download(monkeypatch)
+        local = tmp_path / "local.csv"
+        local.write_text(_CSV)
+        monkeypatch.setattr(rb, "LOCAL_RECONSTRUCTION_ERRORS_PATH", local)
+
+        assert resolve_reconstruction_errors_path() == local
+
+    def test_falls_back_to_the_published_archive(self, tmp_path, monkeypatch):
+        cache = tmp_path / "cache"
+        (cache / "reference_outputs").mkdir(parents=True)
+        archived = cache / "reference_outputs" / "reconstruction_errors.csv"
+        archived.write_text(_CSV)
+        monkeypatch.setattr(
+            rb, "LOCAL_RECONSTRUCTION_ERRORS_PATH", tmp_path / "absent.csv"
+        )
+        self._fake_archive(monkeypatch, cache)
+
+        assert resolve_reconstruction_errors_path() == archived
+
+    def test_missing_everywhere_names_all_three_locations(self, tmp_path, monkeypatch):
+        cache = tmp_path / "cache"
+        cache.mkdir()
+        monkeypatch.setattr(
+            rb, "LOCAL_RECONSTRUCTION_ERRORS_PATH", tmp_path / "absent.csv"
+        )
+        self._fake_archive(monkeypatch, cache)
+
+        with pytest.raises(FileNotFoundError) as excinfo:
+            resolve_reconstruction_errors_path()
+
+        message = str(excinfo.value)
+        assert "--reconstruction-errors" in message
+        assert "absent.csv" in message
+        assert "reference_outputs" in message
+
+    def test_module_constants_are_paths_at_import(self):
+        """Resolution must not run at import time -- importing this module must
+        never trigger a multi-gigabyte download."""
+        assert isinstance(rb.LOCAL_RECONSTRUCTION_ERRORS_PATH, Path)
+        assert isinstance(rb.ARCHIVE_RECONSTRUCTION_ERRORS_RELPATH, Path)

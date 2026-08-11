@@ -571,7 +571,12 @@ def test_manifest_loading():
     # Real-rig should not be included (requires download)
     assert datasets["real-rig"]["included"] is False
     assert datasets["real-rig"]["type"] == "real"
-    assert datasets["real-rig"]["zenodo_record_id"] == 18645385
+    # Pins the PUBLISHED record the shipped manifest points at. Bump this
+    # deliberately whenever a new Zenodo version is minted -- a silent drift
+    # here means load_example() fetches the wrong archive.
+    assert datasets["real-rig"]["zenodo_record_id"] == 21889922
+    assert datasets["real-rig"]["checksum"] == "md5:dff1012fb772d627e0f3f106d5c6de84"
+    assert datasets["real-rig"]["size_bytes"] == 4350418046
 
 
 # ============================================================================

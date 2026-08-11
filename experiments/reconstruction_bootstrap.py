@@ -49,7 +49,10 @@ from experiments._io import (
 
 logger = logging.getLogger(__name__)
 
-RECONSTRUCTION_ERRORS_PATH = Path("experiments/results/reconstruction_errors.csv")
+LOCAL_RECONSTRUCTION_ERRORS_PATH = Path("experiments/results/reconstruction_errors.csv")
+ARCHIVE_RECONSTRUCTION_ERRORS_RELPATH = Path(
+    "reference_outputs/reconstruction_errors.csv"
+)
 REAL_RIG_METRICS_PATH = Path("experiments/results/real_rig_metrics.json")
 CLUSTER_COLUMN = "frame_idx"
 FULL_N_RESAMPLES = 10_000
@@ -156,8 +159,63 @@ def percentile_ci(samples: NDArray, alpha: float = 0.05) -> tuple[float, float]:
     return low, high
 
 
-def _load_reconstruction_errors() -> pd.DataFrame:
-    return pd.read_csv(RECONSTRUCTION_ERRORS_PATH)
+def resolve_reconstruction_errors_path(explicit: Path | None = None) -> Path:
+    """Locate `reconstruction_errors.csv`, which no longer lives in the repo.
+
+    DATA-01b removed this artifact from git once the Zenodo `real-rig` archive
+    was published; it now ships there under ``reference_outputs/``. Resolution
+    order, first hit wins:
+
+    1. ``explicit`` -- the ``--reconstruction-errors`` flag, the escape hatch
+       for pointing at an arbitrary local run.
+    2. ``experiments/results/reconstruction_errors.csv`` -- so a developer who
+       has just re-run E2 locally gets the fresh file rather than the archive.
+    3. The published archive's copy, via ``load_example("real-rig")``.
+
+    `load_example` is called here rather than at import time: importing this
+    module must never trigger a multi-gigabyte download.
+
+    Args:
+        explicit: Path supplied on the command line, or None.
+
+    Returns:
+        Path to an existing `reconstruction_errors.csv`.
+
+    Raises:
+        FileNotFoundError: If none of the three locations resolves.
+    """
+    if explicit is not None:
+        if not Path(explicit).exists():
+            raise FileNotFoundError(
+                f"--reconstruction-errors was given {explicit}, which does not exist."
+            )
+        return Path(explicit)
+
+    if LOCAL_RECONSTRUCTION_ERRORS_PATH.exists():
+        return LOCAL_RECONSTRUCTION_ERRORS_PATH
+
+    from aquacal.datasets import load_example
+
+    archive = (
+        Path(load_example("real-rig").cache_path)
+        / ARCHIVE_RECONSTRUCTION_ERRORS_RELPATH
+    )
+    if archive.exists():
+        return archive
+
+    raise FileNotFoundError(
+        "Could not locate reconstruction_errors.csv. Looked in: (1) the "
+        "--reconstruction-errors flag, which was not given; (2) the local path "
+        f"{LOCAL_RECONSTRUCTION_ERRORS_PATH}; (3) the published Zenodo real-rig "
+        f"archive at {archive}. This file was removed from the repository by "
+        "DATA-01b and now ships inside the archive under reference_outputs/. "
+        "Re-run E2 (`python -m experiments.e2_real_rig`) to regenerate it "
+        "locally, or pass --reconstruction-errors explicitly."
+    )
+
+
+def _load_reconstruction_errors(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path)
 
 
 def _load_real_rig_metrics() -> dict:
@@ -165,9 +223,11 @@ def _load_real_rig_metrics() -> dict:
         return json.load(f)
 
 
-def _run(seed: int, n_resamples: int) -> dict:
-    """Load the committed comparisons, bootstrap, and assemble the artifact dict."""
-    df = _load_reconstruction_errors()
+def _run(seed: int, n_resamples: int, errors_path: Path | None = None) -> dict:
+    """Load the comparisons, bootstrap, and assemble the artifact dict."""
+    resolved = resolve_reconstruction_errors_path(errors_path)
+    logger.info("Reading inter-corner comparisons from %s", resolved)
+    df = _load_reconstruction_errors(resolved)
     n_rows = len(df)
     n_frames = int(df[CLUSTER_COLUMN].nunique())
 
@@ -217,9 +277,20 @@ def _run(seed: int, n_resamples: int) -> dict:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build this script's CLI parser (the shared five-flag contract, unmodified)."""
-    return argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description=__doc__, parents=[build_experiment_arg_parser()]
     )
+    parser.add_argument(
+        "--reconstruction-errors",
+        type=Path,
+        default=None,
+        help=(
+            "Path to reconstruction_errors.csv. Defaults to the local "
+            "experiments/results/ copy if present, otherwise the published "
+            "Zenodo real-rig archive's reference_outputs/ copy."
+        ),
+    )
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -241,7 +312,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     n_resamples = SMOKE_N_RESAMPLES if args.smoke else FULL_N_RESAMPLES
-    record = _run(seed=args.seed, n_resamples=n_resamples)
+    record = _run(
+        seed=args.seed,
+        n_resamples=n_resamples,
+        errors_path=args.reconstruction_errors,
+    )
 
     if args.check:
         if not path.exists():

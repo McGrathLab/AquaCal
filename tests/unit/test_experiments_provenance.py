@@ -67,12 +67,13 @@ SELF_DESCRIBING_JSON = frozenset(
         # (`per_arm` singular-value/correlation data), covered by the four
         # e7_benchmark_*.json records produced by the same E7 run.
         "interface_ablation_conditioning.json",
-        # calibration.json: E2's raw calibration artifact, copied verbatim
-        # from the same pipeline run that also wrote the sibling
-        # benchmark.json (same directory, same run, per the README's
-        # provenance table) -- that sibling file is this one's provenance
-        # record too.
-        "calibration.json",
+        # NOTE: calibration.json was removed from this set by DATA-01b (plan
+        # 21-11). E2's raw calibration artifact left the repository once the
+        # Zenodo real-rig archive was published and now ships there under
+        # reference_outputs/. The archive's copy is the 2026-08-10
+        # image-source run, not the byte-identical 2026-07-31 video-source
+        # file removed here -- same library, agreeing to ~1.5e-8 on water_z.
+        # The exact bytes remain in git history at 25655f7.
     }
 )
 
@@ -211,7 +212,6 @@ CSV_TO_RECORD: dict[str, str] = {
         "last band seed's values)"
     ),
     "newton_iterations.csv": "experiments/results/e3_provenance.json (E3 tier 2)",
-    "reconstruction_errors.csv": "experiments/results/benchmark.json (E2, same run)",
     "structural_scaling.csv": (
         "no calibration record exists or could exist: every row is closed-form "
         "structure (plan 19.5-01, COV-01) with no solve anywhere in its path, "
@@ -219,7 +219,6 @@ CSV_TO_RECORD: dict[str, str] = {
         "carries its own record_source column marking it computed (sparsity "
         "built directly) or predicted (closed form)"
     ),
-    "reprojection_residuals.csv": "experiments/results/benchmark.json (E2, same run)",
 }
 
 

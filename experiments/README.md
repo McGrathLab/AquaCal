@@ -72,10 +72,10 @@ pre-run estimate.
 | E1's two direct-call provenance records (one per model, since E1 calibrates twice) | E1 | ″ | `e1_benchmark_refractive.json`, `e1_benchmark_nonrefractive.json` | — (provenance only) | (same run) |
 | §3 real-rig: mean/per-camera reprojection, auxiliary fisheye RMS, inter-corner MAE/RMSE, comparison count | E2 | `python -m experiments.e2_real_rig --config <release config>` | `real_rig_metrics.json` | — (prose) | ~50 min (full local-frameset run against the release config; see `19.1-E2-FRAMESET-PROVENANCE.md`) |
 | Fig. `aquacal_zenodo_camera_rig_3d.pdf` — camera positions, recovered water surface `z_w`, per-camera heights | E2 | ″ | `camera_parameters.csv` (**not** `calibration.json` — D-14's correction; the figure generator reads three CSVs, never the calibration JSON) | `DissertationFigures/src/dissertationfigures/figures/aquacal/zenodo_e2e.py` (a different repository) | (same run) |
-| 3D reconstruction error distribution | E2 | ″ | `reconstruction_errors.csv` | ″ | (same run) |
-| Reprojection error histogram | E2 | ″ | `reprojection_residuals.csv` | ″ | (same run) |
+| 3D reconstruction error distribution | E2 | ″ | `reconstruction_errors.csv` — **not in this repo**, see DATA-01b below | ″ | (same run) |
+| Reprojection error histogram | E2 | ″ | `reprojection_residuals.csv` — **not in this repo**, see DATA-01b below | ″ | (same run) |
 | E2's genuine pipeline-written provenance record (E2 is the one experiment that goes through `run_calibration`, so this is not a hand-rolled sidecar) | E2 | ″ | `benchmark.json` (copied, not reconstructed) | — (provenance only) | (same run) |
-| The run's primary calibration artifact | E2 | ″ | `calibration.json` (copied, not reconstructed) | — (raw result, not a figure input) | (same run) |
+| The run's primary calibration artifact | E2 | ″ | `calibration.json` (copied, not reconstructed) — **not in this repo**, see DATA-01b below | — (raw result, not a figure input) | (same run) |
 | R4.2/R4.3 ablation table + trace panel | E7 | `python -m experiments.e7_interface_ablation` | `interface_ablation.csv` (48 rows: 4 arms x 12 cameras) | new figure module (Phase 19.2) | ~7 min for all four arms (measured; regenerable via `--force`) |
 | Conditioning / singular-value spectrum, height-distance correlation | E7 | ″ | `interface_ablation_conditioning.json` (+ a gitignored `.npz` — 3.1 MB of dense correlation matrices, exceeds the repo's large-file gate; all scientific content is in the committed `.json`) | ″ | (same run) |
 | Per-arm optimizer convergence traces | E7 | ″ | `e7_trace_shared_fixed.csv`, `e7_trace_shared_refined.csv`, `e7_trace_percamera_fixed.csv`, `e7_trace_percamera_refined.csv` | ″ | (same run) |
@@ -147,6 +147,41 @@ real per-run exit codes (`0`); `--check` against this committed CSV therefore al
 with every mismatch confined to the `exit_code` column — this is a structural property of
 the check's re-aggregation design, not a data defect, confirmed again on the re-measured
 grid (19.2-21-SUMMARY.md).
+
+### DATA-01b — three E2 artifacts live in the Zenodo archive, not in this repo
+
+`calibration.json`, `reprojection_residuals.csv` and `reconstruction_errors.csv` were removed
+from version control once the Zenodo `real-rig` archive was published, so that the repo-wide
+1000 KB `check-added-large-files` guard could be restored with no exclusion. They ship inside
+the archive under `reference_outputs/`.
+
+| Artifact | Where to get it now |
+|---|---|
+| `reconstruction_errors.csv` | Archive `reference_outputs/` — **byte-identical** to the removed copy |
+| `reprojection_residuals.csv` | Archive `reference_outputs/` — **byte-identical** to the removed copy |
+| `calibration.json` | Archive `reference_outputs/` — **equivalent, not identical** (see below) |
+
+```python
+from aquacal.datasets import load_example
+ref = load_example("real-rig").cache_path / "reference_outputs"
+```
+
+Or regenerate all three locally, which takes about 50 minutes:
+
+```bash
+python -m experiments.e2_real_rig --out experiments/results --force
+```
+
+**The `calibration.json` caveat.** The archive ships the **2026-08-10 image-source** run, while
+the file removed from this repo was the **2026-07-31 video-source** run. Both are library
+`1.8.0` and they agree to ~1.5e-8 on `water_z` — the floating-point floor, and the same
+equivalence MF-19's control established when it held the library fixed and varied only the frame
+source. For any purpose short of byte-comparison the archive copy is the same artifact. If you
+need those exact bytes, take them from git history at `25655f7`, not from the archive.
+
+`reconstruction_bootstrap.py` resolves its input automatically: an explicit
+`--reconstruction-errors` path, else a local `experiments/results/` copy, else the published
+archive. It never downloads at import time.
 
 ### Which committed artifacts are pre- and which are post-D-27
 
@@ -234,7 +269,7 @@ in it.
 | Script | What it is | Tests | Paper artifact |
 |---|---|---|---|
 | `e7_focal_standoff_analysis.py` | Pure re-analysis of the committed `interface_ablation_band.csv` for the focal-drift/standoff pairing (COV-08, E7 half) that WP6 planned and MF-05 never reported. Never regenerates its input. | `tests/unit/test_e7_focal_standoff.py` | None committed — analysis output only |
-| `reconstruction_bootstrap.py` | Frame-clustered bootstrap CI over the committed `reconstruction_errors.csv` (COV-08, bootstrap half, D-19.5-05). The resampling unit is the frame, not the row. Performs no calibration. | `tests/unit/test_reconstruction_bootstrap.py` | None committed — CI band only |
+| `reconstruction_bootstrap.py` | Frame-clustered bootstrap CI over `reconstruction_errors.csv`, resolved from a local copy or the published archive (COV-08, bootstrap half, D-19.5-05). The resampling unit is the frame, not the row. Performs no calibration. | `tests/unit/test_reconstruction_bootstrap.py` | None committed — CI band only |
 | `check_rerun_gates.py` | Machine-checkable post-run gates (D-19.3-18) over an output directory's existing artifacts. Reports PASS/FAIL/N/A per gate per experiment and exits non-zero on any FAIL. Runs nothing and regenerates nothing. | `tests/unit/test_rerun_gates.py` | None — a verification tool, not a producer |
 | `fd_jacobian_accuracy.py` | **One-off diagnostic, no test coverage and no paper artifact.** Compares the shipped 2-point finite-difference Jacobian against a Richardson reference (E-COV-02 / R1.2) without deriving the analytic Jacobian. Referenced only from `.planning/phases/.../19.5-02-PLAN.md`. Do not read it as an E-series experiment: nothing in CI or the manuscript depends on it. | — none — | None |
 

@@ -222,6 +222,22 @@ CLAUDE.md
 # the repo-wide 1000 KB large-file policy (.pre-commit-config.yaml check-added-large-files).
 experiments/results/interface_ablation_conditioning.npz
 
+# DATA-01b: the three large E2 artifacts now ship inside the published Zenodo
+# real-rig archive under reference_outputs/ (record 21889922), so they left git
+# once that archive was public. Ignored here so a local E2 re-run cannot
+# re-commit them and re-break the repo-wide 1000 KB large-file guard.
+# Regenerate locally with:
+#   python -m experiments.e2_real_rig --out experiments/results --force
+# reconstruction_errors.csv and reprojection_residuals.csv in the archive are
+# byte-identical to the copies removed. calibration.json is NOT: the archive
+# ships the 2026-08-10 image-source run, while the copy removed here was the
+# 2026-07-31 video-source run. They are the same library (1.8.0) and agree to
+# ~1.5e-8 on water_z, but if you need those exact bytes, take them from git
+# history at 25655f7, not from the archive.
+experiments/results/calibration.json
+experiments/results/reprojection_residuals.csv
+experiments/results/reconstruction_errors.csv
+
 # E1's per-point spatial-error CSV (experiments/e1_refractive_comparison.py) is
 # ~11MB -- 8 depths x 2 models x every adjacent-corner-pair in a dense N_GRID=7
 # sweep -- which exceeds this repo's check-added-large-files --maxkb=1000 gate.
