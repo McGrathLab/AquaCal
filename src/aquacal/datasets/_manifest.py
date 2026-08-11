@@ -36,7 +36,8 @@ def get_dataset_info(name: str) -> dict:
     """Get metadata for a specific dataset.
 
     Args:
-        name: Dataset name (e.g., 'small', 'medium', 'large', 'real-rig')
+        name: Dataset name (e.g., 'real-rig'). Use ``list_datasets()`` for the
+            names the shipped manifest actually carries.
 
     Returns:
         Dict containing dataset metadata

@@ -130,7 +130,7 @@ def download_and_extract(dataset_name: str, dataset_info: dict) -> Path:
     without re-downloading.
 
     Args:
-        dataset_name: Name of the dataset (e.g., 'medium', 'large')
+        dataset_name: Name of the dataset (e.g., 'real-rig')
         dataset_info: Dataset metadata from manifest
 
     Returns:

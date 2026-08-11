@@ -510,20 +510,28 @@ def generate_board_trajectory(
     depth_range: tuple[float, float] | None = None,
     xy_extent: float = 0.15,
     rotation_range_deg: float = 15.0,
-    min_cameras_per_frame: int = 2,
     seed: int = 42,
     center: tuple[float, float] | None = None,
 ) -> list[BoardPose]:
     """
-    Generate board poses ensuring pose graph connectivity.
+    Generate a randomly sampled underwater board trajectory.
 
-    Creates a trajectory that ensures:
+    Poses are sampled independently per frame from the working volume; the
+    only guarantee this function enforces is the depth one:
 
-    - Each frame is visible by at least min_cameras_per_frame cameras
-    - The pose graph is connected (can chain from reference to all cameras)
-    - Board stays within reasonable depth range underwater, with every corner
-      kept below the deepest interface (D-19.3-01, enforced via
+    - Board stays within the requested depth range underwater, with every
+      corner kept below the deepest interface (D-19.3-01, enforced via
       ``board_clearance_floor``)
+
+    .. note::
+       This function does **not** guarantee per-frame camera visibility or
+       pose-graph connectivity. It has no camera model and performs no
+       projection, so it cannot know how many cameras see a given pose.
+       Before D-05 the signature carried a ``min_cameras_per_frame``
+       parameter that was never read, and this docstring promised a
+       connectivity guarantee on that basis. Both are gone. Verify
+       connectivity downstream (e.g. from the generated detections) if your
+       scenario needs it.
 
     D-19.3-19: poses are re-centred so ``tvec`` genuinely places the board
     CENTRE in world coordinates, matching this docstring's ``depth_range``
@@ -579,7 +587,6 @@ def generate_board_trajectory(
             derived floor.
         xy_extent: Maximum XY offset from ``center``
         rotation_range_deg: Maximum board tilt from horizontal
-        min_cameras_per_frame: Minimum cameras that must see board
         seed: Random seed
         center: (x, y) centre of the sampled working volume. Defaults to the
             centroid of ``camera_positions``' XY coordinates (D-27). Pass

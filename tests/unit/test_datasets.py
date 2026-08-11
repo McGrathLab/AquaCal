@@ -478,6 +478,25 @@ def test_generate_camera_array_default_height_is_water_z():
     assert default > 1.0
 
 
+def test_generate_board_trajectory_has_no_min_cameras_per_frame():
+    """The dead `min_cameras_per_frame` parameter is gone from the signature.
+
+    D-05: it was declared but referenced zero times in the body, so the
+    docstring's per-frame visibility guarantee was never enforced. It is
+    dropped rather than implemented -- implementing the filter would change
+    every existing seed's trajectory and invalidate the published seed bands.
+
+    Note this is NOT `CalibrationConfig.min_cameras_per_frame`, which is a
+    different, live field driving real frame filtering in the pipeline.
+    """
+    import inspect
+
+    from aquacal.datasets.synthetic import generate_board_trajectory
+
+    params = inspect.signature(generate_board_trajectory).parameters
+    assert "min_cameras_per_frame" not in params
+
+
 @pytest.mark.parametrize("name", ["ideal", "minimal", "realistic"])
 def test_create_scenario_presets_construct_at_real_rig_standoff(name):
     """Every preset's cameras sit at the real-rig standoff -- no 0.15 m rig

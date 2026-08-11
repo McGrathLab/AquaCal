@@ -152,7 +152,7 @@ class CalibrationResult:
         >>> from aquacal import run_calibration, save_calibration
         >>> result = run_calibration("config.yaml")
         >>> print(f"Water surface at Z = {result.cameras['cam0'].water_z:.3f} m")
-        >>> save_calibration(result, "output/calibration.yaml")
+        >>> save_calibration(result, "output/calibration.json")
 
     Note:
         For coordinate system conventions, see the
