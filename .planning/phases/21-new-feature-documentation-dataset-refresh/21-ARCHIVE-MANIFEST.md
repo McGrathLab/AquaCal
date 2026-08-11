@@ -16,10 +16,14 @@ Plan 21-09's human step transcribes these into Zenodo; plan 21-10 writes them in
 
 ```
 zenodo_filename: real-rig-calib.zip
-size_bytes: 4350417815
-checksum: md5:729f002c132f88e10224146e5b407a57
+size_bytes: 4350418046
+checksum: md5:dff1012fb772d627e0f3f106d5c6de84
 zenodo_record_id: TBD — minted in plan 21-09
 ```
+
+**Rebuilt 2026-08-11** to resolve the `reference_outputs/` inconsistency below. The
+superseded values were `size_bytes: 4350417815`, `md5:729f002c132f88e10224146e5b407a57`;
+they were never uploaded and must not be transcribed.
 
 `checksum` is written in the `md5:` prefixed form `download.py` expects.
 
@@ -37,31 +41,44 @@ Built with `shutil.make_archive(..., root_dir=archive_staging, base_dir='real-ri
 
 | Entry | Bytes |
 |---|---:|
-| `README.md` | 2,948 |
+| `README.md` | 3,514 |
 | `config_paper.yaml` | 2,466 |
 | `config_quickstart_not_paper.yaml` | 2,342 |
 | `extrinsic/` (dir) | 3,798,937,145 |
 | `intrinsic/` (dir) | 541,502,452 |
-| `reference_calibration.json` | 2,226,463 |
-| `reference_outputs/` (dir) | 19,070,999 |
+| `reference_calibration.json` | 2,226,567 |
+| `reference_outputs/` (dir) | 19,072,065 |
 
 ### `reference_outputs/` provenance
 
 Each file was **copied** (never moved) and md5-verified source-to-destination. The
 repo-side deletion is plan 21-11 and is gated on the publish in 21-09.
 
-| File | Bytes | md5 |
-|---|---:|---|
-| `calibration.json` | 2,226,463 | `dbb083759a87344721964f5e1f370cc0` |
-| `reprojection_residuals.csv` | 1,258,603 | `e374d40d69e65371a7e01b3cfb212c9a` |
-| `reconstruction_errors.csv` | 649,854 | `f2838c7d30dbfc0d4347a882e672ff0e` |
-| `exp2_spatial_errors.csv` | 11,673,575 | `eb58014dfe75429632ce1f3ba7b0432f` |
-| `interface_ablation_conditioning.npz` | 3,259,691 | `54e6f71ccc970c5f274a363881a11046` |
-| `diagnostics.json` | 2,813 | `a8448eedb6725681e4f6e362b3df30a5` |
-| `reference_calibration.json` (root) | 2,226,463 | `dbb083759a87344721964f5e1f370cc0` |
+| File | Bytes | md5 | Source run |
+|---|---:|---|---|
+| `calibration.json` | 2,226,567 | `0ac5dbd16938ebd2711c1a25fbeb217a` | gate-1, 2026-08-10, **images** |
+| `diagnostics.json` | 3,775 | `ee0532c2c7c7c78d519877be0e963a90` | gate-1, 2026-08-10, **images** |
+| `reprojection_residuals.csv` | 1,258,603 | `e374d40d69e65371a7e01b3cfb212c9a` | E2, 2026-07-31, videos |
+| `reconstruction_errors.csv` | 649,854 | `f2838c7d30dbfc0d4347a882e672ff0e` | E2, 2026-07-31, videos |
+| `exp2_spatial_errors.csv` | 11,673,575 | `eb58014dfe75429632ce1f3ba7b0432f` | E2, 2026-08-05, videos |
+| `interface_ablation_conditioning.npz` | 3,259,691 | `54e6f71ccc970c5f274a363881a11046` | E7, 2026-08-05, videos |
+| `reference_calibration.json` (root) | 2,226,567 | `0ac5dbd16938ebd2711c1a25fbeb217a` | gate-1, 2026-08-10, **images** |
 
 `reference_calibration.json` is byte-identical to `reference_outputs/calibration.json`;
 `load_example` looks for that exact filename at the archive root.
+
+### 2026-08-11 — the internal inconsistency is RESOLVED
+
+The Feb-19 (~`v1.4.2`) `diagnostics.json` and the Jul-31 `calibration.json` were replaced
+with the gate-1 run's own pair, per the user's decision of 2026-08-11. That run is the one
+a reader reproduces by following the walkthrough over these PNG frames, so both tutorial
+checks now agree with the shipped references.
+
+**Every file in `reference_outputs/` is now library `1.8.0`** — the v1.4.2 outlier is gone.
+The four remaining CSV/NPZ files still come from the analysis scripts' **video** runs,
+because a plain `aquacal calibrate` never emits them (it writes `spatial_measurements.csv`
+and `depth_errors.csv` instead). They are the same library era and agree with the
+frame-based run to ~1e-6%; `README.md` now states this split explicitly.
 
 ## Gate 2 evidence — checksum, size, extraction layout
 
@@ -247,7 +264,8 @@ diffs against the **Jul-31** calibration and will match it closely, while the tu
 `diagnostics.json` check diffs against the **Feb-19** file and will show ~2–14%
 differences. That is confusing and, worse, makes the archive look broken when it is not.
 
-This is unresolved and needs a decision before publish.
+**RESOLVED 2026-08-11** — see "the internal inconsistency is RESOLVED" above. The table in
+this section describes the superseded build and is kept for the record.
 
 ### What was NOT done, per D-16
 
@@ -259,10 +277,28 @@ This is unresolved and needs a decision before publish.
 
 | Gate | Description | Status |
 |---|---|---|
-| 1 | Section 3 reproduction from the archive (~50 min solve) | **BLOCKED** — archive verified faithful; §3 predates the current library (see above) |
-| 2 | Checksum, size, extraction layout | **PASS** |
-| 3 | CLI tutorial commands run verbatim against the archive | partial — quickstart + paper run PASS; remaining blocks pending gate 1 resolution |
+| 1 | Section 3 reproduction from the archive (~50 min solve) | **PASS** (2026-08-11) — archive verified faithful; §3 updated to current-library numbers per the user's decision |
+| 2 | Checksum, size, extraction layout | **PASS** — re-verified against the 2026-08-11 rebuild |
+| 3 | CLI tutorial commands run verbatim against the archive | **PASS** — walkthrough table regenerated from the shipped `diagnostics.json` |
 | 4 | Both configs load and validate under v2.0.0 | **PASS** |
 
-**Do not proceed to the publish checkpoint (21-09) until the gate-1 manuscript decision
-and the `reference_outputs/` inconsistency are resolved. A minted DOI cannot be withdrawn.**
+### 2026-08-11 — both blockers cleared
+
+The user decided both open questions on 2026-08-11:
+
+1. **MF-19** — update §3 to current-library numbers. Done: `main.tex` lines 69, 300, 301,
+   302, 303 now carry the 1.8.0 values. **One residual item**, see below.
+2. **`reference_outputs/`** — ship the gate-1 run's own pair. Done; zip rebuilt, manifest
+   values above refreshed.
+
+**Residual, blocking a clean §3:** the rig figure `aquacal_zenodo_camera_rig_3d.pdf`
+(2026-05-05) still renders the water plane at the old `z_w`, so its caption at `main.tex:262`
+(`z_w ≈ 1.03 m`, heights 1.01–1.08 m) was **left unedited** — changing the caption alone
+would contradict the figure. The correct values are `z_w ≈ 1.07 m`, heights 1.05–1.11 m.
+The inputs exist and are current (`experiments/results/camera_parameters.csv`, Jul-31,
+`water_z_m = 1.0738403981732678`), but the generator `figures/aquacal/zenodo_e2e.py` named
+in `experiments/README.md:74` **does not exist anywhere on disk** — there is no `figures/`
+directory in the repo. Regenerating the figure requires recovering or rewriting it.
+
+**Do not proceed to the publish checkpoint (21-09) until the rig figure is regenerated and
+its caption updated. A minted DOI cannot be withdrawn.**

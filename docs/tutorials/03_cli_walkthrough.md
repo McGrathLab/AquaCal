@@ -93,15 +93,15 @@ it directly.
 
 | Quantity | Reference value | Where it comes from |
 |---|---|---|
-| Mean reprojection error | 0.87863 px | `reference_outputs/diagnostics.json` -> mean of the 12 values in `reprojection.per_camera` |
-| Per-camera reprojection range | 0.53938 px (`e3v829d`) - 2.40788 px (`e3v83f0`) | `reference_outputs/diagnostics.json` -> `reprojection.per_camera` |
-| Auxiliary fisheye camera reprojection | 15.13432 px | `reference_outputs/diagnostics.json` -> `auxiliary_cameras.e3v8250.reprojection_rms` |
-| Inter-corner mean absolute error | 0.00026815 m | `reference_outputs/diagnostics.json` -> `reconstruction.mean` |
-| Inter-corner RMSE | 0.00067407 m | `reference_outputs/diagnostics.json` -> `reconstruction.rmse` |
-| Mean relative error | 0.44692 % | `reference_outputs/diagnostics.json` -> `reconstruction.percent_error` |
+| Mean reprojection error | 0.82404 px | `reference_outputs/diagnostics.json` -> mean of the 12 values in `reprojection.per_camera` |
+| Per-camera reprojection range | 0.55372 px (`e3v829d`) - 2.08155 px (`e3v83f0`) | `reference_outputs/diagnostics.json` -> `reprojection.per_camera` |
+| Auxiliary fisheye camera reprojection | 14.85638 px | `reference_outputs/diagnostics.json` -> `auxiliary_cameras.e3v8250.reprojection_rms` |
+| Inter-corner mean absolute error | 0.00025818 m | `reference_outputs/diagnostics.json` -> `reconstruction.mean` |
+| Inter-corner RMSE | 0.00062814 m | `reference_outputs/diagnostics.json` -> `reconstruction.rmse` |
+| Mean relative error | 0.43030 % | `reference_outputs/diagnostics.json` -> `reconstruction.percent_error` |
 | Comparisons | 7762 | `reference_outputs/diagnostics.json` -> `reconstruction.num_comparisons` |
-| Recovered water_z | 1.03055 m | `reference_outputs/diagnostics.json` -> `camera_heights.water_z` |
-| Camera height range | 1.00828 m (`e3v83e9`) - 1.08153 m (`e3v83f1`) | `reference_outputs/diagnostics.json` -> `camera_heights.per_camera_height` |
+| Recovered water_z | 1.07384 m | `reference_outputs/diagnostics.json` -> `camera_heights.water_z` |
+| Camera height range | 1.04718 m (`e3v83f0`) - 1.11250 m (`e3v83ee`) | `reference_outputs/diagnostics.json` -> `camera_heights.per_camera_height` |
 
 A pasted console transcript is not a substitute for this table — always diff your own
 `output/diagnostics.json` against the archive's `reference_outputs/diagnostics.json` rather than

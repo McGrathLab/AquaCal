@@ -1969,6 +1969,33 @@ user's call (open as of 2026-08-10):
 
 Do not widen a tolerance or edit §3 to match without deciding which of these is intended.
 
+### RESOLVED 2026-08-11 — resolution 1, §3 updated to current-library numbers
+
+The user chose resolution 1. Applied to `main.tex`:
+
+| Line | Was | Now |
+|---|---|---|
+| 69 (abstract) | 0.674 mm RMSE, 0.45% | **0.628 mm, 0.43%** |
+| 300 | mean 0.88 px, 0.54–2.41 px | **0.82 px, 0.55–2.08 px** |
+| 301 | MAE 0.268 mm, RMSE 0.674 mm, 0.45% | **0.258 mm, 0.628 mm, 0.43%** |
+| 302 | signed mean +0.044 mm | **+0.043 mm** |
+| 303 | aux fisheye 15.1 px | **14.9 px** |
+
+`7,762` comparisons is unchanged. Per this finding, the accuracy improvements were **not**
+narrated as improvements and no new claim was added — the numbers were replaced in place.
+
+**NOT DONE — the one remaining §3 inconsistency.** `main.tex:262`, the rig figure caption,
+still says `z_w ≈ 1.03 m` with camera heights 1.01–1.08 m. It was deliberately left alone:
+the figure it captions, `figures/aquacal_zenodo_camera_rig_3d.pdf` (2026-05-05), draws the
+water plane at the old `z_w`, so editing the caption alone would make caption and figure
+disagree. Correct values are `z_w ≈ 1.07 m`, heights **1.05–1.11 m**, and the extreme-height
+camera identities change (`e3v83e9`/`e3v83f1` -> `e3v83f0`/`e3v83ee`).
+
+The figure's input is current and on disk — `experiments/results/camera_parameters.csv`
+(Jul-31, 1.8.0, `water_z_m = 1.0738403981732678`) — but the generator
+`figures/aquacal/zenodo_e2e.py`, named in `experiments/README.md:74`, **does not exist**;
+there is no `figures/` directory in the repo at all. Recover or rewrite it before publish.
+
 ### Related archive-side issue (not a manuscript matter)
 
 `reference_outputs/` in the built archive mixes two runs five months apart:
