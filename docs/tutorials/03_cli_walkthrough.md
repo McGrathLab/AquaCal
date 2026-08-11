@@ -124,11 +124,12 @@ Compare your run directly against the archive's reference calibration with `aqua
 aquacal compare output/ reference_outputs/ -o comparison_output/
 ```
 
-This writes `metrics.csv`, `per_camera.csv`, `parameter_diffs.csv`, and several PNG plots
-(`rms_bar_chart.png`, `position_overlay.png`, `z_position_dumbbell.png`) to
-`comparison_output/`, letting you see per-camera differences between your run and the paper's.
-If you also have `spatial_measurements.csv` in both directories, `aquacal compare` additionally
-writes `depth_error_plot.png` and `depth_binned.csv` breaking reconstruction error down by depth.
+This writes `metrics_summary.csv`, `per_camera_metrics.csv`, `parameter_diffs.csv`, and several
+PNG plots (`rms_bar_chart.png`, `position_overlay.png`, `z_position_dumbbell.png`,
+`xy_error_heatmaps.png`) to `comparison_output/`, letting you see per-camera differences between
+your run and the paper's. When both directories carry reconstruction data, `aquacal compare`
+additionally writes `depth_error_comparison.png` and `depth_binned_errors.csv`, breaking
+reconstruction error down by depth.
 
 `output/` also contains `calibration.json` (the loadable calibration result),
 `spatial_measurements.csv` and `reprojection_residuals.csv` (per-corner residuals), plus
