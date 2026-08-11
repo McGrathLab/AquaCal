@@ -291,14 +291,10 @@ The user decided both open questions on 2026-08-11:
 2. **`reference_outputs/`** — ship the gate-1 run's own pair. Done; zip rebuilt, manifest
    values above refreshed.
 
-**Residual, blocking a clean §3:** the rig figure `aquacal_zenodo_camera_rig_3d.pdf`
-(2026-05-05) still renders the water plane at the old `z_w`, so its caption at `main.tex:262`
-(`z_w ≈ 1.03 m`, heights 1.01–1.08 m) was **left unedited** — changing the caption alone
-would contradict the figure. The correct values are `z_w ≈ 1.07 m`, heights 1.05–1.11 m.
-The inputs exist and are current (`experiments/results/camera_parameters.csv`, Jul-31,
-`water_z_m = 1.0738403981732678`), but the generator `figures/aquacal/zenodo_e2e.py` named
-in `experiments/README.md:74` **does not exist anywhere on disk** — there is no `figures/`
-directory in the repo. Regenerating the figure requires recovering or rewriting it.
+**The archive is publish-ready.** Gates 1–4 PASS, the zip is internally consistent, and
+nothing in it depends on the manuscript.
 
-**Do not proceed to the publish checkpoint (21-09) until the rig figure is regenerated and
-its caption updated. A minted DOI cannot be withdrawn.**
+One **manuscript-side** item remains, tracked in MF-19 and owned by the user — it is *not*
+an archive gate and does not block 21-09: the rig figure caption at `main.tex:262` still
+carries the old `z_w`, because the figure it captions still draws the old water plane. See
+MF-19 for the correct values and the generator situation.

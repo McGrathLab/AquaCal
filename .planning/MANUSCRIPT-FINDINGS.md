@@ -1984,17 +1984,23 @@ The user chose resolution 1. Applied to `main.tex`:
 `7,762` comparisons is unchanged. Per this finding, the accuracy improvements were **not**
 narrated as improvements and no new claim was added — the numbers were replaced in place.
 
-**NOT DONE — the one remaining §3 inconsistency.** `main.tex:262`, the rig figure caption,
-still says `z_w ≈ 1.03 m` with camera heights 1.01–1.08 m. It was deliberately left alone:
-the figure it captions, `figures/aquacal_zenodo_camera_rig_3d.pdf` (2026-05-05), draws the
-water plane at the old `z_w`, so editing the caption alone would make caption and figure
-disagree. Correct values are `z_w ≈ 1.07 m`, heights **1.05–1.11 m**, and the extreme-height
-camera identities change (`e3v83e9`/`e3v83f1` -> `e3v83f0`/`e3v83ee`).
+### Open manuscript work item — the rig figure (user-owned)
+
+`main.tex:262`, the rig figure caption, still says `z_w ≈ 1.03 m` with camera heights
+1.01–1.08 m. Left alone deliberately: the figure it captions,
+`figures/aquacal_zenodo_camera_rig_3d.pdf` (2026-05-05), draws the water plane at the old
+`z_w`, so editing the caption alone would make caption and figure disagree.
+
+Correct values once the figure is regenerated: `z_w ≈ 1.07 m`, heights **1.05–1.11 m**. The
+extreme-height camera identities also change (`e3v83e9`/`e3v83f1` -> `e3v83f0`/`e3v83ee`).
 
 The figure's input is current and on disk — `experiments/results/camera_parameters.csv`
-(Jul-31, 1.8.0, `water_z_m = 1.0738403981732678`) — but the generator
-`figures/aquacal/zenodo_e2e.py`, named in `experiments/README.md:74`, **does not exist**;
-there is no `figures/` directory in the repo at all. Recover or rewrite it before publish.
+(Jul-31, 1.8.0, `water_z_m = 1.0738403981732678`). The generator
+`figures/aquacal/zenodo_e2e.py` named at `experiments/README.md:74` is not in the repo; the
+user holds it outside the repo. Regeneration is the user's, not a task to be picked up here.
+
+**This does not block the Zenodo publish.** It is a manuscript concern only — the archive
+carries no dependency on this figure.
 
 ### Related archive-side issue (not a manuscript matter)
 
