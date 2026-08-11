@@ -18,8 +18,20 @@ Plan 21-09's human step transcribes these into Zenodo; plan 21-10 writes them in
 zenodo_filename: real-rig-calib.zip
 size_bytes: 4350418046
 checksum: md5:dff1012fb772d627e0f3f106d5c6de84
-zenodo_record_id: TBD — minted in plan 21-09
+zenodo_record_id: 21889922
+zenodo_version_doi: 10.5281/zenodo.21889922
+zenodo_concept_doi: 10.5281/zenodo.18645384
 ```
+
+**PUBLISHED 2026-08-11** as version `2.0.0` of the dataset record, a new version of `18645385`
+per D-13, so the concept DOI and citation lineage are preserved. Verified against the live API
+after publish: Zenodo reports `size 4350418046` and `md5 dff1012fb772d627e0f3f106d5c6de84`,
+**both exactly matching the pre-upload values above** — the 4.35 GB browser upload was not
+truncated. `HEAD https://zenodo.org/records/21889922/files/real-rig-calib.zip` returns 200 with
+a matching `content-length`.
+
+The user uploaded and published manually through the web UI (D-14); no API token entered the
+session or the repository.
 
 **Rebuilt 2026-08-11** to resolve the `reference_outputs/` inconsistency below. The
 superseded values were `size_bytes: 4350417815`, `md5:729f002c132f88e10224146e5b407a57`;

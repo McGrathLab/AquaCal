@@ -4,11 +4,11 @@
     "real-rig": {
       "type": "real",
       "included": false,
-      "zenodo_record_id": 18645385,
+      "zenodo_record_id": 21889922,
       "zenodo_filename": "real-rig-calib.zip",
-      "checksum": "md5:c66380aaa8cbca6bc04a3157baacbee8",
-      "size_bytes": 164023590,
-      "description": "9+ camera production rig — download from Zenodo"
+      "checksum": "md5:dff1012fb772d627e0f3f106d5c6de84",
+      "size_bytes": 4350418046,
+      "description": "13-camera production rig (12 primary + 1 auxiliary fisheye) — download from Zenodo"
     }
   }
 }
