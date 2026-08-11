@@ -24,7 +24,8 @@ Controlled synthetic experiments that quantify what you gain from modeling Snell
 
 A written, end-to-end command-line walkthrough that downloads the published real-rig dataset
 from Zenodo and calibrates it entirely with `aquacal` CLI commands, reproducing the numbers
-published in the AquaCal paper's Section 3.
+published in the AquaCal paper's Section 3. Reproduction requires the archive's
+`config_paper.yaml`; the quickstart config deliberately does not reproduce them.
 
 **Start here** if you want to reproduce the published results or drive AquaCal from the command
 line.
