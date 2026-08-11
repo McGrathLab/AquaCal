@@ -249,6 +249,54 @@ class TestLoadConfig:
         assert config.save_conditioning is False
         assert config.seed == 42
 
+    def test_normal_fixed_defaults_to_false(self):
+        """A config omitting `interface.normal_fixed` must estimate tilt.
+
+        Regression test (D-02): the parser used to default this key to True,
+        silently DISABLING tilt estimation, while both
+        `CalibrationConfig.interface_normal_fixed` (schema.py) and
+        docs/guide/configuration.md documented the default as False.
+        """
+        minimal_config = {
+            "board": {
+                "squares_x": 7,
+                "squares_y": 5,
+                "square_size": 0.03,
+                "marker_size": 0.022,
+            },
+            "cameras": ["cam0"],
+            "paths": {
+                "intrinsic_videos": {"cam0": "/path/cam0.mp4"},
+                "extrinsic_videos": {"cam0": "/path/cam0_uw.mp4"},
+                "output_dir": "/output",
+            },
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(minimal_config, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.interface_normal_fixed is False
+
+        # An `interface:` block that exists but omits the key behaves the same.
+        minimal_config["interface"] = {"n_air": 1.0, "n_water": 1.333}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(minimal_config, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.interface_normal_fixed is False
+
+    def test_normal_fixed_explicit_true_is_honoured(self, valid_config_yaml):
+        """An explicit `normal_fixed: true` still fixes the normal."""
+        valid_config_yaml["interface"]["normal_fixed"] = True
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+
+        assert config.interface_normal_fixed is True
+
     def test_load_config_with_internals_and_seed(self, valid_config_yaml):
         """Test that an `internals:` section and top-level `seed:` load correctly."""
         valid_config_yaml["internals"] = {

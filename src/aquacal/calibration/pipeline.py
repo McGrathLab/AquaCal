@@ -271,72 +271,17 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     interface = data.get("interface", {})
     n_air = interface.get("n_air", 1.0)
     n_water = interface.get("n_water", 1.333)
-    normal_fixed = interface.get("normal_fixed", True)
+    # D-02: default False (estimate tilt), matching both
+    # CalibrationConfig.interface_normal_fixed and the configuration guide.
+    normal_fixed = interface.get("normal_fixed", False)
     # Analysis/ablation flag: pass-through only, no cross-field validation here.
     # Must be in scope before the initial_water_z dict branches so the
     # missing-camera coverage gate can be conditioned on it.
     shared_interface = bool(interface.get("shared_interface", True))
 
-    # Parse initial_water_z (optional) with backward compatibility
+    # Parse initial_water_z (optional)
     initial_water_z = None
-    if "initial_distances" in interface:
-        warnings.warn(
-            "Config field 'initial_distances' is deprecated. Use 'initial_water_z' instead.",
-            UserWarning,
-            stacklevel=2,
-        )
-        raw_distances = interface["initial_distances"]
-
-        # Handle scalar format (apply to all cameras including auxiliary)
-        if isinstance(raw_distances, (int, float)):
-            if raw_distances <= 0:
-                raise ValueError(
-                    f"initial_water_z must be positive, got {raw_distances}"
-                )
-            initial_water_z = {
-                cam: float(raw_distances) for cam in data["cameras"] + auxiliary_cameras
-            }
-        # Handle dict format (per-camera)
-        elif isinstance(raw_distances, dict):
-            # Validate all cameras are covered. In per-camera mode
-            # (shared_interface=False) a partial dict is allowed through so the
-            # pipeline's per-camera seed resolver can fill the missing cameras
-            # (0.15m) and warn; in shared mode a partial dict still hard-fails.
-            missing_cameras = set(data["cameras"]) - set(raw_distances.keys())
-            if missing_cameras and shared_interface:
-                raise ValueError(
-                    f"initial_water_z dict must cover all cameras. "
-                    f"Missing: {sorted(missing_cameras)}"
-                )
-
-            # Validate all distances are positive
-            for cam, dist in raw_distances.items():
-                if dist <= 0:
-                    raise ValueError(
-                        f"initial_water_z['{cam}'] must be positive, got {dist}"
-                    )
-
-            # Warn about extra cameras (not in cameras or auxiliary list)
-            extra_cameras = (
-                set(raw_distances.keys())
-                - set(data["cameras"])
-                - set(auxiliary_cameras)
-            )
-            if extra_cameras:
-                import sys
-
-                print(
-                    f"Warning: initial_water_z contains cameras not in cameras list: "
-                    f"{sorted(extra_cameras)}",
-                    file=sys.stderr,
-                )
-
-            initial_water_z = {k: float(v) for k, v in raw_distances.items()}
-        else:
-            raise ValueError(
-                f"initial_water_z must be a number or dict, got {type(raw_distances).__name__}"
-            )
-    elif "initial_water_z" in interface:
+    if "initial_water_z" in interface:
         raw_distances = interface["initial_water_z"]
 
         # Handle scalar format (apply to all cameras including auxiliary)
