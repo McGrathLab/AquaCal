@@ -164,13 +164,18 @@ def test_overwrite_warns(tmp_path, caplog):
     assert any(str(json_path) in record.message for record in caplog.records)
 
 
-def test_public_exports():
+def test_conditioning_is_importable_but_not_advertised():
+    # Narrowing `aquacal.validation.__all__` was deliberate and pre-2.0.0: the
+    # conditioning API's own docstrings call it experimental ("return shape may
+    # change") and `docs/api/validation.rst` never documented it, so it was never
+    # a supported surface. The names stay importable -- only the advertised
+    # surface narrows.
     import aquacal.validation as validation_module
     from aquacal.validation import ConditioningReport
     from aquacal.validation import compute_conditioning as public_compute_conditioning
 
     assert public_compute_conditioning is compute_conditioning
-    assert "compute_conditioning" in validation_module.__all__
-    assert "ConditioningReport" in validation_module.__all__
-    assert "save_conditioning_report" in validation_module.__all__
     assert ConditioningReport is not None
+    assert "compute_conditioning" not in validation_module.__all__
+    assert "ConditioningReport" not in validation_module.__all__
+    assert "save_conditioning_report" not in validation_module.__all__

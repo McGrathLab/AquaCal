@@ -445,3 +445,59 @@ class TestMetadataSeedSerialization:
 
         loaded = load_calibration(path)
         assert loaded.metadata.seed is None
+
+
+class TestLegacyInterfaceDistanceRemoved:
+    """The undeclared legacy ``interface_distance`` read path was removed pre-2.0.0.
+
+    Calibration JSON written by AquaCal <= v1.5 used ``interface_distance`` where the
+    current schema uses ``water_z``. The loader silently accepted both, and its own
+    error message advertised the legacy spelling to users. Both are gone.
+    """
+
+    def test_interface_distance_only_payload_raises(
+        self, sample_intrinsics, sample_extrinsics
+    ):
+        from aquacal.io.serialization import _deserialize_camera_calibration
+
+        data = {
+            "name": "cam0",
+            "intrinsics": {
+                "K": sample_intrinsics.K.tolist(),
+                "dist_coeffs": sample_intrinsics.dist_coeffs.tolist(),
+                "image_size": list(sample_intrinsics.image_size),
+            },
+            "extrinsics": {
+                "R": sample_extrinsics.R.tolist(),
+                "t": sample_extrinsics.t.tolist(),
+            },
+            "interface_distance": 0.15,
+        }
+
+        with pytest.raises(ValueError) as excinfo:
+            _deserialize_camera_calibration(data)
+
+        message = str(excinfo.value)
+        assert "water_z" in message
+        assert "interface_distance" not in message
+
+    def test_water_z_payload_still_loads(self, sample_intrinsics, sample_extrinsics):
+        from aquacal.io.serialization import _deserialize_camera_calibration
+
+        data = {
+            "name": "cam0",
+            "intrinsics": {
+                "K": sample_intrinsics.K.tolist(),
+                "dist_coeffs": sample_intrinsics.dist_coeffs.tolist(),
+                "image_size": list(sample_intrinsics.image_size),
+            },
+            "extrinsics": {
+                "R": sample_extrinsics.R.tolist(),
+                "t": sample_extrinsics.t.tolist(),
+            },
+            "water_z": 0.15,
+        }
+
+        cam = _deserialize_camera_calibration(data)
+        assert cam.water_z == 0.15
+        assert cam.name == "cam0"

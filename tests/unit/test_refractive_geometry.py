@@ -1148,3 +1148,23 @@ class TestUnitIndexPinholeIdentity:
 
         scalar_result = refractive_project(simple_camera, interface, above[0])
         assert scalar_result is None
+
+
+class TestDeprecatedShimsRemoved:
+    """The deprecated ``refractive_project_fast*`` shims were removed pre-2.0.0.
+
+    They forwarded verbatim to ``refractive_project`` / ``refractive_project_batch``,
+    which already auto-select the Newton fast path for flat interfaces. Nothing in the
+    library, the tests or the experiments called them. Pinned here so the removal is
+    not silently undone by a merge.
+    """
+
+    def test_refractive_project_fast_is_gone(self):
+        import aquacal.core.refractive_geometry as m
+
+        assert not hasattr(m, "refractive_project_fast")
+
+    def test_refractive_project_fast_batch_is_gone(self):
+        import aquacal.core.refractive_geometry as m
+
+        assert not hasattr(m, "refractive_project_fast_batch")

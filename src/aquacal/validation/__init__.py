@@ -5,7 +5,12 @@ from aquacal.validation.comparison import (
     compare_calibrations,
     write_comparison_report,
 )
-from aquacal.validation.conditioning import (
+
+# Experimental conditioning API: deliberately importable but not re-exported via
+# __all__ (their own docstrings warn the return shape may change, and
+# docs/api/validation.rst does not document them). Keep the imports so
+# `from aquacal.validation import compute_conditioning` keeps working.
+from aquacal.validation.conditioning import (  # noqa: F401
     ConditioningMemoryError,
     ConditioningReport,
     compute_conditioning,
@@ -26,12 +31,6 @@ __all__ = [
     "compare_calibrations",
     "ComparisonResult",
     "write_comparison_report",
-    # conditioning
-    "ConditioningMemoryError",
-    "ConditioningReport",
-    "compute_conditioning",
-    "load_conditioning_report",
-    "save_conditioning_report",
     # evaluation
     "evaluate_calibration",
     "HeldOutEvaluation",

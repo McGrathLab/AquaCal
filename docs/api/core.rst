@@ -14,8 +14,6 @@ Refractive Projection
 
 .. autofunction:: aquacal.core.refractive_geometry.refractive_project_batch
 
-.. autofunction:: aquacal.core.refractive_geometry.refractive_project_fast
-
 Snell's Law and Ray Tracing
 ----------------------------
 

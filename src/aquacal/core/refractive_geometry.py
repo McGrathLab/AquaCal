@@ -822,7 +822,7 @@ def refractive_project(
     Project 3D underwater point to 2D pixel through refractive interface.
 
     Auto-selects the fastest algorithm:
-    - Flat interface (normal ≈ [0,0,-1]): Newton-Raphson (2-4 iterations, ~50x faster)
+    - Flat interface (normal ≈ [0,0,-1]): Newton-Raphson (2-4 iterations)
     - General interface: Brent-search fallback
 
     This is the forward projection used for computing reprojection error.
@@ -913,54 +913,5 @@ def refractive_project_batch(
         )
 
     return _refractive_project_newton_batch(
-        camera, interface, points_3d, max_iterations, tolerance
-    )
-
-
-# Deprecated backward-compatibility shims
-def refractive_project_fast(
-    camera: Camera,
-    interface: Interface,
-    point_3d: Vec3,
-    max_iterations: int = 10,
-    tolerance: float = 1e-9,
-) -> Vec2 | None:
-    """
-    Deprecated: use refractive_project() instead.
-
-    refractive_project() auto-selects the fast Newton-Raphson path for flat
-    interfaces, making this function redundant.
-    """
-    import warnings
-
-    warnings.warn(
-        "refractive_project_fast() is deprecated. Use refractive_project(), "
-        "which auto-selects the fast path for flat interfaces.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return refractive_project(camera, interface, point_3d, max_iterations, tolerance)
-
-
-def refractive_project_fast_batch(
-    camera: Camera,
-    interface: Interface,
-    points_3d: NDArray[np.float64],
-    max_iterations: int = 10,
-    tolerance: float = 1e-9,
-) -> NDArray[np.float64]:
-    """
-    Deprecated: use refractive_project_batch() instead.
-
-    refractive_project_batch() provides the same functionality with a clearer name.
-    """
-    import warnings
-
-    warnings.warn(
-        "refractive_project_fast_batch() is deprecated. Use refractive_project_batch() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return refractive_project_batch(
         camera, interface, points_3d, max_iterations, tolerance
     )

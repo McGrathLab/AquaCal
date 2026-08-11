@@ -86,20 +86,10 @@ def _serialize_camera_calibration(cam: CameraCalibration) -> dict[str, Any]:
 
 
 def _deserialize_camera_calibration(data: dict[str, Any]) -> CameraCalibration:
-    """Deserialize dict to CameraCalibration.
-
-    Supports backward compatibility: accepts both 'water_z' (new) and
-    'interface_distance' (legacy).
-    """
-    # Backward compatibility: accept both water_z and interface_distance
-    if "water_z" in data:
-        water_z = data["water_z"]
-    elif "interface_distance" in data:
-        water_z = data["interface_distance"]
-    else:
-        raise ValueError(
-            "Missing 'water_z' or 'interface_distance' field in camera calibration"
-        )
+    """Deserialize dict to CameraCalibration."""
+    if "water_z" not in data:
+        raise ValueError("Missing 'water_z' field in camera calibration")
+    water_z = data["water_z"]
 
     return CameraCalibration(
         name=data["name"],
