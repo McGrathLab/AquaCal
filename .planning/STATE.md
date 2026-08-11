@@ -436,7 +436,8 @@ IFACE-01..05. Verification PASSED (`17-VERIFICATION.md`): full suite **799 passe
 | 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 8b6eb0d | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
 | 3 | use a structural column grouping for the FD Jacobian | 2026-07-23 | 3c8685c | [3-use-a-structural-column-grouping-for-the](./quick/3-use-a-structural-column-grouping-for-the/) |
 | 260807-dcv | E1 band emits z_rmse_mm (the manuscript's headline ratio) + E1/E7 band-owned sidecars; E1's ten seeds re-run and all reproduce 97.3x-178.0x exactly | 2026-08-07 | cda9d0e, fea64a9 | [260807-dcv-e1-e7-band-provenance-emit-z-rmse-column](./quick/260807-dcv-e1-e7-band-provenance-emit-z-rmse-column/) |
-| 260811-e7s | READ-ONLY pre-2.0.0 release audit — 8 MUST-FIX / 17 SHOULD-FIX / 13 OPTIONAL, ranked by release lock-in. No fixes applied; follow-up task pending user selection | 2026-08-11 | (this commit) | [260811-e7s-pre-2-0-0-release-audit](./quick/260811-e7s-pre-2-0-0-release-audit/) |
+| 260811-e7s | READ-ONLY pre-2.0.0 release audit — 8 MUST-FIX / 17 SHOULD-FIX / 13 OPTIONAL, ranked by release lock-in. No fixes applied; follow-up task pending user selection | 2026-08-11 | 57eca21 | [260811-e7s-pre-2-0-0-release-audit](./quick/260811-e7s-pre-2-0-0-release-audit/) |
+| 260811-f81 | Applied the selected pre-2.0.0 fixes — all MUST except the Zenodo-gated manifest, all SHOULD except the publish-gated index claim, plus UNV-1 and cosmetics. History rewritten to 6 correctly-typed commits after concurrent executors contaminated one; tree verified byte-identical | 2026-08-11 | d19b3af..f45d278 | [260811-f81-pre-2-0-0-release-fixes](./quick/260811-f81-pre-2-0-0-release-fixes/) |
 
 ### Phase 16 HOOK-03 conditioning route (settled by measurement, 2026-07-23)
 
