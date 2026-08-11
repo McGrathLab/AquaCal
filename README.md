@@ -59,7 +59,7 @@ If you use AquaCal in your research, please cite:
   author = {Lancaster, Tucker},
   year = {2026},
   url = {https://github.com/McGrathLab/AquaCal},
-  version = {1.7.0},
+  version = {2.0.0},
   doi = {10.5281/zenodo.18644658}
 }
 ```

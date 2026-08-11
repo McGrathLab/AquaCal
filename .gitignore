@@ -279,3 +279,10 @@ experiments/results_e2_band/seed_*_e2_out/*
 # cost and optimality survive nowhere outside the summary row in
 # benchmark_grid_repeat.csv.
 !experiments/results_e4_repeat/repeat_stdout.log
+
+# Dataset download cache (download.py writes to <cwd>/aquacal_data, so it lands
+# wherever the user runs from -- currently 354 MB under docs/tutorials/). The only
+# prior guard was a nested aquacal_data/.gitignore containing "*", which ignores
+# itself, is therefore untracked, and does not survive a clone. A bare pattern
+# matches at any depth and covers docs/tutorials/aquacal_data/ too.
+aquacal_data/

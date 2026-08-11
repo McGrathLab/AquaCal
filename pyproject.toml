@@ -7,7 +7,7 @@ name = "aquacal"
 version = "1.8.0"
 description = "Refractive multi-camera calibration for underwater arrays with Snell's law modeling"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -16,14 +16,13 @@ authors = [
 keywords = ["calibration", "multi-camera", "underwater", "refraction", "computer-vision", "charuco"]
 
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Scientific/Engineering :: Image Recognition",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -76,6 +75,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 aquacal = [
     "datasets/data/**/*.json",
+    "py.typed",
 ]
 
 [tool.pytest.ini_options]
@@ -85,7 +85,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 exclude = [".git", ".venv", "__pycache__", "build", "dist", "*.ipynb"]
 
 [tool.ruff.lint]
@@ -120,6 +120,7 @@ exclude_lines = [
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
+version_variables = ["CITATION.cff:version"]
 branch = "main"
 commit_message = "chore(release): {version}"
 build_command = "python -m build"
