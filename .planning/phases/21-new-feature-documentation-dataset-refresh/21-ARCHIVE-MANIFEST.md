@@ -121,7 +121,7 @@ literal string appears 0 times in both configs (`grep -c` returns 0 for each), a
 `-W error::DeprecationWarning` run exited 0. This closes the folded 2026-02-24 todo's
 question for the shipped archive.
 
-## HALT - gate 1 FAILED
+## Gate 1 - BLOCKED on a manuscript decision (archive itself verified faithful)
 
 Gate 1 ran on 2026-08-10 against the zip's exact bytes. `num_comparisons` is **exactly
 7762** — the frameset is right — but **eight of the nine quantities miss the declared
@@ -190,19 +190,64 @@ geometry shift rather than an accuracy improvement and should not be characteris
 **This is stated as a hypothesis, not a conclusion.** It is supported by the structural
 key difference and the commit history, but has not been demonstrated causally.
 
-### The decisive test (not yet run)
+### RESOLVED — the archive is faithful; the reference was the wrong control
 
-Run `config_paper.yaml` against **this same archive** using the release-era library
-(~`v1.4.2`, the state as of 2026-02-19) and compare against §3:
+The user identified the correct control: this phase changes exactly one variable, video ->
+image set, so the comparison must hold the **library** fixed and vary only the frame
+source. `release_calibration/diagnostics.json` varies both.
 
-- If it reproduces all nine to >= 4 significant figures, the archive is vindicated and
-  the entire discrepancy is library drift. The decision then belongs to the user: publish
-  the archive and reconcile §3 against the current library, or pin the reproduction
-  version.
-- If it does **not** reproduce §3, the cause is in the archive or the config and this
-  hypothesis is wrong.
+`experiments/results/benchmark.json` is a real-rig run from **2026-07-31**,
+`aquacal_version 1.8.0`, `git_sha 6c7f930` — the same library era as the gate-1 run
+(`71d1145`) — read from **videos**, with an identical `problem_shape`
+(13 cameras, 200 calibration frames, 52 holdout).
 
-Cost: one ~50 minute solve. `gate1_scratch/` has been left in place for it.
+Holding the library fixed and varying only the frame source:
+
+| Quantity | Archive (images) | Experiments (video) | Delta % | Verdict |
+|---|---:|---:|---:|---|
+| `reprojection_rms` | 0.927660749239 | 0.927660733039 | 0.000002 | **PASS** |
+| `validation_3d_error_mean` | 0.000258177176 | 0.000258177176 | 0.000000 | **PASS** |
+| `validation_3d_error_std` | 0.000572627835 | 0.000572627822 | 0.000002 | **PASS** |
+
+Agreement to ~1e-6 % — the residual is floating-point non-determinism, not a solve
+difference.
+
+**Conclusion: the video -> image conversion is faithful and the archive is correct.**
+The ~2–14% spread against `release_calibration/diagnostics.json` is entirely library drift
+between 2026-02-19 (~`v1.4.2`) and today, consistent with `7e0cb90` and the other 54
+commits to `calibration/` and `core/`.
+
+The `v1.4.2` re-run is therefore **unnecessary and was not performed**.
+
+### Gate 1's criterion is mis-specified
+
+As written, gate 1 asks the archive to reproduce numbers produced by a superseded library.
+No correct archive can satisfy that on the current code. The archive-side question the
+gate was meant to answer — *does the regenerated frameset reproduce the run?* — is
+answered **yes**, by `num_comparisons` = 7762 exactly and by the three-quantity table
+above.
+
+What remains is a **manuscript** question, not a packaging one, and it is the user's call:
+§3 currently reports the 2026-02-19 numbers, which the current library no longer produces.
+
+### Second finding — `reference_outputs/` is internally inconsistent
+
+The archive currently ships two references from **different runs five months apart**:
+
+| File | Source | Date | Library |
+|---|---|---|---|
+| `reference_outputs/calibration.json` | `experiments/results/` | 2026-07-31 | 1.8.0 (`6c7f930`) |
+| `reference_outputs/diagnostics.json` | `release_calibration/` | 2026-02-19 | ~`v1.4.2` |
+
+(`calibration.json` md5 `dbb0837...` confirmed identical to the shipped copy, and
+`reference_calibration.json` at the archive root is the same file again.)
+
+A reader following the CLI tutorial hits both: `aquacal compare output/ reference_outputs/`
+diffs against the **Jul-31** calibration and will match it closely, while the tutorial's
+`diagnostics.json` check diffs against the **Feb-19** file and will show ~2–14%
+differences. That is confusing and, worse, makes the archive look broken when it is not.
+
+This is unresolved and needs a decision before publish.
 
 ### What was NOT done, per D-16
 
@@ -214,10 +259,10 @@ Cost: one ~50 minute solve. `gate1_scratch/` has been left in place for it.
 
 | Gate | Description | Status |
 |---|---|---|
-| 1 | Section 3 reproduction from the archive (~50 min solve) | **FAIL — see HALT above** |
+| 1 | Section 3 reproduction from the archive (~50 min solve) | **BLOCKED** — archive verified faithful; §3 predates the current library (see above) |
 | 2 | Checksum, size, extraction layout | **PASS** |
-| 3 | CLI tutorial commands run verbatim against the archive | blocked by gate 1 |
+| 3 | CLI tutorial commands run verbatim against the archive | partial — quickstart + paper run PASS; remaining blocks pending gate 1 resolution |
 | 4 | Both configs load and validate under v2.0.0 | **PASS** |
 
-**Do not proceed to the publish checkpoint (21-09). Gate 1 is FAIL and a minted DOI
-cannot be withdrawn.**
+**Do not proceed to the publish checkpoint (21-09) until the gate-1 manuscript decision
+and the `reference_outputs/` inconsistency are resolved. A minted DOI cannot be withdrawn.**
