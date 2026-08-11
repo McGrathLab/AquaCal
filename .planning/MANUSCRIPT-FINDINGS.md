@@ -1896,3 +1896,85 @@ non-refractive baseline's error decomposition. Routed to HANDOFF.json's deferred
 batch alongside the related water_z-pinned-baseline item.
 
 ---
+
+## MF-19 — §3's real-rig numbers predate the current library and are no longer reproducible from it
+
+**Found:** 2026-08-10, plan 21-08 (D-15 gate 1), while verifying the regenerated Zenodo archive.
+
+### The finding
+
+`release_calibration/diagnostics.json` — established by 19.1 as the exact source of every §3
+real-rig number — is dated **2026-02-19** and was produced by a release-era library (~`v1.4.2`).
+The current library does not reproduce it, from the archive **or from the original videos**.
+
+| §3 quantity | §3 as published (Feb-19 lib) | Current library | Delta |
+|---|---:|---:|---:|
+| mean primary reprojection RMS (px) | 0.8786 | 0.8240 | -6.21% |
+| max primary RMS (px) | 2.4079 | 2.0816 | -13.55% |
+| aux `e3v8250` RMS (px) | 15.134 | 14.856 | -1.84% |
+| inter-corner MAE (mm) | 0.268 | 0.258 | -3.72% |
+| inter-corner RMSE (mm) | 0.674 | 0.628 | -6.81% |
+| mean relative error | 0.4469% | 0.4303% | -3.72% |
+| `water_z` (m) | 1.0306 | 1.0738 | **+4.20%** |
+| camera heights (m) | 1.0083–1.0815 | 1.0472–1.1125 | — |
+| `num_comparisons` | 7762 | **7762** | **0.00%** |
+
+The identity of the extreme-height camera also changes (min: `e3v83e9` -> `e3v83f0`).
+
+### This is NOT an archive defect — the decisive control
+
+The regenerated archive was initially compared against `release_calibration/`, which varies
+*both* the frame source and five months of library changes. Holding the library fixed and
+varying only the frame source — the archive's image set vs `experiments/results/`'s Jul-31
+**video** run (`git_sha 6c7f930`, `aquacal 1.8.0`, identical `problem_shape`):
+
+| Quantity | Archive (images) | Experiments (video) | Delta |
+|---|---:|---:|---:|
+| `reprojection_rms` | 0.927660749239 | 0.927660733039 | 1e-6 % |
+| `validation_3d_error_mean` | 0.000258177176 | 0.000258177176 | 0 % |
+| `validation_3d_error_std` | 0.000572627835 | 0.000572627822 | 1e-6 % |
+
+Agreement at the floating-point floor. The video->image conversion is faithful; the archive
+reproduces the run. **The discrepancy is entirely library drift.**
+
+### Mechanism
+
+Structural proof the reference predates the current code: it carries **no `frame_rejection`,
+`discard_stats` or `timings` keys at all** — those blocks did not exist when it was written.
+55 commits have touched `src/aquacal/calibration/` and `src/aquacal/core/` since 2026-06-01,
+including:
+
+- `7e0cb90 fix(calibration): keep a gradient where the refractive model cannot project` —
+  `compute_residuals` had substituted the **constant 100.0 px** for a failed refractive
+  projection. A constant has identically zero derivative, so every clamped observation
+  contributed no gradient and Stage 3 could terminate via `xtol` at a bad point.
+
+The accuracy metrics all improve, consistent with a corrected optimizer. **`water_z`'s +4.2%
+is a geometry shift, not an accuracy improvement, and should not be described as "better"
+without further work** — cf. MF-12, where the line layout's failure to locate the water
+surface was the finding.
+
+### Consequence for the manuscript
+
+§3 reports numbers the shipped library no longer produces. Two coherent resolutions, both the
+user's call (open as of 2026-08-10):
+
+1. **Update §3 to current-library numbers.** They are already computed and committed
+   (`experiments/results/benchmark.json`, Jul-31). Accuracy claims strengthen slightly. Requires
+   re-checking every §3 figure and any prose quoting 0.88 px / 0.268 mm / 1.03 m, via MF-09's
+   edit map.
+2. **State the reproduction version explicitly** — publish the archive and say §3's numbers
+   correspond to `v1.4.2`. Cheaper, but ships a paper whose numbers the shipped library does not
+   reproduce, which is exactly what a reader would try.
+
+Do not widen a tolerance or edit §3 to match without deciding which of these is intended.
+
+### Related archive-side issue (not a manuscript matter)
+
+`reference_outputs/` in the built archive mixes two runs five months apart:
+`calibration.json` from the Jul-31 experiments run, `diagnostics.json` from the Feb-19 release
+run. A reader gets a close match from `aquacal compare` and a 2–14% divergence from the
+tutorial's `diagnostics.json` check. Needs fixing before publish; the gate-1 run produced a
+current-library `diagnostics.json` matching the shipped `calibration.json` to 1e-6%.
+
+---
