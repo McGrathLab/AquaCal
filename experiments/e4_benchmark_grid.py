@@ -783,8 +783,8 @@ def run_grid_cell(
 
     Never raises: any exception during the cell's own work (including a
     disconnected pose graph on a wide-baseline cell, an EXPECTED failure mode
-    since `generate_board_trajectory` accepts but does not enforce
-    `min_cameras_per_frame`) is caught and recorded as `status="failed"`
+    since `generate_board_trajectory` makes no per-frame camera-visibility
+    guarantee -- it has no camera model and performs no projection) is caught and recorded as `status="failed"`
     with a populated `status_reason` (D-04) -- a status=failed row is the
     correct recorded outcome; a missing row is not.
 

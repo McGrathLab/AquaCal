@@ -109,7 +109,7 @@ Ensure the final water_z value is within the optimization bounds `[0.01, 2.0]` m
 
 - **Cameras measure bearings, not range.** Each corner tightly fixes the *direction* to a point but only weakly its *depth*. Depth separation between cameras comes from cross-camera parallax plus the known board scale — and for a top-down array over a limited board-depth range, the parallax that would separate camera *heights* is thin.
 - **Small height spread vs. working distance.** If the cameras span, say, ~10 cm in height but sit ~1 m from the board, height differences barely move where corners land — poor signal-to-noise on exactly that coordinate.
-- **Refraction supplies compensating degrees of freedom.** Each camera's `interface_distance` equals `water_z − C_z`, so a camera's height and its interface distance trade off almost exactly; the free per-frame board poses absorb the rest. A camera placed too high can produce nearly the same refracted rays as a correctly-placed one — at ~zero reprojection cost. (The axial camera-to-interface distance being weakly observable is a known property of flat-refractive calibration.)
+- **Refraction supplies compensating degrees of freedom.** Each camera's camera-to-interface distance equals `water_z − C_z`, so a camera's height and its distance to the interface trade off almost exactly; the free per-frame board poses absorb the rest. A camera placed too high can produce nearly the same refracted rays as a correctly-placed one — at ~zero reprojection cost. (The axial camera-to-interface distance being weakly observable is a known property of flat-refractive calibration.)
 
 Because these modes are so soft, ordinary sub-pixel detection noise and small unmodeled effects get *amplified* into centimeter-scale scatter in the recovered layout. **Low error ≠ faithful metric camera layout.**
 
@@ -187,8 +187,8 @@ Check the `frame_rejection` block in `diagnostics.json` to see what was flagged 
 
 **Auto-simplification (standard model only):**
 If the full 5-parameter model produces a bad undistortion roundtrip (monotonicity check fails), AquaCal automatically retries with simpler models:
-1. Fix k3 to 0 (3-parameter model: k1, k2, p1, p2)
-2. Fix k3 and k2 to 0 (1-parameter model: k1, p1, p2)
+1. Fix k3 to 0 (4-parameter model: k1, k2, p1, p2)
+2. Fix k3 and k2 to 0 (3-parameter model: k1, p1, p2)
 
 This prevents overfitting when calibration data is sparse.
 

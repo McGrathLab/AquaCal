@@ -56,7 +56,7 @@ Quick reference for domain-specific terms used in AquaCal.
 : Subset of calibration frames held out during optimization and used only for quality assessment. Prevents overfitting and provides unbiased error estimates.
 
 **water_z**
-: Z-coordinate of the water surface in world frame, in meters. Shared across all cameras after Stage 3 optimization. Replaces the older term "interface_distance" (which was misleading).
+: Z-coordinate of the water surface in world frame, in meters. Shared across all cameras after Stage 3 optimization. Replaced the older term "interface_distance" (which was misleading); that field was removed in v2.0.0 and is no longer accepted.
 
 **World frame**
 : Global coordinate system with origin at the reference camera's optical center. AquaCal convention: +X right, +Y forward, +Z down (into water). Units: meters.

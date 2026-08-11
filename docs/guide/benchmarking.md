@@ -13,8 +13,12 @@ truth, see {func}`aquacal.io.assemble_benchmark_record` and {func}`aquacal.io.wr
 
 ## benchmark.json
 
-Written unconditionally to `output_dir/benchmark.json` at the end of every
-`run_calibration_from_config` invocation — there is no config flag to disable it.
+Written to `output_dir/benchmark.json` at the end of every `run_calibration_from_config`
+invocation, guarded by `internals.save_benchmark` (default `true`). Assembling the record is
+cheap, so it is on by default; set `internals.save_benchmark: false` to suppress the file.
+
+The per-stage memory block described in the `memory` section below is separately gated by
+`internals.benchmark_memory` (default `false`) and is absent unless you opt in.
 
 ### schema_version
 

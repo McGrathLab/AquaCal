@@ -243,12 +243,16 @@ semantics of each flag.
 | `save_stage_calibrations` | bool | `true` | Dump each bundle-adjustment stage's intermediate calibration as loadable JSON |
 | `save_optimization_trace` | bool | `false` | Per-iteration CSV trace (cost, step norm, optimality) for each bundle-adjustment stage — see [Benchmarking & Diagnostics](benchmarking.md) for the CSV column schema |
 | `save_conditioning` | bool | `false` | Jacobian singular-value spectrum and full parameter correlation matrix at the solution. Expensive — off by default. — see [Benchmarking & Diagnostics](benchmarking.md) for the JSON/NPZ schema |
+| `save_benchmark` | bool | `true` | Write `output_dir/benchmark.json`, the run's machine-readable environment / solver-diagnostic / accuracy record. Cheap, on by default — see [Benchmarking & Diagnostics](benchmarking.md) for the field-by-field schema |
+| `benchmark_memory` | bool | `false` | Add the per-stage-boundary peak-RSS `memory` block to `benchmark.json`. This is the **only** switch that produces that block — see [Benchmarking & Diagnostics](benchmarking.md) for the `memory` section, which is absent from the file without it |
 
 ```yaml
 internals:
   save_stage_calibrations: true
   # save_optimization_trace: false
   # save_conditioning: false
+  # save_benchmark: true
+  # benchmark_memory: false
 ```
 
 ## seed

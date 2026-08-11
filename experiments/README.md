@@ -65,13 +65,13 @@ pre-run estimate.
 
 | Paper artifact | Experiment | Command | Output file(s) | Figure generator | Runtime |
 |---|---|---|---|---|---|
-| §3 focal drift, RMS px, per-camera parameter errors | E1 | `python -m experiments.e1_refractive_comparison` | `exp1_parameter_errors.csv` | `figures/aquacal/synthetic_validation.py` | ~20 min (19.1-06-SUMMARY.md records ~90 min total across four calibration-pairs run during this phase — a `--check` pair, an isolated headline-verification pair, and a `--force` pair — i.e. ~20-25 min per default two-model, eight-depth invocation) |
+| §3 focal drift, RMS px, per-camera parameter errors | E1 | `python -m experiments.e1_refractive_comparison` | `exp1_parameter_errors.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/synthetic_validation.py` (a different repository) | ~20 min (19.1-06-SUMMARY.md records ~90 min total across four calibration-pairs run during this phase — a `--check` pair, an isolated headline-verification pair, and a `--force` pair — i.e. ~20-25 min per default two-model, eight-depth invocation) |
 | Depth-generalization RMSE/signed-error curves | E1 | ″ | `exp2_depth_generalization.csv` | ″ | (same run) |
 | Exp-2 spatial-error heatmaps | E1 | ″ | `exp2_spatial_errors.csv` (gitignored — no committed baseline, D-20; ~11 MB, exceeds the repo's 1000 KB `check-added-large-files` gate; regenerate on demand with `--force`) | ″ | (same run) |
 | XY-vs-Z anisotropy ratios | E1 | ″ | `exp3_xy_vs_z_anisotropy.csv` | ″ | (same run) |
 | E1's two direct-call provenance records (one per model, since E1 calibrates twice) | E1 | ″ | `e1_benchmark_refractive.json`, `e1_benchmark_nonrefractive.json` | — (provenance only) | (same run) |
 | §3 real-rig: mean/per-camera reprojection, auxiliary fisheye RMS, inter-corner MAE/RMSE, comparison count | E2 | `python -m experiments.e2_real_rig --config <release config>` | `real_rig_metrics.json` | — (prose) | ~50 min (full local-frameset run against the release config; see `19.1-E2-FRAMESET-PROVENANCE.md`) |
-| Fig. `aquacal_zenodo_camera_rig_3d.pdf` — camera positions, recovered water surface `z_w`, per-camera heights | E2 | ″ | `camera_parameters.csv` (**not** `calibration.json` — D-14's correction; the figure generator reads three CSVs, never the calibration JSON) | `figures/aquacal/zenodo_e2e.py` | (same run) |
+| Fig. `aquacal_zenodo_camera_rig_3d.pdf` — camera positions, recovered water surface `z_w`, per-camera heights | E2 | ″ | `camera_parameters.csv` (**not** `calibration.json` — D-14's correction; the figure generator reads three CSVs, never the calibration JSON) | `DissertationFigures/src/dissertationfigures/figures/aquacal/zenodo_e2e.py` (a different repository) | (same run) |
 | 3D reconstruction error distribution | E2 | ″ | `reconstruction_errors.csv` | ″ | (same run) |
 | Reprojection error histogram | E2 | ″ | `reprojection_residuals.csv` | ″ | (same run) |
 | E2's genuine pipeline-written provenance record (E2 is the one experiment that goes through `run_calibration`, so this is not a hand-rolled sidecar) | E2 | ″ | `benchmark.json` (copied, not reconstructed) | — (provenance only) | (same run) |
@@ -223,6 +223,23 @@ fails the moment any of the six is regenerated with a seed (at which point the e
 must be removed by hand). Every record and CSV committed by Phase 19.2 itself — the nine E4
 cells, `benchmark_grid.csv`, `index_sensitivity.csv`, `generalization_sweep.csv`, and E2's
 refreshed `benchmark.json` — carries a seed.
+
+### The four scripts with no row in the table above
+
+The provenance table has one row per *paper artifact*, so four of the eleven runnable scripts
+in this directory do not appear in it. That is not a licence to treat them as dead code — three
+of them carry unit tests. They are listed here so the directory's own map points at everything
+in it.
+
+| Script | What it is | Tests | Paper artifact |
+|---|---|---|---|
+| `e7_focal_standoff_analysis.py` | Pure re-analysis of the committed `interface_ablation_band.csv` for the focal-drift/standoff pairing (COV-08, E7 half) that WP6 planned and MF-05 never reported. Never regenerates its input. | `tests/unit/test_e7_focal_standoff.py` | None committed — analysis output only |
+| `reconstruction_bootstrap.py` | Frame-clustered bootstrap CI over the committed `reconstruction_errors.csv` (COV-08, bootstrap half, D-19.5-05). The resampling unit is the frame, not the row. Performs no calibration. | `tests/unit/test_reconstruction_bootstrap.py` | None committed — CI band only |
+| `check_rerun_gates.py` | Machine-checkable post-run gates (D-19.3-18) over an output directory's existing artifacts. Reports PASS/FAIL/N/A per gate per experiment and exits non-zero on any FAIL. Runs nothing and regenerates nothing. | `tests/unit/test_rerun_gates.py` | None — a verification tool, not a producer |
+| `fd_jacobian_accuracy.py` | **One-off diagnostic, no test coverage and no paper artifact.** Compares the shipped 2-point finite-difference Jacobian against a Richardson reference (E-COV-02 / R1.2) without deriving the analytic Jacobian. Referenced only from `.planning/phases/.../19.5-02-PLAN.md`. Do not read it as an E-series experiment: nothing in CI or the manuscript depends on it. | — none — | None |
+
+The first three inherit the same five-flag CLI contract described in §1; so does
+`fd_jacobian_accuracy.py`.
 
 ## 3. E2 has two invocation paths — read this before citing a number
 

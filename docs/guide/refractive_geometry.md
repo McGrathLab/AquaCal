@@ -100,7 +100,7 @@ $$
 \mathbf{P} = \mathbf{C} + r_p \cdot \text{(unit XY direction from C to Q)} + [0, 0, \text{water_z} - C_z]
 $$
 
-This Newton-Raphson approach is **~50× faster** than bracketing methods like Brent's method, while maintaining excellent numerical stability. See {func}`aquacal.core.refractive_geometry.refractive_project` for the implementation.
+This Newton-Raphson approach converges in 2-4 iterations for flat interfaces and avoids the bracketing search Brent's method requires, while maintaining excellent numerical stability. See {func}`aquacal.core.refractive_geometry.refractive_project` for the implementation.
 
 :::{admonition} Gotcha: water_z is a Z-coordinate, not a distance
 :class: warning

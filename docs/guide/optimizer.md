@@ -129,9 +129,28 @@ Below `loss_scale` (1.0 px) the loss is quadratic; above it, the loss grows only
 ### Bounds
 
 - **water_z**: `[0.01, 2.0]` meters (must be positive and below cameras; upper bound is generous)
-- **Board tvec[2]** (Z-coordinate): Must be greater than water_z (boards are underwater)
-- **Extrinsic rvec**: Unbounded (rotations can take any value)
-- **Extrinsic tvec**: Unbounded (but typically stay near initial values from Stage 2)
+- **Interface tilt** (when `normal_fixed: false`): `[-0.2, 0.2]` radians (~11°) on each of the two tilt parameters
+- **Intrinsics** (when the second pass is enabled): bounded relative to the Stage 1 estimate
+- **Extrinsic rvec/tvec**: Unbounded (but typically stay near initial values from Stage 2)
+- **Board poses**: Unbounded — **including tvec[2]**. There is deliberately no "board must be
+  below water_z" bound; see the note below.
+
+:::{admonition} Why board Z is not bounded below water_z
+:class: note
+
+An earlier design bounded board `tvec[2]` to stay underwater. That was removed. Boards that
+drift above the interface are handled instead by *continuing* the projection model across the
+interface: `refractive_project_batch` returns NaN above the surface, and those observations fall
+back to the plain pinhole projection, which is the unique continuous extension of the refractive
+model (as a point approaches the interface from below, the refraction point converges to the
+point itself). The restoring gradient that pushes a lifted board back underwater comes from that
+continuation.
+
+A hard bound or a hinge penalty such as `max(0, water_z - Q_z)` would make the residual C0 but
+not C1 at the interface, so first-order optimality could never reach zero at any solution that
+parks an observation there — destroying the convergence diagnostic this library reports. See
+`aquacal/calibration/_optim_common.py:56-61` for the rationale in source.
+:::
 
 See {func}`aquacal.calibration.interface_estimation.optimize_interface` for implementation.
 
@@ -140,9 +159,10 @@ See {func}`aquacal.calibration.interface_estimation.optimize_interface` for impl
 
 When running calibration with `n_air = n_water = 1.0` (as a comparison baseline to standard calibration), water_z has **zero analytical gradient**. Light travels in straight lines regardless of the interface position.
 
-Despite this, water_z may drift during optimization due to:
-1. **Boundary penalties**: Soft constraint to keep board Z > water_z pushes water_z downward
-2. **Numerical noise**: In a flat cost valley, small numerical errors accumulate
+Despite this, water_z may still drift during optimization: in a flat cost valley, small numerical
+errors accumulate and the parameter wanders freely within its `[0.01, 2.0]` bounds. Nothing pushes
+it anywhere in particular — there is no boundary penalty term (see "Why board Z is not bounded
+below water_z" above), so drift here is numerical noise, not a systematic bias.
 
 The final water_z value in non-refractive mode is arbitrary and meaningless. All other parameters (extrinsics, board poses) are unaffected.
 
@@ -219,7 +239,13 @@ so the FD-evaluation advantage widens, not shrinks, as the rig scales up.
 These numbers are asserted live against the shipped code in
 `tests/unit/test_optim_common.py::TestDocumentedGroupingNumbers`.
 
-For very large problems (e.g., 1000+ parameters), a `dense_threshold` parameter automatically switches to sparse (LSMR) mode to avoid memory overflow.
+The dense return is not unconditional. `make_sparse_jacobian_func` compares the **total element
+count** of the Jacobian — `n_residuals × n_params` — against its `dense_threshold`, which defaults
+to `500_000_000` (5×10⁸ elements, roughly 4 GiB as float64). At or below the threshold it returns a
+dense matrix and the exact (QR) solver is used; above it, it returns the sparse matrix and SciPy
+falls back to LSMR to avoid memory overflow. Note that the trigger is the *product*, not the
+parameter count alone: the 673-parameter rig above stays dense until it accumulates roughly 740,000
+residual rows.
 
 See {func}`aquacal.calibration._optim_common.make_sparse_jacobian_func` for implementation.
 
@@ -272,12 +298,12 @@ $$
 With few calibration frames, higher-order coefficients (k3, k2) can overfit, causing the distortion polynomial to diverge outside the calibrated region. AquaCal detects this via monotonicity checks and automatically retries with simpler models:
 
 1. **Full model:** k1, k2, p1, p2, k3 (5 parameters)
-2. **If roundtrip validation fails:** Fix k3 = 0 (4 parameters)
-3. **If still failing:** Fix k3 = k2 = 0 (2 radial parameters: k1, p1, p2)
+2. **If roundtrip validation fails:** Fix k3 = 0 (4 parameters: k1, k2, p1, p2)
+3. **If still failing:** Fix k3 = k2 = 0 (3 parameters: k1, p1, p2)
 
 This auto-simplification prevents overfitting while preserving model accuracy for well-calibrated cases.
 
-**Implementation:** See {func}`aquacal.calibration.intrinsics.calibrate_intrinsics_single` (lines 351-379) for the progressive simplification logic.
+**Implementation:** See {func}`aquacal.calibration.intrinsics.calibrate_intrinsics_single` (the simplification loop at `intrinsics.py:451-462`) for the progressive simplification logic.
 
 ### Rational Model (8 parameters)
 
@@ -330,7 +356,7 @@ fisheye_cameras:
 ```
 
 **Important constraints:**
-- Fisheye cameras **must** be listed in `auxiliary_cameras` (cannot participate in primary Stage 2-4 optimization)
+- Fisheye cameras **must** be listed in `auxiliary_cameras` (cannot participate in primary Stage 2-3 optimization)
 - Fisheye cameras **cannot** also be rational model cameras
 
 ### Allowed Camera Combinations

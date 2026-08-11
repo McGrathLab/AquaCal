@@ -128,7 +128,7 @@ When deprecating functionality in AquaCal:
 
 2. **Maintain for at least 2 minor versions** before removal.
 
-4. **Document the replacement** in the function's docstring:
+3. **Document the replacement** in the function's docstring:
    ```python
    def old_function():
        """Original description.

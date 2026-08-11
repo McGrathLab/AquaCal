@@ -134,14 +134,17 @@ aquacal compare <dir1> <dir2> [dir3 ...] [options]
 **Output Files:**
 
 The command generates:
-- `metrics.csv` — Overall metrics (RMS, camera counts) for each run
-- `per_camera.csv` — Per-camera metrics across all runs
+- `metrics_summary.csv` — Overall metrics (RMS, camera counts) for each run
+- `per_camera_metrics.csv` — Per-camera metrics across all runs
 - `parameter_diffs.csv` — Pairwise differences in extrinsics and water_z
+- `depth_binned_errors.csv` — (if spatial data available) Binned error statistics
 - `rms_bar_chart.png` — Bar chart comparing RMS reprojection errors
 - `position_overlay.png` — 3D scatter plot of camera positions across runs
 - `z_position_dumbbell.png` — Camera Z-positions with connecting lines between runs
-- `depth_error_plot.png` — (if spatial_measurements.csv exists) Error vs. depth analysis
-- `depth_binned.csv` — (if spatial data available) Binned error statistics
+- `depth_error_comparison.png` — (if spatial data available) Error vs. depth analysis
+- `xy_error_heatmaps.png` — (if spatial data available) Per-run XY error heatmaps
+
+Every `.png` above is skipped under `--no-plots`; the `.csv` files are always written.
 
 **Examples:**
 
@@ -172,7 +175,7 @@ aquacal compare run1/ run2/ --no-plots
 **Example:**
 ```bash
 aquacal --version
-# Output: aquacal 0.1.0
+# Output: aquacal 2.0.0
 ```
 
 ---

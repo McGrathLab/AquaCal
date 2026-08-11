@@ -52,7 +52,7 @@ from aquacal import run_calibration, load_calibration
 result = run_calibration("config.yaml")
 
 # Load saved calibration
-calib = load_calibration("output/calibration.yaml")
+calib = load_calibration("output/calibration.json")
 ```
 
 :::{toctree}
