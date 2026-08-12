@@ -1,0 +1,99 @@
+{
+  "accuracy": {
+    "reprojection_rms": 0.9382659144002841,
+    "validation_3d_error_mean": 0.0002640686684537422,
+    "validation_3d_error_std": 0.0006235656273370497
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "d27bda76fe7c765b3c975b2052ca1f8f7b286068",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.14.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "problem_shape": {
+    "n_cameras": 13,
+    "n_frames_calibration": 200,
+    "n_frames_holdout": 52
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "interface_normal_fixed": false,
+    "loss_scale": 1.0,
+    "refine_intrinsics": true,
+    "robust_loss": "huber",
+    "seed": 42
+  },
+  "stages": {
+    "auxiliary_registration_e3v8250": {
+      "cost": 9839.744554466546,
+      "fd_reduction": null,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 1000,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": null,
+      "n_groups_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "n_params": null,
+      "n_params_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "n_residuals": null,
+      "n_residuals_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "nfev": 18,
+      "njev": 14,
+      "optimality": 0.021157364200917073,
+      "seconds": null,
+      "seconds_reason": "per-camera wall time is not measured separately; see the auxiliary_registration aggregate boundary",
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_interface_optimization": {
+      "cost": 32532.210490426198,
+      "fd_reduction": 97.61538461538461,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 126900,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 1269,
+      "n_params_reason": null,
+      "n_residuals": 147006,
+      "n_residuals_reason": null,
+      "nfev": 42,
+      "njev": 35,
+      "optimality": 0.02746105341867633,
+      "seconds": 725.6828813750008,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 20040.934915762453,
+      "fd_reduction": 77.47058823529412,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 131700,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 1317,
+      "n_params_reason": null,
+      "n_residuals": 147006,
+      "n_residuals_reason": null,
+      "nfev": 17,
+      "njev": 16,
+      "optimality": 16.957168836576898,
+      "seconds": 394.9605346019998,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "accuracy": {
+    "reprojection_rms": 0.7053203215412626,
+    "validation_3d_error_mean": 3.653132733548594e-05,
+    "validation_3d_error_std": 0.00037206862485100994
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "d27bda76fe7c765b3c975b2052ca1f8f7b286068",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.14.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "memory": {
+    "mode": "proc_status_vmhwm",
+    "whole_run_peak_bytes": 2965901312
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 0,
+    "memory_pressure": "clean",
+    "n_cameras": 8,
+    "n_cameras_observing_per_frame_median": 6.0,
+    "n_cameras_observing_per_frame_min": 3,
+    "n_frames": 100,
+    "n_observations": 600,
+    "peak_bytes_baseline": 190607360
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "n_air": 1.0,
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "refine_intrinsics": true,
+    "seed": 42,
+    "shared_interface": true
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 8549.658418894902,
+      "fd_reduction": 49.61538461538461,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 64500,
+      "max_nfev_source": "scipy_auto",
+      "memory": {
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 2812010496,
+        "delta_bytes_since_previous_boundary": 2621403136,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
+      },
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 645,
+      "n_params_reason": null,
+      "n_residuals": 69498,
+      "n_residuals_reason": null,
+      "nfev": 23,
+      "njev": 16,
+      "optimality": 0.02849936420658139,
+      "seconds": 76.53569325800004,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 8545.004622615543,
+      "fd_reduction": 39.8235294117647,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 67700,
+      "max_nfev_source": "scipy_auto",
+      "memory": {
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 2965901312,
+        "delta_bytes_since_previous_boundary": 153890816,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
+      },
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 677,
+      "n_params_reason": null,
+      "n_residuals": 69498,
+      "n_residuals_reason": null,
+      "nfev": 4,
+      "njev": 4,
+      "optimality": 0.0017868518476382143,
+      "seconds": 20.918018112999903,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}
