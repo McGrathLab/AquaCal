@@ -30,7 +30,8 @@
       "why_it_is_safe": "Its own gates already passed: test (ubuntu 3.12), build, and publish-testpypi are all green. Only the final `publish` job is held at the environment approval gate.",
       "irreversible": "Yes. Once approved, aquacal 2.0.1 is on PyPI permanently and that version number can never be reused."
     },
-    "beware_2_0_0_names_two_things": "The Zenodo DATASET is at version 2.0.0 and is live (record 21889922). The Python PACKAGE v2.0.0 and v2.0.1 are tagged on GitHub but are NOT on PyPI. Do not conflate them."
+    "beware_2_0_0_names_two_things": "The Zenodo DATASET is at version 2.0.0 and is live (record 21889922). The Python PACKAGE v2.0.0 and v2.0.1 are tagged on GitHub but are NOT on PyPI. Do not conflate them.",
+    "ci_status": "GREEN on all six jobs as of 2026-08-12. Nothing to investigate."
   },
   "what_phase_21_delivered": {
     "summary": "The published dataset archive was regenerated from the full frameset, made internally consistent, published as a new Zenodo version, and wired into the library and docs. A pre-2.0.0 audit then corrected release-locked metadata before the first push in 674 commits.",
@@ -62,7 +63,7 @@
       "v2.0.1"
     ],
     "local_suite": "1817 passed, 25 skipped, 0 failed (full unfiltered pytest tests/, 2:17:38, at e0ef765, Windows)",
-    "ci_at_handoff": "Tests matrix on d27bda7: pre-commit, experiments-smoke, ubuntu 3.11 and ubuntu 3.12 all PASS. Both windows legs were still running when this was written -- CHECK THEM. Both prior failures are already fixed (see known_ci_history)."
+    "ci_at_handoff": "GREEN. Tests matrix on d27bda7 (run 31551073262) completed/success -- all six jobs: pre-commit, experiments-smoke, test ubuntu 3.11, test ubuntu 3.12, test windows 3.11, test windows 3.12. This is the first fully green matrix since v1.8.0. Both earlier failures (Linux ULP anchors, Windows psutil) are fixed and confirmed -- see known_ci_history."
   },
   "known_ci_history": {
     "why_two_failures_appeared_at_once": "674 commits went unpushed since v1.8.0, so neither Linux nor Windows CI had run since. Two latent platform assumptions surfaced together on release day. Push more often next milestone.",

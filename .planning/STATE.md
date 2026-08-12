@@ -50,6 +50,9 @@ Phase: **21 (new-feature-documentation-dataset-refresh) — COMPLETE 2026-08-11.
   **Beware:** "2.0.0" names two different objects — the Zenodo *dataset* version (live) and the
   Python *package* (tagged on GitHub, not on PyPI).
 
+  **CI is GREEN** — the Tests matrix on `d27bda7` passed all six jobs (run `31551073262`),
+  the first fully green matrix since v1.8.0.
+
   **Two CI failures surfaced and were fixed** (`eea0a83`, `d27bda7`), both latent since v1.8.0
   because nothing had been pushed: exact-equality frozen anchors failing on Linux by 1-2 ULP,
   and a psutil assertion failing on Windows CI because psutil lives in the `[bench]` extra.
