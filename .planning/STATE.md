@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Publication Prep
-status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-08-10T15:35:20.269Z"
-last_activity: 2026-08-10 -- Phase 21 execution started
+status: paused_between_phases
+stopped_at: Phase 21 complete; PyPI approval outstanding
+last_updated: "2026-08-12T01:45:00.000Z"
+last_activity: 2026-08-11 -- Phase 21 complete; v2.0.0 + v2.0.1 released; Zenodo record 21889922 live
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 106
-  completed_plans: 94
-  percent: 75
+  completed_plans: 97
+  percent: 92
 ---
 
 # Project State
@@ -21,14 +21,46 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-23)
 
 **Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 21 — new-feature-documentation-dataset-refresh
+**Current focus:** none — Phase 21 complete. One user action outstanding: approve the v2.0.1 PyPI publish.
 
 ## Current Position
 
-Phase: 21 (new-feature-documentation-dataset-refresh) — EXECUTING
+Phase: **21 (new-feature-documentation-dataset-refresh) — COMPLETE 2026-08-11.** 12/12 plans.
+  Next phase: **22** (Release Cut; Phase 20 remains deferred). **Start from
+  `.planning/HANDOFF.json`** — it carries the full picture and the one outstanding user action.
+
+  **ONE THING IS WAITING ON THE USER: approve the v2.0.1 PyPI publish** at
+  `https://github.com/McGrathLab/AquaCal/actions/runs/31543691065`. Its own test, build and
+  publish-testpypi jobs are green; only the final `publish` job sits at the approval gate.
+  **Nothing is on PyPI yet.**
+
+  **What landed.** The real-rig archive was regenerated from the full frameset, made internally
+  consistent (every file now library 1.8.0), and published as Zenodo **record 21889922**,
+  version DOI `10.5281/zenodo.21889922`, concept DOI `10.5281/zenodo.18645384` preserved per
+  D-13. `manifest.json` points at it and `load_example("real-rig")` was verified end to end from
+  a genuinely cold cache. DATA-01b moved three large artifacts out of git, restoring the
+  repo-wide 1000 KB guard with no exclusion (tracked `experiments/results/` 4.45 MB -> 0.51 MB).
+
+  **The first push in 674 commits** went out on 2026-08-11, cutting **v2.0.0** and then
+  **v2.0.1**. A read-only pre-2.0.0 audit ran first (quick task `260811-e7s`) and its fixes
+  landed in `260811-f81` — including three release-locked defects: `scipy>=1.16` unsatisfiable
+  against `requires-python >=3.10`, `CITATION.cff` frozen at 1.7.0, and `aquacal calibrate -o`
+  silently ignored while documented in three places.
+
+  **Beware:** "2.0.0" names two different objects — the Zenodo *dataset* version (live) and the
+  Python *package* (tagged on GitHub, not on PyPI).
+
+  **Two CI failures surfaced and were fixed** (`eea0a83`, `d27bda7`), both latent since v1.8.0
+  because nothing had been pushed: exact-equality frozen anchors failing on Linux by 1-2 ULP,
+  and a psutil assertion failing on Windows CI because psutil lives in the `[bench]` extra.
+  See `HANDOFF.json` -> `known_ci_history`.
+
+  ---
+  *Historical context from Phase 19.5, retained (the block below was mislabelled as Phase 21):*
+
+Phase: 19.5 — experiment-coverage-and-uncertainty-bands — CLOSED
   11/11 plans. COV-01..COV-09 all discharged with a per-requirement artifact table in
   REQUIREMENTS.md. Findings MF-11..MF-17 written; MF-09's edit map updated.
-  Next phase: **21** (Phase 20 deferred — see below). Next command: `/gsd:discuss-phase 21`.
 
   **Runtime, actual.** Six seeds were approved before launch (not five: 2 x 2^-5 = 0.0625 fails a
   two-sided test, 2 x 2^-6 = 0.031 clears it), which moved the budget to ~17 h nominal and the
@@ -132,12 +164,12 @@ Plan: 1 of 12
   **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
   discuss -> plan chain stops before execute. Restore with
   `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 21
+Status: Phase 21 complete — between phases
   Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
   0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
   Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
   Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-10 -- Phase 21 execution started
+Last activity: 2026-08-11 -- Phase 21 complete; see .planning/HANDOFF.json
   not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
   required `board` parameter and both are public exports. Phases 21 and 22 resolve version
   strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.

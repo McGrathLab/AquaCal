@@ -74,7 +74,7 @@ must settle the stage-key schema before benchmark.json locks it in.
 - [x] **Phase 19.5: Experiment Coverage and Uncertainty Bands** (INSERTED) - Every experiment the reviewer response leans on carries a measured uncertainty band or says plainly that it does not, and R1.2/R1.3 get their first experimental answer
   (Phases 19.1-19.4 are likewise inserted decimals; see Phase Details. 19.5 is the next phase.)
 - [ ] **Phase 20: Refractive Index Helper** - Users can estimate `n_water` from environmental conditions and transfer it into their config by hand
-- [ ] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
+- [x] **Phase 21: New-Feature Documentation & Dataset Refresh** - Every capability this milestone added is documented, and the published dataset/tutorials reflect the current library
 - [ ] **Phase 22: Release Cut** - The version referenced by the manuscript and Zenodo archive is the one whose behavior the published artifacts reflect
 
 ## Phase Details
@@ -642,5 +642,5 @@ behavior the published artifacts actually reflect.
 | 19.3 Scenario Geometry and Convergence | v1.9 | 10/10 | Complete   | 2026-08-04 |
 | 19.4 Single Flat Interface | v1.9 | 10/10 | Complete   | 2026-08-05 |
 | 20. Refractive Index Helper | v1.9 | 0/TBD | Not started | - |
-| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 8/12 | In Progress|  |
+| 21. New-Feature Documentation & Dataset Refresh | v1.9 | 12/12 | Complete   | 2026-08-11 |
 | 22. Release Cut | v1.9 | 0/TBD | Not started | - |

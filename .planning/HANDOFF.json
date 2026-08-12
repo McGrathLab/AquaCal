@@ -1,81 +1,107 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-07T19:10:00.000Z",
+  "timestamp": "2026-08-12T01:40:00.000Z",
   "level": "milestone",
   "milestone": "v1.9",
   "milestone_name": "Publication Prep",
   "status": "paused_between_phases",
   "phases_total": 12,
-  "phases_complete": 9,
-  "completed_phases": ["16", "17", "18", "19", "19.1", "19.2", "19.3", "19.4", "19.5"],
+  "phases_complete": 10,
+  "completed_phases": [
+    "16",
+    "17",
+    "18",
+    "19",
+    "19.1",
+    "19.2",
+    "19.3",
+    "19.4",
+    "19.5",
+    "21"
+  ],
   "current_phase": null,
-  "next_phase": "21",
-  "next_phase_name": "new-feature-documentation-and-dataset-refresh",
-  "next_phase_state": "not_started. NOTE: Phase 20 (Refractive Index Helper) is DEFERRED by user decision on 2026-08-07, on measured evidence -- see open_decisions. Phase 21 lists Phase 20 among its dependencies, but that dependency is documentation-shaped: if 20 does not land there is simply one less capability to document. It does not block.",
+  "next_phase": "22",
+  "next_phase_name": "release-cut",
+  "READ_THIS_FIRST": {
+    "one_line": "Phase 21 is COMPLETE. The Zenodo archive is republished and live, the library points at it, and v2.0.0 + v2.0.1 are tagged and released on GitHub. NOTHING IS ON PyPI YET -- one manual approval is outstanding.",
+    "the_single_action_waiting_on_the_user": {
+      "what": "Approve the PyPI publish for v2.0.1.",
+      "where": "https://github.com/McGrathLab/AquaCal/actions/runs/31543691065",
+      "why_it_is_safe": "Its own gates already passed: test (ubuntu 3.12), build, and publish-testpypi are all green. Only the final `publish` job is held at the environment approval gate.",
+      "irreversible": "Yes. Once approved, aquacal 2.0.1 is on PyPI permanently and that version number can never be reused."
+    },
+    "beware_2_0_0_names_two_things": "The Zenodo DATASET is at version 2.0.0 and is live (record 21889922). The Python PACKAGE v2.0.0 and v2.0.1 are tagged on GitHub but are NOT on PyPI. Do not conflate them."
+  },
+  "what_phase_21_delivered": {
+    "summary": "The published dataset archive was regenerated from the full frameset, made internally consistent, published as a new Zenodo version, and wired into the library and docs. A pre-2.0.0 audit then corrected release-locked metadata before the first push in 674 commits.",
+    "authoritative_records": [
+      ".planning/phases/21-new-feature-documentation-dataset-refresh/21-ARCHIVE-MANIFEST.md -- transcription values, the gate table, the Published and Post-publish verification sections",
+      ".planning/phases/21-new-feature-documentation-dataset-refresh/21-09-SUMMARY.md, 21-10-SUMMARY.md, 21-11-SUMMARY.md",
+      ".planning/phases/21-new-feature-documentation-dataset-refresh/21-PRE-RELEASE-AUDIT.md -- the ranked audit; what was fixed and what was deliberately skipped",
+      ".planning/quick/260811-e7s-pre-2-0-0-release-audit/SUMMARY.md and .planning/quick/260811-f81-pre-2-0-0-release-fixes/SUMMARY.md"
+    ],
+    "zenodo": {
+      "record_id": 21889922,
+      "version_doi": "10.5281/zenodo.21889922",
+      "concept_doi": "10.5281/zenodo.18645384",
+      "dataset_version": "2.0.0",
+      "size_bytes": 4350418046,
+      "note": "Published as a NEW VERSION of record 18645385 per D-13, so citation lineage is preserved. Zenodo's reported size and md5 match the pre-upload values exactly.",
+      "checksum": "md5:dff1012fb772d627e0f3f106d5c6de84"
+    },
+    "verified_end_to_end": "load_example('real-rig') was run from a genuinely cold cache against the live record: 4.35 GB downloaded, md5 passed, extracted to the nested layout loader.py:60 resolves, 13 extrinsic camera dirs / 3406 extrinsic PNGs / 561 intrinsic PNGs, reference_calibration.json parsed into a CalibrationResult."
+  },
   "repo_state": {
     "branch": "main",
-    "head": "see git log -- last commits are phase 19.5 closure",
-    "working_tree": "clean",
-    "worktrees": "one stray, worktree-agent-a1a99b5a5289e9e05, present and UNMERGED. This is correct and deliberate -- superseded 19.2-21 evidence that must never be merged.",
-    "tests": "1792 passed, 27 skipped, 0 failed (full unfiltered pytest tests/, ~60 min, at b13a3e0)",
-    "gates": "101 PASS / 7 N/A / 8 FAIL via `python experiments/check_rerun_gates.py experiments/results`",
-    "pushed": false,
-    "note_on_next_push": "Everything since Phase 16 is unpushed. The next push triggers python-semantic-release. The milestone cuts v2.0.0, not v1.9.x -- 19.3 made `board` a required parameter of the public generate_board_trajectory. Never hand-edit version or CHANGELOG."
+    "head_at_handoff": "d27bda7 (plus the closure docs commits that follow it)",
+    "pushed": true,
+    "note_on_push": "674 commits were pushed on 2026-08-11 -- the first push since v1.8.0. python-semantic-release cut v2.0.0, then v2.0.1 after a follow-up fix.",
+    "tags": [
+      "v1.8.0",
+      "v2.0.0",
+      "v2.0.1"
+    ],
+    "local_suite": "1817 passed, 25 skipped, 0 failed (full unfiltered pytest tests/, 2:17:38, at e0ef765, Windows)",
+    "ci_at_handoff": "Tests matrix on d27bda7: pre-commit, experiments-smoke, ubuntu 3.11 and ubuntu 3.12 all PASS. Both windows legs were still running when this was written -- CHECK THEM. Both prior failures are already fixed (see known_ci_history)."
   },
-  "what_phase_19_5_delivered": {
-    "summary": "Every experiment the reviewer response leans on now carries a measured uncertainty band or says plainly that it does not. COV-01..COV-09 all discharged, with a per-requirement satisfying-artifact table in REQUIREMENTS.md.",
-    "authoritative_record": ".planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-11-SUMMARY.md (plan 11) and 19.5-10-SUMMARY.md (the production queue)",
-    "production_queue": "Ran 2026-08-06T16:24:41Z to 2026-08-07T08:55:27Z. Five stages, 16 h 31 m, 0.97x of nominal -- nothing like 19.4's 1.6x. No commit landed mid-run. One frozen sha 2a2f0fa across 92 of 114 run-window files, with no other sha anywhere.",
-    "new_findings": "MF-11 (accuracy improves to N=12 then plateaus), MF-12 (the line layout does not locate the water surface), MF-13 (index insensitivity; E5's accuracy claim restored), MF-14 (wall-clock noise floor at identical nfev), MF-15 (E2 split variance), MF-16 (E1's band regenerable; MF-08's citation corrected), MF-17 (E7's vacuous fixed arms)."
+  "known_ci_history": {
+    "why_two_failures_appeared_at_once": "674 commits went unpushed since v1.8.0, so neither Linux nor Windows CI had run since. Two latent platform assumptions surfaced together on release day. Push more often next milestone.",
+    "linux_failure_FIXED": "Frozen-anchor tests compared float64 with assert_array_equal (exact) and failed on Linux by 1-2 ULP (5.55e-17). Fixed in eea0a83 with assert_allclose(rtol=1e-12), applied to the whole GEOM-01 anchor gate. Verified: tolerates 3.4e-16 drift, still fails a 1 mm change and a 1e-11 relative change. See the _ANCHOR_RTOL comment in tests/unit/test_datasets.py -- do NOT tighten it back.",
+    "windows_failure_FIXED": "test_windows_dev_machine_reports_peak_wset asserted the psutil path on any Windows box. psutil is in the optional [bench] extra, not [dev], so CI falls back to tracemalloc by design. Fixed in d27bda7 with an importorskip guard. Library was never at fault (benchmark.py:249-262 catches ImportError deliberately)."
   },
-  "read_first_for_manuscript_work": [
-    ".planning/MANUSCRIPT-FINDINGS.md MF-09 -- the edit map, including its 2026-08-07 UPDATE block naming the three new prose destinations and the two figure changes",
-    ".planning/MANUSCRIPT-FINDINGS.md MF-16 -- what L68 and L281 should become, and why ~135x survives while 257 mm does not",
-    "The live paper is in OneDrive, NOT Desktop: 'OneDrive - Georgia Institute of Technology/Thesis/Spinoffs/papers/aquacal/main.tex'. Desktop/main.pdf is a stale export that says the opposite in places."
-  ],
-  "open_decisions_for_user": [
+  "open_items_for_the_user": [
     {
-      "id": "phase-20-deferred",
-      "summary": "Phase 20 (Refractive Index Helper, INDEX-01..03) is deferred until after the Zenodo/manuscript work.",
-      "rationale": "Decided on measured evidence, not schedule pressure. MF-13: across the full +/-0.010 assumed-index sweep, reconstruction MAE moves 0.0040 mm against a seed sd of 0.0205 mm -- the effect is ~5x below seed noise. Scale bias at the CORRECT index (0.0483%) is larger than the change a +/-0.01 error produces. A hand-entered 1.333 is adequate for accuracy at this geometry.",
-      "status": "deferred, not dropped. The roadmap should cite MF-13's exact wording rather than asserting insensitivity independently."
+      "id": "pypi-approval",
+      "priority": "do this first",
+      "summary": "Approve the v2.0.1 PyPI publish at https://github.com/McGrathLab/AquaCal/actions/runs/31543691065"
     },
     {
-      "id": "post-zenodo-rerun-batch",
-      "summary": "A batch of small repairs the user chose to defer until after the Zenodo regeneration, when the whole suite can be re-run on one sha.",
-      "items": [
-        "The six seedless-legacy provenance FAILs (e1_benchmark_*.json x2, e7_benchmark_*.json x4) -- closable by stamping solver_config['seed'] in the production write path and re-running those single-seed runs. Would take gates to 2 FAIL. Regenerates artifacts the manuscript cites, so it is a deliberate call.",
-        "E1's non-refractive baseline could be run with water_z PINNED at ground truth: MF-08 measured that this reproduces every number to ~4 s.f. while driving the guard count to 0 and optimality from 9e+02 to 5e-01. It would make the pinhole baseline's diagnostics clean on their face instead of needing a paragraph of explanation. Cost: the published 248.3 shifts in the 4th significant figure.",
-        "gate3_git_sha_consistency is BLIND to the run it certifies -- _collect_all_json_paths walks a fixed legacy set (e4_cells/*/benchmark.json, e6_configs/*.json) that excludes this phase's sidecars. It PASSed reporting a 19.4-era sha while the run's own artifacts carried a different one. Provenance had to be verified by hand. Widen it.",
-        "E4's benchmark_grid.csv real_rig row has an EMPTY guard count (spliced from E2's record, which lacks the field) -- instrument E2's record, or have the gate treat a spliced row as N/A.",
-        "E4's per-cell benchmark.json is overwritten by repeat 2, so repeat 1's per-stage detail survives only in the committed repeat_stdout.log. Repeat-2 rows also carry an empty cell_key and status.",
-        "MF-12's proposed metrics: add water_z_error_mm_signed and a per-camera interface_standoff_error_mm (h_c = water_z - C_z), ALONGSIDE the existing mean-absolute column, not instead of it.",
-        "E6 calls compute_per_camera_errors WITHOUT gauge_correct_z (defaults False), so its Z errors include a global datum offset the library documents as 'not a real geometric error'.",
-        "Todo filed 2026-08-06: E5's band tests re-run the band per test (317 s for 5) where E6 shares one module fixture (94 s for 6)."
-      ],
-      "status": "all deferred by user decision 2026-08-07; none blocks manuscript work"
+      "id": "rig-figure",
+      "priority": "manuscript, before submission",
+      "summary": "main.tex:262's rig figure caption still carries the old water surface. Correct values: z_w ~ 1.07 m, camera heights 1.05-1.11 m, and the extreme-height camera identities change (e3v83e9/e3v83f1 -> e3v83f0/e3v83ee). The figure itself must be regenerated first or caption and image disagree; its input experiments/results/camera_parameters.csv is current, and the user holds the generator outside the repo. Full detail in MANUSCRIPT-FINDINGS.md MF-19.",
+      "note": "This is manuscript work owned by the user. It does NOT block anything in the repo, and it did not block the Zenodo publish."
     },
     {
-      "id": "layout-line-conditioning-test",
-      "summary": "MF-12 states its mechanism as a hypothesis. The test that would settle it is cheap and the instrumentation already exists.",
-      "detail": "Run Phase 16's HOOK-03 conditioning diagnostic on a line-layout solve and a grid solve at the same seed and compare the camera-height / interface-distance correlation block. The hypothesis predicts a markedly higher off-diagonal for line. One calibration each, no new code. Would turn 'we observed a coupling' into 'we measured the conditioning that causes it', which feeds WP6's degeneracy argument directly.",
-      "status": "not started; suggested for after Zenodo"
+      "id": "which-doi-the-paper-cites",
+      "priority": "manuscript decision",
+      "summary": "Version DOI 10.5281/zenodo.21889922 pins the exact bytes Section 3 was computed from; concept DOI 10.5281/zenodo.18645384 always resolves to newest. Recommendation: cite the version DOI, since making Section 3 reproducible was the point of this phase."
+    },
+    {
+      "id": "changelog-under-reports-breaking-changes",
+      "priority": "low, informational",
+      "summary": "v2.0.0's CHANGELOG lists 1 of 7 breaking changes. Cause: several BREAKING CHANGE footers were grouped into four commits and semantic-release rendered one. The GitHub release notes for v2.0.0 were corrected by hand and now list all seven. CHANGELOG.md was deliberately left alone per the standing never-hand-edit-CHANGELOG rule. Prevention: one commit per breaking change."
+    },
+    {
+      "id": "download-resume",
+      "priority": "deferred by user decision 2026-08-11",
+      "summary": "download_with_progress has no HTTP Range/resume support, so an interrupted 4.35 GB download restarts from zero (measured ~1.4 MB/s, ~50 min). Users also need ~9 GB free, since the zip is kept alongside the extraction. Non-breaking to add; the user called it 'a convenience'."
     }
   ],
-  "binding_lessons": [
-    "Never let a subagent background a long run and return -- it stalls permanently. NEW as of 2026-08-07: a TARGETED test file can also exceed the 600 s ceiling, so 'run the files you touched' is an unsafe instruction. tests/unit/test_e1_band_mode.py runs real band solves and took 28 minutes. Name specific fast tests, or have the orchestrator run them.",
-    "Executor worktrees fork from a stale base -- observed a fourth time on 2026-08-07 (forked from b4da55b, the v1.8.0 tag, 609 commits behind). Assert the real HEAD sha as EXPECTED_BASE, or dispatch on the main checkout.",
-    "A gate FAIL that everyone has learned to expect stops being read. gate4_band's E1 instance was documented as benign for two phases while it was flagging that the manuscript's headline number had no committed artifact. A tolerated failure needs a re-derivation, not an annotation.",
-    "Commit nothing during a production run -- a per-cell git rev-parse splits an artifact's recorded sha.",
-    "Exit codes are not evidence: E4 and E6 record failures as rows and still exit 0. Read status counts out of the CSVs.",
-    "Optimality is quoted to ONE significant figure, never finer. No runtime figure is ever attributed to a code change."
-  ],
-  "next_action": "Phase 21 (dataset/tutorial refresh, the real manuscript blocker -- it needs a real 48-87 min calibration run and clears the stale 'Stage 4' notebook outputs). To proceed: /gsd:discuss-phase 21, then /gsd:plan-phase 21, then /gsd:execute-phase 21. Manuscript prose edits can start immediately and in parallel, from MF-09's edit map.",
-  "resume_reading": [
-    ".planning/STATE.md (authoritative current position)",
-    ".planning/phases/19.5-experiment-coverage-and-uncertainty-bands/19.5-11-SUMMARY.md",
-    ".planning/MANUSCRIPT-FINDINGS.md (MF-09's edit map first, then MF-11..MF-17)",
-    ".planning/knowledge-base.md (three new entries added 2026-08-07)"
-  ],
-  "context_notes": "Phase 19.5 closed 2026-08-07. The SoftwareX deadline is 2026-08-21. The one thing a fresh agent should not have to rediscover: E1's 97-178x band and E7's band are BOTH now regenerable from committed artifacts with band-owned sidecars, which they were not on 2026-08-06 -- quick task 260807-dcv fixed E1's missing z_rmse_mm column and added e{1,7}_seed_band_provenance.json, and both bands were re-run and reproduced their published values exactly (E1 to every digit, E7 byte-identically)."
+  "still_deferred_from_earlier": {
+    "phase_20": "Refractive Index Helper (INDEX-01..03) remains DEFERRED by user decision 2026-08-07 on measured evidence -- MF-13: across the full +/-0.010 assumed-index sweep, reconstruction MAE moves 0.0040 mm against a seed sd of 0.0205 mm, ~5x below seed noise. Deferred, not dropped.",
+    "post_zenodo_rerun_batch": "The batch of small experiment/provenance repairs is STILL DEFERRED. Scoped against the deadline on 2026-08-11: none of it changes a conclusion, and one item (E1's non-refractive baseline with water_z pinned) deliberately shifts a published number in its 4th significant figure. Do not action before the SoftwareX submission.",
+    "important_new_constraint": "The DOI now freezes the reference numbers. Section 3, the archive's reference_outputs/, and the tutorial's expected-value table are a matched set of three. Any future change that moves the real-rig numbers breaks all three and requires cutting ANOTHER Zenodo version. None of the deferred batch re-runs E2, so the archive is safe from it."
+  },
+  "next_phase_state": "Phase 22 (Release Cut) is next and is largely PRE-EMPTED: its purpose was to make the version referenced by the manuscript and Zenodo match the published artifacts, and that already happened here. Re-scope it before planning -- it may reduce to confirming the PyPI publish landed and the manuscript cites the right DOI.",
+  "deadline": "SoftwareX submission 2026-08-21."
 }

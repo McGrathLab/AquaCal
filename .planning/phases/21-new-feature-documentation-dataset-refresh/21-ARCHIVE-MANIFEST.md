@@ -23,6 +23,8 @@ zenodo_version_doi: 10.5281/zenodo.21889922
 zenodo_concept_doi: 10.5281/zenodo.18645384
 ```
 
+## Published
+
 **PUBLISHED 2026-08-11** as version `2.0.0` of the dataset record, a new version of `18645385`
 per D-13, so the concept DOI and citation lineage are preserved. Verified against the live API
 after publish: Zenodo reports `size 4350418046` and `md5 dff1012fb772d627e0f3f106d5c6de84`,
@@ -31,7 +33,40 @@ truncated. `HEAD https://zenodo.org/records/21889922/files/real-rig-calib.zip` r
 a matching `content-length`.
 
 The user uploaded and published manually through the web UI (D-14); no API token entered the
-session or the repository.
+session or the repository. All four D-15 gates read PASS before the DOI was minted, and the
+user performed the pre-publish frame spot-check.
+
+**Scope note — "2.0.0" names two different things.** The Zenodo *dataset* is at version 2.0.0
+and is live. The Python *package* is a separate artifact: `v2.0.0` and `v2.0.1` are tagged and
+released on GitHub, but **nothing is on PyPI yet** — that publish sits at a manual approval
+gate (run `31543691065`, state `waiting`). Do not read "2.0.0 published" as "on PyPI".
+
+## Post-publish verification
+
+Run from a genuinely cold cache — the stale 354 MB cache at `docs/tutorials/aquacal_data` was
+deleted first, so this exercised the real download path a new user takes, not a warm hit.
+
+| Check | Result |
+|---|---|
+| Download from the live record | 4.35 GB, ~1.4 MB/s, ~50 min |
+| md5 validation inside `download_with_progress` | passed (no exception) |
+| Nested path `loader.py:60` resolves | `aquacal_data/real-rig/real-rig` |
+| `extrinsic/` | 13 camera directories, **3,406** PNGs |
+| `intrinsic/` | **561** PNGs |
+| Both configs + README + `reference_calibration.json` | present |
+| `reference_calibration` parses to a `CalibrationResult` | yes |
+| Shipped `diagnostics.json` `water_z` | `1.0738404142952647` |
+
+`load_example("real-rig")` therefore resolves the same path the CLI tutorial and
+`experiments/e2_real_rig.py` use — DATA-02's reworded acceptance.
+
+**Deferred, not a defect of this phase:** `download_with_progress` has no HTTP Range/resume
+support, so an interruption restarts the whole 4.35 GB. Invisible at the old 164 MB, material
+now. The user reviewed and deprioritised it as "a convenience" on 2026-08-11.
+
+**Post-merge suite gate:** full unfiltered `pytest tests/` returned **1817 passed, 25 skipped,
+0 failed** (2:17:38) at `e0ef765`, run locally on Windows by the orchestrator. No log was
+retained on disk; this line is the record.
 
 **Rebuilt 2026-08-11** to resolve the `reference_outputs/` inconsistency below. The
 superseded values were `size_bytes: 4350417815`, `md5:729f002c132f88e10224146e5b407a57`;
@@ -151,6 +186,14 @@ literal string appears 0 times in both configs (`grep -c` returns 0 for each), a
 question for the shipped archive.
 
 ## Gate 1 - BLOCKED on a manuscript decision (archive itself verified faithful)
+
+> **Historical — superseded, retained as MF-19's evidence.** The `FAIL` verdicts in the table
+> below are the *original* 2026-08-10 comparison against `release_calibration/diagnostics.json`,
+> which turned out to be the wrong control: it varies both the frame source and five months of
+> library drift. Holding the library fixed resolved gate 1 to PASS (see the gates table and the
+> "RESOLVED" section above). Do **not** read these rows as the archive's status, and note that a
+> literal `assert 'FAIL' not in manifest` check cannot pass while this evidence is retained —
+> the gates table is the authority on gate status, not a word count.
 
 Gate 1 ran on 2026-08-10 against the zip's exact bytes. `num_comparisons` is **exactly
 7762** — the frameset is right — but **eight of the nine quantities miss the declared
