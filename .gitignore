@@ -322,3 +322,4 @@ experiments/results_linux32gb/e2_*/reconstruction_errors.csv
 !experiments/results_linux32gb/e4/run.log
 !experiments/results_linux32gb/e2_timing/run.log
 !experiments/results_linux32gb/e2_memory/run.log
+!experiments/results_linux32gb/e2_cv413/run.log

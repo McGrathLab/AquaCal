@@ -1,45 +1,44 @@
-# Isolate the OpenCV 4.13 -> 4.14 ChArUco detection drift
+# OpenCV 4.13 -> 4.14 ChArUco detection drift
 
 **Filed:** 2026-08-12, from the second-machine E2 re-run (MF-20)
+**Updated:** 2026-08-12 — the main experiment is **DONE**; only a sub-question remains
 **Relates to:** MF-20, MF-19, `2026-08-05-pin-opencv-below-5-0.md`
 
-## What we know
+## Resolved
 
-Re-running E2 against the published archive on 32 GB Linux lost **450 corner observations**
-(23028 -> 22578, -1.95%) versus the archive reference, concentrated in the auxiliary fisheye
-`e3v8250` (-348, -8.84%) while four primaries lost none. Accuracy moved 1.1% (`reprojection.rms`)
-to 10.8% (`reconstruction.signed_mean`).
+OpenCV was confirmed as the **entire** cause by a single-variable control
+(`experiments/results_linux32gb/e2_cv413/`): the same E2 run on the same machine in a cloned env
+differing only in `opencv-python` (4.13.0.92 vs 4.14.0.94).
 
-MF-20 closes off every alternative explanation:
+Under **4.13**, Linux reproduces the Windows reference exactly — all 13 cameras' observation
+counts identical (23028, including the fisheye's 3935 that 4.14 lost 348 of), and **1.264e-07**
+worst-case relative difference across all 61 numeric diagnostics quantities. Under **4.14** the
+same quantities move up to 1.1e-01.
 
-- not downstream rejection (discard counters moved only -4/-6)
-- not aquacal's detection code (`git diff 6c7f930b d27bda7 -- src/aquacal/io/detection.py` empty)
-- not the 1.8.0 -> 2.0.1 gap, and not the platform (E4 crossed both, reproduced to 1e-13)
-- not the video -> image frame source (MF-19's fixed-library control, 1e-6%)
-- not run-to-run noise (~1e-09 between two Linux E2 runs)
+Two consequences, both recorded in MF-20 and `linux32gb_scope.json`:
 
-That leaves **OpenCV 4.13.0 -> 4.14.0**.
+- The 1.8.0 -> 2.0.1 and Windows -> Linux gaps are **inert on real data**, not just synthetic.
+- DATA-01a's undefined tolerance stops mattering: §3 reproduces from the published archive at the
+  numerical floor, provided OpenCV is 4.13.
 
-## What is still open
+## Still open
 
-Two routes are confounded *within* OpenCV and were not separated:
+**1. Which OpenCV change?** Two routes remain confounded *within* OpenCV:
 
-1. `cv2.aruco.CharucoDetector` (`src/aquacal/io/detection.py:64`) changed its corner output, and
-2. `calibrateCamera` produced different Stage-1 intrinsics, which are fed back into detection via
-   `CharucoParameters` (`detection.py:56-61`, called at `:230`).
+- `cv2.aruco.CharucoDetector` (`src/aquacal/io/detection.py:64`) changed its corner output, and/or
+- `calibrateCamera` produced different Stage-1 intrinsics, fed back into detection via
+  `CharucoParameters` (`detection.py:56-61`, called at `:230`).
 
-## Proposed experiment
+To separate them, add an arm that pins Stage-1 intrinsics to the archive's
+`reference_calibration.json` and re-detects under both versions. This no longer affects any
+attribution — it is a mechanism question, worth doing only if the fix needs to be targeted.
 
-Run E2 twice on THIS machine, varying only the OpenCV version (4.13.0, then 4.14.0), everything
-else pinned. ~22 min per run plus env setup. Compare per-camera observation counts against the
-tables in MF-20.
+**2. Does the pin belong in `pyproject.toml`?** The constraint is `opencv-python>=4.6,<5.0`, which
+permits both versions, so a fresh install today does **not** reproduce §3. This is the actionable
+item — fold into `2026-08-05-pin-opencv-below-5-0.md`, which is already open on the 5.0 ceiling.
+Deciding it means choosing between pinning to reproduce §3 and re-baselining §3 on a current
+OpenCV (cf. MF-19's two resolution options).
 
-To separate route 1 from route 2, add a third arm that pins Stage-1 intrinsics to the archive's
-`reference_calibration.json` and re-detects — isolating the detector from the intrinsics it
-consumes.
-
-## Why it matters
-
-Real-rig reproducibility claims currently cannot name a version boundary. If the drift is the
-detector, an OpenCV floor/ceiling belongs in `pyproject.toml` alongside the existing
-pin-below-5.0 todo, and any §3 reproduction instruction must state an OpenCV version.
+**3. Packaging-build ambiguity.** PyPI ships both `4.13.0.90` and `4.13.0.92`, and both report
+`cv2.__version__ == 4.13.0`, which is all the Windows record stored. The control used `.92`. Any
+difference between those two builds is unaccounted for — likely nil, not proven.
