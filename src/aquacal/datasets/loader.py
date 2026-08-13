@@ -45,6 +45,19 @@ def load_example(name: str) -> ExampleDataset:
     Raises:
         ValueError: If dataset name is not recognized
 
+    Note:
+        The `'real-rig'` archive's `reference_outputs/` were produced under
+        **OpenCV 4.13.0**. ChArUco corner detection is entirely OpenCV's
+        (`cv2.aruco.CharucoDetector`), and it changes across minor versions:
+        measured between 4.13.0 and 4.14.0, 1.95% fewer corner observations
+        were detected and the reconstruction RMSE moved by +7.8%. So a re-run
+        against this dataset reproduces the archived reference values on
+        4.13.0 and can differ from them at the ~1-10% level on another minor
+        version, with neither version's corner set being the correct one.
+        `aquacal` pins `opencv-python==4.13.*` for that reason, and each run's
+        own `benchmark.json` records the version it used under
+        `environment.opencv_version`.
+
     Examples:
         >>> from aquacal.datasets import load_example
         >>> ds = load_example('real-rig')

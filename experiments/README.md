@@ -290,6 +290,17 @@ from local raw videos (`Desktop\Aqua\AquaCal\raw_videos\`) using the same
 **exactly** — all nine named quantities at 0.000% delta, 7,762 comparisons (see
 `19.1-E2-DELTA-TABLE.md`).
 
+**Both paths' reference numbers were produced under OpenCV 4.13.0** — name that version
+before citing either. The real-rig numbers move with the OpenCV version, not just the
+AquaCal version: `detection.py:64` constructs `cv2.aruco.CharucoDetector` directly, so the
+corner set is entirely OpenCV's, and a single-variable control (2026-08-12, same machine,
+cloned env differing *only* in OpenCV) reproduced this repo's committed numbers to <=4.7e-09
+relative under 4.13.0 while 4.14.0 detected 450 fewer corners and moved `reconstruction.rmse`
+by +7.8%. Nothing measured says which version detected the *right* set — neither is "more
+correct" — so the environment is named rather than the numbers changed. Holding OpenCV fixed,
+the aquacal 1.8.0 -> 2.0.1 gap and the Windows -> Linux platform change are both inert on
+real data (MF-20). Every `benchmark.json` records `opencv_version` in its `environment` block.
+
 **The published Zenodo archive currently ships only the smaller, 60-frame extraction.**
 A reader following the default (no-`--config`) path today reproduces the
 1,817-comparison numbers, not §3's. Closing that gap — regenerating the published
