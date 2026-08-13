@@ -63,6 +63,25 @@ mechanically by `tests/unit/test_experiments_provenance.py`.
 Every runtime below is a **measured** value from this phase's wave-3/4/5 execution, not a
 pre-run estimate.
 
+**The paper's timing numbers and its accuracy numbers come from deliberately different
+trees.** `results/` — the tree this table indexes — holds the **accuracy** numbers, measured
+on Windows. `results_linux32gb/` holds the **timing and memory** numbers, measured on 32 GB
+Linux, because the accuracy machine has 16 GB and a 13-camera run peaks at 10.26 GiB there.
+It sits beside `results/`, `results_e2_band/`, `results_e4_repeat/` and `results_e6_repeat2/`,
+but unlike those it is a sibling distinguished by **machine**, not by experiment variant — so
+its rows are not interchangeable with this table's and must not be diffed against them as if
+they were repeats. `results_linux32gb/linux32gb_scope.json` is that tree's scope and
+confound-control statement: read it before citing anything from there. It also carries the
+E2 OpenCV 4.13-vs-4.14 control behind MF-20 (`e2_cv413/`), which is why the OpenCV version is
+named throughout §3 below.
+
+One consequence is visible in that tree and worth stating here: its `benchmark_grid.csv`
+carries the **nine synthetic cells only**, with no real-rig row. That is not a property of
+the Linux run — E4's aggregator reads the real-rig record from a hardcoded `E2_BENCHMARK_PATH`
+(`e4_benchmark_grid.py:226`) that does not follow `--out`, so the row was dropped and folded
+back in by hand. Filed as
+`.planning/todos/pending/2026-08-13-e4-aggregator-hardcodes-e2-benchmark-path.md`.
+
 | Paper artifact | Experiment | Command | Output file(s) | Figure generator | Runtime |
 |---|---|---|---|---|---|
 | §3 focal drift, RMS px, per-camera parameter errors | E1 | `python -m experiments.e1_refractive_comparison` | `exp1_parameter_errors.csv` | `DissertationFigures/src/dissertationfigures/figures/aquacal/synthetic_validation.py` (a different repository) | ~20 min (19.1-06-SUMMARY.md records ~90 min total across four calibration-pairs run during this phase — a `--check` pair, an isolated headline-verification pair, and a `--force` pair — i.e. ~20-25 min per default two-model, eight-depth invocation) |
