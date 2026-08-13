@@ -18,9 +18,11 @@ from experiments._io import build_experiment_arg_parser
 from experiments.e1_refractive_comparison import (
     BAND_MERGED_COLUMNS,
     BENCHMARK_FILENAMES,
+    EXP1_COLUMNS,
     EXP2_COLUMNS,
     EXP3_COLUMNS,
     MODELS,
+    PARAMETER_BAND_KEY_COLUMNS,
     build_arg_parser,
     main,
     merge_band_columns,
@@ -151,6 +153,31 @@ class TestBandMode:
                 assert col in df.columns
         assert df["z_rmse_mm"].notna().all()
 
+    def test_parameter_band_csv_carries_exp1_columns(self, tmp_path):
+        """The parameter-level columns behind the manuscript's focal-drift and
+        reprojection-RMS sentences must be regenerable per seed from a
+        committed artifact, not only from gitignored sweep output."""
+        exit_code = main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
+        assert exit_code == 0
+
+        band_path = tmp_path / "exp1_parameter_band.csv"
+        assert band_path.exists()
+
+        df = pd.read_csv(band_path)
+        assert set(df.columns) >= set(EXP1_COLUMNS) | {"seed"}
+        # All requested seeds present -- a band missing one silently narrows
+        # the span its sidecar claims.
+        assert sorted(df["seed"].unique().tolist()) == [42, 43]
+        assert df["focal_length_error_pct"].notna().all()
+        assert df["reprojection_rms_px"].notna().all()
+
+    def test_parameter_band_keyed_by_seed_camera_model(self, tmp_path):
+        """(seed, camera, model) is unique -- EXP1 has no depth axis, which is
+        why this is a second CSV rather than columns on exp1_band.csv."""
+        main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
+        df = pd.read_csv(tmp_path / "exp1_parameter_band.csv")
+        assert not df.duplicated(subset=PARAMETER_BAND_KEY_COLUMNS).any()
+
     def test_band_mode_does_not_write_single_seed_csvs(self, tmp_path):
         main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
         assert not (tmp_path / "exp1_parameter_errors.csv").exists()
@@ -210,6 +237,7 @@ class TestSingleSeedPathUnaffected:
         exit_code = main(["--smoke", "--out", str(tmp_path)])
         assert exit_code == 0
         assert not (tmp_path / "exp1_band.csv").exists()
+        assert not (tmp_path / "exp1_parameter_band.csv").exists()
         assert not (tmp_path / "e1_seed_band_provenance.json").exists()
 
     def test_shared_five_flag_contract_unchanged(self):

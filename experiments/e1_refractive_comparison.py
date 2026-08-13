@@ -152,6 +152,12 @@ SPATIAL_KEY_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m"]
 # columns -- (test_depth_m, model) alone is no longer unique once multiple
 # seeds are concatenated (mirrors E7's BAND_KEY_COLUMNS convention).
 BAND_KEY_COLUMNS = ["seed", "test_depth_m", "model"]
+# A SECOND band key shape, not an extension of BAND_KEY_COLUMNS. EXP1's rows
+# are keyed by (camera, model) and have NO depth axis at all, so its columns
+# cannot be merged into exp1_band.csv without reindexing them onto a depth
+# they do not vary over -- that would fabricate a depth dependence the
+# parameter errors do not have. Hence a separate `exp1_parameter_band.csv`.
+PARAMETER_BAND_KEY_COLUMNS = ["seed", "camera", "model"]
 
 # Pinned column order -- byte-identical to the committed baselines (D-19).
 EXP1_COLUMNS = [
@@ -749,7 +755,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     `EXP2_COLUMNS` plus EXP3's non-key columns (`xy_rmse_mm`, `z_rmse_mm`,
     `anisotropy_ratio`, `n_points`) via `merge_band_columns`, so the
     manuscript's headline `z_rmse_mm` ratio is regenerable from this
-    artifact -- and `e1_seed_band_provenance.json`, plus both
+    artifact -- and `exp1_parameter_band.csv`, keyed
+    `PARAMETER_BAND_KEY_COLUMNS` and carrying `seed` plus all of
+    `EXP1_COLUMNS`, so the parameter-level columns (`focal_length_error_pct`,
+    `reprojection_rms_px` and the per-camera position errors) are likewise
+    regenerable per seed rather than existing only in the single-seed
+    `exp1_parameter_errors.csv` -- and `e1_seed_band_provenance.json`, plus both
     `e1_benchmark_<model>.json` sidecars, additively carrying
     `solver_config["seeds"] = seeds`. Deliberately does NOT write
     `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
@@ -778,6 +789,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     last_diagnostics_by_model: dict = {}
     last_discard_stats_by_model: dict = {}
     last_scenario = None
+    # `run_seed_band` returns ONE concatenated frame and stamps `seed` onto it
+    # itself; it cannot return two, and its signature is shared with E7 so it
+    # must not grow one. The parameter-level frames are therefore accumulated
+    # here and stamped with `seed` inside the runner, mirroring how the five
+    # `last_*` accumulators above are carried out of the closure.
+    exp1_frames: list[pd.DataFrame] = []
 
     def _runner(seed: int) -> pd.DataFrame:
         nonlocal last_results, last_timings_by_model, last_diagnostics_by_model
@@ -797,9 +814,10 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             diagnostics_by_model[label] = diagnostics
             discard_stats_by_model[label] = discard_stats
 
-        _df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
+        df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
             scenario, results, seed, test_depths=depths
         )
+        exp1_frames.append(df_exp1.assign(seed=seed))
 
         last_results = results
         last_timings_by_model = timings_by_model
@@ -817,6 +835,23 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         key_columns=BAND_KEY_COLUMNS,
         # Force is implied for the band CSV only (D-19.4-14): regenerating
         # the band on demand is the entire point of it being reproducible.
+        force=True,
+    )
+
+    # The parameter-level band. `seed` leads, then all of EXP1_COLUMNS --
+    # emitting the full set rather than only the two columns the manuscript
+    # needs costs nothing and keeps the per-camera position errors available.
+    # EXP1_COLUMNS itself and the single-seed exp1_parameter_errors.csv are
+    # untouched: those stay byte-identical to their committed baselines (D-19).
+    parameter_band_df = pd.concat(exp1_frames, ignore_index=True)[
+        ["seed", *EXP1_COLUMNS]
+    ]
+    write_experiment_csv(
+        parameter_band_df,
+        out_dir / "exp1_parameter_band.csv",
+        key_columns=PARAMETER_BAND_KEY_COLUMNS,
+        # Force is implied for band output, same as exp1_band.csv above
+        # (D-19.4-14).
         force=True,
     )
 
@@ -842,7 +877,9 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 # column the manuscript's deepest-test-point
                 # refractive-vs-non-refractive ratio is computed from; this
                 # band exists so that ratio is regenerable from a committed
-                # artifact.
+                # artifact. It ALSO covers exp1_parameter_band.csv's
+                # parameter-level columns, which previously existed per-seed
+                # only in gitignored sweep output.
                 "scope": (
                     "This band varies the SEED across E1's depth-generalization "
                     "and xy-vs-z anisotropy sweep on the 'realistic' synthetic "
@@ -850,7 +887,11 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                     "exp1_band.csv's metrics -- including z_rmse_mm, the column "
                     "the manuscript's deepest-test-point refractive-vs-"
                     "non-refractive ratio is computed from -- on that synthetic "
-                    "scenario only. It is NOT a physical-rig or real-data claim, "
+                    "scenario only. It ALSO bounds seed-to-seed variance of the "
+                    "parameter-level columns emitted in exp1_parameter_band.csv "
+                    "(focal_length_error_pct, reprojection_rms_px, and the "
+                    "per-camera position errors), over the same seeds and the "
+                    "same scenario. It is NOT a physical-rig or real-data claim, "
                     "and this sidecar neither asserts nor denies an accuracy "
                     "claim for E1 (D-19.3-17 already demoted E1's own)."
                 ),

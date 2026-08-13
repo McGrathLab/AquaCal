@@ -148,6 +148,25 @@ CSV_TO_RECORD: dict[str, str] = {
         "deepest test point is the manuscript's headline ratio (main.tex L68, "
         "L281) and previously existed per-seed only in gitignored sweep output"
     ),
+    "exp1_parameter_band.csv": (
+        "experiments/results/e1_seed_band_provenance.json (the same band-owned "
+        "sidecar that covers exp1_band.csv), which records "
+        "solver_config['seeds'] matching this CSV's own seed column across "
+        "seeds 42-51; "
+        "experiments/results/e1_benchmark_refractive.json + "
+        "e1_benchmark_nonrefractive.json supply version/git_sha/environment "
+        "but NOT this band's seeds -- both are SEEDLESS_LEGACY_RECORDS and "
+        "carry no seed key at all, and band mode deliberately does not "
+        "overwrite them. This is E1's SECOND band artifact rather than extra "
+        "columns on exp1_band.csv because EXP1's rows are keyed "
+        "(camera, model) with no depth axis, so merging them onto the depth-"
+        "keyed band would fabricate a depth dependence the parameter errors do "
+        "not have. It carries EXP1's focal_length_error_pct and "
+        "reprojection_rms_px -- the columns behind the manuscript's focal-drift "
+        "and reprojection-RMS sentences (main.tex L270, L271) -- plus the "
+        "per-camera position errors; all of them previously existed per-seed "
+        "only in gitignored sweep output"
+    ),
     "exp1_parameter_errors.csv": (
         "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json (E1 calibrates both models)"
@@ -220,6 +239,17 @@ CSV_TO_RECORD: dict[str, str] = {
         "built directly) or predicted (closed form)"
     ),
 }
+
+# CSV_TO_RECORD keys whose artifact is not on disk YET -- registered ahead of
+# the run that produces it, because an unregistered CSV fails
+# test_all_committed_csvs_have_a_named_record the moment it appears.
+# Deliberately per-file and expected to shrink to empty:
+# test_pending_csvs_are_still_pending fails as soon as one lands.
+#
+#   exp1_parameter_band.csv -- emitted by E1's `--seeds` band mode (quick task
+#   260813-clj). Its artifact arrives with the seeds 42-51 band re-run, which
+#   is a ~70 min solve run separately from the code change registering it.
+PENDING_CSVS: frozenset[str] = frozenset({"exp1_parameter_band.csv"})
 
 
 def _read_csv_columns(path: pathlib.Path) -> list[str]:
@@ -606,12 +636,38 @@ class TestCsvProvenanceMap:
 
     def test_csv_to_record_has_no_stale_entries(self):
         """Every CSV_TO_RECORD key names a CSV that actually exists on disk --
-        the map must be updated, not just grown, when a CSV is removed."""
+        the map must be updated, not just grown, when a CSV is removed.
+
+        `PENDING_CSVS` is the one narrow exemption: an entry registered ahead
+        of the run that produces its artifact. Registration has to land first
+        because an unregistered CSV fails
+        `test_all_committed_csvs_have_a_named_record` the moment it appears,
+        which would put the gate's own failure between the run and its commit.
+        The list is deliberately explicit and per-file, so every other kind of
+        stale entry -- the removed-CSV case this test exists for -- still fails.
+        """
         if not RESULTS_DIR.exists():
             pytest.skip("experiments/results/ not present (fresh clone)")
         on_disk = {p.name for p in _CSV_FILES}
-        stale = set(CSV_TO_RECORD) - on_disk
+        stale = set(CSV_TO_RECORD) - on_disk - PENDING_CSVS
         assert not stale, f"CSV_TO_RECORD names CSV(s) no longer on disk: {stale}"
+
+    def test_pending_csvs_are_still_pending(self):
+        """`PENDING_CSVS` must shrink to empty, not linger.
+
+        Once a pending artifact is committed the exemption is dead weight that
+        would quietly re-open the stale-entry hole for that filename, so this
+        fails as soon as the file lands and forces its removal from the list.
+        """
+        if not RESULTS_DIR.exists():
+            pytest.skip("experiments/results/ not present (fresh clone)")
+        on_disk = {p.name for p in _CSV_FILES}
+        landed = PENDING_CSVS & on_disk
+        assert not landed, (
+            f"{sorted(landed)} is now committed under experiments/results/ -- "
+            "remove it from PENDING_CSVS so the stale-entry gate covers it "
+            "again."
+        )
 
 
 class TestOneMachineConsistency:

@@ -1684,6 +1684,17 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
         "e1_benchmark_*.json",
         band_sidecar="e1_seed_band_provenance.json",
     )
+    # E1's SECOND band artifact: the parameter-level frame, keyed
+    # (seed, camera, model) rather than (seed, test_depth_m, model). Same band,
+    # same seeds, same sidecar -- only the CSV name differs, so check_band_csv
+    # is reused as-is rather than widened.
+    results += check_band_csv(
+        "E1",
+        out_dir,
+        "exp1_parameter_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
     # Phase 19.5's four new band gates (plan 19.5-09, COV-03/04/05/06/07).
     # check_e6_seed_band/check_e5_seed_band/check_e4_repeat all read directly
     # under out_dir. check_e2_band's artifacts live under an ISOLATED sibling
