@@ -1,9 +1,10 @@
 {
   "environment": {
-    "aquacal_version": "1.8.0",
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
     "cpu_count_logical": 20,
     "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "cda9d0e453108cb25a72bf41b7f48cad3c44395b",
+    "git_sha": "3eb1f4a7ede0ffca3d1ffb44cb0a5651b3a78c26",
     "git_sha_source": "git_rev_parse",
     "numpy_version": "2.4.2",
     "opencv_version": "4.13.0",
@@ -13,10 +14,10 @@
     "scipy_version": "1.17.0"
   },
   "experiment": "e1_seed_band",
-  "git_sha": "cda9d0e453108cb25a72bf41b7f48cad3c44395b",
+  "git_sha": "3eb1f4a7ede0ffca3d1ffb44cb0a5651b3a78c26",
   "schema_version": 1,
-  "scope": "This band varies the SEED across E1's depth-generalization and xy-vs-z anisotropy sweep on the 'realistic' synthetic scenario, and bounds seed-to-seed variance of exp1_band.csv's metrics -- including z_rmse_mm, the column the manuscript's deepest-test-point refractive-vs-non-refractive ratio is computed from -- on that synthetic scenario only. It is NOT a physical-rig or real-data claim, and this sidecar neither asserts nor denies an accuracy claim for E1 (D-19.3-17 already demoted E1's own).",
-  "seconds": 4120.625,
+  "scope": "This band varies the SEED across E1's depth-generalization and xy-vs-z anisotropy sweep on the 'realistic' synthetic scenario, and bounds seed-to-seed variance of exp1_band.csv's metrics -- including z_rmse_mm, the column the manuscript's deepest-test-point refractive-vs-non-refractive ratio is computed from -- on that synthetic scenario only. It ALSO bounds seed-to-seed variance of the parameter-level columns emitted in exp1_parameter_band.csv (focal_length_error_pct, reprojection_rms_px, and the per-camera position errors), over the same seeds and the same scenario. It is NOT a physical-rig or real-data claim, and this sidecar neither asserts nor denies an accuracy claim for E1 (D-19.3-17 already demoted E1's own).",
+  "seconds": 6319.672000000006,
   "solver_config": {
     "seeds": [
       42,

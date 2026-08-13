@@ -246,10 +246,12 @@ CSV_TO_RECORD: dict[str, str] = {
 # Deliberately per-file and expected to shrink to empty:
 # test_pending_csvs_are_still_pending fails as soon as one lands.
 #
-#   exp1_parameter_band.csv -- emitted by E1's `--seeds` band mode (quick task
-#   260813-clj). Its artifact arrives with the seeds 42-51 band re-run, which
-#   is a ~70 min solve run separately from the code change registering it.
-PENDING_CSVS: frozenset[str] = frozenset({"exp1_parameter_band.csv"})
+# Currently EMPTY, and that is the resting state. exp1_parameter_band.csv --
+# the entry this list was introduced for (quick task 260813-clj) -- landed with
+# the seeds 42-51 band re-run and was removed here, so the stale-entry gate
+# covers it again. Add a name only for the window between registering a CSV and
+# committing the run that produces it.
+PENDING_CSVS: frozenset[str] = frozenset()
 
 
 def _read_csv_columns(path: pathlib.Path) -> list[str]:
