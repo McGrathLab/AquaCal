@@ -2011,3 +2011,135 @@ tutorial's `diagnostics.json` check. Needs fixing before publish; the gate-1 run
 current-library `diagnostics.json` matching the shipped `calibration.json` to 1e-6%.
 
 ---
+
+## MF-20 — Real-rig drift continues across platform, and its mechanism is detection, not the solver
+
+**Status:** CONFIRMED by single-variable OpenCV control — extends MF-19 with a mechanism
+MF-19's library-drift analysis does not cover
+**Found:** 2026-08-12, second-machine re-run of E4 and E2 on 32 GB Linux; confirmed same day
+**Source of truth:** `experiments/results_linux32gb/` (see `linux32gb_scope.json`), at `d27bda7`;
+the OpenCV control is `experiments/results_linux32gb/e2_cv413/`
+**Extends:** MF-19. **Constrains:** MF-14, MF-03.
+
+### The finding
+
+MF-19 established that §3's numbers predate the current library, and proved via a fixed-library
+control (archive images vs Jul-31 video, both `aquacal 1.8.0`, Windows) that the archive
+faithfully reproduces the run — agreement at 1e-6%, so the drift was *entirely* library drift.
+
+Re-running the same archive on a second machine adds a third step to that sequence, and this one
+is **not** attributable to aquacal's calibration code:
+
+| §3 quantity | §3 published (~v1.4.2) | archive ref (1.8.0, Win) | this run (2.0.1, Linux) |
+|---|---:|---:|---:|
+| aux `e3v8250` RMS (px) | 15.134 | 14.856 | **13.970** |
+| `reprojection.rms` (px) | — | 0.92766 | **0.93827** (+1.14%) |
+| `reconstruction.rmse` (m) | 6.74e-04 | 6.2814e-04 | **6.7718e-04** (+7.81%) |
+| `reconstruction.signed_mean` (m) | — | 4.3189e-05 | **4.7840e-05** (+10.8%) |
+| `num_comparisons` | 7762 | 7762 | **7762** (0.00%) |
+
+### The mechanism is upstream of the solver
+
+The solver is not disagreeing — **it is handed a different observation set.** Corner observations
+fell 23028 -> 22578 (-1.95%), and the loss is concentrated, not diffuse:
+
+| camera | aux | archive ref | this run | delta |
+|---|---|---:|---:|---:|
+| `e3v8250` | yes | 3935 | 3587 | **-348 (-8.84%)** |
+| `e3v83ef` | | 1677 | 1638 | -39 (-2.33%) |
+| `e3v83ee` | | 1600 | 1569 | -31 (-1.94%) |
+| `e3v82e0`, `831e`, `832e`, `8334` | | | | **0** |
+
+### Confirmed by direct experiment (2026-08-12, same day)
+
+The elimination argument below was superseded within hours by a **single-variable control**: the
+same E2 run on the same machine in a cloned env differing *only* in OpenCV (4.13.0.92 vs
+4.14.0.94 — identical numpy 2.4.6, scipy 1.17.1, Python 3.11.15, aquacal 2.0.1 off the same
+working tree, same `config_paper.yaml` but `output_dir`).
+
+**Under OpenCV 4.13, Linux reproduces the Windows reference exactly.**
+
+| | Windows ref (4.13) | ours, 4.13 | rel | ours, 4.14 | rel |
+|---|---:|---:|---:|---:|---:|
+| observations, all 13 cameras | 23028 | **23028** | **0** | 22578 | -1.95% |
+| aux `e3v8250` | 3935 | **3935** | **0** | 3587 | -8.84% |
+| `reprojection.num_observations` | 19093 | **19093** | **0** | 18991 | 5.3e-03 |
+| `reprojection.rms` | 0.927660749 | 0.927660731 | **2.0e-08** | 0.938265914 | 1.1e-02 |
+| `reconstruction.rmse` | 6.28138593e-04 | 6.28138581e-04 | **1.9e-08** | 6.77175275e-04 | 7.8e-02 |
+| `reconstruction.signed_mean` | 4.31890151e-05 | 4.31890137e-05 | **3.3e-08** | 4.78402956e-05 | 1.1e-01 |
+| `degenerate_observations_at_solution` | 198 | **198** | **0** | 194 | 2.0e-02 |
+| `water_z` | 1.07384041 | 1.07384040 | **1.1e-08** | 1.07286112 | 9.1e-04 |
+
+Worst relative difference across **all 61** numeric diagnostics quantities: **1.264e-07**.
+Artifacts: `experiments/results_linux32gb/e2_cv413/`.
+
+**Two consequences beyond the attribution.**
+
+1. **The 1.8.0 -> 2.0.1 and Windows -> Linux gaps are inert on real data, not just synthetic.**
+   Holding OpenCV fixed, Linux / aquacal 2.0.1 / numpy 2.4.6 reproduces Windows / aquacal 1.8.0 /
+   numpy 2.4.2 to 1e-07 *through the full real-rig pipeline including detection*. Previously this
+   was only demonstrable on E4's synthetic cells, which never call the detector.
+2. **DATA-01a's undefined tolerance stops mattering.** The eight §3 quantities that moved 1.1-10.8%
+   under 4.14 reproduce at the numerical floor under 4.13. The published archive reproduces §3
+   completely; the drift was never the archive and never the library.
+
+Still open, and now purely internal to OpenCV: whether the change is `CharucoDetector` itself or
+`calibrateCamera` feeding different Stage-1 intrinsics back into detection
+(`detection.py:56-61`, called at `:230`). That distinction no longer affects any attribution.
+
+**Consequence for `pyproject.toml`:** the constraint is `opencv-python>=4.6,<5.0`, which permits
+both versions. Reproducing §3 requires 4.13. See the `2026-08-05-pin-opencv-below-5-0` todo.
+
+### The original elimination argument (superseded, retained for the record)
+
+Five points fixed the attribution before the control above was run, and between them they close
+off every alternative:
+
+1. **Not downstream rejection.** `degenerate_observations_at_solution` moved -4 and
+   `pnp_attempts_total` -6, with `pnp_guard_rejected` and `pose_discarded_by_consumer` unchanged
+   at 10. Rejection accounts for ~10 of the 450; the rest were never detected.
+2. **Not aquacal's detection code.** `git diff 6c7f930b d27bda7 -- src/aquacal/io/detection.py`
+   is **empty**, and nothing matching detect/charuco/aruco/fisheye changed anywhere in `src/`
+   between the two records' commits. Despite 1.8.0 -> 2.0.1, the detection path is byte-identical.
+3. **Not the 1.8.0 -> 2.0.1 gap, and not the platform.** E4's nine synthetic cells crossed the
+   *same* version gap and the *same* Windows -> Linux platform change in the same session and
+   reproduced final stage cost to **1e-13..1e-15** relative. That is a direct empirical control:
+   whatever moved between these library versions, and whatever differs between the two platforms'
+   BLAS and floating-point behaviour, is inert on the solve path at the 1e-13 level. It cannot
+   produce a 1e-02 movement in E2. (E4 is synthetic and never calls the detector, so this
+   controls the *solver*, not detection — which is precisely the point.)
+4. **Not the video -> pre-extracted-image change.** MF-19's fixed-library control already settled
+   this: archive images vs the Jul-31 video run, both `aquacal 1.8.0` on Windows, agree to
+   **1e-6%**. The input is identical in practice.
+5. **Not run-to-run noise.** The two Linux E2 runs differ by ~1e-09 relative on `reprojection_rms`
+   — seven orders of magnitude below the ~1e-02 cross-platform drift. (E4's synthetic cells are
+   *byte-identical* across repeats; only the real-data path shows even 1e-09.)
+
+With the solver, the platform, the library gap, the frame source, and run-to-run noise all
+independently controlled, **OpenCV 4.13.0 -> 4.14.0 is the only remaining candidate**;
+`detection.py:64` constructs `cv2.aruco.CharucoDetector` directly, so its corner output is
+entirely OpenCV's.
+
+**Not isolated:** `detect_charuco` is also parameterized by Stage-1 intrinsics
+(`detection.py:56-61`, called at `:230`), so an OpenCV change to `calibrateCamera` feeds back into
+detection. Separating the detector from the intrinsics it consumes needs 4.13 and 4.14 side by
+side and was **not** done. Relevant to the open `2026-08-05-pin-opencv-below-5-0` todo.
+
+### Contrast with the synthetic cells
+
+E4's nine synthetic cells crossed the *same* platform and version gap and reproduced to
+1e-13..1e-15 relative on final cost and <=2.4e-09 on `reprojection_rms`. Synthetic scenes are
+generated in-process; real data passes through an image-detection front-end whose output is
+version-dependent at the ~2% observation level. **Nothing downstream of that front-end can be
+tighter than it is** — which is the cleanest available statement of why synthetic reproducibility
+does not transfer to real-rig reproducibility.
+
+### Consequence for the manuscript
+
+Any real-rig reproducibility claim must name an **OpenCV version**, and that is now the *only*
+version it must name: with OpenCV pinned, the library version and the platform do not move the
+numbers at all (1e-07 across 61 quantities). MF-19's "current library" column is really
+"current library **with that OpenCV**" — the machine turns out not to matter.
+
+This also removes the reason to doubt the archive. §3 is reproducible from the published bytes
+today, on either platform, provided OpenCV is 4.13.

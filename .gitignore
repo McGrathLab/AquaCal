@@ -302,3 +302,24 @@ experiments/results_e2_band/seed_*_e2_out/*
 # itself, is therefore untracked, and does not survive a clone. A bare pattern
 # matches at any depth and covers docs/tutorials/aquacal_data/ too.
 aquacal_data/
+
+# Second-machine re-run of E4 and E2 on 32 GB Linux (experiments/
+# results_linux32gb, see its linux32gb_scope.json). Same DATA-01b policy as
+# experiments/results/ above: the three bulk E2 artifacts ship in the Zenodo
+# archive under reference_outputs/, not in git, and two of them (2021 KB and
+# 1184 KB) would trip check-added-large-files --maxkb=1000. Listed here so a
+# future E2 re-run pointed at this directory cannot re-commit them.
+experiments/results_linux32gb/e2_*/calibration.json
+experiments/results_linux32gb/e2_*/reprojection_residuals.csv
+experiments/results_linux32gb/e2_*/reconstruction_errors.csv
+
+# Un-ignored against *.log for the same reason as rerun_19_5.log and
+# results_e4_repeat/repeat_stdout.log above -- these are citable records, not
+# rerunnable noise. e4/run.log holds the per-cell ELAPSED wall clock, which
+# survives nowhere else (benchmark_grid.csv carries per-stage seconds only).
+# The e2 logs hold the stage timing table plus the frame accounting (262 usable
+# -> 210/52 split -> 200 optimised) that is DATA-01a's gate-1 evidence.
+!experiments/results_linux32gb/e4/run.log
+!experiments/results_linux32gb/e2_timing/run.log
+!experiments/results_linux32gb/e2_memory/run.log
+!experiments/results_linux32gb/e2_cv413/run.log
