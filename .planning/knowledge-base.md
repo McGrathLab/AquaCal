@@ -236,6 +236,32 @@ and to a fresh clone. Durable, shareable project lessons belong in `.planning/kn
 (this file), which CLAUDE.md itself designates as the home for accumulated gotchas.
 **Added**: 2026-08-02
 
+### A stale editable install stamps the wrong version onto every artifact it produces
+**Context**: On 2026-08-13 `pyproject.toml` read **2.0.1** (bumped 2026-08-11, `2ba0f8e`) while the
+`AquaCal` env still carried `aquacal-1.8.0.dist-info` and an `__editable__.aquacal-1.8.0.pth`.
+`aquacal.__version__` reported 1.8.0 and `aquacal.__file__` pointed at the working tree — so 2.0.1
+code would have been recorded as 1.8.0 in every `benchmark.json` and every provenance sidecar it
+wrote. Nothing was corrupted only because no artifact had been produced since the bump.
+**Insight**: `src/aquacal/__init__.py` and `capture_environment()` both resolve the version through
+`importlib.metadata.version("aquacal")`, i.e. *installed distribution metadata*. An editable
+install writes that metadata once, at `pip install -e .` time, and editing `pyproject.toml` never
+refreshes it; meanwhile the `.pth` keeps resolving imports to the live tree. The two diverge
+**silently** — no warning, no exception, just a confident and wrong provenance record. This is the
+same genre as "commit nothing during a production run": a cheap precondition whose violation is
+invisible in the output. It matters because `aquacal_version` is load-bearing evidence — MF-19
+traced §3's real-rig numbers by reading it, and MF-20 is stated as a 1.8.0 -> 2.0.1 comparison.
+**How to apply**: run `pip install -e . --no-deps` immediately after any `pyproject.toml` version
+bump, and before any production run in a source checkout; confirm with
+`python -c "import aquacal; print(aquacal.__version__)"`. `experiments/prelaunch_gate.sh`'s
+`ENV_VERSION_MATCH` check (check 2) now asserts installed == declared and aborts the queue if not,
+and `capture_environment()` records `aquacal_version_declared` beside `aquacal_version` so an
+escaped case is diagnosable from the artifact alone. Do **not** "fix" this by hardcoding
+`__version__` — that trades a detectable mismatch for a silent one.
+**References**: `experiments/prelaunch_gate.sh` (ENV_VERSION_MATCH),
+`src/aquacal/io/benchmark.py:capture_environment`, `experiments/README.md` §7,
+`.planning/todos/done/2026-08-13-editable-install-metadata-can-mislabel-artifact-provenance.md`.
+**Added**: 2026-08-13
+
 ## Debugging Recipes
 
 ### Offline Stage 1 analysis must match the pipeline's frame_step

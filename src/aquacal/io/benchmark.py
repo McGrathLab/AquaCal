@@ -23,6 +23,7 @@ import logging
 import os
 import platform
 import subprocess
+import tomllib
 import tracemalloc
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -83,7 +84,15 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
         Plain dict with every value already cast to a native Python type
         (`str`/`int`/`None`), matching the numpy-to-JSON cast precedent in
         `aquacal.validation.conditioning`:
-            - `aquacal_version` (str): always a non-empty string.
+            - `aquacal_version` (str): always a non-empty string. Read from
+              INSTALLED distribution metadata, which an editable install
+              refreshes only at `pip install -e .` time.
+            - `aquacal_version_declared` (str | None): the `version` declared
+              in the checkout's `pyproject.toml`, or `None` when no checkout
+              is reachable. Present so a reader diffing two artifacts can SEE
+              a stale editable install rather than infer it: when this differs
+              from `aquacal_version`, the code that ran was the working tree
+              and `aquacal_version` names a different, older release.
             - `python_version` (str)
             - `numpy_version` (str)
             - `scipy_version` (str)
@@ -99,6 +108,7 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
     """
     env = {
         "aquacal_version": "unknown",
+        "aquacal_version_declared": None,
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,
@@ -118,6 +128,26 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
             "Could not resolve aquacal_version for benchmark environment capture."
         )
 
+    # One repo root, used for both the declared-version read below and the
+    # `git rev-parse HEAD` call further down -- the artifact must not describe
+    # two different checkouts.
+    cwd = (
+        repo_hint_path
+        if repo_hint_path is not None
+        else _find_git_root(Path(__file__).resolve().parent)
+    )
+
+    try:
+        pyproject = Path(cwd) / "pyproject.toml"  # type: ignore[arg-type]
+        env["aquacal_version_declared"] = tomllib.loads(
+            pyproject.read_text(encoding="utf-8")
+        )["project"]["version"]
+    except Exception:
+        logger.debug(
+            "aquacal_version_declared unavailable (no reachable checkout, or "
+            "pyproject.toml could not be parsed)."
+        )
+
     try:
         import psutil
 
@@ -128,11 +158,6 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
             "psutil unavailable; cpu_count_logical/ram_total_bytes left as None."
         )
 
-    cwd = (
-        repo_hint_path
-        if repo_hint_path is not None
-        else _find_git_root(Path(__file__).resolve().parent)
-    )
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],

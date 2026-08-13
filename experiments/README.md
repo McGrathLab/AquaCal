@@ -363,6 +363,19 @@ architecture, not a competing tool's behavior.
 
 ## 7. Reproducing a number
 
+**Precondition — a source checkout must carry a *current* editable install.** Run
+`pip install -e . --no-deps` in the environment you are about to use, and re-run it after
+**any** change to `pyproject.toml`'s `version`. `aquacal.__version__` and the
+`environment.aquacal_version` field written into every record below both resolve through
+`importlib.metadata.version("aquacal")` — i.e. *installed distribution metadata*, which an
+editable install writes once and never refreshes. The `.pth` still resolves imports to the
+working tree, so between a version bump and the next reinstall the code that runs is the new
+tree while every artifact it produces is stamped with the old version. Nothing fails loudly;
+you simply get a confident, plausible, wrong provenance record. `experiments/prelaunch_gate.sh`'s
+`ENV_VERSION_MATCH` check asserts this before a queue launches, and `benchmark.json`'s
+`environment.aquacal_version_declared` records the declared version beside the installed one so
+an escaped case is visible after the fact.
+
 ```bash
 # E1 — synthetic refractive-vs-non-refractive comparison (~20 min)
 python -m experiments.e1_refractive_comparison --check   # compare fresh vs. committed
