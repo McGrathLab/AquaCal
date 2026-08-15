@@ -63,25 +63,32 @@ milestone, not losses.
 | quick_task | 3-use-a-structural-column-grouping-for-the | no SUMMARY on disk |
 | quick_task | 260807-dcv-e1-e7-band-provenance-emit-z-rmse-column | no SUMMARY on disk |
 | quick_task | 260813-clj-land-four-pre-run-todo-fixes-provenance- | no SUMMARY on disk |
-| todo | 17 pending todos in `.planning/todos/pending/` | the experiment-cleanup backlog; see below |
+| todo | 14 pending todos in `.planning/todos/pending/` | the experiment-cleanup backlog; see below |
 | verification_gap | Phase 04 (`04-VERIFICATION.md`) | gaps_found |
 | verification_gap | Phase 10 (`10-VERIFICATION.md`) | human_needed |
 | verification_gap | Phase 19.2 (`19.2-VERIFICATION.md`) | human_needed |
 | requirement | INDEX-01, INDEX-02, INDEX-03 | Phase 20, deferred on MF-13 |
 | requirement | DOCS-07 | Phase 22, manuscript-side |
 
-**Three pending todos look already discharged and want confirming before the next milestone
-plans around them** — none were deleted, because verifying is the user's call:
+**Three todos were verified complete against the tree and closed 2026-08-15** (`d5eba65`) — the
+Zenodo dataset upload, the OpenCV pin (landed tighter, as `==4.13.*`), and the band-sidecar
+collision (band-owned `e{1,5,6,7}_seed_band_provenance.json`). Each carries a `## Resolved` block
+in `.planning/todos/done/` naming the evidence.
 
-- `2026-08-05-pin-opencv-below-5-0` — `pyproject.toml:40` now reads `opencv-python==4.13.*`
-  (`fa9ec3a`), which is tighter than the todo asked for
-- `2026-02-24-upload-new-zenodo-dataset-with-image-based-inputs` — Phase 21 published record
-  21889922
-- `2026-08-05-verify-non-refractive-baseline-supports-paper-claims` — plan 21-12 did exactly this
+**One needs a decision, not a check:**
+`2026-08-05-verify-non-refractive-baseline-supports-paper-claims`. Its titled question is
+**settled** — MF-18 confirmed numerically that at `n_water = 1.0` the refractive projector *is*
+the pinhole model, so the baseline is converged and `main.tex:268`'s "sole experimental variable"
+framing stands. It was deliberately left pending for step 3 alone (restart the n=1.0 arm from the
+ground-truth pose), which its own Resolution section calls "moot for the specific convergence
+question this todo raised". Step 3 is already routed to the deferred post-Zenodo repair batch and
+step 2's instrumentation gap is now covered by
+`2026-08-15-degeneracy-counter-is-unobservable-and-merges-two-failure-kinds`, so closing it loses
+nothing. Left pending because the decision to hold it open was deliberate.
 
-The remaining 14 are live, and most of them are the experiment defects the next milestone exists
-to fix — including the three filed 2026-08-14 (E1 absolute-accuracy claims, E6 z-error sign and
-gauge correction, per-camera gauge decomposition) and the five filed 2026-08-15.
+The remaining 14 are live, and most are the experiment defects the next milestone exists to fix —
+including the three filed 2026-08-14 (E1 absolute-accuracy claims, E6 z-error sign and gauge
+correction, per-camera gauge decomposition) and the five filed 2026-08-15.
 
 ## Accumulated Context
 
