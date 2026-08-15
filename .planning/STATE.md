@@ -49,13 +49,23 @@ Phase Details.
 | 26. Full-Suite Driver & Handoff Readiness | One driver covers every invocation, one manifest, decided `--check`, stale outputs moved aside | DRIVER-01..04 |
 | 27. Frozen Single-Sha Handoff Package | Code, driver, gates, environment requirements frozen and verified portable | RUN-01 |
 | 28. Suite Execution on Linux Machine | Full suite — E1-E7, band runs, E2 — executes once at the frozen sha | RUN-02 |
-| 29. Gate Verification & Results Commit | Gates pass, results committed with provenance intact | RUN-03, RUN-04 |
-| 30. Post-Submission Reconciliation | §3/Zenodo/tutorial re-cut, Zenodo split, stale outputs purged, MF-19 closed | POST-01..04 |
+| 29. Gate Verification & Results Commit | Gates pass, E2 sanity control and E7 before/after clear, results committed, Zenodo results package published pre-submission | RUN-03, RUN-04, RUN-05 |
+| 30. Post-Submission Reconciliation | §3/tutorial re-cut against the archive, stale outputs purged, MF-19 closed | POST-01, POST-03, POST-04 |
 
 **Sequencing constraints honored:** all FIX/DEGEN/DRIVER/BAND phases (23-26) land before the RUN
 phases (27-29); RUN-01 (freeze) precedes RUN-02 (execute, on the Linux machine) precedes RUN-03/04
 (gate + commit); DRIVER-04 (move stale outputs aside) lands in Phase 26, before Phase 28's
 execution; Phase 30 (POST) is gated on both Phase 29 and the 2026-08-21 SoftwareX submission.
+
+**Revised 2026-08-15 after external roadmap review** (four findings taken, one re-scoped):
+Phase 26 now depends on Phase 25 (DEGEN-04 emits a per-observation table and needs a driver-passed
+E2 `h_q` flag); Phase 27 gained a pre-freeze gate that every §3-facing number has a generating
+emitter, since that is unfixable after the freeze; Phase 29 gained the E2 sanity control (E2's
+schema does not change, so it should reproduce to ~1e-8 — and because DEGEN-02 touches
+`_optim_common.py`, that check is also what proves the instrumentation did not perturb the solve)
+and an explicit E7 before/after comparison (FIX-02's two extra free parameters could soften a
+published 10-of-10 result); and POST-02 was re-timed to RUN-05 in Phase 29, because the paper
+cannot be submitted citing an archive that contradicts its own §3.
 
 **Coverage:** 23/23 v2.1 requirement IDs mapped to exactly one phase, no orphans. (The milestone
 brief's "19 todos" is the pending-todo backlog file count; the discrete requirement IDs derived

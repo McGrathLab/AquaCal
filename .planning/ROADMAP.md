@@ -95,14 +95,19 @@ it lands before the run. If it only changes how fast the library gets there, it 
 **Deadline split:** Phases 23-29 (FIX / DEGEN / DRIVER / BAND / RUN) land before the
 **2026-08-21** SoftwareX submission. Phase 30 (POST) follows it.
 
+The Zenodo split (originally POST-02) was pulled forward into Phase 29 as **RUN-05** on
+2026-08-15: Phase 29 commits new §3 numbers pre-submission, so leaving the archive until after
+the deadline would ship a paper citing a record whose bundled `reference_outputs/` contradict
+its own §3. What stays in Phase 30 is the reconciliation *around* that archive, not the archive.
+
 - [ ] **Phase 23: Experiment Correctness Fixes** - Six independent single-file fixes that change what E1, E6, E7, E4, E2, and the synthetic generator measure or are licensed to claim
 - [ ] **Phase 24: Degeneracy Instrumentation** - The degeneracy counter reaches the benchmark record, is persisted by E5 and the band runs, split by kind and stage, and its warning is narrowed
 - [ ] **Phase 25: Degeneracy Classification & Claim Licensing** - The 198 unprojectable production-rig observations are classified, and E1's seed band gains the noise_std axis it needs to license an accuracy claim
 - [ ] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
 - [ ] **Phase 28: Suite Execution on Linux Machine** - The full experiment suite — E1 through E7, the band runs, and E2 — executes once end to end at the frozen sha
-- [ ] **Phase 29: Gate Verification & Results Commit** - The returned run passes `check_rerun_gates.py` and its results are committed with provenance intact
-- [ ] **Phase 30: Post-Submission Reconciliation** - After the 2026-08-21 submission: §3/Zenodo/tutorial re-cut as a matched set, the Zenodo record split and repackaged, stale outputs purged, MF-19 closed
+- [ ] **Phase 29: Gate Verification & Results Commit** - The returned run passes `check_rerun_gates.py`, clears the E2 sanity control and the E7 before/after comparison, its results are committed with provenance intact, and the Zenodo results package is published before submission
+- [ ] **Phase 30: Post-Submission Reconciliation** - After the 2026-08-21 submission: §3/tutorial re-cut as a matched set with the archive, stale outputs purged, MF-19 closed
 
 ## Phase Details
 
@@ -160,8 +165,12 @@ and recorded before the frozen run, so neither becomes a mid-run discovery.
 **Goal**: A single driver invocation covers the entire suite — nothing left for the Linux machine
 to discover is missing — with one truthful run manifest, a decided `--check` contract, and a
 clean output tree to run into.
-**Depends on**: Phase 23, Phase 24 (the driver must invoke the corrected experiments and capture
-the corrected degeneracy artifacts, not the pre-fix behavior)
+**Depends on**: Phase 23, Phase 24, Phase 25 (the driver must invoke the corrected experiments and
+capture the corrected degeneracy artifacts, not the pre-fix behavior — and Phase 25 is a real
+dependency, not an optional one: DEGEN-04's classification emits a per-observation table and needs
+a driver-passed flag for E2's full-population `h_q` logging, kept off by default so ordinary users
+do not get a multi-megabyte sidecar per calibration. Build the driver against 23 and 24 alone and
+it gets built, then amended at the freeze.)
 **Requirements**: DRIVER-01, DRIVER-02, DRIVER-03, DRIVER-04
 **Success Criteria** (what must be TRUE):
   1. `rerun_19_3.sh` invokes every experiment in the suite, including the band runs and E2 — the
@@ -187,6 +196,14 @@ classification finding, and driver capability must be in before the freeze)
      the receiving machine.
   4. The handoff package requires no further code edits once transferred — anything discovered
      missing sends the freeze back to this phase, not forward into the run.
+  5. Every §3-facing number has a generating emitter in the frozen code. A number that is
+     hand-asserted with no artifact behind it cannot be made traceable after the freeze — the fix
+     is an emitter, and Phase 29 is too late to add one. (The ledger classification that
+     identifies which rows those are is manuscript-side and the author's; it must land before
+     this freeze. Named here as a dependency, not imported as a task.)
+  6. Phase 25's outputs are registered with the driver — the per-observation classification table
+     and the E2 `h_q` logging flag — since Phase 26 built the driver before that work was
+     necessarily complete.
 **Plans**: TBD
 
 ### Phase 28: Suite Execution on Linux Machine
@@ -207,14 +224,31 @@ executes off-repo):
 **Goal**: The returned run is graded and becomes the repo's committed evidence base, with every
 manuscript-facing number traceable to it.
 **Depends on**: Phase 28
-**Requirements**: RUN-03, RUN-04
+**Requirements**: RUN-03, RUN-04, RUN-05
 **Success Criteria** (what must be TRUE):
   1. `check_rerun_gates.py` passes over the complete returned run, including Gate 3's
      single-sha assertion, now that the band runs and E2 are inside its coverage.
-  2. The returned results are committed to the repository with provenance (sha, manifest)
+  2. **E2 reproduces its pre-run numbers to ~1e-8.** E2 and E3 are the only experiments whose
+     schemas do not change, and nothing in Phases 23-26 touches E2's solve inputs (FIX-06 is
+     strings; E2 already runs `normal_fixed=False` via the config layer). F-001 measured the
+     entire Windows→Linux, `6c7f930`→v2.0.1 span reproducing to 1.5e-8 with OpenCV held at
+     4.13. So E2 is the run's sanity control, and because DEGEN-02 does touch
+     `_optim_common.py`, this check is also what proves the degeneracy instrumentation did not
+     perturb the solve. A drift to ~1e-2 means the run is broken in a way no completeness gate
+     detects — check it explicitly, do not leave it to whoever reads the results.
+  3. **E7's ablation conclusion is compared before and after, explicitly.** FIX-02 gives E7 two
+     extra free parameters per interface, which is exactly the kind of change that could soften
+     the fixed-intrinsics arm's published 10-of-10 sign test (p = 0.00098, supplement §14). If
+     it moved, the new number is the honest one — but it is reported here, not discovered during
+     manuscript re-verification.
+  4. The returned results are committed to the repository with provenance (sha, manifest)
      intact.
-  3. Every §3-facing number in the manuscript can be traced to a specific committed artifact
+  5. Every §3-facing number in the manuscript can be traced to a specific committed artifact
      from this run.
+  6. **The Zenodo results package is published before the 2026-08-21 submission** (RUN-05), so
+     the archive the paper cites agrees with the §3 it supports. The 4.35 GB input-package
+     re-upload that makes this possible is staged during Phase 28's run window, from the Windows
+     box, while the Linux run is going.
 **Plans**: TBD
 
 ### Phase 30: Post-Submission Reconciliation
@@ -223,15 +257,15 @@ public data artifacts are brought into agreement with the single-version run, an
 that motivated this milestone is closed out.
 **Depends on**: Phase 29, and the 2026-08-21 SoftwareX submission (calendar dependency — this
 phase does not start before the submission ships)
-**Requirements**: POST-01, POST-02, POST-03, POST-04
+**Requirements**: POST-01, POST-03, POST-04
+  *(POST-02, the Zenodo split, was re-timed to **RUN-05** in Phase 29 on 2026-08-15 — it has to
+  land before submission, not after it.)*
 **Success Criteria** (what must be TRUE):
   1. §3, the Zenodo archive's `reference_outputs/`, and the tutorial's expected-value table are
      re-cut as a matched set against the new E2 numbers.
-  2. The Zenodo record is split into an immutable-inputs package and a versioned-results
-     package, so a future results revision no longer costs a 4.35 GB re-upload.
-  3. Stale output trees are purged from the library, so the shipped package carries only the
+  2. Stale output trees are purged from the library, so the shipped package carries only the
      data the paper cites.
-  4. MF-19 is marked closed in `MANUSCRIPT-FINDINGS.md`, with any finding the re-run
+  3. MF-19 is marked closed in `MANUSCRIPT-FINDINGS.md`, with any finding the re-run
      contradicts or newly raises appended alongside it.
 **Plans**: TBD
 

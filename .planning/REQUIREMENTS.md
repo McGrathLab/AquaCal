@@ -90,14 +90,26 @@ submission. POST follows it.
       single-sha assertion now that the previously-uncovered stages are inside the queue
 - [ ] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
       number is traceable to this run
+- [ ] **RUN-05**: The Zenodo record is split into immutable inputs and a versioned results
+      package, and the results package matching this run's numbers is published **before** the
+      2026-08-21 submission, so the archive the paper cites agrees with the §3 it supports —
+      todo `2026-08-15-repackage-and-reupload-the-zenodo-archive`
+
+      *Re-timed 2026-08-15 (was POST-02).* Phase 29 commits new §3 numbers pre-submission, so
+      leaving the archive until after the deadline would ship a paper citing record 21889922
+      whose bundled `reference_outputs/` contradict its own §3 — a reviewer downloading it to
+      check reproducibility meets stale outputs. The split is not cheap to defer either: the
+      record is a **single** 4.35 GB zip, so there is no input file for Zenodo's new-version flow
+      to carry forward, and cheap results revisions only become possible *after* the split. The
+      4.35 GB re-upload is therefore staged during Phase 28's run window (from the Windows box,
+      while the Linux run is going), and the results package is published once Phase 29 verifies.
 
 ### Post-Submission Reconciliation (POST)
 
 - [ ] **POST-01**: §3, the Zenodo archive's `reference_outputs/`, and the tutorial's
       expected-value table are re-cut as a matched set against the new E2 numbers
-- [ ] **POST-02**: The Zenodo record is split into immutable inputs and a versioned results
-      package, so a results revision no longer costs a 4.35 GB re-upload —
-      todo `2026-08-15-repackage-and-reupload-the-zenodo-archive`
+- **POST-02** — *re-timed to **RUN-05** on 2026-08-15 and moved to Phase 29.* The Zenodo split
+  must land before submission, not after it. ID retired; see RUN-05 above.
 - [ ] **POST-03**: Stale output trees are purged from the library, so the shipped package carries
       only the data the paper cites — phase 2 of todo
       `2026-08-15-archive-stale-outputs-before-the-run-purge-them-after`
