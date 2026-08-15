@@ -42,6 +42,29 @@ on a current OpenCV. `2026-08-05-pin-opencv-below-5-0.md` is closed.
 `cv2.__version__ == 4.13.0`, which is all the Windows record stored. The control used `.92`. Any
 difference between those two builds is unaccounted for — likely nil, not proven.
 
+---
+
+## Re-scoped 2026-08-15 — two of three items are closed; the third moved
+
+**Item 2 (does the pin belong in `pyproject.toml`) — CLOSED.** v2.0.1 pins
+`opencv-python==4.13.*`, and `2026-08-05-pin-opencv-below-5-0.md` has been moved to `done/`.
+
+**Item 3 (packaging-build ambiguity) — MOVED, not closed.** It is a provenance-recording problem,
+not an OpenCV investigation, and it now belongs to
+`2026-08-15-emit-a-single-run-manifest-for-the-full-suite.md`: the manifest must capture the
+**PyPI build suffix**, not just `cv2.__version__`, so the fresh suite cannot reproduce the
+`4.13.0`-means-two-things ambiguity. Nothing to do here.
+
+**Item 1 (which OpenCV change — detector vs. Stage-1 intrinsics) — DEFERRED post-submission.**
+It no longer affects any attribution; the todo already says it is "worth doing only if the fix
+needs to be targeted", and the fix (the pin) is not targeted. The supplement's confirmed §10
+sentence *promises* the separating experiment as future work — "a synthetic target with known
+corner locations would separate the two" — and promising future work is not the same as owing it
+before submission.
+
+**Net: this todo is a record, not a work item, until after submission.** It stays in `pending/`
+only so item 1's open question does not vanish; nothing in it belongs in the fix milestone.
+
 ## Re-scoped 2026-08-15 — item 3 becomes a pre-run action
 
 Item 3 (the `4.13.0.90` vs `4.13.0.92` build ambiguity) was filed as an unaccounted-for residual,
@@ -64,3 +87,32 @@ record rather than by re-deriving it.
 Item 1 (which OpenCV change: `CharucoDetector` output vs `calibrateCamera` intrinsics feedback)
 is **unchanged** — still a mechanism question, still worth doing only if a targeted fix is needed.
 The pin makes it non-blocking.
+
+---
+
+## CLOSED 2026-08-15 — moot while the library is pinned
+
+**Author decision:** the question is moot as long as the library is pinned to one OpenCV version,
+which it will be until at least post-publication. `pyproject.toml:40` and `requirements.txt:12`
+both read `opencv-python==4.13.*` (`fa9ec3a`), and nothing in this milestone relaxes that.
+
+Disposition of the three items:
+
+- **Item 1 — which OpenCV change (`CharucoDetector` output vs `calibrateCamera` intrinsics
+  feedback)?** Closed unanswered, deliberately. It was always scoped as "a mechanism question,
+  worth doing only if the fix needs to be targeted", and with a pin in place there is no fix to
+  target. If the pin is ever relaxed — a post-publication decision — this is the investigation to
+  reopen, and MF-20's single-variable control (`experiments/results_linux32gb/e2_cv413/`) is the
+  method to repeat.
+- **Item 2 — does the pin belong in `pyproject.toml`?** Already resolved 2026-08-13; it landed
+  tighter than asked.
+- **Item 3 — the `4.13.0.90` vs `.92` build ambiguity.** **Transferred**, not dropped:
+  `2026-08-15-emit-a-single-run-manifest-for-the-full-suite.md` owns recording the PyPI build
+  suffix so the fresh suite's artifacts disambiguate themselves. That is the only live remnant and
+  it has a new home.
+
+**What stays true and is worth not re-deriving:** OpenCV was confirmed as the *entire* cause of the
+Windows→Linux real-rig drift by a single-variable control. Under 4.13 the reproduction is at the
+numerical floor (1.264e-07 worst-case relative, all 13 cameras' observation counts identical);
+under 4.14 the same quantities move up to 1.1e-01. That is recorded in MF-20 and in
+`linux32gb_scope.json`, and it is why the pin is load-bearing rather than housekeeping.

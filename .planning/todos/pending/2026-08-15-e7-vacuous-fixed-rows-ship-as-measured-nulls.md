@@ -47,3 +47,31 @@ than be patched afterwards.
 - `.planning/MANUSCRIPT-FINDINGS.md` MF-17 — original observation.
 - Filed from the AquaCal manuscript goal-4 audit
   (`Spinoffs/papers/aquacal/AUDIT-goal4.md`, V-011, TODO ledger T-07).
+
+## Scope boundary — artifacts, not prose
+
+This TODO is library and experiment work only. The manuscript tree (`Spinoffs/papers/aquacal/` —
+`main.tex`, `supplement.tex`, `response-letter.md`, `numbers-ledger.tsv`) is **read-only from this
+repo and must not be edited here**, including "obviously correct" single-number updates.
+
+Where a fix has a manuscript consequence, the deliverable is the **evidence, not the sentence**:
+emit the artifact, and record the derivation in `.planning/MANUSCRIPT-FINDINGS.md`. Incorporating
+it into the paper — prose, ledger rows, captions, figure captions — happens in the manuscript
+session, which owns that tree and the word budget.
+
+References to `main.tex` / `supplement.tex` line numbers anywhere in this file are **motivation and
+provenance**, never work orders.
+
+## Register the outputs with the driver and the gate (added 2026-08-15)
+
+**Last step of this fix, not an afterthought.**
+`2026-08-15-make-the-suite-driver-cover-every-invocation.md` requires that every schema- or
+value-changing fix add its outputs to the suite driver's stage list and to the completeness gate's
+expected-artifact list, and asks each such todo to say so. This is that clause — it was missing
+from every one of them until now, which is exactly the unenforced coupling that todo warned about.
+
+For this fix specifically: `e7_focal_standoff.csv`'s two `fixed` rows change verdict string (and possibly gain a boolean column). Small, but it is a value change in a committed artifact, so the expectation sheet must carry the new expected verdicts or hand-verification will flag them.
+
+Also add the same expectations to the sheet in
+`2026-08-15-suspend-programmatic-check-for-reshaped-artifacts.md`, since hand-verification is the
+only check covering these artifacts during this run.
