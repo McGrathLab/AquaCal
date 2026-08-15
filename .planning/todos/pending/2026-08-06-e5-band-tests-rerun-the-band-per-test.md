@@ -44,3 +44,18 @@ Same triage added `pytest.mark.slow` to 13 experiment tests across E4/E5/E6,
 cutting those four files' fast-lane time from 432.87 s to 5.12 s. The library's
 own tests were never the problem — `experiments/` tests had simply never been
 routed away from the `-m "not slow"` lane that `test.yml` runs on every push.
+
+## Re-scoped 2026-08-15 — the "when E5 is next touched" condition is now met
+
+The directive above says *"Worth doing when E5 is next touched rather than on its own."* That
+condition fires in the fix milestone: `2026-08-15-degeneracy-counter-is-unobservable-and-merges-two-failure-kinds.md`
+names `experiments/e5_index_sensitivity.py` as one of its edit targets, and its T-14 half adds a
+persisted degeneracy column to E5's band output — which means `test_e5_band_mode.py` is being
+opened anyway.
+
+**Do it in the same change.** The ~210 s saving in the slow lane is incidental; the real reason is
+that the band-mode tests will need updating for the new column regardless, and refactoring five
+tests onto a `scope="module"` fixture while already editing them is free. Doing it later means
+opening the same file twice.
+
+Still **not** a reason to hold the re-run: this is test-time only and changes no artifact.

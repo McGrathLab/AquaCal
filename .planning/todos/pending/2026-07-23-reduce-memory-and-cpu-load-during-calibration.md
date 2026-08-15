@@ -41,3 +41,21 @@ FD column grouping cut residual evaluations per Jacobian to the theoretical
 minimum (13 groups, 17 with intrinsic refinement), 15-23% fewer than scipy's
 greedy colorer achieved on realistic visibility patterns. That reduces CPU time
 per Jacobian. **The dense `.toarray()` memory peak is untouched.**
+
+## Re-scoped 2026-08-15 — deferral STRENGTHENS, and the headline number was wrong
+
+**Two corrections to the problem statement above.**
+
+1. **Peak memory is 10.26 GiB, not ~3.6 GB.** The 3.6 GB figure was never measured — it was an
+   estimate that propagated. Re-read `benchmark.json` before quoting any number here.
+2. **This must NOT be actioned in the fix milestone.** Every other deferred item in the backlog
+   moved *earlier* when the full-suite re-run was committed to; this one moves the other way. The
+   re-run's whole value is that every experiment comes from one library build whose behaviour is
+   understood. Changing the solver's memory/stability trade-off — LSMR preconditioning, an
+   analytic Jacobian, dropping the dense `.toarray()` — is precisely the class of change that
+   would make the fresh suite unattributable, and it lands in `_optim_common.py`, the file every
+   experiment routes through.
+
+The standing decision (PROJECT.md § Key Decisions: *measure peak memory, do not reduce it*) is
+unchanged and now has a second reason behind it. Revisit after the SoftwareX submission, against
+a suite that is no longer the paper's evidence.

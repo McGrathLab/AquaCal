@@ -41,3 +41,26 @@ on a current OpenCV. `2026-08-05-pin-opencv-below-5-0.md` is closed.
 **3. Packaging-build ambiguity.** PyPI ships both `4.13.0.90` and `4.13.0.92`, and both report
 `cv2.__version__ == 4.13.0`, which is all the Windows record stored. The control used `.92`. Any
 difference between those two builds is unaccounted for — likely nil, not proven.
+
+## Re-scoped 2026-08-15 — item 3 becomes a pre-run action
+
+Item 3 (the `4.13.0.90` vs `4.13.0.92` build ambiguity) was filed as an unaccounted-for residual,
+"likely nil, not proven". The committed full-suite re-run promotes it to something cheap and
+worth doing **before** the run, for a reason that did not exist when it was filed:
+
+**The fresh suite will record the same ambiguous string.** `src/aquacal/io/benchmark.py:115`
+captures `cv2.__version__`, which is `"4.13.0"` for both PyPI builds — verified in the committed
+sidecars (`e1_seed_band_provenance.json` → `environment.opencv_version: "4.13.0"`). The pin
+`opencv-python==4.13.*` permits either. So a re-run that is supposed to be the single source of
+truth would re-introduce exactly the gap this todo names, in artifacts nobody can disambiguate
+afterwards.
+
+**Action:** record the full distribution version alongside `cv2.__version__` — e.g. the installed
+`opencv-python` distribution version via `importlib.metadata.version("opencv-python")`, which does
+distinguish `.90` from `.92`. One field, additive, in the environment block. Then the ambiguity is
+closed by construction for every artifact the run produces, and item 3 becomes answerable from the
+record rather than by re-deriving it.
+
+Item 1 (which OpenCV change: `CharucoDetector` output vs `calibrateCamera` intrinsics feedback)
+is **unchanged** — still a mechanism question, still worth doing only if a targeted fix is needed.
+The pin makes it non-blocking.

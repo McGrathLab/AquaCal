@@ -74,3 +74,23 @@ cwd-relative bug its comment documents.
   this be documented or filed rather than left discoverable only from
   `linux32gb_scope.json`.
 - `experiments/README.md` §2 names it beside the `results_linux32gb/` tree description.
+
+## Re-scoped 2026-08-15 — now a pre-run blocker, not a low-severity annoyance
+
+The severity assessment above was written when the observed failure was a one-off on
+`results_linux32gb/` that got folded back in by hand. The committed full-suite re-run changes
+that reading in two ways:
+
+- **It will almost certainly run under `--out`,** on the Linux box, exactly as the 2026-08-12
+  re-run did. So the fresh `benchmark_grid.csv` reproduces the defect by default: nine synthetic
+  cells and no real-rig row, or — the worse case this todo already identifies — one machine's
+  synthetic cells silently paired with whatever `experiments/results/benchmark.json` happens to
+  hold from another machine.
+- **There is no hand-fold available afterwards.** The re-run's premise is a single source of truth
+  where every row traces to that run; splicing a row in by hand is the exact provenance failure
+  the milestone exists to end.
+
+**Land the fix before the run.** The instruction below not to re-run the nine-cell grid to test it
+still stands and gets easier, not harder — `--check` re-aggregates from the committed cells, and
+the smoke cells exercise the aggregation path in seconds. Testing this costs nothing; discovering
+it after a multi-hour grid costs the grid.
