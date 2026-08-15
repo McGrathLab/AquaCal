@@ -975,11 +975,35 @@ stable-anisotropy claim (free: 1.95-2.19, matching the published ~2.3; pinned: d
 
 ### Determinism
 
-**8 of 308 cells moved between repeats, before 63 of 308.** Thirteen of fourteen configurations
-reproduced exactly; all movement is in `index/1.48`. Computed by the same code path that produced
-the pre-fix figure, pinned by a self-test that re-derives 63/308 before reporting anything
-(`determinism_probe.py --report`). The two E6 repeats used structurally isolated output
-directories, and repeat 2 provably re-solved (zero resume-skip lines).
+**16 of 308 cells moved between repeats, before 63 of 308.** Twelve of fourteen configurations
+reproduce exactly; movement is in `index/1.51` and `index/1.55`, eight cells each. On the full
+post-fix schema (25 columns, including the optimality and guard columns the pre-fix pair could not
+carry) it is 20 of 350. Computed by the same code path that produced the pre-fix figure, pinned by
+a self-test that re-derives 63/308 before reporting anything (`determinism_probe.py --report`). The
+two E6 repeats used structurally isolated output directories, and repeat 2 provably re-solved (zero
+resume-skip lines).
+
+> **CORRECTED 2026-08-14 — this entry read "8 of 308 ... all movement in `index/1.48`" until
+> today, which was the phase 19.3 measurement.** Phase 19.4's interface fix requeued **both** E6
+> repeats (`0ffbe15`), so the pair this statistic describes was replaced after the statistic was
+> written; re-running `determinism_probe.py --report` against the current artifacts gives 16 of
+> 308. The self-test still re-derives the 63/308 baseline exactly, so only the post-fix half had
+> aged. MF-08's own 19.4 subsection records that E6 moved under that fix — the determinism figure
+> simply was not re-derived alongside the numbers that were. **The direction of the claim is
+> unchanged and still large (63 → 16); the size is halved.** Found while tracing the figure's
+> provenance for the response letter, which now quotes 16.
+>
+> **The magnitudes, measured the same day, because the cell count alone invites a misreading.**
+> The two runs carry the same `git_sha` (`2a623f9`), version and seed, so this is genuine
+> run-to-run non-determinism on identical inputs — but it is bimodal. Every *accuracy* quantity
+> agrees to **1e-9 relative or better** (`reconstruction_rmse_mm` 3.3e-9 worst, `reprojection_rms_px`
+> 1.2e-10, `reconstruction_mae_mm` 2.7e-9); parameter errors agree to 1e-6–6e-5; and the whole of
+> the visible movement is in the **convergence diagnostic**, where `optimality_stage3_intrinsic_pass`
+> differs by **55%** on `index/1.55` (0.00235 against 0.00519). That is rule 9.1 appearing in the
+> data rather than in the prose: optimality varies ~2× between runs of identical code, which is why
+> it is never quoted beyond one significant figure. **The cause is not established here** — the
+> pre-fix kink explanation no longer applies, and nothing measured rules for or against
+> floating-point summation order, so it is reported as observed.
 
 This is a **reported statistic, not a gate**. There is no tolerance in it and nothing to loosen.
 The pre-fix cross-tabulation of movement against per-configuration degenerate count (correlation
@@ -1093,7 +1117,7 @@ reviewers' own questions prompted, corrected at the source, and all six affected
 re-measured in a single frozen run. Convergence is now readable across the suite: every calibration
 experiment reports a zero degenerate-observation count, E6's three non-converged configurations are
 gone (verified on BOTH the interface and intrinsic optimality columns), and run-to-run reproduction
-improved from 63 to 8 cells of 308. The synthetic results are unchanged in substance: the
+improved from 63 to 16 cells of 308 (corrected 2026-08-14; see the Determinism section above). The synthetic results are unchanged in substance: the
 depth-axis improvement is two orders of magnitude, and the originally published ratio falls inside
 the measured seed band. E7's accuracy is unchanged within its 10-seed band.
 
@@ -1291,9 +1315,9 @@ MF-08 is still outstanding and is deliberately not made here. See
 > We corrected the scenario construction — deriving an explicit depth-clearance floor and
 > re-centring board poses on the board centre — and re-measured all six affected experiments in a
 > single run at one commit. No board corner now reaches the interface in any scenario. All
-> fourteen generalization configurations converge to first-order optimality at or below 1e-2, every
+> fourteen generalization configurations converge to first-order optimality at or below 2e-2, every
 > calibration experiment reports a zero out-of-domain observation count, and run-to-run
-> reproducibility improved from 63 to 8 of 308 compared cells.
+> reproducibility improved from 63 to 16 of 308 compared cells.
 >
 > We note explicitly that this was a defect in benchmark construction and convergence *diagnosis*,
 > not in the calibration result. Before the correction, reconstruction accuracy was statistically
@@ -1308,8 +1332,16 @@ MF-08 is still outstanding and is deliberately not made here. See
 > its edge. We have accordingly rephrased the claim in
 > terms that are stable across seeds: the non-refractive baseline's depth error at the most
 > extrapolated test depth is two orders of magnitude larger than the refractive model's
-> (approximately 205-252 mm against 1.4-2.1 mm). We also now state the random seed used for the
+> (approximately 199-252 mm against 1.4-2.3 mm). We also now state the random seed used for the
 > reported run, which the original submission omitted.
+
+> **CORRECTED 2026-08-14 — this block said "205-252 mm against 1.4-2.1 mm" until today.** Both
+> outer bounds were wrong against the committed band: recomputing the deepest test point from
+> `experiments/results/exp1_band.csv` gives non-refractive **199.29-252.06 mm** (mean 228.83) and
+> refractive **1.42-2.25 mm** (mean 1.69) over the ten seeds. The draft's 205 and 2.1 appear to
+> predate the committed band. This block is the one the response letter was to be drafted from, so
+> the error was one paste away from reaching the document a reviewer reads most adversarially; the
+> letter was written from the artifacts instead and quotes 229 mm with the 199-252 band.
 
 ---
 
