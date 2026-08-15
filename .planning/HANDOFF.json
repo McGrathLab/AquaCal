@@ -1,10 +1,26 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-12T01:40:00.000Z",
+  "timestamp": "2026-08-15T13:30:00.000Z",
   "level": "milestone",
-  "milestone": "v1.9",
+  "milestone": "v2.0",
   "milestone_name": "Publication Prep",
-  "status": "paused_between_phases",
+  "status": "milestone_complete",
+  "MILESTONE_CLOSED": {
+    "date": "2026-08-15",
+    "archived_to": [
+      ".planning/milestones/v2.0-ROADMAP.md",
+      ".planning/milestones/v2.0-REQUIREMENTS.md"
+    ],
+    "label_note": "Planned as v1.9, archived as v2.0 -- Phase 19.3 forced a major bump and the milestone shipped v2.0.0/v2.0.1. Everything below was written before close and still says v1.9; it is retained as the Phase 21 record.",
+    "no_release_at_close": "User decision 2026-08-15. No git tag was created for the milestone. The v2.0.0/v2.0.1 tags came out of Phase 21.",
+    "deferred_and_carried_forward": [
+      "Phase 20 (INDEX-01..03) -- deferred on MF-13",
+      "Phase 22 (DOCS-07) -- pre-empted; manuscript C1 cell and DOI citation remain the user's",
+      "17 pending todos in .planning/todos/pending/ -- the experiment-cleanup backlog",
+      "2 open debug sessions, 3 verification gaps -- see STATE.md Deferred Items"
+    ],
+    "next": "Next milestone agreed in shape, not yet defined: clean up the experiments, fix the accumulated defects, then one final full experiment-suite re-run at a single code version. Run /gsd:new-milestone. Phase numbering continues from 23."
+  },
   "phases_total": 12,
   "phases_complete": 10,
   "completed_phases": [
