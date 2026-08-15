@@ -136,4 +136,33 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 
 ## Traceability
 
-Filled by the roadmapper.
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FIX-01 | Phase 23 | Pending |
+| FIX-02 | Phase 23 | Pending |
+| FIX-03 | Phase 23 | Pending |
+| FIX-04 | Phase 23 | Pending |
+| FIX-05 | Phase 23 | Pending |
+| FIX-06 | Phase 23 | Pending |
+| DEGEN-01 | Phase 24 | Pending |
+| DEGEN-02 | Phase 24 | Pending |
+| DEGEN-03 | Phase 24 | Pending |
+| DEGEN-04 | Phase 25 | Pending |
+| BAND-01 | Phase 25 | Pending |
+| DRIVER-01 | Phase 26 | Pending |
+| DRIVER-02 | Phase 26 | Pending |
+| DRIVER-03 | Phase 26 | Pending |
+| DRIVER-04 | Phase 26 | Pending |
+| RUN-01 | Phase 27 | Pending |
+| RUN-02 | Phase 28 | Pending |
+| RUN-03 | Phase 29 | Pending |
+| RUN-04 | Phase 29 | Pending |
+| POST-01 | Phase 30 | Pending |
+| POST-02 | Phase 30 | Pending |
+| POST-03 | Phase 30 | Pending |
+| POST-04 | Phase 30 | Pending |
+
+**Coverage: 23/23 v2.1 requirements mapped.** (Note: the milestone brief's "19 todos" refers to
+the pending-todo backlog files; the discrete v2.1 requirement IDs derived from them number 23 —
+FIX-01..06 (6), DEGEN-01..04 (4), DRIVER-01..04 (4), BAND-01 (1), RUN-01..04 (4), POST-01..04 (4).
+All 23 are mapped above, none orphaned.)
