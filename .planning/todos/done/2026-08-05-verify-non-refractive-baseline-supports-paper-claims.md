@@ -147,3 +147,32 @@ independent interest for characterizing the non-refractive baseline's error
 decomposition. Routed to HANDOFF.json's deferred post-Zenodo repair batch alongside the
 related water_z-pinned-baseline item. This todo is left in `pending/` rather than moved
 to `done/` because of this open step.
+
+## Closed (2026-08-15, author decision)
+
+The titled question is settled and the residue has owners. Closing.
+
+- **The question this todo asks** — can the `n_water = 1.0` baseline carry §3's
+  refractive-vs-non-refractive claims — is answered YES by MF-18: at unit index the refractive
+  projector *is* the pinhole projector (`atol=1e-12`, pinned by
+  `tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity`), so the reported
+  optimality is pessimistic rather than meaningless, the baseline is converged, and
+  `main.tex:268`'s "sole experimental variable" framing stands.
+- **Step 2** (split the merged degenerate-observation counter) is owned by
+  `2026-08-15-degeneracy-counter-is-unobservable-and-merges-two-failure-kinds.md`, which covers
+  it more thoroughly than this todo framed it.
+- **Step 3** (restart the n=1.0 arm from the ground-truth pose) is superseded by
+  `2026-08-15-pin-water-z-in-e1-non-refractive-arm.md`, which is the same experiment with a
+  better rationale and **has already been measured**: pinning `water_z` at ground truth drives
+  the arm's guard count 14,949 → 0 and optimality 9e+02 → 5e-01 while reproducing every
+  non-refractive reconstruction number to ~4 significant figures (2.5 m Z-RMSE
+  248.267 → 248.221 mm). That is step 3's "does it land in the same place" question, answered:
+  yes, to −0.019%. The remaining work is landing the pin, which that todo owns.
+- The misleading degeneracy this todo first noticed now has a named root cause — `water_z` is an
+  **exact null direction** at unit index (cost constant to 13 significant figures over a 1.5 m
+  sweep) — and a named fix, in the companion todo. Nothing here is dropped.
+
+Related and still open: `2026-08-14-decide-whether-e1-may-carry-absolute-accuracy-claims.md`,
+which carries this todo's genuinely unresolved half — that §3 quotes E1 numbers throughout while
+E1 is documented as carrying no accuracy claim under D-19.3-17. That gap was always a separate
+question and is tracked separately.
