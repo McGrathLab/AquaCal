@@ -95,3 +95,20 @@ Tracked as **DATA-01a** in `REQUIREMENTS.md` and Phase 21 success criterion **2a
 
 Sequencing constraint from the earlier finding still holds — do not action standalone; it
 lands with Phase 21's DATA group.
+
+## Resolved (2026-08-15, verified at milestone close)
+
+Done by Phase 21 (DATA-01/01a/01b/02). `src/aquacal/datasets/data/manifest.json` now carries
+`zenodo_record_id: 21889922`, `checksum: md5:dff1012fb772d627e0f3f106d5c6de84` and
+`size_bytes: 4350418046` — all three updated together, none of them the 2026-02-14 values this
+todo was filed against. The archive was published as a **new version** of record 18645385 so the
+concept DOI and citation lineage survive (version DOI `10.5281/zenodo.21889922`).
+
+It went further than this todo asked: the archive was regenerated from the **full** frameset
+(13 x 262 extrinsic PNGs, not the ~4.3x subsampled extraction), so a fresh
+`load_example("real-rig")` reproduces §3's `reconstruction.num_comparisons = 7762`. Verified end
+to end from a genuinely cold cache. Detail in `.planning/milestones/v2.0-ROADMAP.md` Phase 21 and
+`21-ARCHIVE-MANIFEST.md`.
+
+Note the `initial_distances` compat shim in `pipeline.py` is now *unblocked* by this but is
+still in the tree — retiring it is CLEAN-01, a separate breaking change.

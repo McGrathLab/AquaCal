@@ -91,3 +91,20 @@ so this is not re-diagnosed from scratch.
 Same run, unrelated cause: the other 8 FAILs are the four documented categories
 (E1 provenance ×2, E1 guard count 14949, E4 grid 1-of-10, E7 provenance ×4).
 `ALL gate3_git_sha_consistency` PASSED — every artifact carries `2a623f9`.
+
+## Resolved (2026-08-15, verified at milestone close)
+
+The preferred solution landed, in the shape this todo specified — band-owned sidecars, not
+`--force`, not a relaxed gate.
+
+- `experiments/results/e{1,5,6,7}_seed_band_provenance.json` all exist and all record
+  `solver_config["seeds"]`: E1 and E7 `[42..51]`, E5 and E6 `[42..47]`.
+- `check_rerun_gates.py:764` searches the band-owned sidecar **first** and falls back to the
+  legacy `eN_benchmark_*.json` glob only for backwards compatibility; the call sites at `:1678`,
+  `:1685` and `:1696` pass `band_sidecar=` for E7 and E1.
+- The production single-seed sidecars are untouched, so the separation this todo identified as
+  load-bearing still holds: band mode deliberately does not overwrite `e1_benchmark_<model>.json`
+  (D-260807-dcv).
+
+Landed via quick task 260807-dcv (`cda9d0e`, `fea64a9`). The gate now asks for something the
+layout can express.

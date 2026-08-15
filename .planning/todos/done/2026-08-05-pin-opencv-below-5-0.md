@@ -44,3 +44,17 @@ and may well be unaffected — but they are untested on 5.x.
    other `cv2.fisheye` functions are also 5.x-clean, which nobody has checked.
 4. The pin change touches packaging metadata only, so it lands as a `fix:`
    commit for semantic-release.
+
+## Resolved (2026-08-15, verified at milestone close)
+
+Pinned tighter than this todo asked. Both `pyproject.toml:40` and `requirements.txt:12` now read
+`opencv-python==4.13.*` (quick task 260813-clj, commit `fa9ec3a`), not merely `<5.0`.
+
+The tightening was deliberate and is load-bearing: MF-20's single-variable control showed that
+OpenCV 4.14 alone moves §3's quantities by up to 1.1e-01, while 4.13 reproduces the Windows
+reference at 1.264e-07. A `<5.0` ceiling would have permitted both. The reproduction claims name
+the version explicitly.
+
+Residual, tracked in `2026-08-12-isolate-opencv-detection-drift-4-13-vs-4-14.md`: `4.13.*` still
+permits both the `.90` and `.92` builds, which both report `cv2.__version__ == 4.13.0`. Any
+difference between them is unaccounted for — likely nil, not proven.

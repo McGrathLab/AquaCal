@@ -33,11 +33,10 @@ To separate them, add an arm that pins Stage-1 intrinsics to the archive's
 `reference_calibration.json` and re-detects under both versions. This no longer affects any
 attribution — it is a mechanism question, worth doing only if the fix needs to be targeted.
 
-**2. Does the pin belong in `pyproject.toml`?** The constraint is `opencv-python>=4.6,<5.0`, which
-permits both versions, so a fresh install today does **not** reproduce §3. This is the actionable
-item — fold into `2026-08-05-pin-opencv-below-5-0.md`, which is already open on the 5.0 ceiling.
-Deciding it means choosing between pinning to reproduce §3 and re-baselining §3 on a current
-OpenCV (cf. MF-19's two resolution options).
+**2. ~~Does the pin belong in `pyproject.toml`?~~ RESOLVED 2026-08-13.** It does, and it landed:
+`pyproject.toml:40` and `requirements.txt:12` both read `opencv-python==4.13.*` (`fa9ec3a`,
+quick task 260813-clj). The decision went to *pinning to reproduce §3* rather than re-baselining
+on a current OpenCV. `2026-08-05-pin-opencv-below-5-0.md` is closed.
 
 **3. Packaging-build ambiguity.** PyPI ships both `4.13.0.90` and `4.13.0.92`, and both report
 `cv2.__version__ == 4.13.0`, which is all the Windows record stored. The control used `.92`. Any
