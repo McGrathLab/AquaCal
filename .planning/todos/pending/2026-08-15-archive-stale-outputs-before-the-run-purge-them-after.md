@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Move every pre-re-run output tree aside before the run, and purge it at release — the shipped library should carry only the data the paper cites
 area: experiments
+resolves_phase: 26
 files:
   - experiments/results/
   - experiments/results_linux32gb/

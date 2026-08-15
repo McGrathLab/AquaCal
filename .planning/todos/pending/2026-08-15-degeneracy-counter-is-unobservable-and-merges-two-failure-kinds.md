@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: The degeneracy counter never reaches the production benchmark record, merges two distinct failure kinds, and is not persisted at all by E5 or the band runs
 area: observability
+resolves_phase: 24
 files:
   - src/aquacal/calibration/pipeline.py
   - src/aquacal/calibration/interface_estimation.py

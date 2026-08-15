@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Three stale strings — E2's --config help, real_rig_metrics.json's provenance, and synthetic.py's WATER_Z description — two of them in the same file
 area: docs
+resolves_phase: 23
 files:
   - experiments/e2_real_rig.py
   - src/aquacal/datasets/synthetic.py

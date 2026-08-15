@@ -2,6 +2,7 @@
 created: 2026-08-14T00:00:00.000Z
 title: Add a noise_std axis to E1's seed band, so its absolute accuracy numbers carry a stated domain
 area: experiments
+resolves_phase: 25
 files:
   - experiments/e1_refractive_comparison.py
   - src/aquacal/datasets/synthetic.py

@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Decide what --check means across the re-base — suspend the reproduction bar where schemas change, verify by written expectation instead
 area: experiments
+resolves_phase: 26
 files:
   - experiments/_io.py
   - tests/unit/test_experiments_provenance.py

@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Split the Zenodo record into immutable inputs and a versioned results package — the current single-zip bundle makes every output revision cost a 4.35 GB re-upload
 area: data
+resolves_phase: 30
 files:
   - experiments/e2_real_rig.py
   - experiments/reconstruction_bootstrap.py

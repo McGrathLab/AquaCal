@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: E7's fixed-intrinsics rows report verdict "no_signature" on a statistic that is vacuous by construction
 area: experiments
+resolves_phase: 23
 files:
   - experiments/e7_focal_standoff_analysis.py
 ---

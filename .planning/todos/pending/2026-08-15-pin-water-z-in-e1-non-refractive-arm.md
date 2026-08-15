@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Pin water_z in E1's non-refractive arm, where it is an exact null direction — this drives the arm's 14,949 degenerate observations to zero
 area: experiments
+resolves_phase: 23
 files:
   - experiments/e1_refractive_comparison.py
   - src/aquacal/datasets/pipelines.py

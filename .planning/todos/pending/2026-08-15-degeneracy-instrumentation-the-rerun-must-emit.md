@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Make the degeneracy question answerable from the re-run's artifacts — split the counter by stage as well as kind, and correct the cause list before it ships in a warning
 area: observability
+resolves_phase: 24
 files:
   - src/aquacal/calibration/_observability.py
   - src/aquacal/calibration/refinement.py

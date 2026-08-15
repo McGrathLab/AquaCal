@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: The degenerate-observation warning is measurably over-broad and its cause list is incomplete
 area: library
+resolves_phase: 24
 files:
   - src/aquacal/calibration/refinement.py
   - src/aquacal/calibration/interface_estimation.py

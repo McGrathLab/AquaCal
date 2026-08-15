@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: normal_fixed was unified to False at the config layer only — E1 and E7 enter the library directly and inherit True, so they solve a problem two DOF smaller than the production pipeline
 area: experiments
+resolves_phase: 23
 files:
   - experiments/e1_refractive_comparison.py
   - experiments/e7_interface_ablation.py

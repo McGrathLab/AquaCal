@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Nobody knows what the production rig's 198 unprojectable observations actually are
 area: experiments
+resolves_phase: 25
 files:
   - src/aquacal/calibration/_optim_common.py
   - src/aquacal/core/refractive_geometry.py

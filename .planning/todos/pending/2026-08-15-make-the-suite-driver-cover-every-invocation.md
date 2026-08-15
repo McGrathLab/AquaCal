@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: Extend rerun_19_3.sh into the full-suite driver — the band runs and E2 sit outside it, which is exactly where the six-sha provenance spine fractured
 area: experiments
+resolves_phase: 26
 files:
   - experiments/rerun_19_3.sh
   - experiments/check_rerun_gates.py

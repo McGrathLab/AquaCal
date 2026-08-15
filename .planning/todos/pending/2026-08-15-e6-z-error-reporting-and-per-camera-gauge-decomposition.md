@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: E6's Z-error reporting is mean-absolute and un-gauge-corrected, and the per-camera decomposition behind the collinear caveat was never committed — one call site, one fix
 area: experiments
+resolves_phase: 23
 files:
   - experiments/e6_generalization_sweep.py
   - src/aquacal/datasets/pipelines.py

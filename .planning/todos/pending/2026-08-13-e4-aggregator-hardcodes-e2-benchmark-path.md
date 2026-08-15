@@ -2,6 +2,7 @@
 created: 2026-08-13T00:00:00.000Z
 title: E4's aggregator hardcodes E2_BENCHMARK_PATH, so the real-rig row is dropped under --out
 area: experiments
+resolves_phase: 23
 files:
   - experiments/e4_benchmark_grid.py
   - experiments/README.md

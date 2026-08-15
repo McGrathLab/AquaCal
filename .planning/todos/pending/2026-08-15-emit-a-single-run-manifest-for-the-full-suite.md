@@ -2,6 +2,7 @@
 created: 2026-08-15T00:00:00.000Z
 title: No artifact records the environment a run happened in, and two provenance fields actively misreport it — aquacal_version and the OpenCV build
 area: experiments
+resolves_phase: 26
 files:
   - experiments/_io.py
   - experiments/check_rerun_gates.py
