@@ -81,6 +81,17 @@ Agreed 2026-08-15. Not yet defined as a roadmap — run `/gsd:new-milestone`.
    the same code version. This is what MF-19 (§3's numbers predate the current library) needs and
    what no single run has yet delivered.
 
+**Scope boundary (author, 2026-08-15):** targeted fixes that improve the experimental suite —
+nothing else. Specifically **out**: the solver's memory/CPU trade-off (`_optim_common.py`'s dense
+`.toarray()`, LSMR preconditioning, an analytic Jacobian). Every experiment routes through that
+file, so touching it makes the fresh suite unattributable, which is the one thing the re-run
+exists to prevent. Genuinely deferred, not forgotten — revisit after submission, against a suite
+that is no longer the paper's evidence.
+
+The test for whether something belongs: *does it change what the suite measures, records, or can
+claim?* If yes, it is in scope and should land before the run. If it only changes how fast or how
+cheaply the library gets there, it waits.
+
 ### Active
 
 - [ ] Experiment-suite cleanup

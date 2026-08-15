@@ -91,6 +91,12 @@ No release is cut off v2.0. The next milestone's shape, agreed 2026-08-15:
 3. Run the **full experiment suite once, end to end, at a single code version**, so every
    number in the paper comes from one library build.
 
+**Scope boundary:** targeted experimental-suite fixes only. Performance work on the solver
+(`_optim_common.py`'s dense `.toarray()`, LSMR preconditioning, an analytic Jacobian) is **out** —
+every experiment routes through that file, so touching it makes the fresh suite unattributable.
+The test: *does it change what the suite measures, records, or can claim?* If yes, in scope, and
+it lands before the run. If it only changes how fast the library gets there, it waits.
+
 Run `/gsd:new-milestone` to define it. Phase numbering continues from **23**.
 
 ## Carried Forward
