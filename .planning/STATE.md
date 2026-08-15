@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Publication Prep
-status: milestone_complete
-stopped_at: v2.0 closed 2026-08-15; next milestone not yet defined
-last_updated: "2026-08-15T13:30:00.000Z"
-last_activity: 2026-08-15 -- milestone v2.0 Publication Prep closed and archived; no release cut
+milestone: v2.1
+milestone_name: Clean Experimental Suite
+status: planning
+last_updated: "2026-08-15T15:03:36.414Z"
+last_activity: 2026-08-15
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 106
-  completed_plans: 106
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,30 +23,17 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Between milestones. The next one is agreed in shape but not yet defined:
-clean up the experiments, fix the accumulated defects, then one final full experiment-suite
-re-run at a single code version for the paper. Run `/gsd:new-milestone`. Phase numbering
-continues from **23**.
+**Current focus:** Milestone **v2.1 Clean Experimental Suite**, defining requirements. Land every
+experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
+hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
+single-version results. **E2 is in the re-run.** Phase numbering continues from **23**.
 
 ## Current Position
 
-**Milestone v2.0 Publication Prep is CLOSED (2026-08-15).** 10 of 12 phases executed,
-106/106 plans complete, 51 of 55 requirements satisfied. Archived to
-`.planning/milestones/v2.0-ROADMAP.md` and `v2.0-REQUIREMENTS.md`.
-
-**No release was cut at close, by user decision.** The releases that exist — v2.0.0 and
-v2.0.1, tagged on GitHub 2026-08-11 — came out of Phase 21, not out of the close. No git tag
-was created for the milestone itself.
-
-**Label note:** the milestone was planned as "v1.9" and is archived as **v2.0**, because Phase
-19.3 made `board` a required parameter of two public exports and forced a major bump. Any older
-planning document saying "v1.9" means this milestone.
-
-**Deferred and carried forward, not dropped:** Phase 20 (Refractive Index Helper, INDEX-01..03)
-— deferred 2026-08-07 on measured evidence, MF-13. Phase 22 (Release Cut, DOCS-07) — pre-empted
-by the v2.0.0/v2.0.1 releases; the manuscript C1 cell and the DOI citation stay the user's work.
-
-**Hard deadline still live:** revised SoftwareX manuscript due **2026-08-21**.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-15 — Milestone v2.1 started
 
 ## Deferred Items
 
@@ -113,6 +99,7 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 - **MF-19** — §3's numbers predate the current library. This is the manuscript-level blocker and
   the direct reason the next milestone ends in a single-version suite re-run.
+
 - **The DOI freezes the reference numbers.** Section 3, the archive's `reference_outputs/`, and
   the tutorial's expected-value table are a matched set of three. Any change that moves the
   real-rig numbers breaks all three and requires cutting another Zenodo version. Nothing in the

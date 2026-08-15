@@ -69,17 +69,53 @@ published bytes. CI is green on all six jobs. The library is tagged v2.0.0/v2.0.
 
 **Hard deadline still live:** revised SoftwareX manuscript due **2026-08-21**.
 
-## Next Milestone Goals
+## Current Milestone: v2.1 Clean Experimental Suite
 
-Agreed 2026-08-15. Not yet defined as a roadmap — run `/gsd:new-milestone`.
+**Goal:** Land every experiment-suite fix that changes what the suite measures, records, or can
+claim; freeze one sha; hand a complete full-suite driver to a larger Linux machine for the run;
+reconcile the returned single-version results into the manuscript's evidence base.
 
-1. **Clean up the experiment suite.** Its defects accumulated faster than they were fixed once
-   the deadline started dominating.
-2. **Fix the problems found along the way** — the carried-forward list in ROADMAP.md
-   § Carried Forward and the five pending todos.
-3. **One final full experiment-suite re-run for the paper**, so that every experiment is run at
-   the same code version. This is what MF-19 (§3's numbers predate the current library) needs and
-   what no single run has yet delivered.
+**Target features:**
+
+- Experiment correctness fixes that move or license a published number — E1's `water_z` pin in
+  the non-refractive arm, `normal_fixed` unification for E1/E7, E6's signed and gauge-corrected
+  Z error with per-camera decomposition, E7's vacuous `fixed` rows, E4's hardcoded E2 path
+- Degeneracy made observable — the counter split by stage *and* kind, persisted by E5 and the
+  band runs, reaching the production benchmark record; the over-broad warning narrowed and its
+  cause list corrected; the production rig's 198 unprojectable observations classified
+- A full-suite driver that covers **every** invocation — `rerun_19_3.sh` extended over the band
+  runs and E2, which is exactly where the six-sha provenance spine fractured
+- A run manifest capturing the environment, with `aquacal_version` and the OpenCV build recorded
+  truthfully
+- A decided meaning for `--check` across a deliberate baseline re-base, and stale output trees
+  moved aside before the run
+- E1's seed band gains a `noise_std` axis, so its promoted absolute-accuracy numbers carry a
+  stated domain
+- The full suite executed once at one frozen sha — **E2 included** — on the Linux machine, gates
+  green
+- Post-submission: the Zenodo record split into immutable inputs and a versioned results
+  package, stale outputs purged from the library
+
+**Agreed 2026-08-15.** The three motivating problems: the suite's defects accumulated faster than
+they were fixed once the deadline started dominating; the carried-forward defect list needs
+closing; and MF-19 (§3's numbers predate the current library) needs one run at one code version,
+which no single run has yet delivered.
+
+**Execution split (author, 2026-08-15).** Code edits land on this machine. The full re-run is
+handed off to a larger Linux machine — so the driver, the manifest, and the gates must be
+complete and portable *before* handoff, not discovered during the run.
+
+**E2 is in the re-run.** Section 3, the Zenodo archive's `reference_outputs/`, and the tutorial's
+expected-value table are a matched set of three; re-running E2 moves all of them together and
+makes the archive repackage load-bearing rather than optional.
+
+**Deadline split.** Fixes → frozen handoff → run → manuscript-facing numbers land before the
+**2026-08-21** SoftwareX submission. The Zenodo repackage and re-upload, the stale-output purge,
+and the follow-ups gated on the 198-classification come after.
+
+**Explicitly deferred, not dropped:** the source-level `normal_fixed` reconciliation
+(POST-SUBMISSION), the degeneracy-gate scope decision for real-rig runs (blocked until the 198
+are classified), and all solver memory/CPU work.
 
 **Scope boundary (author, 2026-08-15):** targeted fixes that improve the experimental suite —
 nothing else. Specifically **out**: the solver's memory/CPU trade-off (`_optim_common.py`'s dense
@@ -94,9 +130,15 @@ cheaply the library gets there, it waits.
 
 ### Active
 
-- [ ] Experiment-suite cleanup
-- [ ] Carried-forward defect fixes (INDEX-01..03 deferred, DOCS-07, the post-Zenodo repair batch)
-- [ ] Full single-version experiment-suite re-run for the manuscript
+- [ ] Experiment correctness fixes that change what the suite measures or can claim
+- [ ] Degeneracy observability: split counter, persistence, narrowed warning, the 198 classified
+- [ ] Full-suite driver covering every invocation, with an environment-capturing run manifest
+- [ ] E1 noise-axis band licensing its absolute-accuracy claim
+- [ ] Frozen single-sha handoff package for the Linux machine
+- [ ] Full single-version experiment-suite re-run, E2 included
+- [ ] Post-run reconciliation: manuscript findings, Zenodo repackage, stale-output purge
+- [ ] Carried forward, unscheduled: INDEX-01..03 (Phase 20, deferred on MF-13), DOCS-07
+      (manuscript-side), CLEAN-01
 
 ### Out of Scope
 
@@ -181,6 +223,25 @@ AquaCal to improve calibration accuracy over time.
 | Production runs go out as one risk-first detached queue under one frozen git sha | A per-cell `git rev-parse` splits an artifact's recorded SHA; a mid-run commit destroys provenance | ✓ Good — held across 19.3, 19.4 and 19.5 |
 | Zenodo is published by the user by hand, values pre-computed for transcription | Publishing is irreversible and assigns a permanent DOI | ✓ Good — record 21889922, lineage preserved |
 | Defer Phase 20 (refractive index helper) on measured evidence | MF-13: across the full ±0.010 assumed-index sweep, reconstruction MAE moves ~5× below seed noise | ✓ Good — deferred, not dropped |
+| E2 is inside the v2.1 single-version re-run | MF-19 is only discharged if §3's real-rig numbers come from the same build as everything else; a partial re-run leaves the paper mixing two library versions | — Pending — forces §3, the Zenodo `reference_outputs/`, and the tutorial table to be re-cut as a matched set |
+| Edit here, run on the Linux machine | The 13-camera rig costs 48–87 min at 10.26 GiB peak per calibration; the full suite is not a workstation job | — Pending — makes driver coverage, the run manifest, and the gates portable-before-handoff requirements rather than run-time discoveries |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
 
 ---
-*Last updated: 2026-08-15 after closing the v2.0 Publication Prep milestone*
+*Last updated: 2026-08-15 — milestone v2.1 Clean Experimental Suite started*
