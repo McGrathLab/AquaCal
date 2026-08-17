@@ -5,7 +5,7 @@
 - Optimization & Performance (2 entries)
 - Coordinate Frames & Geometry (2 entries)
 - Calibration Lessons (1 entry)
-- Known Issues & Workarounds (0 entries)
+- Known Issues & Workarounds (6 entries)
 - Debugging Recipes (0 entries)
 
 ## Architecture
@@ -261,6 +261,36 @@ escaped case is diagnosable from the artifact alone. Do **not** "fix" this by ha
 `src/aquacal/io/benchmark.py:capture_environment`, `experiments/README.md` §7,
 `.planning/todos/done/2026-08-13-editable-install-metadata-can-mislabel-artifact-provenance.md`.
 **Added**: 2026-08-13
+
+### A verification gate that cannot pass is worse than no gate (D-10)
+**Context**: E4's `--check` reported 9 of 10 cells mismatched on the committed tree, on exactly two
+columns (`exit_code`, `status_reason`), while all 33 other metric columns reproduced to 1e-6. Both
+failures were structural, not regressions: `_run_check` hardcodes `"exit_code": None` because no
+subprocess runs under `--check` (the committed CSV holds the real run's `0.0`), and
+`status_reason` round-trips an empty string through CSV as `NaN`. Neither can ever clear by
+construction. This is the same shape as another gate observed to pass while parsing nothing
+against a `CONTEXT.md` holding 21 trackable decisions — a decision-coverage gate reporting 0
+trackable decisions and reading as green.
+**Insight**: A verification gate that cannot pass is worse than no gate at all — a gate that has
+only ever been observed in one state (always red, or always green) has not been validated — it has not been shown capable of the *other* state, so nobody can tell a
+genuine failure/pass from the gate's own structural inability to do otherwise. Both instances here
+trained a reader to expect the gate's output regardless of what actually happened underneath: an
+always-red `--check` trains "red is normal, don't look closer"; an always-green decision-coverage
+gate trains "green means covered" when it means "parsed nothing." **Before trusting a gate,
+establish that it can fail and that it can pass** — with a concrete case of each, not by reading
+the gate's own source and assuming. FIX-05 fixed the always-red case by excluding exactly the two
+named, measurement-backed columns (`experiments/e4_benchmark_grid.py:CHECK_EXCLUDED_COLUMNS`) and
+printing what was skipped on every run, so the exclusion itself stays visible rather than becoming
+a second thing nobody re-derives.
+**How to apply**: when a check is asserted "passing" or "failing" as a matter of course, ask what
+would make it flip. If the answer requires code you have not written or a state you have never
+produced, the gate is unvalidated, not green. A wider audit of this project's other gates
+(`experiments/check_rerun_gates.py`) was considered here and deliberately not taken — worth
+revisiting at the Phase 27 freeze, the last cheap moment before Phase 29 depends on those gates.
+**References**: `.planning/phases/23-experiment-correctness-fixes/23-02-SUMMARY.md`,
+`.planning/probes/2026-08-17-phase-23-recon/e4_check_detail.py`,
+`experiments/e4_benchmark_grid.py:CHECK_EXCLUDED_COLUMNS`.
+**Added**: 2026-08-17
 
 ## Debugging Recipes
 

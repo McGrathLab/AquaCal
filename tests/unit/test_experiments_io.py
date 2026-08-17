@@ -173,6 +173,86 @@ class TestCheckComparator:
         assert report.passed is False
         assert "extra_column" in report.message or "Header mismatch" in report.message
 
+    def test_exclude_columns_ignores_differences_only_in_named_columns(self, tmp_path):
+        """D-07/D-08: excluding a column skips it in the cell comparison, and
+        the report still fails when a NON-excluded column differs."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        # Differ ONLY in "gt_x_m" (a non-key float column).
+        fresh = committed.copy()
+        fresh.loc[0, "gt_x_m"] = fresh.loc[0, "gt_x_m"] + 100.0
+
+        report = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report.passed is True
+
+        # Now also differ in a NON-excluded column -- must still fail.
+        fresh.loc[1, "reprojection_rms_px"] = fresh.loc[1, "reprojection_rms_px"] * (
+            1 + 10 * CHECK_RTOL
+        )
+        report2 = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report2.passed is False
+        assert "reprojection_rms_px" in report2.worst_cell
+
+    def test_exclude_columns_never_exempts_the_header_comparison(self, tmp_path):
+        """D-07: a header difference must still fail even when the differing
+        column is named in exclude_columns -- the schema contract is never
+        excludable."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.drop(columns=["gt_x_m"]).copy()
+
+        report = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report.passed is False
+        assert "Header mismatch" in report.message
+
+    def test_exclude_columns_default_reproduces_todays_exact_behavior(self, tmp_path):
+        """Omitting exclude_columns must leave today's outcome and message
+        byte-identical on an unchanged fixture."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.copy()
+
+        report_default = compare_experiment_csv(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        report_explicit_empty = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=(),
+        )
+        assert report_default == report_explicit_empty
+        assert report_default.passed is True
+        assert (
+            report_default.message
+            == "Fresh output matches committed baseline within tolerance."
+        )
+
     def test_check_passes_on_mixed_empty_and_real_string_column(self, tmp_path):
         """Regression for 19.2-11/19.2-12 (review H upstream finding 2): a
         `status_reason`-shaped column with MOSTLY empty strings but at least

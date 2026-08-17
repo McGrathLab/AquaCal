@@ -184,6 +184,27 @@ GRID_BOARD_CONFIG = BoardConfig(
 
 CHECK_RTOL = 1e-6
 
+# D-07/D-08: --check's named exclusion list, declared here (not in
+# experiments/_io.py, which owns the shared MECHANISM only -- see
+# compare_experiment_csv's exclude_columns docstring) because putting the
+# list in the shared module would silently grant the exemption to every
+# experiment's --check, including ones nobody has audited for always-red
+# columns. Measured 2026-08-17 (.planning/probes/2026-08-17-phase-23-recon/
+# e4_check_detail.py, 35 columns x 10 rows): all 33 OTHER columns reproduce
+# to 1e-6 on the committed tree; only these two fail, and can never pass:
+#
+# - "exit_code": _run_check hardcodes "exit_code": None (no subprocess runs
+#   under --check) while the committed CSV holds 0.0 from the real run that
+#   produced it. Synthesizing "exit_code: 0" from the committed record was
+#   considered and rejected -- it fabricates a field in a provenance
+#   artifact (D-07).
+# - "status_reason": an empty-string-versus-NaN round-trip through CSV.
+#
+# A third entry here is a deliberate decision requiring the same
+# measurement-backed justification, not a silent inheritance (D-07: a named
+# list beats a heuristic).
+CHECK_EXCLUDED_COLUMNS: tuple[str, ...] = ("exit_code", "status_reason")
+
 # The exit code run_grid_cell's --cell child returns when
 # write_direct_call_benchmark skipped an existing file (force=False). Lets
 # run_cell_subprocess map a skip onto status="skipped_existing" without
@@ -226,6 +247,57 @@ _ALLOWED_CELL_VALUES = frozenset(DECLARED_CELLS) | frozenset(SMOKE_CELLS)
 E2_BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
 )
+
+
+def resolve_e2_benchmark_path(out_dir: Path) -> tuple[Path | None, str]:
+    """Resolve E2's real-rig `benchmark.json` relative to the active `--out`.
+
+    FIX-05 (D-09): the module-level `E2_BENCHMARK_PATH` constant describes
+    only the DEFAULT output tree. Passing it directly to `build_grid_dataframe`
+    at every caller, regardless of `out_dir`, means a non-default `--out`
+    either silently drops the real-rig row or -- worse -- pairs one machine's
+    synthetic cells with another machine's real-rig row imported from the
+    repo tree. This resolver is the single source of truth both
+    `build_grid_dataframe` callers (`_run_check`, `_run_full`) must use.
+
+    Three branches, in order:
+
+    1. `out_dir/benchmark.json` exists: the native case -- E2 wrote its
+       record into the same tree this grid run is writing into. Use it.
+    2. `out_dir` resolves to the same directory as `E2_BENCHMARK_PATH`'s
+       parent (i.e. the default tree): use the `__file__`-anchored constant.
+       Kept as an explicit branch, even though it is path-equal to branch 1
+       for the default directory, because it is what preserves the
+       deliberate `__file__` anchoring documented on `E2_BENCHMARK_PATH` --
+       a cwd-relative path silently resolves to nothing when the module is
+       invoked from anywhere but the repo root.
+    3. Otherwise: no native record exists under a non-default `--out`.
+       Return `None` rather than falling back to the repo tree's record,
+       which describes a different machine's run. **Never fall back across
+       machines.**
+
+    Args:
+        out_dir: The active `--out` directory (already resolved by
+            `resolve_out_dir`).
+
+    Returns:
+        A `(path_or_None, provenance_note)` tuple. `path_or_None` is `None`
+        exactly when branch 3 applies; `provenance_note` is a human-readable
+        string suitable for logging that names which branch was taken.
+    """
+    out_dir = Path(out_dir)
+    candidate = out_dir / "benchmark.json"
+    if candidate.exists():
+        return candidate, "native: resolved relative to --out"
+    if out_dir.resolve() == E2_BENCHMARK_PATH.parent:
+        return E2_BENCHMARK_PATH, "default tree: __file__-anchored E2_BENCHMARK_PATH"
+    return (
+        None,
+        f"absent: no benchmark.json under {out_dir} and --out is not the default "
+        f"tree; refusing to import {E2_BENCHMARK_PATH}, which describes a "
+        "different machine's run",
+    )
+
 
 # ---------------------------------------------------------------------------
 # D-29: grid-family optical geometry -- real-rig-like rather than the
@@ -1302,7 +1374,7 @@ def _extract_pipeline_row(record: dict) -> dict:
 
 
 def build_grid_dataframe(
-    out_dir: Path, cell_statuses: list[dict], e2_benchmark_path: Path
+    out_dir: Path, cell_statuses: list[dict], e2_benchmark_path: Path | None
 ) -> pd.DataFrame:
     """Build the ten-row grid frame: nine declared cells plus E2's real-rig row.
 
@@ -1321,8 +1393,12 @@ def build_grid_dataframe(
         cell_statuses: One dict per declared cell (as `run_grid_cell`/
             `run_cell_subprocess` return), each with `n_cameras`, `n_frames`,
             `status`, `status_reason`, and (optionally) `exit_code`.
-        e2_benchmark_path: Path to E2's pipeline-written `benchmark.json`
-            (`E2_BENCHMARK_PATH` by default at the CLI layer).
+        e2_benchmark_path: Path to E2's pipeline-written `benchmark.json`, or
+            `None`. Callers should supply the output of the module's
+            `resolve_e2_benchmark_path` resolver rather than a bare constant
+            (FIX-05, D-09) -- `None` means no native record exists for this
+            `out_dir` and the row is emitted absent-and-marked rather than
+            imported from another tree.
 
     Returns:
         A `DataFrame` with exactly `GRID_COLUMNS`, in order: nine synthetic
@@ -1416,28 +1492,35 @@ def build_grid_dataframe(
 
         rows.append(row)
 
-    e2_benchmark_path = Path(e2_benchmark_path)
     e2_record: dict | None = None
-    if not e2_benchmark_path.exists():
+    if e2_benchmark_path is None:
         logger.warning(
-            "E2 benchmark record not found at %s; emitting a null real-rig row "
-            "(record_source=missing_e2_benchmark) instead of raising after all "
-            "declared cells have solved (CR-03).",
-            e2_benchmark_path,
+            "No E2 benchmark record resolved for this out_dir; emitting a null "
+            "real-rig row (record_source=missing_e2_benchmark) instead of "
+            "importing another machine's record (FIX-05, D-09)."
         )
     else:
-        try:
-            with open(e2_benchmark_path) as f:
-                e2_record = json.load(f)
-        except (OSError, json.JSONDecodeError) as exc:
+        e2_benchmark_path = Path(e2_benchmark_path)
+        if not e2_benchmark_path.exists():
             logger.warning(
-                "E2 benchmark record at %s could not be read (%s: %s); "
-                "emitting a null real-rig row (record_source=missing_e2_benchmark) "
-                "instead of raising (CR-03).",
+                "E2 benchmark record not found at %s; emitting a null real-rig row "
+                "(record_source=missing_e2_benchmark) instead of raising after all "
+                "declared cells have solved (CR-03).",
                 e2_benchmark_path,
-                type(exc).__name__,
-                exc,
             )
+        else:
+            try:
+                with open(e2_benchmark_path) as f:
+                    e2_record = json.load(f)
+            except (OSError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "E2 benchmark record at %s could not be read (%s: %s); "
+                    "emitting a null real-rig row (record_source=missing_e2_benchmark) "
+                    "instead of raising (CR-03).",
+                    e2_benchmark_path,
+                    type(exc).__name__,
+                    exc,
+                )
 
     if e2_record is None:
         e2_row = {
@@ -1873,9 +1956,27 @@ def _run_check(args: argparse.Namespace) -> int:
             }
         )
 
-    df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)
+    e2_path, e2_note = resolve_e2_benchmark_path(out_dir)
+    logger.info("E2 real-rig record: %s (%s)", e2_path, e2_note)
+    print(f"E2 real-rig record: {e2_path} ({e2_note})")
+
+    # D-07: print what --check skips, unconditionally, pass or fail -- so a
+    # reader of a green --check knows exactly what green does not cover.
+    print(
+        "--check excludes these columns from cell comparison (never "
+        f"reproducible under --check, D-07): {', '.join(CHECK_EXCLUDED_COLUMNS)} "
+        "-- exit_code: _run_check hardcodes None (no subprocess runs under "
+        "--check) while the committed CSV holds the real run's exit code; "
+        "status_reason: empty-string-versus-NaN round-trip through CSV."
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     report = compare_experiment_csv(
-        df, committed_path, key_columns=GRID_KEY_COLUMNS, rtol=CHECK_RTOL
+        df,
+        committed_path,
+        key_columns=GRID_KEY_COLUMNS,
+        rtol=CHECK_RTOL,
+        exclude_columns=CHECK_EXCLUDED_COLUMNS,
     )
     print(report.message)
     return exit_code_for(report)
@@ -1951,7 +2052,10 @@ def _run_full(args: argparse.Namespace) -> int:
             )
             return 1
 
-    df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)
+    e2_path, e2_note = resolve_e2_benchmark_path(out_dir)
+    logger.info("E2 real-rig record: %s (%s)", e2_path, e2_note)
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     write_experiment_csv(
         df,
         out_dir / "benchmark_grid.csv",
