@@ -389,6 +389,7 @@ def _run_arm(
         observer=observer_stage3,
         diagnostics_out=diag_stage3,
         discard_stats_out=discard_stats_stage3,
+        discard_stage=STAGE_INTERFACE,
     )
     elapsed_seconds[STAGE_INTERFACE] = time.perf_counter() - t0
     diagnostics[STAGE_INTERFACE] = diag_stage3
@@ -426,6 +427,7 @@ def _run_arm(
             observer=observer_intrinsic_pass,
             diagnostics_out=diag_intrinsic_pass,
             discard_stats_out=discard_stats_intrinsic_pass,
+            discard_stage=STAGE_INTRINSIC_PASS,
         )
         elapsed_seconds[STAGE_INTRINSIC_PASS] = time.perf_counter() - t1
         diagnostics[STAGE_INTRINSIC_PASS] = diag_intrinsic_pass
