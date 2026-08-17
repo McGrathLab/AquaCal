@@ -153,6 +153,42 @@ full suite (Phase 28).
   Applies the v2.0.0 lesson directly — one commit per breaking change, learned when a CHANGELOG
   listed 1 of 7.
 
+### Amendment 2026-08-17 — D-06 and D-12: no plan writes MANUSCRIPT-FINDINGS.md
+
+**Decided by the user during planning, after the plans were drafted.** D-06 and D-12 as originally
+written sent this phase's evidence into `.planning/MANUSCRIPT-FINDINGS.md`. That is withdrawn.
+
+**Why.** The ledger's own charter, stated in its header, is *"measured results from the v1.9
+experiment suite that contradict, understate, or otherwise require a change to prose in the
+manuscript or supplement"*, where *"each entry names the artifact that is the citable source."*
+Phase 23 fails that contract in both halves:
+
+- **No citable artifact survives.** D-12 deliberately sends every in-phase run to a git-ignored
+  directory. D-12's "transcribe as values, not paths" was a workaround for exactly this mismatch —
+  it manufactures an entry the file's own contract says should cite measured data.
+- **Nothing here is a new finding.** The findings these six fixes correspond to are already in the
+  ledger: **MF-17** (E7's `fixed` arms are vacuous, not null) is FIX-04's; **MF-18** (unit-index
+  pinhole identity) is FIX-01's null direction; **MF-12** (the E6 gauge decomposition) is FIX-03's.
+  Phase 23 implements what those findings imply. It measures nothing new and discovers nothing.
+- **Phase 28 is the real entry point**, when the suite runs at the frozen sha and produces artifacts
+  that survive to be cited.
+
+**What replaces it.** Each plan records its evidence in its own committed `23-0N-SUMMARY.md` under an
+`## Evidence` heading — durable, phase-scoped, and still "as values, never as an artifact path,"
+which was D-12's actual intent. Plan 01 additionally closes with a `### Ledger candidate` note
+flagging the D-06 bound-hit table as the one item a reviewer would want in the ledger (it strengthens
+MF-18's null-direction argument), so the item stays visible without an executor acting on it.
+Transcribing it is the user's call, consistent with the standing rule that manuscript-ledger work is
+not executor work.
+
+**Consequence for the wave plan.** `MANUSCRIPT-FINDINGS.md` was the *only* file overlap among the
+four plans — everything else was already disjoint, and the `depends_on` chain 01 → 02 → 03 existed
+solely to serialize appends to it (plus an MF-NN numbering collision risk that a git merge would not
+have flagged). With the ledger removed from every `files_modified`, all four plans are genuinely
+disjoint and run in **wave 1**. There is no code coupling between them: FIX-01's bounds override is
+arm-local by construction (D-01) and inert for plans 02–04, and plan 01's `e7_interface_ablation.py`
+is a different file from plan 03's `e7_focal_standoff_analysis.py`.
+
 ### Claude's Discretion
 
 - The exact mechanism for reaching `build_bounds` from `e1_refractive_comparison.py` (new kwarg on

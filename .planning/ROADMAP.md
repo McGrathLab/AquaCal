@@ -148,7 +148,31 @@ suite rather than a moving target.
 2026-08-17 found three of them are not: FIX-01 and FIX-02 interact and must be sequenced, FIX-05 is
 two call sites plus a `--check` contract shared with Phase 26, and FIX-06 is four sites across two
 trees. The phase boundary is unchanged — the plan decomposition inside it is not six-way parallel.
-**Plans**: TBD
+
+**Plans** (4, grouped by coupling per D-13; all wave 1 — `files_modified` verified pairwise disjoint):
+
+**Wave 1** *(no inter-plan dependencies)*
+- `23-01` — FIX-01 + FIX-02: pin `water_z` in E1's non-refractive arm via a bounds freeze threaded to
+  **both** `build_bounds` sites, then free the interface normal in E1 and E7. Two commits, FIX-01
+  first. `autonomous: false` (the E1 verification run is the user's).
+- `23-02` — FIX-05: resolve E2's real-rig row relative to `--out` at both call sites (`_run_check`
+  `:1876`, `_run_full` `:1954`), plus the named `--check` exclusion contract (`exit_code`,
+  `status_reason`) shared with Phase 26's DRIVER-03.
+- `23-03` — FIX-03 + FIX-04: E6 signed/gauge-corrected Z error plus the per-camera decomposition;
+  E7's `fixed` rows labelled vacuous-by-construction in the existing `scope` column. Two commits.
+- `23-04` — FIX-06: four stale provenance strings in `e2_real_rig.py`/`synthetic.py` plus a
+  supersession header on `19.1-E2-FRAMESET-PROVENANCE.md`. Touches no logic, isolated so it can never
+  be blamed for a number moving.
+
+Cross-cutting constraints (appear in 2+ plans):
+- D-11: cheap-tier verification only — no E4 nine-cell grid, no E1 10-seed band, no full suite. Those
+  are Phase 28 at the frozen sha.
+- D-12 (as amended 2026-08-17): in-phase runs write to git-ignored `experiments/verify_23/`; evidence
+  is transcribed as values into each plan's own `SUMMARY.md`. **No plan writes
+  `.planning/MANUSCRIPT-FINDINGS.md`** — see `23-CONTEXT.md` § Amendment 2026-08-17.
+- D-14: one commit per requirement (a floor, not a ceiling).
+- Scope fence: `Spinoffs/papers/aquacal/` is read-only from this repo; `docs/guide/troubleshooting.md`
+  is not edited (it describes a live limitation, D-05).
 
 ### Phase 24: Degeneracy Instrumentation
 **Goal**: The degeneracy counter is observable end to end — it reaches the artifacts a reader

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: planning
-stopped_at: Phase 23 context gathered
-last_updated: "2026-08-17T12:38:00.513Z"
-last_activity: 2026-08-17
+status: executing
+stopped_at: Phase 23 planned -- 4 plans, ready to execute
+last_updated: "2026-08-17T13:44:42.728Z"
+last_activity: 2026-08-17 -- Phase 23 planning complete
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -34,8 +34,8 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 23 (Experiment Correctness Fixes) — context gathered, not yet planned
 Plan: —
-Status: Context captured, ready to plan
-Last activity: 2026-08-17 — `23-CONTEXT.md` written; four plans decided (FIX-01+02, FIX-05,
+Status: Ready to execute
+Last activity: 2026-08-17 -- Phase 23 planning complete
 FIX-03+04, FIX-06), one commit per requirement
 
 ## Roadmap Summary (v2.1)

@@ -137,8 +137,19 @@ table row above, not `--check`.
 `_run_check` also has the second call site FIX-05 must cover: `build_grid_dataframe(out_dir,
 cell_statuses, E2_BENCHMARK_PATH)` at `e4_benchmark_grid.py:1876` passes the module-level
 constant directly, bypassing whatever `--out`-relative resolution the main aggregation path
-gets. A verification pass that only exercises `_run_smoke_cells`'s call
-(`build_grid_dataframe` at `:1954`) will not catch a fix that missed `:1876`.
+gets.
+
+**CORRECTION (verified against source 2026-08-17, after this document's first draft).** The second
+call site is **`_run_full` (`:1954`)**, not `_run_smoke_cells`. `_run_smoke_cells` (~`:1884`) runs
+`SMOKE_CELLS` through `run_cell_subprocess` and returns — it never calls `build_grid_dataframe` at
+all, as that function's own comment at ~`:1390` states. The count of two sites that D-09 requires is
+unchanged; only the second site's name was wrong.
+
+**This changes what verification means for FIX-05:** `--smoke` does not exercise the aggregation
+path, so it cannot verify the fix. Using it as the acceptance vehicle would be a step that passes
+whether or not the fix works — the same pathology as the always-red `--check` FIX-05 is fixing.
+FIX-05's vehicles are the `tmp_path` unit tests (which drive `build_grid_dataframe` and both
+callers' resolution directly, in seconds) plus the read-only `--check` corroboration.
 
 ### Sampling rate
 
@@ -184,10 +195,10 @@ Only what CONTEXT.md does not already say.
   optimality number for a worse solve — the acceptance metric stays the recovered `water_z`
   value (D-03), never this number.
 - **FIX-05 second call site (D-09):** the verification vehicle table above names both
-  `_run_check`'s `:1876` and `_run_smoke_cells`'s `:1954` `build_grid_dataframe` calls
+  `_run_check`'s `:1876` and `_run_full`'s `:1954` `build_grid_dataframe` calls
   explicitly because they are easy to fix one and miss the other.
 
-## Open Questions
+## Open Questions (NONE)
 
 None. D-02's probe resolved cleanly (no conditioning degradation), so the Claude's-Discretion
 fallback item is moot and no user decision is required on that front. The remaining two

@@ -54,7 +54,7 @@ here.
 |---|---|---|---|---|---|
 | FIX-01 | 1 | runtime probe | `python -u -m experiments.e1_refractive_comparison --out experiments/verify_23/` | Non-refractive arm's recovered `water_z` reads **1.031 m** (probe measured 1.030999999999). NOT 1.990 m, NOT 0.0120 m. Guard count 0 is corroboration only (D-03), never the test. | ⬜ pending |
 | FIX-02 | 1 | runtime probe | same E1 invocation (both arms share it) | Both arms record `normal_fixed: false`; refractive arm's `water_z` stays near its established −7.43 mm offset from 1.031 m rather than making a new large excursion. | ⬜ pending |
-| FIX-05 | 2 | runtime probe | `python -u -m experiments.e4_benchmark_grid --smoke --out experiments/verify_23/` | E2 real-rig benchmark row resolves relative to `--out` in `experiments/verify_23/benchmark_grid.csv` at **both** call sites (`:1876` `_run_check`, `:1954` `_run_smoke_cells`). | ⬜ pending |
+| FIX-05 | 2 | unit (`tmp_path`) + read-only `--check` | `python -m pytest tests/unit/test_experiments_e4.py tests/unit/test_experiments_io.py -x` then `python -u -m experiments.e4_benchmark_grid --check` | `build_grid_dataframe` resolves the E2 record relative to the passed `out_dir` at **both** call sites — `_run_check` (`:1876`) and `_run_full` (`:1954`); a non-default `--out` with no native `benchmark.json` yields an announced, explicitly-marked absent row rather than a silent cross-machine import. `--check` exits 0 with `exit_code`/`status_reason` the only skipped columns. | ⬜ pending |
 | FIX-03 | 3 | unit | `python -m pytest tests/unit/test_experiments_e6.py -x` | Signed, gauge-corrected Z error column present; per-camera decomposition emitted; both behind the existing collinear caveat; no new verdict column. | ⬜ pending |
 | FIX-04 | 3 | unit | `python -m pytest tests/unit/test_e7_focal_standoff.py tests/unit/test_e7_band_mode.py -x` | `fixed` rows carry the vacuous-by-construction label in the existing free-text `scope` column — no schema change, no measured `no_signature` verdict. | ⬜ pending |
 | FIX-06 | 4 | inspection | grep the four string sites in `e2_real_rig.py` / `synthetic.py` | Strings read the verified **262 → 52 → 7,762**, not the stale "60 usable frames → 12 validation → 1,817 comparisons". `19.1-E2-FRAMESET-PROVENANCE.md` carries a supersession header rather than an edit. | ⬜ pending |
@@ -97,7 +97,7 @@ Phase 23 implements the exclusion; Phase 26 (DRIVER-03) documents it. The two mu
 
 Existing infrastructure covers all phase requirements. No new test framework, fixture, or
 harness needs standing up — every requirement has an existing test file or an existing runtime
-harness (E1's CLI, E4's `--smoke`) to extend.
+harness (E1's CLI, E4's `--check` plus `tmp_path` unit fixtures) to extend.
 
 ---
 
@@ -106,7 +106,7 @@ harness (E1's CLI, E4's `--smoke`) to extend.
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Benchmark record states the held `water_z` value, the mechanism, and the reason (D-04) | FIX-01 | Prose quality — a reader diffing the two arms' records must find both the asymmetry and its justification without leaving the artifact. Not assertable as a string match. | Read the non-refractive arm's benchmark record in `experiments/verify_23/`. Confirm it names the held value (1.031 m), the mechanism (degenerate bounds interval), and the reason (exact null direction at unit index) with a pointer to the measurement. |
-| Evidence transcribed into `MANUSCRIPT-FINDINGS.md` (D-12) | FIX-01, FIX-05 | Verification outputs go to a git-ignored `--out` dir and never survive. The transcription is the durable artifact. | Confirm `.planning/MANUSCRIPT-FINDINGS.md` gained the recovered `water_z`, the bound-hit table (D-06), and the FIX-05 aggregated real-rig row — as values, not as artifact paths. |
+| Evidence recorded in each plan's `23-0N-SUMMARY.md` (D-12 as amended 2026-08-17) | FIX-01, FIX-05 | Verification outputs go to a git-ignored `--out` dir and never survive. The transcription is the durable artifact. | Confirm `23-01-SUMMARY.md` gained the recovered `water_z` and the bound-hit table (D-06), and `23-02-SUMMARY.md` the `--check` baseline — as values, not as artifact paths. **No plan may modify `.planning/MANUSCRIPT-FINDINGS.md`**; `git diff --stat` on it must be empty. |
 | Always-red gate recorded as a process finding (D-10) | FIX-05 | A knowledge-base prose entry about the pattern, not this instance. | Confirm `.planning/knowledge-base.md` § Known Issues gained an entry on verification gates that cannot pass. |
 
 ---
@@ -117,8 +117,15 @@ Every in-phase verification run writes to `experiments/verify_23/`. Confirm it i
 (or add it) before the first run. Nothing leaks into the tree Phase 27 packages or that
 DRIVER-04 later moves aside. Side effect: this exercises FIX-05's `--out` path for free.
 
-Because those outputs are never committed, **evidence must be transcribed into
-`.planning/MANUSCRIPT-FINDINGS.md`, never referenced as an artifact path.**
+Because those outputs are never committed, **evidence must be transcribed as values, never
+referenced as an artifact path.**
+
+**Amended 2026-08-17:** it is transcribed into each plan's own committed `23-0N-SUMMARY.md`, **not**
+into `.planning/MANUSCRIPT-FINDINGS.md`. That ledger's charter is measured results citing a
+surviving artifact, and this phase runs nothing durable; the findings its fixes correspond to already
+exist (MF-12, MF-17, MF-18), the ledger pass is the user's, and the real entries come from Phase 28's
+run at the frozen sha. See `23-CONTEXT.md` § Amendment 2026-08-17. Plan 01 additionally closes with a
+`### Ledger candidate` note flagging the D-06 bound-hit table for the user.
 
 ---
 
