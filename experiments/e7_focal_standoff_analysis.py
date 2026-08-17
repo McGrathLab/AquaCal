@@ -60,6 +60,18 @@ SCOPE_TEXT = (
     "new calibration (D-19.5-05)."
 )
 
+# FIX-04 (23-03): appended to SCOPE_TEXT, row-by-row, for exactly the two
+# `fixed`-arm rows whose verdict is "vacuous_by_construction" (see
+# `degeneracy_verdict`). No schema change -- `scope` is already a free-text
+# column, so this is the row's home rather than a new boolean column.
+VACUOUS_SCOPE_SUFFIX = (
+    " VACUOUS BY CONSTRUCTION: this arm never refines intrinsics, so focal_drift_pct is 0.0 "
+    "exactly for every camera and seed in interface_ablation_band.csv. The within-seed "
+    "correlation is therefore undefined (zero variance), not null -- there is no measured "
+    "absence of a signature here, and this row must not be read as one. The supplement's "
+    "argument about the fixed arm is a priori and draws on a different artifact (MF-17)."
+)
+
 
 def focal_standoff_association(df: pd.DataFrame, arm: str) -> dict:
     """Per-seed correlation between `focal_drift_pct` and `standoff_m`, one arm.
@@ -216,14 +228,38 @@ def degeneracy_verdict(association: dict, alpha: float = 0.05) -> str:
 
     Returns:
         `"underpowered"` if `n_seeds < 2` (a single seed, or zero, cannot
-        support a sign test at all). Otherwise `"signature_present"` if
-        `p_one_sided < alpha`, else `"no_signature"`. `"no_signature"` is a
-        valid, final answer (D-19.5-07) -- it is not retried with more seeds
-        or a different statistic.
+        support a sign test at all).
+
+        `"vacuous_by_construction"` (FIX-04, 23-03) if `n_seeds >= 2` AND no
+        seed contributed a sign (`n_seeds_negative == n_seeds_positive == 0`)
+        AND `mean_within_seed_correlation` is undefined (NaN) -- all three
+        conditions together mean the statistic could not be COMPUTED, not
+        that it was computed and found null. This happens because the arm
+        admits no focal drift at all: intrinsics are never refined, so
+        `focal_drift_pct` is `0.0` exactly for every camera and seed, the
+        within-seed variance is identically zero, and Pearson correlation is
+        undefined. Distinct from `"no_signature"`, which is a MEASURED and
+        final answer (D-19.5-07) on a statistic that COULD be computed, and
+        from `"underpowered"`, which is a sample-size statement, not a
+        statement about whether the statistic is defined. All three
+        conditions are required: a genuinely null result with a DEFINED
+        correlation and zero signs must still classify as `"no_signature"`,
+        never `"vacuous_by_construction"`.
+
+        Otherwise `"signature_present"` if `p_one_sided < alpha`, else
+        `"no_signature"`. `"no_signature"` is a valid, final answer
+        (D-19.5-07) -- it is not retried with more seeds or a different
+        statistic.
     """
     n_seeds = association["n_seeds"]
     if n_seeds < 2:
         return "underpowered"
+    if (
+        association["n_seeds_negative"] == 0
+        and association["n_seeds_positive"] == 0
+        and pd.isna(association["mean_within_seed_correlation"])
+    ):
+        return "vacuous_by_construction"
     p_one_sided = association["p_one_sided"]
     if pd.isna(p_one_sided):
         return "underpowered"
@@ -251,6 +287,11 @@ def build_focal_standoff_df(df: pd.DataFrame) -> pd.DataFrame:
         n_cameras_per_seed = (
             int(arm_df.groupby("seed").size().iloc[0]) if not arm_df.empty else 0
         )
+        scope = (
+            SCOPE_TEXT + VACUOUS_SCOPE_SUFFIX
+            if verdict == "vacuous_by_construction"
+            else SCOPE_TEXT
+        )
         rows.append(
             {
                 "arm": arm,
@@ -263,7 +304,7 @@ def build_focal_standoff_df(df: pd.DataFrame) -> pd.DataFrame:
                 "n_seeds_positive": association["n_seeds_positive"],
                 "p_one_sided": association["p_one_sided"],
                 "verdict": verdict,
-                "scope": SCOPE_TEXT,
+                "scope": scope,
             }
         )
     return pd.DataFrame(rows)
