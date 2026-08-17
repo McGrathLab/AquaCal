@@ -67,6 +67,7 @@ from experiments.e4_benchmark_grid import (
     build_grid_dataframe,
     build_grid_scenario,
     default_xy_extent_for_layout,
+    resolve_e2_benchmark_path,
     run_cell_subprocess,
     run_grid_cell,
     splice_repeat_records,
@@ -1478,3 +1479,111 @@ class TestSpliceRepeatCli:
             text=True,
         )
         assert result.stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# FIX-05 (D-09): resolve_e2_benchmark_path and its two callers
+# ---------------------------------------------------------------------------
+
+
+def test_e2_record_resolves_relative_to_out_dir(tmp_path):
+    """FIX-05: a `benchmark.json` native to `--out` is used in preference to
+    the repo tree's record -- proven with a sentinel value distinguishable
+    from `experiments/results/benchmark.json`."""
+    sentinel_reprojection_rms = 0.123456
+    native_e2_path = tmp_path / "benchmark.json"
+    _write_fake_e2_record(native_e2_path)
+    record = json.loads(native_e2_path.read_text())
+    record["accuracy"]["reprojection_rms"] = sentinel_reprojection_rms
+    native_e2_path.write_text(json.dumps(record))
+
+    resolved_path, note = resolve_e2_benchmark_path(tmp_path)
+    assert resolved_path == tmp_path / "benchmark.json"
+    assert "native" in note
+
+    cell_statuses = [
+        {
+            "n_cameras": n,
+            "n_frames": f,
+            "status": "ok",
+            "status_reason": "",
+            "exit_code": 0,
+        }
+        for n, f in DECLARED_CELLS
+    ]
+    cells_dir = tmp_path / "e4_cells"
+    for n_cameras, n_frames in DECLARED_CELLS:
+        _write_fake_cell(
+            cells_dir / f"cameras_{n_cameras}_frames_{n_frames}", n_cameras, n_frames
+        )
+
+    df = build_grid_dataframe(tmp_path, cell_statuses, resolved_path)
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["reprojection_rms"] == sentinel_reprojection_rms
+
+
+def test_e2_record_absent_under_non_default_out_is_not_imported_from_the_repo_tree(
+    tmp_path,
+):
+    """FIX-05: a non-default `--out` with no native `benchmark.json` must
+    resolve to `None`, never silently fall back to the repo tree's record."""
+    resolved_path, note = resolve_e2_benchmark_path(tmp_path)
+    assert resolved_path is None
+    assert "absent" in note
+
+    cell_statuses = [
+        {
+            "n_cameras": n,
+            "n_frames": f,
+            "status": "ok",
+            "status_reason": "",
+            "exit_code": 0,
+        }
+        for n, f in DECLARED_CELLS
+    ]
+    cells_dir = tmp_path / "e4_cells"
+    for n_cameras, n_frames in DECLARED_CELLS:
+        _write_fake_cell(
+            cells_dir / f"cameras_{n_cameras}_frames_{n_frames}", n_cameras, n_frames
+        )
+
+    df = build_grid_dataframe(tmp_path, cell_statuses, resolved_path)
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+
+
+def test_default_out_dir_still_uses_the_file_anchored_constant():
+    """FIX-05: the default output tree must still resolve to the
+    `__file__`-anchored E2_BENCHMARK_PATH constant, not a cwd-relative guess.
+    Branch 1 (a native `benchmark.json`) and branch 2 (the default-tree
+    constant) are path-equal for the default directory by construction --
+    what matters is the resolved path itself, not which branch produced it
+    on a machine where `experiments/results/benchmark.json` happens to
+    already exist."""
+    resolved_path, note = resolve_e2_benchmark_path(E2_BENCHMARK_PATH.parent)
+    assert resolved_path == E2_BENCHMARK_PATH
+    assert resolved_path.is_absolute()
+    assert "native" in note or "default tree" in note
+
+
+def test_both_build_grid_dataframe_callers_resolve_relative_to_out():
+    """D-09: both `_run_check` and `_run_full` must resolve E2's record
+    through `resolve_e2_benchmark_path(out_dir)`, never pass the bare
+    `E2_BENCHMARK_PATH` constant directly to `build_grid_dataframe` -- fixing
+    only one call site leaves `--check --out` importing another machine's
+    real-rig row (measured 2026-08-17)."""
+    import inspect
+
+    for fn in (e4_grid_module._run_check, e4_grid_module._run_full):
+        source = inspect.getsource(fn)
+        assert "resolve_e2_benchmark_path(out_dir)" in source, (
+            f"{fn.__name__} must call resolve_e2_benchmark_path(out_dir)"
+        )
+        assert (
+            "build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)"
+            not in source
+        ), (
+            f"{fn.__name__} must not pass the bare E2_BENCHMARK_PATH constant "
+            "to build_grid_dataframe"
+        )
