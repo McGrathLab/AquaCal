@@ -203,10 +203,11 @@ anything, and its warning stops over-firing.
 spatially non-disjoint, so 24-02 waits on 24-01's key names):
 
 **Wave 1**
-- `24-01` — Library core: the kind/stage counter split with its per-stage denominator and
-  zero-init, the `discard_stage` kwarg, the `interface_below_camera` recomputation and its
-  equivalence test, the narrowed warning, and the `SolverDiagnostics` per-block optimality
-  decomposition plus bound-hit detector. DEGEN-02, DEGEN-03, DEGEN-05. Five commits (D-20).
+- `24-01` — Library core: the NaN-reason array plumbed out of `refractive_project_batch`, the
+  cause/fate counter split with its per-stage denominator and zero-init, the `discard_stage`
+  kwarg, the narrowed warning, and the `SolverDiagnostics` per-block optimality decomposition plus
+  bound-hit detector. DEGEN-02, DEGEN-03, DEGEN-05. Six commits, none mixing two requirements
+  (D-20).
 
 **Wave 2** *(depends on 24-01)*
 - `24-02` — Artifacts: `pipeline.py`'s `problem_shape` mirror and the whole `discard_stats` block
