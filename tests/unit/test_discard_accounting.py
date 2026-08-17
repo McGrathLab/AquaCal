@@ -18,6 +18,7 @@ B. **Counter correctness.** A clean scenario leaves every failure counter at zer
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,11 @@ from aquacal.calibration._observability import (
     observations_evaluated_key,
 )
 from aquacal.calibration.extrinsics import estimate_board_pose, refractive_solve_pnp
-from aquacal.calibration.interface_estimation import optimize_interface
+from aquacal.calibration.interface_estimation import (
+    DEGENERACY_WARNING_FRACTION_THRESHOLD,
+    _format_degenerate_observation_warning,
+    optimize_interface,
+)
 from aquacal.calibration.refinement import joint_refinement
 from aquacal.config.schema import (
     BoardConfig,
@@ -760,3 +765,148 @@ def test_reason_array_is_none_during_the_solve():
     # The array-bearing calls are the trailing post-solve pass only.
     assert all(calls[-n_with_array:])
     assert not any(calls[:-n_with_array])
+
+
+# ---------------------------------------------------------------------------
+# E. The narrowed degenerate-observation warning (phase 24, DEGEN-03)
+# ---------------------------------------------------------------------------
+#
+# Built through the extracted formatting helper rather than a full solve, so
+# these stay off the `slow` marker. The volume branch and the text are what is
+# under test; the solve that produces the counts is tested in section D.
+
+_REFUTED_OBLIQUITY_PHRASES = ("critical angle", "total internal reflection", "oblique")
+
+
+def _breakdown(*, above=0, behind=0, below=0, extended=0, penalized=0, evaluated=1000):
+    return {
+        "above_interface": above,
+        "behind_camera": behind,
+        "interface_below_camera": below,
+        "extended": extended,
+        "penalized": penalized,
+        "observations_evaluated": evaluated,
+    }
+
+
+def test_sub_threshold_fraction_warns_quietly():
+    """Below 1% the message reports the tail without condemning the whole solve."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001213, 3
+    )
+    assert "0.200%" in message
+    assert "1000" in message
+    assert "not declared unreliable" in message
+    assert "Do not re-tune the solver." not in message
+
+
+def test_supra_threshold_fraction_warns_loudly():
+    """At or above 1% the loud variant keeps the do-not-re-tune instruction."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 300, _breakdown(above=300, extended=300, evaluated=1000), 4.3e4, 3
+    )
+    assert "30.000%" in message
+    assert "nor the reprojection RMS can be trusted to judge convergence" in message
+    assert "Do not re-tune the solver." in message
+
+
+def test_the_two_volume_variants_render_distinct_strings():
+    quiet = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001, 3
+    )
+    loud = _format_degenerate_observation_warning(
+        "Stage 3", 300, _breakdown(above=300, extended=300, evaluated=1000), 0.001, 3
+    )
+    assert quiet != loud
+
+
+def test_warning_names_the_dominant_cause():
+    """The dominant cause is named, and it is not hard-coded to above_interface."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        50,
+        _breakdown(above=5, below=45, extended=50, evaluated=1000),
+        0.5,
+        3,
+    )
+    assert "Dominant cause: interface_below_camera" in message
+    # The reframe survives into the text: a statement about the ESTIMATE.
+    assert "not a claim about submerged hardware" in message
+
+
+def test_warning_distinguishes_the_two_fates():
+    """Fate is reported separately from cause, with the right gradient claim each."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        10,
+        _breakdown(above=6, behind=4, extended=6, penalized=4, evaluated=1000),
+        0.5,
+        3,
+    )
+    assert "C0 but not C1" in message
+    assert "ZERO water_z gradient" in message
+    assert "NO gradient at all" in message
+    # The removed over-strong claim must not come back; it was measured false.
+    assert "remains meaningful" not in message
+
+
+def test_warning_names_both_readings_without_inferring_provenance():
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001, 3
+    )
+    assert "authored scenario" in message
+    assert "measured hardware" in message
+
+
+@pytest.mark.parametrize("n_invalid,denominator", [(2, 1000), (300, 1000)])
+def test_warning_text_omits_the_refuted_obliquity_cause(n_invalid, denominator):
+    """Beyond-critical-angle obliquity was refuted 2026-08-15 and must not appear.
+
+    `refract_ray` has zero callers in `src/`, so the projection path carries no
+    total-internal-reflection check, and `realistic` projects cleanly at chord
+    incidences to 61.5 degrees -- past the 48.61 degree critical angle.
+    """
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        n_invalid,
+        _breakdown(above=n_invalid, extended=n_invalid, evaluated=denominator),
+        0.001,
+        3,
+    ).lower()
+    for phrase in _REFUTED_OBLIQUITY_PHRASES:
+        assert phrase not in message
+
+
+def test_threshold_is_a_module_constant_not_a_call_parameter():
+    """D-14: making it a caller parameter was rejected as source surgery."""
+    import inspect
+
+    assert DEGENERACY_WARNING_FRACTION_THRESHOLD == 0.01
+    for func in (optimize_interface, joint_refinement):
+        names = set(inspect.signature(func).parameters)
+        assert not any("threshold" in n for n in names), names
+
+
+@pytest.mark.slow
+def test_clean_solve_emits_no_degeneracy_warning():
+    """A solve with `n_invalid == 0` emits zero DegenerateObservationWarnings."""
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stage="stage3_interface_optimization",
+        )
+    degeneracy = [
+        w for w in caught if issubclass(w.category, DegenerateObservationWarning)
+    ]
+    assert not degeneracy, [str(w.message) for w in degeneracy]

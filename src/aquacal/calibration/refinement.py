@@ -32,6 +32,12 @@ from aquacal.calibration._optim_common import (
     pack_params,
     unpack_params,
 )
+from aquacal.calibration.interface_estimation import (
+    DEGENERACY_WARNING_FRACTION_THRESHOLD as _DEGENERACY_WARNING_FRACTION_THRESHOLD,
+)
+from aquacal.calibration.interface_estimation import (
+    _format_degenerate_observation_warning,
+)
 from aquacal.config.schema import (
     BoardPose,
     CameraExtrinsics,
@@ -42,6 +48,29 @@ from aquacal.config.schema import (
     Vec3,
 )
 from aquacal.core.board import BoardGeometry
+
+#: Degenerate fraction at or above which the warning switches to its loud variant.
+#: Held line-for-line parallel with the matching constant in
+#: `interface_estimation.py` -- the two staying in sync is why that
+#: cross-reference exists.
+#:
+#: **1%, and this scales WARNING VOLUME ONLY.** The `count > 0 -> degenerate` gate
+#: is untouched by this constant -- no threshold, no tolerance.
+#:
+#: Justified by two measurements, quoted rather than paraphrased:
+#:   - the production rig is **198 / 73,975 = 0.268%**;
+#:   - E1's degenerate arm logged **14,949** against a scenario with observations
+#:     in the tens of thousands, i.e. tens of percent.
+#: Two orders of magnitude apart, so the value is not delicate. 1% is roughly 4x
+#: the measured rig value and errs toward staying loud -- a rig that degraded to
+#: 1% would still shout.
+#:
+#: 5% was rejected: a rig at 3%, a tenfold degradation, would then be reported
+#: quietly, and that trend is exactly what a user would want shouted at. Making it
+#: a caller parameter was also rejected -- that is the same shape as the `water_z`
+#: bounds generalization this milestone deferred, i.e. source surgery days before
+#: a freeze.
+DEGENERACY_WARNING_FRACTION_THRESHOLD = _DEGENERACY_WARNING_FRACTION_THRESHOLD
 
 
 def joint_refinement(
@@ -405,19 +434,28 @@ def joint_refinement(
     # The merged key is retained unchanged so the production gate and
     # check_rerun_gates.py keep reading the same number.
     _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
+    # D-08: no hard raise for any cause, `interface_below_camera` included. A
+    # transient solver excursion must not abort a solve that converged, and the
+    # suite runs unattended on a machine nobody is watching. It counts and warns
+    # like the other causes; the text is what distinguishes it.
+    #
+    # The rendered text branches on cause AND fraction against
+    # DEGENERACY_WARNING_FRACTION_THRESHOLD above, names the three real causes,
+    # and keeps the two fates' consequences apart: an `extended` observation sits
+    # on a pinhole continuation that is C0 but not C1 and carries zero water_z
+    # gradient (every other parameter keeps full gradient), while a `penalized`
+    # one carries no gradient at all. The old clause asserting that the reported
+    # optimality stays a meaningful quantity for the surviving parameters must
+    # not be restored -- it was measured false the same day it was written.
     if n_invalid > 0:
         warnings.warn(
-            f"Stage 3's intrinsic pass finished with {n_invalid} observation(s) "
-            f"the refractive model could not project (corners at or above the "
-            f"water surface, or behind a camera). These were continued with a "
-            f"pinhole extension, which puts the residual on a C0-but-not-C1 "
-            f"kink at the refractive/pinhole boundary -- first-order "
-            f"optimality ({getattr(result, 'optimality', float('nan')):.4g}, "
-            f"termination status {result.status}) is UNRELIABLE as a "
-            f"convergence measure here, and neither it nor the reprojection "
-            f"RMS can be trusted to judge convergence. Fix the scenario "
-            f"geometry so no corner sits at or above the interface; do not "
-            f"re-tune the solver.",
+            _format_degenerate_observation_warning(
+                "Stage 3's intrinsic pass",
+                n_invalid,
+                degeneracy_breakdown,
+                getattr(result, "optimality", float("nan")),
+                result.status,
+            ),
             DegenerateObservationWarning,
             stacklevel=2,
         )

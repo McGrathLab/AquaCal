@@ -51,6 +51,139 @@ from aquacal.utils.transforms import (
     rvec_to_matrix,
 )
 
+#: Degenerate fraction at or above which the warning switches to its loud variant.
+#:
+#: **1%, and this scales WARNING VOLUME ONLY.** The `count > 0 -> degenerate` gate
+#: is untouched by this constant -- no threshold, no tolerance.
+#:
+#: Justified by two measurements, quoted rather than paraphrased:
+#:   - the production rig is **198 / 73,975 = 0.268%**;
+#:   - E1's degenerate arm logged **14,949** against a scenario with observations
+#:     in the tens of thousands, i.e. tens of percent.
+#: Two orders of magnitude apart, so the value is not delicate. 1% is roughly 4x
+#: the measured rig value and errs toward staying loud -- a rig that degraded to
+#: 1% would still shout.
+#:
+#: 5% was rejected: a rig at 3%, a tenfold degradation, would then be reported
+#: quietly, and that trend is exactly what a user would want shouted at. Making it
+#: a caller parameter was also rejected -- that is the same shape as the `water_z`
+#: bounds generalization this milestone deferred, i.e. source surgery days before
+#: a freeze.
+DEGENERACY_WARNING_FRACTION_THRESHOLD = 0.01
+
+#: Human-readable gloss for each cause, named as the projector names them.
+#: These three are the whole list. A fourth, ray-bending-angle cause was refuted
+#: 2026-08-15 -- `refract_ray` has zero callers in `src/`, so the projection path
+#: performs no such check at all, and `realistic` projects cleanly at chord
+#: incidences to 61.5 degrees. It must never be added back to this dict or to any
+#: warning text.
+_DEGENERACY_CAUSE_DESCRIPTIONS = {
+    "above_interface": (
+        "above_interface (the corner sits at or above the estimated water surface)"
+    ),
+    "behind_camera": "behind_camera (no pixel exists for it)",
+    "interface_below_camera": (
+        "interface_below_camera (the estimated interface fell below an estimated "
+        "camera center -- a solver-excursion convergence diagnostic, explicitly "
+        "not a claim about submerged hardware)"
+    ),
+}
+
+
+def _format_degenerate_observation_warning(
+    stage_label: str,
+    n_invalid: int,
+    breakdown: dict[str, int],
+    optimality: float,
+    status: int,
+) -> str:
+    """Render the degenerate-observation warning by dominant cause and fraction.
+
+    Severity is decided by cause AND fraction together (D-13). Neither alone
+    works: E6's whole-frame failure and the production rig's 198-observation tail
+    share the same dominant cause, so branching on cause alone would give the case
+    that must stay loud and the case that must quiet down identical treatment.
+
+    The text states the condition and hands the branch to the reader rather than
+    inferring provenance (D-15). No synthetic/measured flag is threaded through
+    the solver stack for the sole benefit of warning text -- that would be an
+    assumption about the caller rather than a fact derived from the data, and it
+    would violate the standing rule that the library stays camera-agnostic.
+
+    Args:
+        stage_label: Human-readable name of the solver stage that is warning.
+        n_invalid: Observations the refractive model could not project.
+        breakdown: The six-key dict `compute_residuals` filled.
+        optimality: `result.optimality` at termination.
+        status: `result.status` at termination.
+
+    Returns:
+        The rendered warning message.
+    """
+    denominator = breakdown.get("observations_evaluated", 0)
+    fraction = (n_invalid / denominator) if denominator else float("nan")
+    dominant = max(
+        _DEGENERACY_CAUSE_DESCRIPTIONS,
+        key=lambda cause: breakdown.get(cause, 0),
+    )
+    cause_counts = ", ".join(
+        f"{breakdown.get(cause, 0)} {_DEGENERACY_CAUSE_DESCRIPTIONS[cause]}"
+        for cause in _DEGENERACY_CAUSE_DESCRIPTIONS
+    )
+
+    # The two axes say different things and the text must keep them apart.
+    n_extended = breakdown.get("extended", 0)
+    n_penalized = breakdown.get("penalized", 0)
+    fates = []
+    if n_extended:
+        fates.append(
+            f"{n_extended} were continued with the pinhole extension, which is "
+            f"C0 but not C1 at the refractive/pinhole boundary and carries ZERO "
+            f"water_z gradient -- every other parameter keeps full gradient, so "
+            f"those parameters still contribute to the reported optimality"
+        )
+    if n_penalized:
+        fates.append(
+            f"{n_penalized} were pinned to a flat penalty and carry NO gradient at all"
+        )
+    fate_clause = "; ".join(fates) if fates else "no fate was recorded"
+
+    header = (
+        f"{stage_label} finished with {n_invalid} observation(s) the refractive "
+        f"model could not project -- {fraction:.3%} of the {denominator} "
+        f"observation(s) this stage evaluated. Dominant cause: "
+        f"{_DEGENERACY_CAUSE_DESCRIPTIONS[dominant]}. By cause: {cause_counts}. "
+        f"By fate: {fate_clause}. (The two axes are independent decompositions of "
+        f"the same observations and are never additive.)"
+    )
+
+    readings = (
+        " Both readings are on the table and this library cannot tell them apart: "
+        "if this is an authored scenario, the geometry is the fix -- move the "
+        "board so no corner sits at or above the interface. If this is measured "
+        "hardware, that fix is not available to you, and what the count does and "
+        "does not invalidate is stated above, per fate."
+    )
+
+    if fraction >= DEGENERACY_WARNING_FRACTION_THRESHOLD:
+        return (
+            header + f" At {fraction:.3%} this is a LARGE fraction of the stage's "
+            f"observations (threshold "
+            f"{DEGENERACY_WARNING_FRACTION_THRESHOLD:.0%}), so neither the "
+            f"reported first-order optimality ({optimality:.4g}, termination "
+            f"status {status}) nor the reprojection RMS can be trusted to judge "
+            f"convergence for this solve. Do not re-tune the solver." + readings
+        )
+
+    return (
+        header + f" At {fraction:.3%} this is a small tail below the "
+        f"{DEGENERACY_WARNING_FRACTION_THRESHOLD:.0%} threshold, so it is "
+        f"reported for the record rather than as a verdict on the whole solve: "
+        f"the reported first-order optimality ({optimality:.4g}, termination "
+        f"status {status}) is not declared unreliable on the strength of this "
+        f"count alone." + readings
+    )
+
 
 def _compute_initial_board_poses(
     detections: DetectionResult,
@@ -489,18 +622,19 @@ def optimize_interface(
     # The merged key is retained unchanged so the production gate and
     # check_rerun_gates.py keep reading the same number.
     _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
+    # D-08: no hard raise for any cause, `interface_below_camera` included. A
+    # transient solver excursion must not abort a solve that converged, and the
+    # suite runs unattended on a machine nobody is watching. It counts and warns
+    # like the other causes; the text is what distinguishes it.
     if n_invalid > 0:
         warnings.warn(
-            f"Stage 3 finished with {n_invalid} observation(s) the refractive "
-            f"model could not project (corners at or above the water surface, "
-            f"or behind a camera). These were continued with a pinhole "
-            f"extension, which puts the residual on a C0-but-not-C1 kink at "
-            f"the refractive/pinhole boundary -- first-order optimality "
-            f"({getattr(result, 'optimality', float('nan')):.4g}, termination "
-            f"status {result.status}) is UNRELIABLE as a convergence measure "
-            f"here, and neither it nor the reprojection RMS can be trusted to "
-            f"judge convergence. Fix the scenario geometry so no corner sits "
-            f"at or above the interface; do not re-tune the solver.",
+            _format_degenerate_observation_warning(
+                "Stage 3",
+                n_invalid,
+                degeneracy_breakdown,
+                getattr(result, "optimality", float("nan")),
+                result.status,
+            ),
             DegenerateObservationWarning,
             stacklevel=2,
         )
