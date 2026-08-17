@@ -217,14 +217,16 @@ criteria 1-3 and carry criterion 4 rather than blocking the phase.
      scope decision for real-rig runs.
   3. E1's seed band gains a `noise_std` axis, with the `n_cameras` geometry axis explicitly
      marked skipped, so promoted absolute-accuracy numbers carry a stated domain.
-  4. (Added 2026-08-17) DEGEN-05's per-block optimality decomposition is read for E1's
-     non-refractive arm and a verdict recorded: either the residual is concentrated in the pinned
-     `water_z` slot (benign — the arm is stationary in the parameters that carry the comparison,
-     and the ratio claim stands as measured), or it is spread across extrinsics and board poses
-     (the arm terminates non-stationary, which *inflates* the refractive-to-non-refractive ratio
-     and means the 97–178x band is an upper-biased estimate needing a stated caveat). The verdict
-     is written down either way — "we looked and it was fine" is a result, and leaving it
-     unrecorded re-opens the question during the frozen run.
+  4. (Added 2026-08-17, rewritten same day once the probes reported) The convergence question
+     behind E1's ratio is **already answered** and must not be re-derived here — see
+     `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`. Measured: restarting each
+     solve from its own solution recovers no cost (largest relative drop 1.8e-9), so E1's
+     non-refractive baseline is converged, the comparison is fair, and the 97–178x band is
+     **strengthened rather than caveated**. This phase's job is only to carry that forward: BAND-01's
+     stated domain cites the warm-restart evidence as support, and the one caveat that does travel
+     with the band is that the baseline arm is severely ill-conditioned (directional curvature
+     ~3e8) — which is a property of fitting a pinhole model to refracted data, not a defect, and
+     not a reason to qualify the accuracy claim.
 **Plans**: TBD
 
 ### Phase 26: Full-Suite Driver & Handoff Readiness
@@ -321,6 +323,18 @@ manuscript-facing number traceable to it.
      the archive the paper cites agrees with the §3 it supports. The 4.35 GB input-package
      re-upload that makes this possible is staged during Phase 28's run window, from the Windows
      box, while the Linux run is going.
+
+     **Label `optimality` in the upload** (added 2026-08-17, author's call: label at upload time,
+     do not act earlier). `optimality_stage3_interface_optimization` ships in
+     `benchmark_grid.csv` / `.tex`. Measured that day: the value is a **real** gradient — a
+     central-difference Jacobian agrees to five significant figures, so it is not Jacobian noise —
+     but it is *volatile* (43x range at a fixed solution, because the problem is severely
+     ill-conditioned), *not comparable across parameter blocks* (it mixes Coleman-Li scalings of
+     1, ~700 and ~2e-12), and *magnitude-dependent in reliability* (large values trustworthy,
+     small ones not — a 44% disagreement at 0.001). One sentence in the package README covers it.
+     This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
+     unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
+     `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
 **Plans**: TBD
 
 ### Phase 30: Post-Submission Reconciliation

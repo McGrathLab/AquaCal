@@ -78,6 +78,17 @@ re-derived before being cited. See `.planning/debug/stage3-diverges-new-geometry
 **References**: `src/aquacal/calibration/intrinsics.py:calibrate_intrinsics_single`, `.planning/debug/callibration071626-tilt-high-reproj.md`.
 **Added**: 2026-07-20
 
+### `optimality` is real but volatile — trust large values, never small ones
+**Context**: E1's non-refractive arm reported `optimality_intrinsic` = 92.78 against the refractive arm's 0.0247 on the same scenario and seed. Three probes on 2026-08-17 chased it. Two attractive explanations were **falsified by measurement**: it is not the pinned `water_z` (that slot contributes 0.00% of the reported number — Coleman-Li scaling multiplies by *distance to the bound*, so a pinned parameter is crushed toward zero, not inflated), and it is not finite-difference Jacobian error (a central-difference Jacobian agrees to five significant figures, 92.7841 vs 92.7843).
+**Insight**: three properties of `scipy.optimize.least_squares`'s reported `optimality` (`trf`: `||g*v||_inf`) that apply to every experiment in this suite, not just E1:
+1. **Volatile at a fixed solution.** Warm-restarting a solve from its own solution moved the reported value 92.78 -> 27.58 -> 2.16 while cost changed 1.8e-9. The problem is severely ill-conditioned (directional curvature ~3e8): flat along the valley floor, gradient swinging 43x over a step invisible in the cost. Two runs of the same solve can report wildly different optimality and both be correct.
+2. **Not comparable across parameter blocks.** The scalar mixes Coleman-Li scalings of `v = 1` (unbounded extrinsics and board poses), `v ~ 700` (wide-bounded intrinsics — one block read 49.97 scaled against a 0.068 raw gradient), and `v ~ 2e-12` (a pinned slot). It is not a like-for-like maximum.
+3. **Reliability depends on magnitude.** Large values are trustworthy; small ones are not. At optimality ~0.001 the production Jacobian disagreed with its 3-point reference by 44%, and naive FD steps inflated it by six orders (`rel_step` 1e-10). At optimality ~92 every step tried agreed. **Differences between two small optimality values carry no information.** A large gap (0.0247 vs 92.78) is real.
+Positive corollary: the library's production FD step rule tracks the 3-point reference in both regimes, so the Jacobian machinery in `_optim_common.py` is validated — the volatility is the problem's, not the code's.
+**Practical rule**: never gate on an optimality *value*, never compare two small ones, and never read it as a conditioning measure across blocks. `check_rerun_gates.py` already gets this right — Gate 4 checks optimality **presence only**, by a lesson from Phase 19.2 where a cell shipped a plausible reprojection error at an optimality six orders too high. Do not weaken that gate into a magnitude comparison.
+**References**: `.planning/probes/2026-08-17-optimality-decomposition/` (three probes, `FINDINGS.md`); requirement DEGEN-05; `check_rerun_gates.py:30-37`.
+**Added**: 2026-08-17
+
 ## Known Issues & Workarounds
 
 ### A subagent executor that backgrounds a long test run will stall and never finish

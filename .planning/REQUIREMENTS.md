@@ -118,14 +118,25 @@ submission. POST follows it.
       *What replaces it — the reason the requirement still stands:* `optimality` is **unstable at
       a fixed solution**. Cost moves 1.8e-9 while the reported number goes 92.78 → 27.58 → 2.16, a
       43x range (control: the one solve whose cost moved exactly zero reports a bit-identical
-      optimality all three times). Two candidates, not separable from current data: extreme
-      gradient sensitivity in a narrow valley, or **finite-difference Jacobian noise dominating a
-      near-zero true gradient** — the gradient is `J^T r` with `J` built by finite differences, and
-      FD error scales with residual magnitude. If the latter, `optimality` in *every* benchmark
-      record this library writes is partly measuring Jacobian noise rather than conditioning.
-      Discriminator: recompute the gradient at a fixed solution with a higher-accuracy or analytic
-      Jacobian (`experiments/fd_jacobian_accuracy.py` is the natural instrument). The genuine
-      conditioning gap survives either way, at ~2.16 vs 0.00116 rather than 3751x.
+      optimality all three times).
+
+      *Cause settled 2026-08-17 by `probe_fd_noise.py`.* Two candidates were on the table; the
+      FD-noise one is **falsified**. The production Jacobian's gradient agrees with a
+      central-difference Jacobian to five significant figures (92.7841 vs 92.7843), so
+      `optimality` measures a real gradient and **no benchmark record needs re-interpreting on
+      Jacobian-error grounds**. What remains is genuine **severe ill-conditioning**: at call 4
+      cost fell 2.7e-5 against a gradient of 92.78 (step ~3e-7) while the gradient fell ~90,
+      implying directional curvature ~3e8. The solution sits on the flat floor of an extremely
+      narrow, high-curvature valley.
+
+      *Magnitude-dependent reliability (same probe, applies suite-wide):* naive FD steps are
+      catastrophic where the true gradient is small (call 1 inflates six orders at `rel_step`
+      1e-10) and harmless where it is large (call 4 is stable at every step tried); the production
+      step rule tracks the 3-point reference in both regimes, which **validates the library's FD
+      step choice**. Consequence: large optimality values are trustworthy, small ones are not
+      (call 1's 0.001146 disagrees 44% with its reference). Differences between two *small*
+      optimality values carry no information; the 0.0247-vs-92.78 gap is solid. Recorded in
+      `.planning/knowledge-base.md`.
 
       *Third regime found:* the scalar also mixes `v ≈ 700` for wide-bounded intrinsics (call 4's
       intrinsics block reads 49.97 scaled against a 0.068 raw gradient). `optimality` is therefore
