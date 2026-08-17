@@ -100,7 +100,7 @@ The Zenodo split (originally POST-02) was pulled forward into Phase 29 as **RUN-
 the deadline would ship a paper citing a record whose bundled `reference_outputs/` contradict
 its own §3. What stays in Phase 30 is the reconciliation *around* that archive, not the archive.
 
-- [ ] **Phase 23: Experiment Correctness Fixes** - Six independent single-file fixes that change what E1, E6, E7, E4, E2, and the synthetic generator measure or are licensed to claim
+- [x] **Phase 23: Experiment Correctness Fixes** - Six independent single-file fixes that change what E1, E6, E7, E4, E2, and the synthetic generator measure or are licensed to claim (completed 2026-08-17)
 - [ ] **Phase 24: Degeneracy Instrumentation** - The degeneracy counter reaches the benchmark record, is persisted by E5 and the band runs, split by kind and stage, and its warning is narrowed
 - [ ] **Phase 25: Degeneracy Classification & Claim Licensing** - The 198 unprojectable production-rig observations are classified, and E1's seed band gains the noise_std axis it needs to license an accuracy claim
 - [ ] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
@@ -376,7 +376,7 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 20. Refractive Index Helper | v2.0 | 0/0 | Deferred → carried forward | - |
 | 21. New-Feature Documentation & Dataset Refresh | v2.0 | 12/12 | Complete | 2026-08-11 |
 | 22. Release Cut | v2.0 | 0/0 | Deferred → carried forward | - |
-| 23. Experiment Correctness Fixes | v2.1 | 0/TBD | Not started | - |
+| 23. Experiment Correctness Fixes | v2.1 | 4/4 | Complete   | 2026-08-17 |
 | 24. Degeneracy Instrumentation | v2.1 | 0/TBD | Not started | - |
 | 25. Degeneracy Classification & Claim Licensing | v2.1 | 0/TBD | Not started | - |
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 0/TBD | Not started | - |
