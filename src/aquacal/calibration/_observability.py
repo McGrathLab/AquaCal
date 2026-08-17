@@ -863,8 +863,15 @@ def _detect_parameters_at_bound(
         is_lower = active_mask[i] < 0
         active_bound = lower[i] if is_lower else upper[i]
         interval_width = float(upper[i] - lower[i])
-        pinned = interval_width <= _PINNED_INTERVAL_RTOL * max(
-            1.0, abs(float(lower[i]))
+        # An infinite interval is never a pin. Without the isfinite guard,
+        # a one-sided bound gives `inf <= 1e-9 * inf` -> `inf <= inf` -> True,
+        # reporting the WIDEST possible interval as pinned-by-request. That is
+        # silent in exactly the direction D-16 exists to prevent: it trains the
+        # signal away. Scale on both ends, not just `lower`, so a pin at a large
+        # upper bound with a zero lower bound is not measured against 1.0.
+        scale = max(1.0, abs(float(lower[i])), abs(float(upper[i])))
+        pinned = np.isfinite(interval_width) and (
+            interval_width <= _PINNED_INTERVAL_RTOL * scale
         )
         at_bound.append(
             {

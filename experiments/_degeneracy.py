@@ -86,7 +86,13 @@ def summarize_degeneracy_columns(
         an int, and the three `cause_` values and the two `fate_` values each
         sum independently to `degenerate_observations_at_solution`.
     """
-    if not discard_stats:
+    # A NON-EMPTY dict from before this phase (a run that recorded e.g.
+    # `pnp_guard_rejected` but none of the split keys) would otherwise floor to
+    # 0 on every column via `.get(..., 0)`, reading as "measured and found
+    # clean" for precisely the artifact class this convention protects. Absence
+    # of the merged key is the discriminator: the library always seeds it when
+    # the instrumentation ran, so missing means never computed.
+    if not discard_stats or MERGED_DEGENERACY_COLUMN not in discard_stats:
         return {column: None for column in DEGENERACY_COLUMNS}
 
     summary: dict[str, int | None] = {
@@ -103,7 +109,9 @@ def summarize_degeneracy_columns(
     return {column: summary[column] for column in DEGENERACY_COLUMNS}
 
 
-def write_degeneracy_breakdown(path: Path, breakdown: dict[str, dict]) -> None:
+def write_degeneracy_breakdown(
+    path: Path, breakdown: dict[str, dict], force: bool = False
+) -> None:
     """Write an `e{N}_degeneracy_breakdown.json` sidecar (D-09).
 
     The sidecar carries what the CSV deliberately does not: the full
@@ -123,8 +131,19 @@ def write_degeneracy_breakdown(path: Path, breakdown: dict[str, dict]) -> None:
             curated subset is deliberate and is the same structural argument
             as D-11: a counter added later arrives here without this module
             naming it.
+        force: Overwrite an existing sidecar. Defaults to `False`, matching the
+            `write_experiment_csv(..., force=args.force)` convention every
+            sibling artifact in these scripts already follows. Without it a bare
+            re-run silently clobbers a committed sidecar.
     """
     path = Path(path)
+    if path.exists() and not force:
+        logger.warning(
+            "Refusing to overwrite existing degeneracy breakdown sidecar %s "
+            "-- re-run with --force to replace it.",
+            path,
+        )
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         json.dump(breakdown, f, indent=2, sort_keys=True)

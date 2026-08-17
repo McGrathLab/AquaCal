@@ -791,6 +791,7 @@ def _run_full(args: argparse.Namespace) -> int:
     write_degeneracy_breakdown(
         out_dir / "e1_degeneracy_breakdown.json",
         {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+        force=args.force,
     )
 
     print("\nE1 run complete.")
@@ -905,6 +906,8 @@ def _run_smoke(args: argparse.Namespace) -> int:
         write_degeneracy_breakdown(
             tmp_path / "e1_degeneracy_breakdown.json",
             {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+            # Smoke write into a throwaway tmp dir -- nothing committed to clobber.
+            force=True,
         )
         print(f"Smoke-wrote all six artifacts to {tmp_path}")
 

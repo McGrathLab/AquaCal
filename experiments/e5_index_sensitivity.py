@@ -717,7 +717,9 @@ def _run_full(args: argparse.Namespace) -> int:
     # belong in a CSV. The RAW dict is written, unaggregated -- a counter added
     # to the library later arrives here without this script naming it.
     write_degeneracy_breakdown(
-        out_dir / "e5_degeneracy_breakdown.json", {"band": dict(discard_stats)}
+        out_dir / "e5_degeneracy_breakdown.json",
+        {"band": dict(discard_stats)},
+        force=args.force,
     )
 
     sidecar_path = out_dir / "e5_provenance.json"
@@ -822,7 +824,11 @@ def _run_seed_band(
     # and a `--seeds` run must never overwrite a single-seed artifact
     # (T-19.5-05-01), exactly as the two provenance sidecars are kept apart.
     write_degeneracy_breakdown(
-        out_dir / "e5_seed_band_degeneracy_breakdown.json", breakdown_by_seed
+        out_dir / "e5_seed_band_degeneracy_breakdown.json",
+        breakdown_by_seed,
+        # Matches the band CSV writer above: for a band run, regenerating IS
+        # the point, so the sidecar follows its artifact.
+        force=True,
     )
 
     print(f"Wrote {band_path} and {sidecar_path}")

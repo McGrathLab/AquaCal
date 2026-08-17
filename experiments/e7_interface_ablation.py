@@ -656,6 +656,7 @@ def _write_ablation_artifacts(
     write_degeneracy_breakdown(
         out_dir / "e7_degeneracy_breakdown.json",
         {arm.arm_name: dict(arm.discard_stats or {}) for arm in results},
+        force=force,
     )
 
     with tempfile.TemporaryDirectory(prefix="e7_conditioning_") as tmp:
@@ -841,7 +842,11 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     print(f"Wrote {sidecar_path}")
 
     write_degeneracy_breakdown(
-        out_dir / "e7_seed_band_degeneracy_breakdown.json", breakdown_by_seed
+        out_dir / "e7_seed_band_degeneracy_breakdown.json",
+        breakdown_by_seed,
+        # Matches the band CSV writer above: for a band run, regenerating IS
+        # the point, so the sidecar follows its artifact.
+        force=True,
     )
 
     for arm in last_results:
