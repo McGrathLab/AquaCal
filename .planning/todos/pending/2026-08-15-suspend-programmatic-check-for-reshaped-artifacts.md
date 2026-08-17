@@ -95,6 +95,139 @@ regression protection at all, so it should not sit unfinished.
 - Do not leave the suite permanently on manual verification. The post-run re-baselining is part of
   this TODO, not a follow-up.
 
+## Phase 24 additions (written 2026-08-17 by plan 24-02 — for DRIVER-01's completeness audit)
+
+This section is the concrete input § Solution asks for above ("the full column set including new
+columns"). Phase 24 shipped; everything below is already on disk. Nothing here is a proposal.
+
+### New `benchmark.json` shapes
+
+- A new **top-level `discard_stats` block**, carrying the run's whole discard-accounting dict
+  unmodified. Written by `assemble_benchmark_record(..., discard_stats=...)`, so it appears in the
+  pipeline-written `benchmark.json` **and** in every `write_direct_call_benchmark` record (E1's
+  `e1_benchmark_<model>.json`, E7's `e7_benchmark_<arm>.json`) that passes one. Absent entirely
+  when the writer had no accounting to record — it is never an empty block.
+- **`problem_shape.degenerate_observations_at_solution`**, a mirror of the block's merged total.
+  It exists only so `check_rerun_gates.py`'s first read shape and every existing consumer keep
+  working; the two values are always equal. This mirror is the DEGEN-01 fix: the counter existed
+  in `discard_stats` and was never written into `problem_shape` (`pipeline.py:1709`).
+
+### The six new CSV columns
+
+Verbatim, in append order:
+
+```
+degenerate_observations_at_solution
+degenerate_observations_cause_above_interface
+degenerate_observations_cause_behind_camera
+degenerate_observations_cause_interface_below_camera
+degenerate_observations_fate_extended
+degenerate_observations_fate_penalized
+```
+
+Where they landed:
+
+| file / artifact | column list | note |
+|---|---|---|
+| `experiments/e5_index_sensitivity.py` | `E5_COLUMNS`, now **23** entries (was 17) | `index_sensitivity.csv` and `index_sensitivity_seed_band.csv` |
+| `experiments/e7_interface_ablation.py` | `ABLATION_COLUMNS`, now 23 entries | `interface_ablation.csv` and `interface_ablation_band.csv`; per-arm values repeated on that arm's camera rows |
+| `experiments/e7_focal_standoff_analysis.py` | the `pd.DataFrame(rows)` frame (no constant) | `e7_focal_standoff.csv`; summed per arm from the band CSV's own columns, `None` when the band predates them |
+| `experiments/e1_refractive_comparison.py` | `SPATIAL_COLUMNS` | `exp2_spatial_errors.csv` **only** |
+
+**E6 was NOT reshaped.** Its band already carries `degenerate_observations_at_solution` on all 102
+committed rows, and reshaping a committed artifact was out of scope.
+
+**E1's three FIXED-CONTRACT CSVs were NOT reshaped either.** `EXP1_COLUMNS`, `EXP2_COLUMNS` and
+`EXP3_COLUMNS` pin byte-identical headers for an external, read-only figures repository (D-19,
+"do not add, remove, reorder, or rename a column"), so the six columns went to
+`exp2_spatial_errors.csv`, which is E1's own output with no committed baseline and is explicitly
+excluded from `--check` (D-20). Note for the audit: if E1 must publish these per model in a
+`--check`ed artifact, that is a deliberate D-19 renegotiation, not an oversight here.
+
+**Consequence for `--check`.** `E5_COLUMNS` and `ABLATION_COLUMNS` changing means
+`compare_experiment_csv` reports a **header mismatch** against the committed
+`index_sensitivity.csv`, `interface_ablation.csv` and `e7_focal_standoff.csv` until those
+artifacts are regenerated. That is the "E5 gains persisted degeneracy columns" row of the table
+above, now also true of both E7 artifacts.
+
+### The new sidecar
+
+`e{N}_degeneracy_breakdown.json`, one per run, written into the experiment's own `--out`
+directory. It holds the raw `discard_stats` dict, unaggregated, keyed by arm/configuration:
+
+| writer | filename | keyed by |
+|---|---|---|
+| `e1_refractive_comparison.py` (`_run_full`, `_run_smoke`) | `e1_degeneracy_breakdown.json` | model label |
+| `e5_index_sensitivity.py` (`_run_full`) | `e5_degeneracy_breakdown.json` | `"band"` |
+| `e5_index_sensitivity.py` (`--seeds`) | `e5_seed_band_degeneracy_breakdown.json` | seed |
+| `e7_interface_ablation.py` (single-seed) | `e7_degeneracy_breakdown.json` | arm name |
+| `e7_interface_ablation.py` (`--seeds`) | `e7_seed_band_degeneracy_breakdown.json` | seed, then arm |
+
+Band runs use a distinct band-owned filename for the same reason the provenance sidecars are kept
+apart: a `--seeds` run must never overwrite a single-seed artifact. None of these collide with the
+existing `e{1,5,6,7}_seed_band_provenance.json`.
+
+### The complete new `DISCARD_KEYS` vocabulary
+
+`len(DISCARD_KEYS) == 32` — 14 pre-existing plus these 18, copied verbatim from
+`24-01-SUMMARY.md § Evidence`:
+
+```
+degenerate_observations_cause_above_interface__stage3_interface_optimization
+degenerate_observations_cause_above_interface__stage3_intrinsic_pass
+degenerate_observations_cause_above_interface__unattributed
+degenerate_observations_cause_behind_camera__stage3_interface_optimization
+degenerate_observations_cause_behind_camera__stage3_intrinsic_pass
+degenerate_observations_cause_behind_camera__unattributed
+degenerate_observations_cause_interface_below_camera__stage3_interface_optimization
+degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass
+degenerate_observations_cause_interface_below_camera__unattributed
+degenerate_observations_fate_extended__stage3_interface_optimization
+degenerate_observations_fate_extended__stage3_intrinsic_pass
+degenerate_observations_fate_extended__unattributed
+degenerate_observations_fate_penalized__stage3_interface_optimization
+degenerate_observations_fate_penalized__stage3_intrinsic_pass
+degenerate_observations_fate_penalized__unattributed
+observations_evaluated__stage3_interface_optimization
+observations_evaluated__stage3_intrinsic_pass
+observations_evaluated__unattributed
+```
+
+**These 18 keys, and the six CSV columns derived from them, are NOT a double count.** Cause and
+fate are two independent decompositions of the *same* set of invalid observations, and **each axis
+sums exactly to `degenerate_observations_at_solution`** — so an expectation sheet should assert
+that equality per axis, and must never assert that the two axes sum to it together. The merged key
+`degenerate_observations_at_solution` is unchanged in name and meaning, which is why
+`check_rerun_gates.py`'s three existing read shapes still work.
+
+### New `aquacal.core` constants
+
+`NAN_REASON_NONE` (0), `NAN_REASON_INTERFACE_BELOW_CAMERA` (1), `NAN_REASON_ABOVE_INTERFACE` (2),
+`NAN_REASON_BEHIND_CAMERA` (3) — exported from `aquacal.core`. The sidecar's cause names derive
+from them. `INTERFACE_BELOW_CAMERA` is a statement about the *estimate*, never a claim that
+hardware was submerged.
+
+### New `SolverDiagnostics` fields
+
+`optimality_by_block` (`dict[str, dict]`) and `parameters_at_bound` (`list[dict]`), each with a
+`*_reason` companion, appended last so existing field order is unperturbed. They reach
+`benchmark.json` through the **existing** diagnostics path — `assemble_benchmark_record` emits
+every `SolverDiagnostics` field via `dataclasses.asdict`, so each stage block now carries
+`optimality_by_block` beside its `optimality` with no per-experiment work.
+
+### Zero-emission expectation
+
+A clean synthetic run now emits these keys at an explicit **0** rather than omitting them, so
+`check_rerun_gates.py`'s `cannot confirm zero` branch **passes** rather than fails — verified end
+to end through `run_calibration_from_config`. The corollary the gate's message now states: an
+absent field means an artifact predating the instrumentation, not an unmeasurable run.
+
+### `rerun_19_3.sh` was deliberately NOT edited
+
+Phase 24 left `experiments/rerun_19_3.sh` untouched (D-12). Registering these artifacts with the
+driver is DRIVER-01's, because Phase 26's job is a completeness audit of that file and a partial
+edit from Phase 24 would be something the audit has to reconcile rather than simply write.
+
 ## Related
 
 - `2026-08-15-emit-a-single-run-manifest-for-the-full-suite.md` — the manifest is what makes a

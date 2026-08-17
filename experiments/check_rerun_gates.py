@@ -219,6 +219,108 @@ def _guard_count_from_record(record: dict) -> int | None:
     return None
 
 
+#: The two axes plan 24-01 split the merged counter on, and the per-stage
+#: denominator it records beside them. `cause` answers "what do I fix?";
+#: `fate` answers "can I trust this record's optimality?". They are two
+#: INDEPENDENT decompositions of the SAME set of invalid observations, not
+#: disjoint buckets -- summing across the two axes double-counts.
+_CAUSE_PREFIX = "degenerate_observations_cause_"
+_FATE_PREFIX = "degenerate_observations_fate_"
+_DENOMINATOR_PREFIX = "observations_evaluated__"
+
+
+def _guard_breakdown_from_record(record: dict) -> dict | None:
+    """Extract plan 24-01's split counters and per-stage denominators.
+
+    Uses the SAME three read shapes as `_guard_count_from_record` -- a
+    direct-call benchmark record's `problem_shape`, the record's top level, or
+    a `discard_stats` block -- rather than a parallel lookup, because those
+    three are exactly the shapes this project's provenance records carry
+    discard accounting in.
+
+    Args:
+        record: A loaded provenance/benchmark record.
+
+    Returns:
+        A dict holding every `degenerate_observations_cause_*`,
+        `degenerate_observations_fate_*` and `observations_evaluated__*` entry
+        found, or `None` when the record carries none of them (any artifact
+        predating plan 24-01's split).
+    """
+    for candidate in (
+        record.get("discard_stats"),
+        record.get("problem_shape"),
+        record,
+    ):
+        if not isinstance(candidate, dict):
+            continue
+        breakdown = {
+            key: value
+            for key, value in candidate.items()
+            if key.startswith((_CAUSE_PREFIX, _FATE_PREFIX, _DENOMINATOR_PREFIX))
+        }
+        if breakdown:
+            return breakdown
+    return None
+
+
+def _sum_by_axis(breakdown: dict, prefix: str) -> dict[str, int]:
+    """Collapse one axis's `<prefix><name>__<stage>` entries to `{name: count}`."""
+    totals: dict[str, int] = {}
+    for key, value in breakdown.items():
+        if not key.startswith(prefix):
+            continue
+        name = key[len(prefix) :].split("__", 1)[0]
+        totals[name] = totals.get(name, 0) + int(value)
+    return totals
+
+
+def _format_guard_breakdown(breakdown: dict) -> str:
+    """Render the split for the gate's report line.
+
+    Reports the dominant CAUSE and its fraction against the per-stage
+    `observations_evaluated__*` denominator -- the number that retires the
+    hand-reconstructed `198 / 73,975 = 0.268%`, because the denominator is now
+    recorded by the same pass that produced the count instead of being
+    reconstructed by hand. Also reports the fate split, with both axes
+    LABELLED, so the two are never summed together.
+
+    Deliberately descriptive only. Classifying what the production rig's 198
+    actually are is DEGEN-04's (Phase 25); nothing here interprets either axis
+    or feeds a verdict.
+    """
+    parts: list[str] = []
+    causes = _sum_by_axis(breakdown, _CAUSE_PREFIX)
+    if causes:
+        dominant, dominant_count = max(causes.items(), key=lambda kv: kv[1])
+        denominator = sum(
+            int(value)
+            for key, value in breakdown.items()
+            if key.startswith(_DENOMINATOR_PREFIX)
+        )
+        fraction = (
+            f", {dominant_count / denominator:.3%} of the {denominator} "
+            "observation(s) evaluated"
+            if denominator
+            else ""
+        )
+        parts.append(f"dominant cause={dominant} ({dominant_count}){fraction}")
+    fates = _sum_by_axis(breakdown, _FATE_PREFIX)
+    if fates:
+        rendered = ", ".join(f"{count} {name}" for name, count in sorted(fates.items()))
+        parts.append(f"by fate: {rendered}")
+    if not parts:
+        return ""
+    # "by cause"/"by fate" are two views of the SAME observations -- never add
+    # one axis's numbers to the other's.
+    return (
+        " ["
+        + "; ".join(parts)
+        + " (cause and fate are separate axes over the same observations; "
+        "never add them together)]"
+    )
+
+
 def _provenance_gaps(
     record: dict,
     *,
@@ -346,13 +448,26 @@ def _check_json_artifact(
 
     if check_guard:
         count = _guard_count_from_record(record)
+        # The verdict is exactly `count > 0 -> degenerate`: no threshold, no
+        # tolerance. Plan 24-01's fraction threshold scales WARNING VOLUME in
+        # the library and is deliberately absent here -- no fraction of any
+        # size appears in this module as a gate condition. The real-rig
+        # gate-scope question stays deferred -- it cannot be decided until
+        # DEGEN-04 (Phase 25) reports what the production rig's 198 are, so
+        # there is no real-rig carve-out either.
+        breakdown = _guard_breakdown_from_record(record)
+        detail = _format_guard_breakdown(breakdown) if breakdown else ""
         if count is None:
             results.append(
                 GateResult(
                     experiment,
                     f"gate1_guard_count:{label}",
                     "FAIL",
-                    f"{label}: no {_GUARD_COLUMN!r} field found (cannot confirm zero)",
+                    f"{label}: no {_GUARD_COLUMN!r} field found (cannot confirm "
+                    "zero). From Phase 24 onward a clean run emits this field "
+                    "at an explicit 0, so an absent field means an artifact "
+                    "predating the instrumentation, not an unmeasurable run -- "
+                    "regenerate it rather than reading the absence as clean",
                 )
             )
         elif count == 0:
@@ -361,7 +476,7 @@ def _check_json_artifact(
                     experiment,
                     f"gate1_guard_count:{label}",
                     "PASS",
-                    f"{label}: count=0",
+                    f"{label}: count=0{detail}",
                 )
             )
         else:
@@ -371,7 +486,7 @@ def _check_json_artifact(
                     f"gate1_guard_count:{label}",
                     "FAIL",
                     f"{label}: non-zero guard count ({count}) at the final solution -- "
-                    "optimality is unreliable here",
+                    f"optimality is unreliable here{detail}",
                 )
             )
 

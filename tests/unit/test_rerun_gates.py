@@ -13,6 +13,7 @@ import pandas as pd
 
 from experiments.check_rerun_gates import (
     GateResult,
+    _guard_count_from_record,
     check_band_csv,
     check_e1,
     check_e2_band,
@@ -200,6 +201,141 @@ class TestGate1GuardCount:
         )[0]
         assert result.verdict == "FAIL"
         assert "no " in result.detail and "column present" in result.detail
+
+
+class TestGate1SplitCounters:
+    """Plan 24-02: the gate reads plan 24-01's split without changing its verdict."""
+
+    def test_guard_count_reads_all_three_shapes_unchanged(self):
+        """The three read shapes are untouched by the split -- plan 24-01
+        deliberately left the merged key's name and meaning alone."""
+        assert (
+            _guard_count_from_record(
+                {"problem_shape": {"degenerate_observations_at_solution": 1}}
+            )
+            == 1
+        )
+        assert _guard_count_from_record({"degenerate_observations_at_solution": 2}) == 2
+        assert (
+            _guard_count_from_record(
+                {"discard_stats": {"degenerate_observations_at_solution": 3}}
+            )
+            == 3
+        )
+        assert _guard_count_from_record({"problem_shape": {}}) is None
+
+    def test_present_zero_passes_instead_of_cannot_confirm(self, tmp_path):
+        """D-04's zero-emission plus D-11's mirror together make this branch
+        PASS on a clean production run for the first time: the count is
+        PRESENT at 0 rather than absent."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 0},
+                    "discard_stats": {
+                        "degenerate_observations_at_solution": 0,
+                        "degenerate_observations_cause_above_interface"
+                        "__stage3_interface_optimization": 0,
+                        "degenerate_observations_fate_extended"
+                        "__stage3_interface_optimization": 0,
+                        "observations_evaluated__stage3_interface_optimization": 1760,
+                    },
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "PASS"
+        assert "cannot confirm zero" not in result.detail
+
+    def test_absent_field_still_fails(self, tmp_path):
+        """A genuinely absent field is still a FAIL -- the message now says
+        why an absence means a stale artifact, but it does not soften."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {},
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "FAIL"
+        assert "cannot confirm zero" in result.detail
+        assert "predating the instrumentation" in result.detail
+
+    def test_breakdown_report_names_dominant_cause_and_denominator(self, tmp_path):
+        """The fraction the report prints comes from a RECORDED per-stage
+        denominator, which is what retires the hand-reconstructed
+        `198 / 73,975 = 0.268%`. Both axes are labelled so they are never
+        summed together, and neither is interpreted (that is DEGEN-04's)."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 5},
+                    "discard_stats": {
+                        "degenerate_observations_at_solution": 5,
+                        "degenerate_observations_cause_above_interface"
+                        "__stage3_interface_optimization": 4,
+                        "degenerate_observations_cause_behind_camera"
+                        "__stage3_interface_optimization": 1,
+                        "degenerate_observations_fate_extended"
+                        "__stage3_interface_optimization": 3,
+                        "degenerate_observations_fate_penalized"
+                        "__stage3_interface_optimization": 2,
+                        "observations_evaluated__stage3_interface_optimization": 1000,
+                    },
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        # The verdict is still exactly `count > 0 -> degenerate`.
+        assert result.verdict == "FAIL"
+        assert "dominant cause=above_interface (4)" in result.detail
+        assert "0.400%" in result.detail
+        assert "1000 observation(s) evaluated" in result.detail
+        assert "by fate: 3 extended, 2 penalized" in result.detail
+        assert "never add them together" in result.detail
+
+    def test_breakdown_absent_leaves_the_message_unchanged(self, tmp_path):
+        """An artifact predating the split carries no breakdown; the gate says
+        nothing extra rather than inventing an empty one."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 0},
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "PASS"
+        assert result.detail.endswith("count=0")
 
 
 class TestGate2Status:
