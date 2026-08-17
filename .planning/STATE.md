@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 23 planned -- 4 plans, ready to execute
-last_updated: "2026-08-17T13:44:42.728Z"
-last_activity: 2026-08-17 -- Phase 23 planning complete
+stopped_at: Phase 23 context gathered
+last_updated: "2026-08-17T13:47:32.214Z"
+last_activity: 2026-08-17 -- Phase 23 execution started
 progress:
   total_phases: 8
   completed_phases: 0
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Milestone **v2.1 Clean Experimental Suite**, roadmapped. Land every
+**Current focus:** Phase 23 — experiment-correctness-fixes
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -32,10 +32,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 23 (Experiment Correctness Fixes) — context gathered, not yet planned
-Plan: —
-Status: Ready to execute
-Last activity: 2026-08-17 -- Phase 23 planning complete
+Phase: 23 (experiment-correctness-fixes) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 23
+Last activity: 2026-08-17 -- Phase 23 execution started
 FIX-03+04, FIX-06), one commit per requirement
 
 ## Roadmap Summary (v2.1)
