@@ -199,7 +199,19 @@ anything, and its warning stops over-firing.
      92.78 against the refractive arm's 0.0247, with the ~2000x gap unexplained — see
      `23-01-SUMMARY.md § Evidence`. Interpretation and any claim consequence belong to Phase 25
      (BAND-01), not here.
-**Plans**: TBD
+**Plans** (2, serial per D-19 — `files_modified` overlap on the calibration modules makes them
+spatially non-disjoint, so 24-02 waits on 24-01's key names):
+
+**Wave 1**
+- `24-01` — Library core: the kind/stage counter split with its per-stage denominator and
+  zero-init, the `discard_stage` kwarg, the `interface_below_camera` recomputation and its
+  equivalence test, the narrowed warning, and the `SolverDiagnostics` per-block optimality
+  decomposition plus bound-hit detector. DEGEN-02, DEGEN-03, DEGEN-05. Five commits (D-20).
+
+**Wave 2** *(depends on 24-01)*
+- `24-02` — Artifacts: `pipeline.py`'s `problem_shape` mirror and the whole `discard_stats` block
+  into `benchmark.json`, E1/E5/E7 columns plus the `e{N}_degeneracy_breakdown.json` sidecar,
+  `check_rerun_gates.py`, and the Phase 26 (DRIVER-01) hand-off note. DEGEN-01, DEGEN-05.
 
 ### Phase 25: Degeneracy Classification & Claim Licensing
 **Goal**: Two open questions blocking manuscript language — what the 198 unprojectable
