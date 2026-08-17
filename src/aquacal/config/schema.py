@@ -625,8 +625,8 @@ class DegenerateObservationWarning(UserWarning):
 
     Warning volume scales with the degenerate FRACTION, not the raw count: below
     1% of the stage's evaluated observations the condition is reported for the
-    record, and at or above 1% the message states that neither optimality nor the
-    reprojection RMS can be trusted for the solve as a whole. **That threshold
+    record, and at or above 1% the message states that both optimality and the
+    reprojection RMS are unreliable for the solve as a whole. **That threshold
     scales warning volume only** -- the ``count > 0 -> degenerate`` gate is
     untouched, with no threshold and no tolerance.
 
