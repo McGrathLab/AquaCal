@@ -310,8 +310,13 @@ def _arm_degeneracy_columns(arm_df: pd.DataFrame) -> dict[str, int | None]:
         if column not in arm_df.columns:
             summed[column] = None
             continue
-        values = arm_df[column].dropna()
-        summed[column] = int(values.sum()) if not values.empty else None
+        # Degeneracy is a property of the SEED's solve, and the band writer
+        # stamps that one per-arm value onto every camera row of the seed (see
+        # `_build_ablation_rows`). Summing the rows directly would multiply
+        # every count by `n_cameras_per_seed` -- 12 on the production rig.
+        # Collapse to one value per seed first, then sum across seeds.
+        per_seed = arm_df.groupby("seed")[column].first().dropna()
+        summed[column] = int(per_seed.sum()) if not per_seed.empty else None
     return summed
 
 

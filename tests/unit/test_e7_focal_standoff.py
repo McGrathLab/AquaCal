@@ -284,6 +284,37 @@ class TestBuildFocalStandoffDf:
         for column in list(result.columns)[9:]:
             assert result[column].isna().all()
 
+    def test_degeneracy_counts_collapse_per_seed_and_are_not_multiplied(self):
+        """CR-01: degeneracy is a property of the SEED's solve, and the band
+        writer stamps that one per-arm value onto EVERY camera row of the seed.
+        Summing rows directly multiplies every count by `n_cameras_per_seed`
+        (3 here, 12 on the production rig).
+
+        This is deliberately checked against hand-computed absolute totals
+        rather than against the two axes agreeing. The phase's headline
+        tripwire -- "each axis sums independently to the merged total, so an
+        arm whose two axes disagree is a bookkeeping bug" -- is structurally
+        BLIND to this defect: all six columns scale by the same factor, so an
+        inflated frame still has both axes agreeing with an equally inflated
+        total. Only an absolute expectation catches a multiplicative error.
+        """
+        df = self._hand_built_band_df()
+        # Two seeds; give them different counts so a collapse that wrongly
+        # keeps only one seed is caught too, not just the multiplication.
+        per_seed_total = {42: 5, 43: 2}
+        per_seed_cause = {42: 3, 43: 2}
+        df["degenerate_observations_at_solution"] = df["seed"].map(per_seed_total)
+        df["degenerate_observations_cause_above_interface"] = df["seed"].map(
+            per_seed_cause
+        )
+
+        result = build_focal_standoff_df(df)
+
+        assert (result["n_cameras_per_seed"] == 3).all()
+        # 5 + 2 across the two seeds -- NOT (5 + 2) * 3 cameras.
+        assert (result["degenerate_observations_at_solution"] == 7).all()
+        assert (result["degenerate_observations_cause_above_interface"] == 5).all()
+
 
 class TestPairedArmDifference:
     def test_paired_difference_matches_hand_computed_values(self):
