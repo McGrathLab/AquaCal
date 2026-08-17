@@ -524,6 +524,58 @@ def build_structural_column_groups(
     return groups
 
 
+def build_parameter_block_slices(
+    camera_order: list[str],
+    frame_order: list[int],
+    reference_camera: str,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+    shared_interface: bool = True,
+) -> dict[str, slice]:
+    """Return the packed vector's five structural blocks, in packing order.
+
+    Phase 24 / DEGEN-05. `optimality` is a single scalar that mixes three
+    Coleman-Li scaling regimes -- ``v = 1`` for unbounded extrinsics and board
+    poses, ``v`` around 700 for wide-bounded intrinsics, ``v`` around 2e-12 for a
+    pinned slot -- so it is NOT a like-for-like maximum across blocks. Attributing
+    it to a block needs the layout, and this module owns the layout: computing it
+    in ``experiments/`` would duplicate exactly the drift
+    ``build_structural_column_groups``' docstring exists to prevent. The widths
+    here are the same arithmetic that function uses.
+
+    Args:
+        camera_order: Ordered camera names, as passed to `pack_params`.
+        frame_order: Ordered frame indices, as passed to `pack_params`.
+        reference_camera: Reference camera name (its extrinsics are not packed).
+        refine_intrinsics: Whether the intrinsics block is present.
+        normal_fixed: If False, a 2-parameter tilt block leads the vector.
+        shared_interface: If True, one global water_z; else one per camera.
+
+    Returns:
+        Dict mapping block name to its slice of the packed vector, with keys
+        drawn from ``"tilt"``, ``"extrinsics"``, ``"water_z"``, ``"board_poses"``
+        and ``"intrinsics"``. A block whose width is zero is omitted.
+    """
+    n_cams = len(camera_order)
+    n_frames = len(frame_order)
+
+    widths = [
+        ("tilt", 0 if normal_fixed else 2),
+        ("extrinsics", 6 * (n_cams - 1)),
+        ("water_z", 1 if shared_interface else n_cams),
+        ("board_poses", 6 * n_frames),
+        ("intrinsics", 4 * n_cams if refine_intrinsics else 0),
+    ]
+
+    blocks: dict[str, slice] = {}
+    start = 0
+    for name, width in widths:
+        if width > 0:
+            blocks[name] = slice(start, start + width)
+        start += width
+    return blocks
+
+
 def build_bounds(
     camera_order: list[str],
     frame_order: list[int],

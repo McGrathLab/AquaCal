@@ -26,6 +26,7 @@ from aquacal.calibration._observability import (
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
+    build_parameter_block_slices,
     build_structural_column_groups,
     compute_residuals,
     make_sparse_jacobian_func,
@@ -575,6 +576,23 @@ def optimize_interface(
             if use_sparse_jacobian
             else "use_sparse_jacobian=False; no column-grouping structure was built"
         ),
+        parameter_labels=build_parameter_labels(
+            camera_order,
+            frame_order,
+            reference_camera,
+            refine_intrinsics=False,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        ),
+        parameter_blocks=build_parameter_block_slices(
+            camera_order,
+            frame_order,
+            reference_camera,
+            refine_intrinsics=False,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        ),
+        bounds=(lower, upper),
     )
 
     if result.status <= 0:

@@ -1047,6 +1047,94 @@ class TestInvalidProjectionKeepsGradient:
         )
 
 
+class TestParameterBlockSlices:
+    """Phase 24 / DEGEN-05: the packed vector's structural block layout."""
+
+    N_CAMS = 3
+    N_FRAMES = 2
+
+    def _order(self):
+        return [f"cam{i}" for i in range(self.N_CAMS)], list(range(self.N_FRAMES))
+
+    @pytest.mark.parametrize("normal_fixed", [True, False])
+    @pytest.mark.parametrize("refine_intrinsics", [True, False])
+    @pytest.mark.parametrize("shared_interface", [True, False])
+    def test_parameter_block_slices_tile_the_packed_vector(
+        self, normal_fixed, refine_intrinsics, shared_interface
+    ):
+        """Blocks are contiguous, non-overlapping, and cover the whole vector."""
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        blocks = build_parameter_block_slices(
+            camera_order,
+            frame_order,
+            "cam0",
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        lower, _ = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            base_intrinsics=_dummy_intrinsics(camera_order)
+            if refine_intrinsics
+            else None,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        ordered = sorted(blocks.values(), key=lambda s: s.start)
+        assert ordered[0].start == 0
+        for previous, following in zip(ordered, ordered[1:]):
+            assert previous.stop == following.start, "blocks are not contiguous"
+        assert ordered[-1].stop == len(lower)
+        assert sum(s.stop - s.start for s in ordered) == len(lower)
+        # A zero-width block is omitted rather than emitted empty.
+        assert all(s.stop > s.start for s in ordered)
+        assert ("tilt" in blocks) is (not normal_fixed)
+        assert ("intrinsics" in blocks) is refine_intrinsics
+
+    def test_block_slices_agree_with_parameter_labels(self):
+        """`labels[i]` names `x[i]`, so the labels must tile the same way."""
+        from aquacal.calibration._observability import build_parameter_labels
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        for shared_interface in (True, False):
+            blocks = build_parameter_block_slices(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            labels = build_parameter_labels(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            assert len(labels) == sum(s.stop - s.start for s in blocks.values())
+
+            water_z_label = labels[blocks["water_z"].start]
+            assert water_z_label == "water_z" or water_z_label.endswith("_water_z")
+
+
+def _dummy_intrinsics(camera_order):
+    from aquacal.config.schema import CameraIntrinsics
+
+    K = np.array([[500.0, 0.0, 320.0], [0.0, 500.0, 240.0], [0.0, 0.0, 1.0]])
+    return {
+        cam: CameraIntrinsics(
+            K=K.copy(), dist_coeffs=np.zeros(5), image_size=(640, 480)
+        )
+        for cam in camera_order
+    }
+
+
 class TestDegeneracyBreakdownOut:
     """Phase 24 / DEGEN-02: `compute_residuals`' six-key cause/fate/denominator fill.
 

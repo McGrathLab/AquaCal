@@ -515,6 +515,23 @@ class SolverDiagnostics:
             `n_groups`.
         n_residuals_reason: Explanation for why `n_residuals` is `None`.
             Populated only when `n_residuals` is `None`.
+        optimality_by_block: Per-parameter-block decomposition of `optimality`
+            (DEGEN-05), keyed by the block names `build_parameter_block_slices`
+            returns. Each entry carries `max_scaled` (float), `max_unscaled`
+            (float), `argmax_parameter` (str, from `build_parameter_labels`) and
+            `n_params` (int). `None` with `optimality_by_block_reason` set when
+            the call site could not supply labels, blocks or bounds.
+
+            **Why the decomposition exists.** `optimality` is a single scalar
+            that mixes three Coleman-Li scaling regimes -- ``v = 1`` for
+            unbounded extrinsics and board poses, ``v`` around 700 for
+            wide-bounded intrinsics, and ``v`` around 2e-12 for a pinned slot --
+            so it is NOT a like-for-like maximum across blocks. Reading it as one
+            number invites attributing a large value to whichever block the
+            reader already suspects. The maximum `max_scaled` over blocks equals
+            `result.optimality`, since scipy reports ``norm(g * v, inf)``.
+        optimality_by_block_reason: Explanation for why `optimality_by_block` is
+            `None`. Populated only when it is `None`.
     """
 
     nfev: int | None = None
@@ -534,6 +551,8 @@ class SolverDiagnostics:
     n_groups_reason: str | None = None
     n_residuals: int | None = None
     n_residuals_reason: str | None = None
+    optimality_by_block: dict[str, dict] | None = None
+    optimality_by_block_reason: str | None = None
 
 
 def build_parameter_labels(
@@ -635,14 +654,21 @@ def capture_solver_diagnostics(
     n_groups_reason: str | None = None,
     n_residuals: int | None = None,
     n_residuals_reason: str | None = None,
+    parameter_labels: list[str] | None = None,
+    parameter_blocks: dict[str, slice] | None = None,
+    bounds: tuple | None = None,
 ) -> None:
     """Populate a `SolverDiagnostics` in place from a returned `OptimizeResult`.
 
-    Must be called only after `least_squares` returns; never read `result.jac`,
-    `result.fun`, or `result.x` here (Research Pitfall 4 -- doing so risks
-    retaining large arrays and inflating the very peak-memory measurement
-    BENCH-02 depends on being honest). Only the small scalar fields SciPy
-    already reports on `OptimizeResult` are read.
+    Must be called only after `least_squares` returns.
+
+    **Pitfall 4, narrowed by phase 24 rather than silently violated.**
+    `result.fun` (length M) and `result.jac` (M x P) remain FORBIDDEN here:
+    retaining them inflates the very peak-memory measurement BENCH-02 depends on
+    being honest. `result.grad`, `result.active_mask` and `result.x` are all
+    length P, and phase 24 reads them -- but only to reduce them immediately to
+    Python scalars and strings via `float()`/`int()`/`str()` at the point of
+    extraction, so no numpy array ever survives on the dataclass.
 
     `njev` is read defensively via `getattr` for reuse-safety, but at every one
     of this codebase's four in-scope call sites (all `method='trf'`) it is
@@ -673,6 +699,17 @@ def capture_solver_diagnostics(
             applicable (EXP-08).
         n_residuals_reason: Explanation recorded when `n_residuals` is `None`
             (D-15).
+        parameter_labels: Labels from `build_parameter_labels`, packed with the
+            same arguments as the solved vector. Required for
+            `optimality_by_block`.
+        parameter_blocks: Block slices from
+            `_optim_common.build_parameter_block_slices`, packed with the same
+            arguments. Required for the same field.
+        bounds: The `(lower, upper)` tuple passed to `least_squares`. Required
+            for the same two fields.
+
+            When any of these three is `None`, `optimality_by_block` is recorded
+            as `None` with a `*_reason` naming what was missing (D-15).
     """
     if diagnostics_out is None:
         return
@@ -696,6 +733,80 @@ def capture_solver_diagnostics(
     diagnostics_out.n_groups_reason = n_groups_reason
     diagnostics_out.n_residuals = n_residuals
     diagnostics_out.n_residuals_reason = n_residuals_reason
+
+    missing = [
+        name
+        for name, value in (
+            ("parameter_labels", parameter_labels),
+            ("parameter_blocks", parameter_blocks),
+            ("bounds", bounds),
+        )
+        if value is None
+    ]
+    if missing:
+        reason = (
+            f"call site supplied no {', '.join(missing)}; the packed-vector "
+            f"layout is unavailable at this site"
+        )
+        diagnostics_out.optimality_by_block = None
+        diagnostics_out.optimality_by_block_reason = reason
+        return
+
+    diagnostics_out.optimality_by_block = _decompose_optimality(
+        result, parameter_labels, parameter_blocks, bounds
+    )
+    diagnostics_out.optimality_by_block_reason = None
+
+
+def _coleman_li_scaling(
+    x: NDArray[np.float64],
+    grad: NDArray[np.float64],
+    lower: NDArray[np.float64],
+    upper: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Compute scipy `trf`'s Coleman-Li scaling vector `v`, elementwise.
+
+    `v = upper - x` where the gradient points toward the upper bound and that
+    bound is finite; `v = x - lower` where it points toward a finite lower bound;
+    `1.0` otherwise. scipy reports `optimality` as `norm(grad * v, inf)`, so this
+    is what makes the per-block maxima add up to the reported scalar.
+    """
+    v = np.ones_like(x, dtype=np.float64)
+    toward_upper = (grad < 0) & np.isfinite(upper)
+    toward_lower = (grad > 0) & np.isfinite(lower)
+    v[toward_upper] = upper[toward_upper] - x[toward_upper]
+    v[toward_lower] = x[toward_lower] - lower[toward_lower]
+    return v
+
+
+def _decompose_optimality(
+    result,
+    parameter_labels: list[str],
+    parameter_blocks: dict[str, slice],
+    bounds: tuple,
+) -> dict[str, dict]:
+    """Attribute `result.optimality` to each structural parameter block."""
+    x = np.asarray(result.x, dtype=np.float64)
+    grad = np.asarray(result.grad, dtype=np.float64)
+    lower = np.asarray(bounds[0], dtype=np.float64)
+    upper = np.asarray(bounds[1], dtype=np.float64)
+
+    scaled = np.abs(grad * _coleman_li_scaling(x, grad, lower, upper))
+    unscaled = np.abs(grad)
+
+    by_block: dict[str, dict] = {}
+    for name, block in parameter_blocks.items():
+        block_scaled = scaled[block]
+        if block_scaled.size == 0:
+            continue
+        argmax = int(np.argmax(block_scaled))
+        by_block[name] = {
+            "max_scaled": float(block_scaled[argmax]),
+            "max_unscaled": float(np.max(unscaled[block])),
+            "argmax_parameter": str(parameter_labels[block.start + argmax]),
+            "n_params": int(block_scaled.size),
+        }
+    return by_block
 
 
 class OptimizerObserver:
