@@ -276,8 +276,22 @@ E6_COLUMNS: list[str] = [
     # a fresh run recorded metrics (status in {"ok", "degenerate"}); null
     # on "failed"/"skipped_existing" rows that never resolved a value.
     "degenerate_observations_at_solution",
+    # FIX-03 (23-03): appended, never inserted, so E6_COLUMNS keeps every
+    # prior column's position -- "degenerate_observations_at_solution" is no
+    # longer the last entry, but its own index is unchanged. Both new
+    # columns sit alongside the existing mean-absolute/raw columns rather
+    # than replacing them: MF-12 found that `water_z_error_mm_mean`'s mean-
+    # ABSOLUTE form destroys the sign that separates a harmless global datum
+    # shift from a real standoff failure (an 18.9 mm line-layout reading
+    # that is ~80% gauge, ~20% physical), and E6 never passed
+    # `gauge_correct_z` while E1 already does, so the two experiments
+    # reported Z error on different bases. See `compute_water_z_error_mm_signed`
+    # and `compute_configuration_metrics`'s second `compute_per_camera_errors`
+    # call for the derivation each column comes from.
+    "water_z_error_mm_signed_mean",
+    "z_position_error_mm_gauge_corrected_mean",
 ]
-assert len(E6_COLUMNS) == 31 and len(set(E6_COLUMNS)) == 31
+assert len(E6_COLUMNS) == 33 and len(set(E6_COLUMNS)) == 33
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
@@ -300,7 +314,30 @@ _METRIC_COLUMNS: list[str] = [
     "water_z_error_mm_mean",
     "num_comparisons",
     "num_frames",
+    "water_z_error_mm_signed_mean",
+    "z_position_error_mm_gauge_corrected_mean",
 ]
+
+# Per-camera decomposition table (FIX-03, 23-03): one row per
+# (configuration, seed, camera), spanning the same axis/seed coverage as
+# E6_COLUMNS but never aggregated across cameras -- so a reader can apply or
+# reject MF-12's cam0/cam1 exclusions themselves. `is_reference_camera` is
+# emitted rather than baked into an exclusion, because cam0 is pinned at
+# C_z = 0 by construction (its h_c error is IDENTICALLY its water_z error)
+# while cam1's exclusion in MF-12 was a discretionary, after-the-fact call.
+E6_PER_CAMERA_COLUMNS = [
+    "axis",
+    "axis_value",
+    "config_key",
+    "seed",
+    "camera",
+    "is_reference_camera",
+    "z_position_error_mm_raw",
+    "z_position_error_mm_gauge_corrected",
+    "water_z_error_mm_signed",
+    "h_c_error_mm_signed",
+]
+E6_PER_CAMERA_KEY_COLUMNS = ["seed", "axis", "axis_value", "camera"]
 
 # Smoke mode's held-out/calibration frame count -- small so --smoke completes
 # quickly even though camera count stays at the full BASELINE_N_CAMERAS (D-11
@@ -483,6 +520,111 @@ def compute_water_z_error_mm_mean(
     return float(np.mean(errors_mm))
 
 
+def compute_water_z_error_mm_signed(
+    estimated_water_zs: dict[str, float], true_water_zs: dict[str, float]
+) -> float:
+    """Signed mean per-camera water_z recovery error, in millimetres (FIX-03).
+
+    `compute_water_z_error_mm_mean` (above) is a mean ABSOLUTE error, which
+    destroys the sign that separates a harmless global datum shift -- the
+    rig and the water surface sliding through the world frame together --
+    from a real physical standoff failure. MF-12 found the line layout's
+    18.9 mm `water_z_error_mm_mean` reading was ~80% gauge: the SIGNED mean
+    is -18.8547 mm, and the camera Z position error's own signed mean is
+    -18.4955 mm, so `h_c = water_z - C_z`'s error is only -0.3592 mm -- the
+    surface and the cameras moved together in Z, and only their small
+    residual difference is a genuine standoff error. The absolute form
+    cannot show this: it reports the same 18.9 mm magnitude regardless of
+    whether the error is common-mode (gauge) or differential (physical).
+
+    Args:
+        estimated_water_zs: Recovered water_z per camera (meters), typically
+            `{cam: cal.water_z for cam, cal in result.cameras.items()}`.
+        true_water_zs: Ground-truth water_z per camera (meters), typically
+            `scenario.water_zs`.
+
+    Returns:
+        The mean, over cameras present in both dicts, of
+        `(estimated - true) * 1000` (millimetres, SIGNED). `nan` if no
+        camera is present in both.
+    """
+    errors_mm = [
+        (estimated_water_zs[cam] - true_water_zs[cam]) * 1000.0
+        for cam in true_water_zs
+        if cam in estimated_water_zs
+    ]
+    if not errors_mm:
+        return float("nan")
+    return float(np.mean(errors_mm))
+
+
+def build_per_camera_rows(
+    config: dict,
+    seed: int,
+    scenario,
+    result,
+) -> list[dict]:
+    """One row per camera, decomposing E6's aggregate Z/water_z errors (FIX-03).
+
+    Emits EVERY camera present in `scenario.intrinsics` -- cam0 and cam1
+    included -- because the per-camera table's whole purpose is to let a
+    reader apply or reject MF-12's exclusions themselves rather than finding
+    them baked into the artifact. `is_reference_camera` is `True` for
+    exactly the reference camera (`cam0`, first by the numeric-suffix sort
+    this project already uses for camera ordering), whose `h_c` error is
+    IDENTICALLY its `water_z` error because it is pinned at `C_z = 0`.
+
+    The identity that makes this table checkable, per camera (because
+    `h_c = water_z - C_z`):
+
+        h_c_error_mm_signed == water_z_error_mm_signed - z_position_error_mm_raw
+
+    On the committed seed-43, layout=line row this reads
+    -18.8547 - (-18.4955) == -0.3592, matching MF-12's reported `h_c`
+    signed mean of -0.3592 mm.
+
+    Args:
+        config: One entry from `build_axis_configurations()`.
+        seed: The run seed.
+        scenario: The `SyntheticScenario` the configuration was built from.
+        result: The `CalibrationResult` returned by `calibrate_synthetic`.
+
+    Returns:
+        A list of dicts, each with exactly `E6_PER_CAMERA_COLUMNS`' keys,
+        one per camera present in both `scenario.intrinsics` and
+        `result.cameras`.
+    """
+    raw_errors = compute_per_camera_errors(result, scenario)
+    corrected_errors = compute_per_camera_errors(result, scenario, gauge_correct_z=True)
+
+    camera_names = sorted(scenario.intrinsics, key=lambda s: int(s.replace("cam", "")))
+    reference_camera = camera_names[0] if camera_names else None
+
+    rows: list[dict] = []
+    for cam in camera_names:
+        if cam not in result.cameras or cam not in raw_errors:
+            continue
+        z_raw = raw_errors[cam]["z_position_error_mm"]
+        z_corrected = corrected_errors[cam]["z_position_error_mm"]
+        water_z_signed = (result.cameras[cam].water_z - scenario.water_zs[cam]) * 1000.0
+        h_c_signed = water_z_signed - z_raw
+        rows.append(
+            {
+                "axis": config["axis"],
+                "axis_value": config["axis_value"],
+                "config_key": config["config_key"],
+                "seed": seed,
+                "camera": cam,
+                "is_reference_camera": cam == reference_camera,
+                "z_position_error_mm_raw": z_raw,
+                "z_position_error_mm_gauge_corrected": z_corrected,
+                "water_z_error_mm_signed": water_z_signed,
+                "h_c_error_mm_signed": h_c_signed,
+            }
+        )
+    return rows
+
+
 def compute_configuration_metrics(
     scenario,
     result,
@@ -516,9 +658,22 @@ def compute_configuration_metrics(
         A dict with exactly the keys in `_METRIC_COLUMNS`.
     """
     per_camera_errors = compute_per_camera_errors(result, scenario)
+    # FIX-03 (23-03): a second call with gauge_correct_z=True, alongside the
+    # unchanged raw call above -- `compute_per_camera_errors`' own
+    # gauge_correct_z=False default is untouched, this is the call site
+    # opting in. The raw column is what a user sees in their own
+    # diagnostics; the corrected column is what supports a geometric claim.
+    # Publishing only the corrected one would hide the datum shift this
+    # decomposition exists to explain.
+    per_camera_errors_corrected = compute_per_camera_errors(
+        result, scenario, gauge_correct_z=True
+    )
     focal_vals = [e["focal_length_error_pct"] for e in per_camera_errors.values()]
     xy_vals = [e["xy_position_error_mm"] for e in per_camera_errors.values()]
     z_vals = [e["z_position_error_mm"] for e in per_camera_errors.values()]
+    z_vals_corrected = [
+        e["z_position_error_mm"] for e in per_camera_errors_corrected.values()
+    ]
     estimated_water_zs = {cam: cal.water_z for cam, cal in result.cameras.items()}
 
     reconstruction = evaluation.reconstruction
@@ -555,6 +710,12 @@ def compute_configuration_metrics(
             reconstruction.num_comparisons if reconstruction is not None else None
         ),
         "num_frames": evaluation.num_frames,
+        "water_z_error_mm_signed_mean": compute_water_z_error_mm_signed(
+            estimated_water_zs, scenario.water_zs
+        ),
+        "z_position_error_mm_gauge_corrected_mean": (
+            float(np.mean(z_vals_corrected)) if z_vals_corrected else None
+        ),
     }
 
 
@@ -742,6 +903,7 @@ def run_configuration(
     force: bool = False,
     environment: dict | None = None,
     is_smoke: bool = False,
+    per_camera_rows_out: list[dict] | None = None,
 ) -> dict:
     """Run (or skip, if already cached) one distinct scene, checkpointing to JSON.
 
@@ -817,6 +979,14 @@ def run_configuration(
             configuration (the plain, non-`--smoke` sweep) always passes
             `is_smoke=False` (the default), so the gate below is exactly
             `count > 0 -> degenerate` for every published number.
+        per_camera_rows_out: FIX-03 (23-03)'s `*_out` sink, matching this
+            project's `diagnostics_out`/`timings_out`/`discard_stats_out`
+            idiom. When not `None`, extended with `build_per_camera_rows()`'s
+            output on the fresh-run path, and with the checkpoint's cached
+            `per_camera_rows` on the resume path. A resumed
+            `schema_version: 1` checkpoint (or any checkpoint missing the
+            key) contributes no rows and logs one warning naming the config
+            key -- never a silent gap, and never a raise.
 
     Returns:
         A dict with `status` (one of `STATUS_VALUES`), `status_reason`,
@@ -846,6 +1016,19 @@ def run_configuration(
                 config_key,
                 config_path,
             )
+            if per_camera_rows_out is not None:
+                if cached.get("schema_version") == 2 and "per_camera_rows" in cached:
+                    per_camera_rows_out.extend(cached["per_camera_rows"])
+                else:
+                    logger.warning(
+                        "Checkpoint %s for configuration %s predates the "
+                        "per-camera table (schema_version %s); the "
+                        "per-camera table will be incomplete for this "
+                        "configuration (FIX-03, 23-03).",
+                        config_path,
+                        config_key,
+                        cached.get("schema_version"),
+                    )
             return {
                 "status": cached.get("status", "failed"),
                 "status_reason": cached.get("status_reason", ""),
@@ -855,6 +1038,7 @@ def run_configuration(
                 ),
             }
 
+    per_camera_rows: list[dict] = []
     try:
         scenario = build_grid_scenario(
             n_cameras=config["n_cameras"],
@@ -909,6 +1093,7 @@ def run_configuration(
         metrics = compute_configuration_metrics(
             scenario, result, evaluation, diag_stage3, diag_intrinsic_pass
         )
+        per_camera_rows = build_per_camera_rows(config, seed, scenario, result)
 
         n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
         if n_degenerate > 0 and is_smoke:
@@ -949,17 +1134,25 @@ def run_configuration(
             "degenerate_observations_at_solution": None,
         }
 
+    if per_camera_rows_out is not None:
+        per_camera_rows_out.extend(per_camera_rows)
+
     config_path.parent.mkdir(parents=True, exist_ok=True)
     checkpoint = {
         **outcome,
         "seed": seed,
         "n_frames": n_frames,
-        "schema_version": 1,
+        # FIX-03 (23-03): bumped 1 -> 2 for the new `per_camera_rows` key.
+        # The resume branch above treats any checkpoint whose
+        # schema_version != 2 (or missing "per_camera_rows" entirely) as not
+        # carrying the table -- warned, never raised.
+        "schema_version": 2,
         "environment": environment
         if environment is not None
         else capture_environment(),
         "solver_config": {"seed": seed},
         "config": _resolve_config_identity(config),
+        "per_camera_rows": per_camera_rows,
     }
     with open(config_path, "w") as f:
         json.dump(checkpoint, f, indent=2, sort_keys=True)
@@ -977,6 +1170,7 @@ def run_sweep(
     environment: dict | None = None,
     is_smoke: bool = False,
     fail_fast: bool = False,
+    per_camera_rows_out: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -1010,6 +1204,13 @@ def run_sweep(
             its row and continuing. `_run_smoke_configs` never passes `True`
             (--smoke is unaffected in either mode); only `_run_full` gates
             on it, via `not args.no_fail_fast`.
+        per_camera_rows_out: FIX-03 (23-03)'s `*_out` sink, forwarded to each
+            `run_configuration` call. `run_sweep` caches by `config_key`
+            (see above), so a configuration reached three times (the
+            baseline rows) contributes its camera rows via `run_configuration`
+            exactly ONCE -- the cache lookup below only calls
+            `run_configuration` on a miss, so the sink is only extended once
+            per distinct scene, never once per row built.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
@@ -1029,6 +1230,7 @@ def run_sweep(
                 force=force,
                 environment=environment,
                 is_smoke=is_smoke,
+                per_camera_rows_out=per_camera_rows_out,
             )
         outcome = cache[config_key]
         if fail_fast and outcome["status"] == "failed":
@@ -1102,6 +1304,11 @@ def _run_seed_band(
     n_frames = _SMOKE_N_FRAMES if smoke else BASELINE_N_FRAMES
     refine_intrinsics = not smoke
     per_seed_status_counts: dict[int, dict[str, int]] = {}
+    # FIX-03 (23-03): accumulated across every seed in ONE list -- the
+    # `seed` column each row carries (from build_per_camera_rows) is what
+    # distinguishes them, turning MF-12's single-seed (seed 43) hand
+    # analysis into a six-seed band with no extra solve.
+    all_per_camera_rows: list[dict] = []
 
     def _runner(seed: int) -> pd.DataFrame:
         # E6's checkpoint cache is seed-blind: _SCENARIO_IDENTITY_KEYS omits
@@ -1137,6 +1344,7 @@ def _run_seed_band(
             environment=environment,
             is_smoke=smoke,
             fail_fast=fail_fast,
+            per_camera_rows_out=all_per_camera_rows,
         )
         per_seed_status_counts[seed] = df["status"].value_counts().astype(int).to_dict()
         return df
@@ -1152,6 +1360,13 @@ def _run_seed_band(
         # Force is implied for the band CSV only (mirrors E1/E7's --seeds
         # convention): regenerating the band on demand is the entire point
         # of it being reproducible.
+        force=True,
+    )
+    write_experiment_csv(
+        pd.DataFrame(all_per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera_band.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
+        # Force-implied, matching the band CSV's own convention above.
         force=True,
     )
 
@@ -1338,6 +1553,7 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
     """Run the reduced smoke config set, then probe the skip-if-exists path (review M7)."""
     environment = capture_environment()
     configs = build_smoke_configurations()
+    per_camera_rows: list[dict] = []
     df = run_sweep(
         configs,
         seed,
@@ -1347,9 +1563,16 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
         force=True,
         environment=environment,
         is_smoke=True,
+        per_camera_rows_out=per_camera_rows,
     )
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
+    )
+    write_experiment_csv(
+        pd.DataFrame(per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
+        force=True,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
         json.dump(
@@ -1439,6 +1662,7 @@ def _run_full(args: argparse.Namespace) -> int:
     out_dir = resolve_out_dir(args.out)
     environment = capture_environment()
     configs = build_axis_configurations()
+    per_camera_rows: list[dict] = []
     try:
         df = run_sweep(
             configs,
@@ -1449,6 +1673,7 @@ def _run_full(args: argparse.Namespace) -> int:
             force=args.force,
             environment=environment,
             fail_fast=not args.no_fail_fast,
+            per_camera_rows_out=per_camera_rows,
         )
     except FailFastAbort as exc:
         print(
@@ -1460,6 +1685,12 @@ def _run_full(args: argparse.Namespace) -> int:
         df,
         out_dir / "generalization_sweep.csv",
         key_columns=E6_KEY_COLUMNS,
+        force=args.force,
+    )
+    write_experiment_csv(
+        pd.DataFrame(per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
         force=args.force,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
