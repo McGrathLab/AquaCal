@@ -285,8 +285,11 @@ def build_real_rig_metrics(result, spatial, square_size_m: float) -> dict:
             ),
             "mean_per_camera_reprojection_px": (
                 "mean of result.diagnostics.reprojection_error_per_camera over "
-                "primary (non-auxiliary) cameras -- this IS the §3 quantity "
-                "(release diagnostics.json: 0.8786 px, quoted as 0.88)"
+                "primary (non-auxiliary) cameras -- this IS the §3 quantity, computed "
+                "from THIS run. Do NOT read it as the manuscript's 0.88 px: that came "
+                "from the 2026-07 release_calibration diagnostics.json (0.8786 px) and "
+                "is SUPERSEDED as a description of this field (see "
+                "MANUSCRIPT-FINDINGS MF-19)."
             ),
             "reprojection_range_px": (
                 "min/max of result.diagnostics.reprojection_error_per_camera "
@@ -553,14 +556,21 @@ def _run_real_calibration(args: argparse.Namespace):
     from aquacal.datasets import load_example
 
     if getattr(args, "config", None) is not None:
-        # Explicit-config path (added 2026-07-27). The PUBLISHED Zenodo archive is a
-        # ~4.3x frame-subsampled extraction of the capture that produced the
-        # manuscript's section-3 numbers (60 usable frames -> 12 validation -> 1,817
-        # comparisons, versus ~260 -> 52 -> 7,762). Reproducing section-3 therefore
-        # requires pointing at the full-frameset config; the archive default is kept
-        # so a reader with no local videos still has a working reproducibility path.
+        # Explicit-config path (added 2026-07-27; claim corrected 2026-08-17). The
+        # PUBLISHED Zenodo archive is NO LONGER frame-subsampled. Record 21889922
+        # (4.35 GB), which the manifest was repointed to in 25655f7, ships
+        # 13 x 262 extrinsic frames plus its own config_paper.yaml at
+        # frame_step: 1 / max_calibration_frames: 200, and a fresh run off it
+        # gives 262 usable frames -> 210/52 split -> 200 calibration frames and
+        # reconstruction.num_comparisons = 7762 (verified 2026-08-12). The
+        # ~4.3x-subsampled extraction (60 usable -> 12 validation -> 1,817
+        # comparisons) was the RETIRED record 18645385, not this one. So this
+        # branch is not required to reach the section-3 frameset; it exists to
+        # point at a different capture or a variant config. Whether the current
+        # library reproduces section-3's VALUES is separate and open (MF-19).
         # See .planning/phases/19.1-experiment-suite-consolidation/
-        # 19.1-E2-FRAMESET-PROVENANCE.md and REQUIREMENTS.md DATA-01a.
+        # 19.1-E2-FRAMESET-PROVENANCE.md -- read its supersession header first;
+        # its frameset table describes the retired record.
         config_path = Path(args.config).resolve()
         if not config_path.is_file():
             raise FileNotFoundError(f"--config path does not exist: {config_path}")
@@ -846,11 +856,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Run against an explicit config.yaml instead of the published Zenodo "
-            "archive. Required to reproduce the manuscript's section-3 numbers, "
-            "because the published archive is a ~4.3x frame-subsampled extraction "
-            "of the capture that produced them (DATA-01a). Omit to use the "
-            "published archive, which is the path a reader without the raw videos "
-            "follows."
+            "archive's own config_paper.yaml. NOT required to reproduce the "
+            "manuscript's section-3 FRAMESET: record 21889922 (4.35 GB; the "
+            "manifest was repointed to it in 25655f7) ships 13 x 262 extrinsic "
+            "frames plus config_paper.yaml at frame_step: 1 / "
+            "max_calibration_frames: 200, which yields 262 usable frames -> "
+            "210/52 split -> 200 calibration frames and reproduces "
+            "reconstruction.num_comparisons = 7762 exactly (verified 2026-08-12). "
+            "The retired record 18645385 (164 MB) was the ~4.3x subsampled one. "
+            "Whether the CURRENT library reproduces section-3's VALUES is a "
+            "separate, open question (MANUSCRIPT-FINDINGS MF-19); this flag makes "
+            "no claim about it. Use --config to point at a different capture or a "
+            "variant config; omit it to run the published archive as shipped."
         ),
     )
     parser.add_argument(
