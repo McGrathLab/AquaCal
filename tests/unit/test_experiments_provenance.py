@@ -18,6 +18,7 @@ where they sit (`SEEDLESS_LEGACY_RECORDS`), not regenerated.
 
 from __future__ import annotations
 
+import ast
 import json
 import pathlib
 import subprocess
@@ -728,3 +729,75 @@ class TestSelfDescribingJson:
             f"schema_version-less committed JSON files {versionless} do not "
             f"match SELF_DESCRIBING_JSON {set(SELF_DESCRIBING_JSON)} exactly"
         )
+
+
+# ---------------------------------------------------------------------------
+# FIX-02: every experiment must pass normal_fixed explicitly at every
+# calibrate_synthetic/optimize_interface/joint_refinement call site.
+#
+# E1 and E7 were not wrong on purpose -- they simply omitted the argument,
+# silently inheriting the library's normal_fixed=True default and solving a
+# problem two tilt DOF smaller than production (which runs at False). The
+# omission was unrecoverable from their artifacts: the neighbouring
+# shared_interface key WAS recorded, so a reader meets one interface-model
+# flag present and the other absent and reasonably (wrongly) infers it was
+# considered. This test makes any future omission fail loudly, across every
+# experiment that solves, rather than silently reproducing the same defect.
+# ---------------------------------------------------------------------------
+
+NORMAL_FIXED_MODULES = (
+    "experiments/e1_refractive_comparison.py",
+    "experiments/e4_benchmark_grid.py",
+    "experiments/e5_index_sensitivity.py",
+    "experiments/e6_generalization_sweep.py",
+    "experiments/e7_interface_ablation.py",
+)
+_NORMAL_FIXED_CALLEES = {
+    "calibrate_synthetic",
+    "optimize_interface",
+    "joint_refinement",
+}
+
+
+def _callee_name(node: ast.Call) -> str | None:
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def test_every_experiment_passes_normal_fixed_explicitly():
+    """Parse each of NORMAL_FIXED_MODULES and assert every
+    calibrate_synthetic/optimize_interface/joint_refinement call carries a
+    normal_fixed keyword argument, naming the module/callee/line on failure.
+    Adding a sixth solving experiment requires deliberately adding it to
+    NORMAL_FIXED_MODULES -- an omission here would silently exempt a new
+    experiment from this gate.
+
+    E1 and E7 were not wrong on purpose here -- they simply omitted the
+    argument, silently inheriting the library's normal_fixed=True default and
+    solving a problem two tilt DOF smaller than production (which runs at
+    False). The omission was unrecoverable from their own artifacts: the
+    neighbouring shared_interface key WAS recorded, so a reader met one
+    interface-model flag present and the other absent and reasonably (but
+    wrongly) inferred it was considered.
+    """
+    missing: list[str] = []
+    for rel_path in NORMAL_FIXED_MODULES:
+        path = REPO_ROOT / rel_path
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            callee = _callee_name(node)
+            if callee not in _NORMAL_FIXED_CALLEES:
+                continue
+            if not any(kw.arg == "normal_fixed" for kw in node.keywords):
+                missing.append(f"{rel_path}:{node.lineno} -- {callee}(...)")
+    assert not missing, (
+        "The following calls omit normal_fixed, silently inheriting the "
+        "library's normal_fixed=True default instead of stating the "
+        "resolved value explicitly:\n" + "\n".join(missing)
+    )

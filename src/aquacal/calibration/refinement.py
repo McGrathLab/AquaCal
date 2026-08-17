@@ -63,6 +63,7 @@ def joint_refinement(
     shared_interface: bool = True,
     diagnostics_out: SolverDiagnostics | None = None,
     discard_stats_out: dict[str, int] | None = None,
+    water_z_bounds: tuple[float, float] | None = None,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -116,6 +117,14 @@ def joint_refinement(
             records an explicit 0 rather than an absent key. `None` (the
             default) disables accounting entirely; has no effect on the
             returned values.
+        water_z_bounds: Optional `(lower, upper)` override forwarded to
+            `build_bounds` for the water_z slot(s). Omitting this here while
+            passing it to `optimize_interface` leaves `water_z` free during
+            this intrinsic-refinement pass — measured 2026-08-17: a pin held
+            through Stage 3's first pass drifted from 1.031 m to 0.0425 m by
+            the end of this pass when the override was not also threaded
+            here. See `build_bounds` for the degenerate-interval mechanism
+            (D-01).
 
     Returns:
         Tuple of:
@@ -189,6 +198,7 @@ def joint_refinement(
         refine_intrinsics=refine_intrinsics,
         normal_fixed=normal_fixed,
         shared_interface=shared_interface,
+        water_z_bounds=water_z_bounds,
     )
 
     # Build cost function args

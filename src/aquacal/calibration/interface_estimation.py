@@ -152,6 +152,7 @@ def optimize_interface(
     shared_interface: bool = True,
     diagnostics_out: SolverDiagnostics | None = None,
     discard_stats_out: dict[str, int] | None = None,
+    water_z_bounds: tuple[float, float] | None = None,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -198,6 +199,10 @@ def optimize_interface(
         diagnostics_out: Optional `SolverDiagnostics` instance to populate in
             place with terminal solver diagnostics (BENCH-01/BENCH-03/BENCH-06).
             Has no effect on the returned values.
+        water_z_bounds: Optional `(lower, upper)` override forwarded to
+            `build_bounds` for the water_z slot(s). See `build_bounds` for the
+            degenerate-interval pinning mechanism (D-01). Omitting this leaves
+            the default `[0.01, 2.0]` unchanged.
 
     Returns:
         Tuple of:
@@ -280,6 +285,7 @@ def optimize_interface(
         reference_camera,
         normal_fixed=normal_fixed,
         shared_interface=shared_interface,
+        water_z_bounds=water_z_bounds,
     )
 
     # Reference extrinsics (fixed during optimization)

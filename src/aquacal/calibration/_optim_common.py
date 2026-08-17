@@ -527,6 +527,7 @@ def build_bounds(
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
     shared_interface: bool = True,
+    water_z_bounds: tuple[float, float] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """
     Build lower and upper bounds for optimization.
@@ -541,6 +542,14 @@ def build_bounds(
         shared_interface: If True (default), a single water_z bound is emitted.
             If False, N per-camera water_z bounds are emitted, each the same
             [0.01, 2.0] as the shared bound.
+        water_z_bounds: If given, `(lower, upper)` overrides the default
+            `[0.01, 2.0]` for EVERY water_z slot (all N of them in per-camera
+            mode). A degenerate interval (`lower == upper` within numerical
+            tolerance) holds the parameter fixed at solve time while leaving
+            it packed in the problem — it is not removed. This deliberately
+            does not parameterize the hardcoded default bound itself (D-05,
+            deferred post-submission); it only allows a caller to override it
+            for a specific solve.
 
     Returns:
         Tuple of (lower_bounds, upper_bounds) arrays
@@ -573,6 +582,10 @@ def build_bounds(
     water_z_idx = n_tilt_params + n_extrinsic_params
     lower[water_z_idx : water_z_idx + n_water_z_params] = 0.01
     upper[water_z_idx : water_z_idx + n_water_z_params] = 2.0
+    if water_z_bounds is not None:
+        wz_lo, wz_hi = water_z_bounds
+        lower[water_z_idx : water_z_idx + n_water_z_params] = wz_lo
+        upper[water_z_idx : water_z_idx + n_water_z_params] = wz_hi
 
     # Intrinsic bounds
     if refine_intrinsics:
