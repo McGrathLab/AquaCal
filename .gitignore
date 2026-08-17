@@ -329,3 +329,4 @@ experiments/results_linux32gb/e2_*/reconstruction_errors.csv
 # evidence it produces is transcribed into each plan's own 23-0N-SUMMARY.md
 # instead.
 experiments/verify_23/
+experiments/verify_23_optblocks/

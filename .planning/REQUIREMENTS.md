@@ -97,12 +97,28 @@ submission. POST follows it.
 
       *Motivating measurement (2026-08-17):* E1's non-refractive arm reports
       `optimality_intrinsic` of 92.78 pinned, 49.65 unpinned, and 873.98 with the normal fixed,
-      against the refractive arm's 0.0247 on the same scenario and seed. The near-zero-width
-      `water_z` box explains the 49.65 → 92.78 rise. **Nothing yet explains the ~2000x gap
-      between the arms**, and the unpinned arm shows the baseline is not caused by the pin.
-      Direction of risk: if that arm is terminating non-stationary, its error is larger than the
+      against the refractive arm's 0.0247 on the same scenario and seed.
+
+      *Measured 2026-08-17 by `.planning/probes/2026-08-17-optimality-decomposition/` — supersedes
+      the pin explanation:* the pinned `water_z` contributes **0.00%** of the reported optimality
+      (1.95e-11 of 92.78), not the majority. scipy's `trf` reports `||g·v||∞` with `v` the
+      Coleman-Li *distance to the bound*, so a pinned slot is crushed toward zero, not inflated —
+      the phase documents describe an unscaled projected gradient, which is not what scipy
+      reports. The reported number is **entirely the max extrinsic gradient** (extrinsics are
+      unbounded, so `v = 1`): 92.78 non-refractive against 0.0247 refractive, a 3751x gap where
+      the residual-magnitude ratio is only 2.03x. Both passes terminated on `ftol`, never `gtol`
+      — cost stopped moving while the gradient stayed large. So the non-refractive arm is **not
+      demonstrably stationary**, and the cause is not the pin.
+
+      Direction of risk unchanged: an under-converged *baseline* arm has larger error than its
       true optimum, which *inflates* E1's refractive-to-non-refractive ratio rather than
       penalizing it — so the published 97–178x band is the number exposed.
+
+      *Third regime found:* the scalar also mixes `v ≈ 700` for wide-bounded intrinsics (call 4's
+      intrinsics block reads 49.97 scaled against a 0.068 raw gradient). `optimality` is therefore
+      not a like-for-like maximum across blocks under any configuration — independent of anything
+      Phase 23 changed, and the core reason this requirement ships the decomposition rather than
+      the scalar.
 
       *Placement:* the decomposition is computed in `_optim_common.py`, which already owns the
       parameter layout via `build_structural_column_groups` (it carries a dedicated `water_z`

@@ -1,0 +1,250 @@
+{
+  "captures": [
+    {
+      "label": "call_1",
+      "n_params": 249,
+      "reported_optimality": 0.001146159591411948,
+      "reconstructed_optimality": 0.001146159591411948,
+      "reconstruction_relative_error": 0.0,
+      "decomposition_trustworthy": true,
+      "dominant_block": "water_z",
+      "status": 2,
+      "cost": 3688.7971450716086,
+      "n_at_bound_total": 0,
+      "layout": {
+        "n_cams_derived": 12,
+        "n_frames_derived": 30,
+        "n_tilt": 2,
+        "n_water_z": 1,
+        "n_intrinsics": 0
+      },
+      "blocks": {
+        "tilt": {
+          "n_params": 2,
+          "max_abs_scaled_grad": 5.326148398538303e-05,
+          "share_of_reported_optimality": 0.0464695181931606,
+          "argmax_global_index": 1,
+          "max_abs_raw_grad": 0.0002669615192871788,
+          "n_at_bound": 0,
+          "min_bound_gap": 0.4
+        },
+        "extrinsics": {
+          "n_params": 66,
+          "max_abs_scaled_grad": 0.0011311137582197262,
+          "share_of_reported_optimality": 0.9868728287884526,
+          "argmax_global_index": 31,
+          "max_abs_raw_grad": 0.0011311137582197262,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "water_z": {
+          "n_params": 1,
+          "max_abs_scaled_grad": 0.001146159591411948,
+          "share_of_reported_optimality": 1.0,
+          "argmax_global_index": 68,
+          "max_abs_raw_grad": 0.0011221219034851515,
+          "n_at_bound": 0,
+          "min_bound_gap": 1.99
+        },
+        "board_poses": {
+          "n_params": 180,
+          "max_abs_scaled_grad": 0.0006648812761156364,
+          "share_of_reported_optimality": 0.5800948498773828,
+          "argmax_global_index": 99,
+          "max_abs_raw_grad": 0.0006648812761156364,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        }
+      }
+    },
+    {
+      "label": "call_2",
+      "n_params": 297,
+      "reported_optimality": 0.02473573255605288,
+      "reconstructed_optimality": 0.02473573255605288,
+      "reconstruction_relative_error": 0.0,
+      "decomposition_trustworthy": true,
+      "dominant_block": "extrinsics",
+      "status": 2,
+      "cost": 3680.034007917413,
+      "n_at_bound_total": 0,
+      "layout": {
+        "n_cams_derived": 12,
+        "n_frames_derived": 30,
+        "n_tilt": 2,
+        "n_water_z": 1,
+        "n_intrinsics": 48
+      },
+      "blocks": {
+        "tilt": {
+          "n_params": 2,
+          "max_abs_scaled_grad": 0.0021017597049097364,
+          "share_of_reported_optimality": 0.08496856521823251,
+          "argmax_global_index": 0,
+          "max_abs_raw_grad": 0.010450692270353557,
+          "n_at_bound": 0,
+          "min_bound_gap": 0.4
+        },
+        "extrinsics": {
+          "n_params": 66,
+          "max_abs_scaled_grad": 0.02473573255605288,
+          "share_of_reported_optimality": 1.0,
+          "argmax_global_index": 57,
+          "max_abs_raw_grad": 0.02473573255605288,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "water_z": {
+          "n_params": 1,
+          "max_abs_scaled_grad": 0.006502179043561152,
+          "share_of_reported_optimality": 0.2628658370568474,
+          "argmax_global_index": 68,
+          "max_abs_raw_grad": 0.00665913176401034,
+          "n_at_bound": 0,
+          "min_bound_gap": 1.99
+        },
+        "board_poses": {
+          "n_params": 180,
+          "max_abs_scaled_grad": 0.008691768267624411,
+          "share_of_reported_optimality": 0.3513851165688448,
+          "argmax_global_index": 138,
+          "max_abs_raw_grad": 0.008691768267624411,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "intrinsics": {
+          "n_params": 48,
+          "max_abs_scaled_grad": 0.01580465805476984,
+          "share_of_reported_optimality": 0.6389403677030948,
+          "argmax_global_index": 291,
+          "max_abs_raw_grad": 2.026505158392311e-05,
+          "n_at_bound": 0,
+          "min_bound_gap": 1200.0
+        }
+      }
+    },
+    {
+      "label": "call_3",
+      "n_params": 249,
+      "reported_optimality": 1.4445430872830798,
+      "reconstructed_optimality": 1.4445430872830798,
+      "reconstruction_relative_error": 0.0,
+      "decomposition_trustworthy": true,
+      "dominant_block": "extrinsics",
+      "status": 2,
+      "cost": 26067.0205835744,
+      "n_at_bound_total": 1,
+      "layout": {
+        "n_cams_derived": 12,
+        "n_frames_derived": 30,
+        "n_tilt": 2,
+        "n_water_z": 1,
+        "n_intrinsics": 0
+      },
+      "blocks": {
+        "tilt": {
+          "n_params": 2,
+          "max_abs_scaled_grad": 0.020839549851392643,
+          "share_of_reported_optimality": 0.014426395470548413,
+          "argmax_global_index": 0,
+          "max_abs_raw_grad": 0.09715936449492801,
+          "n_at_bound": 0,
+          "min_bound_gap": 0.4
+        },
+        "extrinsics": {
+          "n_params": 66,
+          "max_abs_scaled_grad": 1.4445430872830798,
+          "share_of_reported_optimality": 1.0,
+          "argmax_global_index": 38,
+          "max_abs_raw_grad": 1.4445430872830798,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "water_z": {
+          "n_params": 1,
+          "max_abs_scaled_grad": 2.1102885961358635e-11,
+          "share_of_reported_optimality": 1.4608692635848812e-11,
+          "argmax_global_index": 68,
+          "max_abs_raw_grad": 11.566137197519389,
+          "n_at_bound": 1,
+          "min_bound_gap": 2.000177801164682e-12
+        },
+        "board_poses": {
+          "n_params": 180,
+          "max_abs_scaled_grad": 0.6068749734026824,
+          "share_of_reported_optimality": 0.4201155221642455,
+          "argmax_global_index": 85,
+          "max_abs_raw_grad": 0.6068749734026824,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        }
+      }
+    },
+    {
+      "label": "call_4",
+      "n_params": 297,
+      "reported_optimality": 92.7841140024072,
+      "reconstructed_optimality": 92.7841140024072,
+      "reconstruction_relative_error": 0.0,
+      "decomposition_trustworthy": true,
+      "dominant_block": "extrinsics",
+      "status": 2,
+      "cost": 15097.612313075724,
+      "n_at_bound_total": 1,
+      "layout": {
+        "n_cams_derived": 12,
+        "n_frames_derived": 30,
+        "n_tilt": 2,
+        "n_water_z": 1,
+        "n_intrinsics": 48
+      },
+      "blocks": {
+        "tilt": {
+          "n_params": 2,
+          "max_abs_scaled_grad": 0.7739688647389837,
+          "share_of_reported_optimality": 0.008341609693216491,
+          "argmax_global_index": 0,
+          "max_abs_raw_grad": 3.5503823996323263,
+          "n_at_bound": 0,
+          "min_bound_gap": 0.4
+        },
+        "extrinsics": {
+          "n_params": 66,
+          "max_abs_scaled_grad": 92.7841140024072,
+          "share_of_reported_optimality": 1.0,
+          "argmax_global_index": 38,
+          "max_abs_raw_grad": 92.7841140024072,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "water_z": {
+          "n_params": 1,
+          "max_abs_scaled_grad": 1.9498992726784897e-11,
+          "share_of_reported_optimality": 2.1015443146096125e-13,
+          "argmax_global_index": 68,
+          "max_abs_raw_grad": 9.749712043793547,
+          "n_at_bound": 1,
+          "min_bound_gap": 2.000177801164682e-12
+        },
+        "board_poses": {
+          "n_params": 180,
+          "max_abs_scaled_grad": 32.30267777765414,
+          "share_of_reported_optimality": 0.34814879815327093,
+          "argmax_global_index": 85,
+          "max_abs_raw_grad": 32.30267777765414,
+          "n_at_bound": 0,
+          "min_bound_gap": null
+        },
+        "intrinsics": {
+          "n_params": 48,
+          "max_abs_scaled_grad": 49.9687852007271,
+          "share_of_reported_optimality": 0.538548928746905,
+          "argmax_global_index": 287,
+          "max_abs_raw_grad": 0.06827321988586377,
+          "n_at_bound": 0,
+          "min_bound_gap": 1200.0
+        }
+      }
+    }
+  ]
+}
