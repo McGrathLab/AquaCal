@@ -25,6 +25,21 @@ between-arm difference).
 p-values are one-sided (0.00098 = 2^-10 at ten unanimous seeds), and a prior reading of
 that entry conflated one-sided and two-sided once already.
 
+**The six degeneracy columns (DEGEN-01/DEGEN-02 via plan 24-02, D-09 as revised
+2026-08-17).** `e7_focal_standoff.csv` gained six APPENDED columns:
+`degenerate_observations_at_solution` plus three `degenerate_observations_cause_*`
+(`above_interface`, `behind_camera`, `interface_below_camera`) and two
+`degenerate_observations_fate_*` (`extended`, `penalized`). This module runs no
+calibration, so each is the per-arm SUM over the band's own columns of the same
+names -- and is `None` when the input band CSV predates them, meaning "never
+measured for this arm", never "measured and found clean". Cause and fate are two
+INDEPENDENT AXES over the same set of invalid observations, not disjoint buckets
+-- **never add a cause column to a fate column.** Each axis sums independently
+and exactly to `degenerate_observations_at_solution`, so a row where the two axes
+disagree is a bookkeeping bug, visible by eye. The per-stage breakdown and the
+`observations_evaluated__*` denominators live in
+`e7_degeneracy_breakdown.json`, written by `e7_interface_ablation.py`, not here.
+
 Usage:
     python -m experiments.e7_focal_standoff_analysis --out experiments/results
 """
@@ -41,6 +56,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from experiments._degeneracy import DEGENERACY_COLUMNS
 from experiments._io import (
     build_experiment_arg_parser,
     resolve_out_dir,
@@ -268,6 +284,37 @@ def degeneracy_verdict(association: dict, alpha: float = 0.05) -> str:
     return "no_signature"
 
 
+def _arm_degeneracy_columns(arm_df: pd.DataFrame) -> dict[str, int | None]:
+    """Sum the band's six degeneracy columns over one arm's rows.
+
+    APPENDED to each output row, never inserted. `cause` and `fate` are two
+    INDEPENDENT AXES over the same set of invalid observations, not disjoint
+    buckets -- **never add a cause column to a fate column.** Each axis sums
+    independently to `degenerate_observations_at_solution`, so an arm whose two
+    axes disagree is a bookkeeping bug, visible by eye. Explicitly listed for
+    the reader's benefit, and asserted below to match the shared order:
+    `degenerate_observations_at_solution`,
+    `degenerate_observations_cause_above_interface`,
+    `degenerate_observations_cause_behind_camera`,
+    `degenerate_observations_cause_interface_below_camera`,
+    `degenerate_observations_fate_extended`,
+    `degenerate_observations_fate_penalized`.
+
+    A column absent from the band CSV (any band regenerated before plan 24-02)
+    yields `None` -- "never measured for this arm", never "measured and found
+    clean". The per-stage breakdown and denominators are not derivable here;
+    they live in `e7_degeneracy_breakdown.json`.
+    """
+    summed: dict[str, int | None] = {}
+    for column in DEGENERACY_COLUMNS:
+        if column not in arm_df.columns:
+            summed[column] = None
+            continue
+        values = arm_df[column].dropna()
+        summed[column] = int(values.sum()) if not values.empty else None
+    return summed
+
+
 def build_focal_standoff_df(df: pd.DataFrame) -> pd.DataFrame:
     """Build the four-row (one per arm) `e7_focal_standoff.csv` artifact.
 
@@ -277,7 +324,8 @@ def build_focal_standoff_df(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         A DataFrame with columns `arm`, `n_seeds`, `n_cameras_per_seed`,
         `mean_within_seed_correlation`, `n_seeds_negative`, `n_seeds_positive`,
-        `p_one_sided`, `verdict`, `scope` -- one row per arm in `ARMS`.
+        `p_one_sided`, `verdict`, `scope`, then the six APPENDED degeneracy
+        columns (see `_arm_degeneracy_columns`) -- one row per arm in `ARMS`.
     """
     rows = []
     for arm in ARMS:
@@ -305,6 +353,7 @@ def build_focal_standoff_df(df: pd.DataFrame) -> pd.DataFrame:
                 "p_one_sided": association["p_one_sided"],
                 "verdict": verdict,
                 "scope": scope,
+                **_arm_degeneracy_columns(arm_df),
             }
         )
     return pd.DataFrame(rows)
