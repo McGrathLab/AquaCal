@@ -532,6 +532,23 @@ class SolverDiagnostics:
             `result.optimality`, since scipy reports ``norm(g * v, inf)``.
         optimality_by_block_reason: Explanation for why `optimality_by_block` is
             `None`. Populated only when it is `None`.
+        parameters_at_bound: Which parameters terminated ON a bound rather than
+            at an interior minimum (D-16), read from scipy's own `active_mask`.
+            Each entry carries `parameter` (str label), `bound` (`"lower"` or
+            `"upper"`), `interval_width` (float), `gap` (float) and
+            `classification` (`"pinned"` or `"traveled"`). `None` with
+            `parameters_at_bound_reason` set when the call site could not supply
+            labels, blocks or bounds.
+
+            **The classification is load-bearing.** A pinned parameter is
+            legitimately at its bound by construction, so a detector that flagged
+            "on a bound" without separating pinned-by-request from
+            ran-into-a-limit would fire on E1's non-refractive arm every single
+            run and be trained away, exactly as the always-red gate in
+            `knowledge-base.md` was. The bound-interval width discriminates them
+            cheaply.
+        parameters_at_bound_reason: Explanation for why `parameters_at_bound` is
+            `None`. Populated only when it is `None`.
     """
 
     nfev: int | None = None
@@ -553,6 +570,8 @@ class SolverDiagnostics:
     n_residuals_reason: str | None = None
     optimality_by_block: dict[str, dict] | None = None
     optimality_by_block_reason: str | None = None
+    parameters_at_bound: list[dict] | None = None
+    parameters_at_bound_reason: str | None = None
 
 
 def build_parameter_labels(
@@ -701,15 +720,15 @@ def capture_solver_diagnostics(
             (D-15).
         parameter_labels: Labels from `build_parameter_labels`, packed with the
             same arguments as the solved vector. Required for
-            `optimality_by_block`.
+            `optimality_by_block` and `parameters_at_bound`.
         parameter_blocks: Block slices from
             `_optim_common.build_parameter_block_slices`, packed with the same
-            arguments. Required for the same field.
+            arguments. Required for the same two fields.
         bounds: The `(lower, upper)` tuple passed to `least_squares`. Required
             for the same two fields.
 
-            When any of these three is `None`, `optimality_by_block` is recorded
-            as `None` with a `*_reason` naming what was missing (D-15).
+            When any of these three is `None`, both new fields are recorded as
+            `None` with a `*_reason` naming what was missing (D-15).
     """
     if diagnostics_out is None:
         return
@@ -750,12 +769,25 @@ def capture_solver_diagnostics(
         )
         diagnostics_out.optimality_by_block = None
         diagnostics_out.optimality_by_block_reason = reason
+        diagnostics_out.parameters_at_bound = None
+        diagnostics_out.parameters_at_bound_reason = reason
         return
 
     diagnostics_out.optimality_by_block = _decompose_optimality(
         result, parameter_labels, parameter_blocks, bounds
     )
     diagnostics_out.optimality_by_block_reason = None
+    diagnostics_out.parameters_at_bound = _detect_parameters_at_bound(
+        result, parameter_labels, bounds
+    )
+    diagnostics_out.parameters_at_bound_reason = None
+
+
+#: A bound interval this narrow (relative to its own magnitude) is a pin by
+#: request, not a limit the solver travelled into. The probe measured the pinned
+#: `water_z` slot at a bound gap of 2.000177801164682e-12 with `active_mask = 1`,
+#: while every other block reported 0.
+_PINNED_INTERVAL_RTOL = 1e-9
 
 
 def _coleman_li_scaling(
@@ -807,6 +839,43 @@ def _decompose_optimality(
             "n_params": int(block_scaled.size),
         }
     return by_block
+
+
+def _detect_parameters_at_bound(
+    result,
+    parameter_labels: list[str],
+    bounds: tuple,
+) -> list[dict]:
+    """List parameters scipy's `active_mask` reports as terminating on a bound.
+
+    D-16. `active_mask` is `-1` at a lower bound, `+1` at an upper bound and `0`
+    in the interior, so this is a plumbing job rather than a detection problem --
+    the signal is already computed by scipy on the real solve.
+    """
+    x = np.asarray(result.x, dtype=np.float64)
+    active_mask = np.asarray(result.active_mask)
+    lower = np.asarray(bounds[0], dtype=np.float64)
+    upper = np.asarray(bounds[1], dtype=np.float64)
+
+    at_bound: list[dict] = []
+    for i in np.flatnonzero(active_mask):
+        i = int(i)
+        is_lower = active_mask[i] < 0
+        active_bound = lower[i] if is_lower else upper[i]
+        interval_width = float(upper[i] - lower[i])
+        pinned = interval_width <= _PINNED_INTERVAL_RTOL * max(
+            1.0, abs(float(lower[i]))
+        )
+        at_bound.append(
+            {
+                "parameter": str(parameter_labels[i]),
+                "bound": "lower" if is_lower else "upper",
+                "interval_width": interval_width,
+                "gap": float(abs(x[i] - active_bound)),
+                "classification": "pinned" if pinned else "traveled",
+            }
+        )
+    return at_bound
 
 
 class OptimizerObserver:
