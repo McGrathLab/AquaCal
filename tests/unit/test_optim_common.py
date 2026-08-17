@@ -1047,6 +1047,128 @@ class TestInvalidProjectionKeepsGradient:
         )
 
 
+class TestDegeneracyBreakdownOut:
+    """Phase 24 / DEGEN-02: `compute_residuals`' six-key cause/fate/denominator fill.
+
+    Reuses `TestInvalidProjectionKeepsGradient`'s scene, which already produces a
+    known invalid population by lifting frame 1 above the water surface.
+    """
+
+    @staticmethod
+    def _packed(lift_frame1_above_water):
+        return TestInvalidProjectionKeepsGradient()._packed(lift_frame1_above_water)
+
+    def test_degeneracy_breakdown_out_defaults_to_none_and_records_nothing(self):
+        """The default path is byte-for-byte what every existing caller gets."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+
+        without_kwarg = compute_residuals(params, *cost_args)
+        explicit_none = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=None
+        )
+        breakdown: dict[str, int] = {}
+        instrumented = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=breakdown
+        )
+
+        np.testing.assert_array_equal(without_kwarg, explicit_none)
+        np.testing.assert_array_equal(without_kwarg, instrumented)
+        assert breakdown, "a supplied dict must be filled"
+
+    def test_clean_scene_fills_six_keys_with_zero_counts_and_a_real_denominator(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(False)
+        breakdown: dict[str, int] = {}
+        compute_residuals(params, *cost_args, degeneracy_breakdown_out=breakdown)
+
+        assert set(breakdown) == {
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+            "observations_evaluated",
+        }
+        for key in (
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+        ):
+            assert breakdown[key] == 0, breakdown
+        assert breakdown["observations_evaluated"] > 0
+
+    def test_degeneracy_breakdown_causes_sum_to_invalid_count_out(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+        by_cause = (
+            breakdown["above_interface"]
+            + breakdown["behind_camera"]
+            + breakdown["interface_below_camera"]
+        )
+        assert by_cause == counts[0]
+        assert breakdown["observations_evaluated"] >= counts[0]
+
+    def test_degeneracy_breakdown_fates_sum_to_invalid_count_out(self):
+        """The second, independent decomposition of the same invalid set."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert breakdown["extended"] + breakdown["penalized"] == counts[0]
+
+    def test_interface_below_camera_batch_is_attributed_to_that_cause_only(self):
+        """A water surface estimated below every camera center: one cause, no others.
+
+        This is a statement about the ESTIMATE -- the free `water_z` parameter has
+        excursed below the (also free) camera centers -- and never a claim that
+        hardware was submerged.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, cams, _ = self._packed(False)
+        water_z_index = 6 * (len(cams) - 1)  # normal_fixed, shared water_z
+        params = params.copy()
+        params[water_z_index] = -0.05  # below every camera center at Z = 0
+
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0
+        assert breakdown["interface_below_camera"] == counts[0]
+        assert breakdown["above_interface"] == 0
+        assert breakdown["behind_camera"] == 0
+
+
 class TestWaterZBoundsOverride:
     """FIX-01 (D-01): a `water_z_bounds` override reaching `build_bounds` pins the
     water_z slot(s) without touching the default [0.01, 2.0] bound when omitted.

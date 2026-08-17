@@ -24,10 +24,16 @@ import numpy as np
 import pytest
 
 from aquacal.calibration._observability import (
+    DEGENERACY_CAUSES,
+    DEGENERACY_FATES,
     DISCARD_KEYS,
+    DISCARD_STAGES,
     _bump,
     check_denominator_only,
     check_discard_invariants,
+    degeneracy_cause_key,
+    degeneracy_fate_key,
+    observations_evaluated_key,
 )
 from aquacal.calibration.extrinsics import estimate_board_pose, refractive_solve_pnp
 from aquacal.calibration.interface_estimation import optimize_interface
@@ -271,6 +277,95 @@ def test_invariants_catch_an_undeclared_key():
     """A site instrumented without declaring its key in DISCARD_KEYS is caught."""
     violations = check_discard_invariants({"totally_made_up": 1})
     assert any("undeclared counter keys" in v for v in violations), violations
+
+
+def _balanced_degeneracy_stats(total: int) -> dict[str, int]:
+    """A minimal stats dict whose two degeneracy axes both sum to `total`."""
+    stage = "stage3_interface_optimization"
+    return {
+        "degenerate_observations_at_solution": total,
+        degeneracy_cause_key("above_interface", stage): total,
+        degeneracy_fate_key("extended", stage): total,
+    }
+
+
+def test_degeneracy_cause_key_raises_on_unrecognized_cause_or_stage():
+    """The closed vocabulary exists so a typo is caught, not silently bucketed."""
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_cause_key("corner_wandered_off", "stage3_interface_optimization")
+    assert "corner_wandered_off" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_cause_key("above_interface", "stage3_typo")
+    assert "stage3_typo" in str(excinfo.value)
+
+
+def test_degeneracy_fate_key_raises_on_unrecognized_fate_or_stage():
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_fate_key("evaporated", "stage3_interface_optimization")
+    assert "evaporated" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_fate_key("extended", "stage3_typo")
+    assert "stage3_typo" in str(excinfo.value)
+
+
+def test_unattributed_is_a_legal_stage():
+    """D-03: an absent stage label is a legitimate call pattern, not an error.
+
+    It must be visible as its own bucket rather than merged into a real stage.
+    """
+    assert "unattributed" in DISCARD_STAGES
+    for cause in DEGENERACY_CAUSES:
+        assert degeneracy_cause_key(cause, "unattributed") in DISCARD_KEYS
+    for fate in DEGENERACY_FATES:
+        assert degeneracy_fate_key(fate, "unattributed") in DISCARD_KEYS
+    assert observations_evaluated_key("unattributed") in DISCARD_KEYS
+
+
+def test_invariants_catch_a_cause_split_that_does_not_sum_to_the_merged_total():
+    """Relation 3: the merged total equals the sum of the nine cause keys."""
+    broken = _balanced_degeneracy_stats(5)
+    broken[degeneracy_cause_key("above_interface", "stage3_interface_optimization")] = 4
+
+    violations = check_discard_invariants(broken)
+    offenders = [v for v in violations if "cause split mismatch" in v]
+    assert offenders, violations
+    assert "5" in offenders[0] and "4" in offenders[0]
+
+
+def test_invariants_catch_a_fate_split_that_does_not_sum_to_the_merged_total():
+    """Relation 4: the merged total independently equals the sum of the six fate keys.
+
+    Two exact decompositions of one total is the cross-check neither axis provides
+    alone.
+    """
+    broken = _balanced_degeneracy_stats(5)
+    broken[degeneracy_fate_key("extended", "stage3_interface_optimization")] = 3
+
+    violations = check_discard_invariants(broken)
+    offenders = [v for v in violations if "fate split mismatch" in v]
+    assert offenders, violations
+    assert "5" in offenders[0] and "3" in offenders[0]
+
+
+def test_invariants_catch_causes_exceeding_the_stage_denominator():
+    """Relation 5: a stage cannot have more degenerate observations than it evaluated."""
+    stage = "stage3_interface_optimization"
+    broken = _balanced_degeneracy_stats(9)
+    broken[observations_evaluated_key(stage)] = 4
+
+    violations = check_discard_invariants(broken)
+    assert any("degeneracy denominator mismatch" in v for v in violations), violations
+
+
+def test_a_consistent_degeneracy_split_reports_no_violation():
+    """The three new relations are not vacuously failing on well-formed input."""
+    stage = "stage3_interface_optimization"
+    good = _balanced_degeneracy_stats(6)
+    good[observations_evaluated_key(stage)] = 100
+
+    assert not check_denominator_only(good)
 
 
 @pytest.mark.slow

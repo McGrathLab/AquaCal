@@ -20,7 +20,12 @@ from aquacal.config.schema import (
 from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
-from aquacal.core.refractive_geometry import refractive_project_batch
+from aquacal.core.refractive_geometry import (
+    NAN_REASON_ABOVE_INTERFACE,
+    NAN_REASON_BEHIND_CAMERA,
+    NAN_REASON_INTERFACE_BELOW_CAMERA,
+    refractive_project_batch,
+)
 from aquacal.utils.transforms import matrix_to_rvec, rvec_to_matrix
 
 #: Residual (pixels) assigned to an observation whose projection cannot be
@@ -627,6 +632,7 @@ def compute_residuals(
     normal_fixed: bool = True,
     shared_interface: bool = True,
     invalid_count_out: list[int] | None = None,
+    degeneracy_breakdown_out: dict[str, int] | None = None,
 ) -> NDArray[np.float64]:
     """
     Compute reprojection residuals for all observations.
@@ -659,6 +665,33 @@ def compute_residuals(
             whose refractive projection failed and had to be continued by
             :func:`_extend_invalid_projections`. Purely observational; has no
             effect on the returned residuals. Default None records nothing.
+        degeneracy_breakdown_out: Optional dict, purely observational, defaulting
+            to None -- when None, nothing is recorded, no reason array is
+            allocated, and behaviour is byte-for-byte unchanged for every existing
+            caller. When supplied, it is FILLED (assigned, not accumulated) with
+            exactly six int keys: the three CAUSE counts ``above_interface``,
+            ``behind_camera``, ``interface_below_camera``, read off the
+            projector's per-point reason array; the two FATE counts ``extended``
+            and ``penalized``, read off the ``unextendable`` mask; and
+            ``observations_evaluated``, the denominator this pass actually
+            evaluated. Cause and fate are two INDEPENDENT decompositions of the
+            same invalid set -- each sums to the invalid total on its own, and the
+            two are never additive with each other.
+
+            The caller maps these six onto the flat ``DISCARD_KEYS`` names; this
+            module deliberately holds none of those key strings.
+
+            ``interface_below_camera`` is a statement about the ESTIMATE -- the
+            estimated interface fell below an estimated camera center. It is a
+            convergence diagnostic of solver excursion, NOT a claim that a camera
+            was submerged; physical submersion is explicitly out of scope for this
+            library. Both terms of ``h_c = water_z - C_z`` are free parameters, so
+            the condition is reachable with the cameras bolted above the water the
+            whole time: Phase 23's D-06 measured E1's non-refractive, normal-free
+            arm recovering ``water_z = 0.0120 m`` pinned to the bound floor, at
+            which any camera whose estimated Z exceeds 12 mm satisfies
+            ``h_c <= 0``. Whether E1's 14,949 is mostly this cause is an expected
+            read-off from the Phase 28 frozen run, not an open question to probe.
 
     Returns:
         1D array of residuals [r0_x, r0_y, r1_x, r1_y, ...] in pixels.
@@ -677,6 +710,14 @@ def compute_residuals(
 
     residuals = []
     n_invalid = 0
+
+    record_degeneracy = degeneracy_breakdown_out is not None
+    n_above_interface = 0
+    n_behind_camera = 0
+    n_interface_below_camera = 0
+    n_extended = 0
+    n_penalized = 0
+    n_observations_evaluated = 0
 
     for frame_idx in frame_order:
         if frame_idx not in detections.frames:
@@ -705,7 +746,19 @@ def compute_residuals(
 
             # Batch-project all corners for this camera-frame pair
             points_3d = np.array([corners_3d[cid] for cid in detection.corner_ids])
-            projected_batch = refractive_project_batch(camera, interface, points_3d)
+            # D-06b: the reason array is allocated ONLY when a breakdown was
+            # requested, and a breakdown is requested only on the single post-solve
+            # evaluation. The solve's own thousands of residual calls therefore
+            # allocate nothing and pay one identity test.
+            nan_reason = (
+                np.zeros(len(points_3d), dtype=np.int8) if record_degeneracy else None
+            )
+            projected_batch = refractive_project_batch(
+                camera, interface, points_3d, nan_reason_out=nan_reason
+            )
+            # D-10: the denominator is produced by the same pass over the same data
+            # at the same moment as the counts it is the denominator for.
+            n_observations_evaluated += len(detection.corner_ids)
 
             # Compute residuals. An observation the refractive model cannot
             # project is continued with the pinhole extension, so it keeps a
@@ -720,10 +773,47 @@ def compute_residuals(
                 unextendable = np.isnan(diff_invalid).any(axis=1)
                 diff_invalid[unextendable] = INVALID_PROJECTION_PENALTY_PX
                 diff[invalid] = diff_invalid
+
+                if record_degeneracy:
+                    # Two independent axes. There is no tie-break rule ordering one
+                    # cause ahead of another, and none may ever be introduced -- the
+                    # reason array already assigns exactly one cause per point.
+                    # Cause comes from the projector's reason array,
+                    # fate from `unextendable`, and the sum over causes equals
+                    # `invalid.sum()` by construction. If an invalid observation ever
+                    # carried NAN_REASON_NONE the cause counts would fall short and
+                    # relation 3 of `check_discard_invariants` would fire -- that is
+                    # the intended detection path for a bookkeeping bug, and it is
+                    # why nothing is silently bucketed into an "other" kind.
+                    #
+                    # These are five vectorized reductions per (camera, frame), not a
+                    # per-point loop, and none of them runs when the breakdown dict is
+                    # None -- the hot-path prohibition at `_observability.py` holds.
+                    invalid_reasons = nan_reason[invalid]
+                    n_above_interface += int(
+                        (invalid_reasons == NAN_REASON_ABOVE_INTERFACE).sum()
+                    )
+                    n_behind_camera += int(
+                        (invalid_reasons == NAN_REASON_BEHIND_CAMERA).sum()
+                    )
+                    n_interface_below_camera += int(
+                        (invalid_reasons == NAN_REASON_INTERFACE_BELOW_CAMERA).sum()
+                    )
+                    n_this_penalized = int(unextendable.sum())
+                    n_penalized += n_this_penalized
+                    n_extended += int(invalid.sum()) - n_this_penalized
             residuals.append(diff.ravel())
 
     if invalid_count_out is not None:
         invalid_count_out.append(n_invalid)
+
+    if degeneracy_breakdown_out is not None:
+        degeneracy_breakdown_out["above_interface"] = n_above_interface
+        degeneracy_breakdown_out["behind_camera"] = n_behind_camera
+        degeneracy_breakdown_out["interface_below_camera"] = n_interface_below_camera
+        degeneracy_breakdown_out["extended"] = n_extended
+        degeneracy_breakdown_out["penalized"] = n_penalized
+        degeneracy_breakdown_out["observations_evaluated"] = n_observations_evaluated
 
     if residuals:
         return np.concatenate(residuals).astype(np.float64)

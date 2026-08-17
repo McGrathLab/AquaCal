@@ -51,9 +51,58 @@ logger = logging.getLogger(__name__)
 # NOTHING HERE MAY BE CALLED FROM A PER-POINT OR PER-RESIDUAL LOOP. Every site
 # instrumented is per-(camera, frame) or per-video-frame. `benchmark.json`'s
 # wall-clock is published and E4's nine-cell grid is already committed at 5b17cd4;
-# a counter in the projection hot path would move those numbers. The three
-# total-internal-reflection branches in core/refractive_geometry.py are silent for
-# exactly this reason and are deliberately left so.
+# a counter in the projection hot path would move those numbers. The failure
+# branches in core/refractive_geometry.py now write an int8 reason code through an
+# opt-in out-parameter that is None on every production iteration, all of them
+# outside the Newton loop -- so the prohibition stated here, that nothing may be
+# COUNTED from a per-point loop, is intact.
+
+# ---------------------------------------------------------------------------
+# Degeneracy split vocabularies (phase 24, DEGEN-02)
+# ---------------------------------------------------------------------------
+#
+# TWO INDEPENDENT AXES, NOT A CROSS PRODUCT. With the failure cause now available
+# per point from the projector's `nan_reason_out` array, cause and fate are
+# independent facts about an invalid observation, and each one partitions the
+# invalid set exactly. They are recorded as MARGINALS.
+#
+# Why not the 3x2 joint: it would be 18 kind keys plus 3 denominators, tripling
+# the vocabulary to answer a question nobody has asked. The per-observation joint
+# is explicitly DEGEN-04's (Phase 25); this phase reports the split and does not
+# interpret it. The two marginals answer both questions that ARE asked -- "what
+# went wrong" and "does it still carry gradient" -- and each yields an exact,
+# derived invariant (relations 3 and 4 in `check_discard_invariants`).
+#
+# THE COLLISION HAZARD AND WHY THE NAMES CARRY THE AXIS. `behind_camera` is a
+# CAUSE (the projector could not place a pixel) while `penalized` is a FATE (the
+# pinhole extension could not place one either). They are correlated but not
+# identical, so a bare `degenerate_observations_behind_camera__stage3_...` would be
+# ambiguous about which axis it meant. The `cause_`/`fate_` prefixes are therefore
+# a mitigation, not cosmetics: plan 24-02 publishes BOTH axes side by side in one
+# CSV, where a reader who summed a cause column and a fate column together would
+# double the true total.
+
+#: Why the refractive projection failed. Read off the projector's reason array,
+#: never re-derived at the call site.
+_DEGENERACY_CAUSES: tuple[str, ...] = (
+    "above_interface",
+    "behind_camera",
+    "interface_below_camera",
+)
+
+#: What the residual then did. Read off the existing `unextendable` mask.
+#: `extended` = continued by the pinhole extension, keeps a gradient; `penalized`
+#: = flat INVALID_PROJECTION_PENALTY_PX, no gradient at all.
+_DEGENERACY_FATES: tuple[str, ...] = ("extended", "penalized")
+
+#: The solver stages that bump these counters. `"unattributed"` is a declared,
+#: legal bucket (D-03) so an absent stage label is visible rather than merged into
+#: a real stage.
+_DISCARD_STAGES: tuple[str, ...] = (
+    "stage3_interface_optimization",
+    "stage3_intrinsic_pass",
+    "unattributed",
+)
 
 #: Every counter key this module may emit. `diagnostics.json` consumers can rely on
 #: the vocabulary being closed -- an unknown key means someone added a site without
@@ -80,13 +129,143 @@ DISCARD_KEYS: tuple[str, ...] = (
     "frame_no_camera_meets_min_corners",
     "interface_pnp_failed",
     "video_frame_unreadable",
-    # Convergence-diagnostic guard count (plan 19.3-02, D-19.3-11). Counted once,
-    # on the FINAL solution evaluation, per solver stage (optimize_interface's
-    # Stage 3 and joint_refinement's Stage 3 intrinsic pass) -- never a running
-    # per-iteration count. A non-zero value means first-order optimality is
-    # unreliable as a convergence measure for this run (see
-    # DegenerateObservationWarning); the library records this, it never raises.
+    # Convergence-diagnostic guard count (plan 19.3-02, D-19.3-11). Bumped on the
+    # FINAL solution evaluation of each solver stage (optimize_interface's Stage 3
+    # and joint_refinement's Stage 3 intrinsic pass) -- never a running per-iteration
+    # count. Because `_bump` accumulates into one caller dict threaded to both
+    # stages, the value IN AGGREGATE is the cross-stage SUM, not a single stage's
+    # count.
+    #
+    # Phase 24 (DEGEN-02) splits it on two INDEPENDENT axes, each of which
+    # decomposes this same total exactly:
+    #   - CAUSE: why the refractive projection failed (read off the projector's
+    #     `nan_reason_out` array).
+    #   - FATE:  what the residual then did (`extended` keeps a gradient,
+    #     `penalized` is a flat constant with none).
+    # This key equals the sum of the nine `..._cause_*` keys AND, independently,
+    # the sum of the six `..._fate_*` keys. The two axes describe the SAME set of
+    # observations from two angles and MUST NEVER BE ADDED TOGETHER -- summing a
+    # cause column and a fate column doubles the true total.
+    #
+    # This key is never dropped and never renamed: the production gate and
+    # `experiments/check_rerun_gates.py` read it by name. The split keys below are
+    # where the diagnosis lives.
     "degenerate_observations_at_solution",
+    # Phase 24 (DEGEN-02): the cause x stage, fate x stage and per-stage
+    # denominator keys, built from the three closed tuples below so no key string
+    # is ever spelled twice.
+    *tuple(
+        f"degenerate_observations_cause_{cause}__{stage}"
+        for cause in _DEGENERACY_CAUSES
+        for stage in _DISCARD_STAGES
+    ),
+    *tuple(
+        f"degenerate_observations_fate_{fate}__{stage}"
+        for fate in _DEGENERACY_FATES
+        for stage in _DISCARD_STAGES
+    ),
+    # D-10: the observation denominator, produced by the same pass over the same
+    # data at the same moment as the counts it is the denominator for. Never
+    # derived from `n_residuals / 2` (None whenever use_sparse_jacobian=False) nor
+    # from `problem_shape` totals (observations that COULD have existed).
+    *tuple(f"observations_evaluated__{stage}" for stage in _DISCARD_STAGES),
+)
+
+#: Public aliases of the three closed vocabularies (see the private tuples above).
+DEGENERACY_CAUSES: tuple[str, ...] = _DEGENERACY_CAUSES
+DEGENERACY_FATES: tuple[str, ...] = _DEGENERACY_FATES
+DISCARD_STAGES: tuple[str, ...] = _DISCARD_STAGES
+
+
+def degeneracy_cause_key(cause: str, stage: str) -> str:
+    """Build the flat `DISCARD_KEYS` entry for a (cause, stage) pair.
+
+    Args:
+        cause: One of `DEGENERACY_CAUSES`.
+        stage: One of `DISCARD_STAGES`. `"unattributed"` is legal, not an error --
+            an absent stage label is a legitimate call pattern (unit tests, direct
+            calls to `joint_refinement`) and must be visible rather than merged
+            into a real stage.
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If either argument is outside its closed vocabulary. Catching
+            that is what the closed vocabulary is for.
+    """
+    if cause not in _DEGENERACY_CAUSES:
+        raise ValueError(
+            f"unrecognized degeneracy cause {cause!r}; legal causes are "
+            f"{list(_DEGENERACY_CAUSES)}"
+        )
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"degenerate_observations_cause_{cause}__{stage}"
+
+
+def degeneracy_fate_key(fate: str, stage: str) -> str:
+    """Build the flat `DISCARD_KEYS` entry for a (fate, stage) pair.
+
+    Args:
+        fate: One of `DEGENERACY_FATES`.
+        stage: One of `DISCARD_STAGES` (`"unattributed"` included -- see
+            `degeneracy_cause_key`).
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If either argument is outside its closed vocabulary.
+    """
+    if fate not in _DEGENERACY_FATES:
+        raise ValueError(
+            f"unrecognized degeneracy fate {fate!r}; legal fates are "
+            f"{list(_DEGENERACY_FATES)}"
+        )
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"degenerate_observations_fate_{fate}__{stage}"
+
+
+def observations_evaluated_key(stage: str) -> str:
+    """Build the flat per-stage denominator key.
+
+    Args:
+        stage: One of `DISCARD_STAGES`.
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If `stage` is outside the closed vocabulary.
+    """
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"observations_evaluated__{stage}"
+
+
+#: The nine cause keys, in declaration order.
+_DEGENERACY_CAUSE_KEYS: tuple[str, ...] = tuple(
+    degeneracy_cause_key(cause, stage)
+    for cause in _DEGENERACY_CAUSES
+    for stage in _DISCARD_STAGES
+)
+
+#: The six fate keys, in declaration order.
+_DEGENERACY_FATE_KEYS: tuple[str, ...] = tuple(
+    degeneracy_fate_key(fate, stage)
+    for fate in _DEGENERACY_FATES
+    for stage in _DISCARD_STAGES
 )
 
 #: Producer-side failure keys whose total must equal `pose_discarded_by_consumer`.
@@ -135,6 +314,18 @@ def check_discard_invariants(stats: dict[str, int]) -> list[str]:
        branch is the failure mode that would send plan 19.2-06's differing-
        denominator halt into an input diagnosis (wrong frameset) for what is
        actually a counter-scoping bug.
+    3. Cause decomposition (phase 24). `degenerate_observations_at_solution` equals
+       the sum of the nine `..._cause_*` keys.
+    4. Fate decomposition (phase 24). The same total equals the sum of the six
+       `..._fate_*` keys. Two independent exact decompositions of one total is a
+       cross-check neither axis provides alone, and it is what makes plan 24-02's
+       six-column CSV self-validating by eye.
+    5. Denominator sanity (phase 24). Each stage's three cause counts sum to at
+       most that stage's `observations_evaluated__*`, when that denominator is
+       present and non-zero.
+
+    Relations 3-5 hold unconditionally, so they flow through
+    `check_denominator_only` unchanged.
 
     Args:
         stats: A populated counter dict.
@@ -162,6 +353,39 @@ def check_discard_invariants(stats: dict[str, int]) -> list[str]:
             f"denominator mismatch: pnp_attempts_total={total} but "
             f"refractive+nonrefractive={split}"
         )
+
+    merged = stats.get("degenerate_observations_at_solution", 0)
+
+    by_cause = sum(stats.get(k, 0) for k in _DEGENERACY_CAUSE_KEYS)
+    if merged != by_cause:
+        violations.append(
+            f"degeneracy cause split mismatch: "
+            f"degenerate_observations_at_solution={merged} but the nine cause keys "
+            f"sum to {by_cause}"
+        )
+
+    by_fate = sum(stats.get(k, 0) for k in _DEGENERACY_FATE_KEYS)
+    if merged != by_fate:
+        violations.append(
+            f"degeneracy fate split mismatch: "
+            f"degenerate_observations_at_solution={merged} but the six fate keys "
+            f"sum to {by_fate}"
+        )
+
+    for stage in _DISCARD_STAGES:
+        denominator = stats.get(observations_evaluated_key(stage), 0)
+        if denominator <= 0:
+            continue
+        stage_causes = sum(
+            stats.get(degeneracy_cause_key(cause, stage), 0)
+            for cause in _DEGENERACY_CAUSES
+        )
+        if stage_causes > denominator:
+            violations.append(
+                f"degeneracy denominator mismatch for stage {stage!r}: cause counts "
+                f"sum to {stage_causes} but only {denominator} observations were "
+                f"evaluated"
+            )
 
     unknown = sorted(set(stats) - set(DISCARD_KEYS))
     if unknown:
