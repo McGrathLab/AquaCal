@@ -11,6 +11,9 @@ import pandas as pd
 import pytest
 
 from experiments.e7_focal_standoff_analysis import (
+    ARMS,
+    SCOPE_TEXT,
+    build_focal_standoff_df,
     degeneracy_verdict,
     focal_standoff_association,
     paired_arm_difference,
@@ -77,13 +80,16 @@ class TestFocalStandoffAssociation:
         assert "p_one_sided" in result
         assert "p_value" not in result
 
-    def test_constant_focal_drift_counts_seeds_but_gives_no_signature(self):
+    def test_constant_focal_drift_counts_seeds_but_gives_vacuous_verdict(self):
         """A `fixed` arm never refines intrinsics, so `focal_drift_pct` is
         identically 0 within every seed -- correlation is undefined (0/0),
         not merely small. `n_seeds` must still count the seeds actually
-        present (they are real, committed band rows), while the sign test
-        sees zero agreeing signs and returns no_signature, never
-        `underpowered` (the seeds are there; there is simply no signal)."""
+        present (they are real, committed band rows). FIX-04 (23-03):
+        because the correlation is UNDEFINED (not measured-and-zero), the
+        verdict is now `"vacuous_by_construction"`, distinct from
+        `"no_signature"` (a measured null) -- see
+        `TestDegeneracyVerdict.test_vacuous_by_construction_*` for the
+        distinguishing cases."""
         rows = []
         for seed in (42, 43, 44):
             for cam_idx in range(4):
@@ -102,26 +108,153 @@ class TestFocalStandoffAssociation:
         assert result["n_seeds_negative"] == 0
         assert result["n_seeds_positive"] == 0
         assert result["p_one_sided"] == pytest.approx(1.0)
-        assert degeneracy_verdict(result) == "no_signature"
+        assert degeneracy_verdict(result) == "vacuous_by_construction"
 
 
 class TestDegeneracyVerdict:
     def test_significant_p_gives_signature_present(self):
-        association = {"n_seeds": 10, "p_one_sided": 0.001}
+        # n_seeds_negative/positive nonzero and mean_within_seed_correlation
+        # defined -- FIX-04's vacuous branch must not trigger.
+        association = {
+            "n_seeds": 10,
+            "n_seeds_negative": 10,
+            "n_seeds_positive": 0,
+            "mean_within_seed_correlation": -0.9,
+            "p_one_sided": 0.001,
+        }
         assert degeneracy_verdict(association) == "signature_present"
 
     def test_nonsignificant_p_gives_no_signature(self):
-        association = {"n_seeds": 10, "p_one_sided": 0.5}
+        association = {
+            "n_seeds": 10,
+            "n_seeds_negative": 6,
+            "n_seeds_positive": 4,
+            "mean_within_seed_correlation": -0.1,
+            "p_one_sided": 0.5,
+        }
         assert degeneracy_verdict(association) == "no_signature"
 
     def test_boundary_exactly_alpha_is_no_signature(self):
         # Strictly less-than: p == alpha does not count as significant.
-        association = {"n_seeds": 10, "p_one_sided": 0.05}
+        association = {
+            "n_seeds": 10,
+            "n_seeds_negative": 8,
+            "n_seeds_positive": 2,
+            "mean_within_seed_correlation": -0.3,
+            "p_one_sided": 0.05,
+        }
         assert degeneracy_verdict(association, alpha=0.05) == "no_signature"
 
     def test_nan_p_is_underpowered(self):
-        association = {"n_seeds": 5, "p_one_sided": float("nan")}
+        association = {
+            "n_seeds": 5,
+            "n_seeds_negative": 2,
+            "n_seeds_positive": 1,
+            "mean_within_seed_correlation": -0.2,
+            "p_one_sided": float("nan"),
+        }
         assert degeneracy_verdict(association) == "underpowered"
+
+    def test_vacuous_by_construction_matches_committed_fixed_rows_shape(self):
+        """FIX-04 (23-03): the committed `fixed` rows' exact shape --
+        n_seeds=10, zero signs, undefined correlation, p_one_sided falls
+        through to 1.0 -- classifies as vacuous_by_construction, not
+        no_signature."""
+        association = {
+            "n_seeds": 10,
+            "n_seeds_negative": 0,
+            "n_seeds_positive": 0,
+            "mean_within_seed_correlation": float("nan"),
+            "p_one_sided": 1.0,
+        }
+        assert degeneracy_verdict(association) == "vacuous_by_construction"
+
+    def test_zero_signs_with_defined_correlation_is_no_signature_not_vacuous(self):
+        """A genuinely null result with a DEFINED correlation and zero signs
+        must still classify as no_signature -- the vacuous branch cannot
+        swallow a real null (all three conditions are required)."""
+        association = {
+            "n_seeds": 10,
+            "n_seeds_negative": 0,
+            "n_seeds_positive": 0,
+            "mean_within_seed_correlation": 0.0,
+            "p_one_sided": 1.0,
+        }
+        assert degeneracy_verdict(association) == "no_signature"
+
+    def test_single_seed_is_underpowered_ahead_of_vacuous_branch(self):
+        association = {
+            "n_seeds": 1,
+            "n_seeds_negative": 0,
+            "n_seeds_positive": 0,
+            "mean_within_seed_correlation": float("nan"),
+            "p_one_sided": 1.0,
+        }
+        assert degeneracy_verdict(association) == "underpowered"
+
+
+class TestBuildFocalStandoffDf:
+    def _hand_built_band_df(self) -> pd.DataFrame:
+        """A small `interface_ablation_band.csv`-shaped frame: the two
+        `fixed` arms have focal_drift_pct == 0.0 for every camera and seed
+        (undefined correlation); the two `refined` arms carry a real,
+        perfectly-negative correlation across two seeds (measured
+        signature_present)."""
+        rows = []
+        for arm in ARMS:
+            is_fixed = arm.endswith("_fixed")
+            for seed in (42, 43):
+                for cam_idx in range(3):
+                    standoff = 1.0 + cam_idx * 0.1
+                    focal_drift = 0.0 if is_fixed else -1.0 * standoff
+                    rows.append(
+                        {
+                            "arm": arm,
+                            "seed": seed,
+                            "camera": f"cam{cam_idx}",
+                            "standoff_m": standoff,
+                            "focal_drift_pct": focal_drift,
+                        }
+                    )
+        return pd.DataFrame(rows)
+
+    def test_fixed_rows_carry_vacuous_verdict_and_scope_reason(self):
+        df = self._hand_built_band_df()
+        result = build_focal_standoff_df(df)
+        fixed_rows = result[result["arm"].isin(["shared_fixed", "percamera_fixed"])]
+        assert len(fixed_rows) == 2
+        assert (fixed_rows["verdict"] == "vacuous_by_construction").all()
+        assert fixed_rows["scope"].str.contains("VACUOUS BY CONSTRUCTION").all()
+
+    def test_refined_rows_keep_measured_verdict_and_unmodified_scope(self):
+        """The refined arms carry a real, defined correlation (perfectly
+        negative at 2 seeds -- too few for signature_present at alpha=0.05,
+        but definitively NOT vacuous_by_construction), and their scope is
+        untouched (no VACUOUS suffix)."""
+        df = self._hand_built_band_df()
+        result = build_focal_standoff_df(df)
+        refined_rows = result[
+            result["arm"].isin(["shared_refined", "percamera_refined"])
+        ]
+        assert len(refined_rows) == 2
+        assert (refined_rows["verdict"] != "vacuous_by_construction").all()
+        assert (refined_rows["mean_within_seed_correlation"].notna()).all()
+        assert (refined_rows["scope"] == SCOPE_TEXT).all()
+
+    def test_column_set_unchanged(self):
+        df = self._hand_built_band_df()
+        result = build_focal_standoff_df(df)
+        assert list(result.columns) == [
+            "arm",
+            "n_seeds",
+            "n_cameras_per_seed",
+            "mean_within_seed_correlation",
+            "n_seeds_negative",
+            "n_seeds_positive",
+            "p_one_sided",
+            "verdict",
+            "scope",
+        ]
 
 
 class TestPairedArmDifference:
