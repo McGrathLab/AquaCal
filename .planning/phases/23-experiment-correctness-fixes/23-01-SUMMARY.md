@@ -49,7 +49,7 @@ patterns-established:
 requirements-completed: [FIX-01, FIX-02]
 
 # Metrics
-duration: 33min (Tasks 1-2 only; Task 3/4 not run by this executor, see below)
+duration: 33min (Tasks 1-2, this executor) + Task 3 (orchestrator, foreground verification run) + Task 4 (this continuation, evidence transcription)
 completed: 2026-08-17
 ---
 
@@ -65,42 +65,13 @@ completed: 2026-08-17
 - **Tasks:** 2 of 4 completed by this executor (Task 3 is a `checkpoint:human-verify` explicitly reserved for the orchestrator/user; Task 4 depends on Task 3's observed values)
 - **Files modified:** 10
 
-## IMPORTANT: Plan is NOT fully complete
+## Plan status: complete
 
-This plan has four tasks. **Only Tasks 1 and 2 (the two `type="auto"` tasks) were executed by this
-worktree agent.** Task 3 is a `checkpoint:human-verify` gated `blocking`, and the plan's own text is
-explicit that it **"belongs to the orchestrator or the user, never to a plan executor — a
-backgrounded run inside a subagent stalls permanently."** Task 4 (write the `## Evidence` section
-below into this SUMMARY) requires Task 3's observed values as input and could not be completed
-without them.
-
-**What remains, for the orchestrator or user:**
-
-1. Run, in the foreground, unbuffered:
-   ```
-   python -u -m experiments.e1_refractive_comparison --out experiments/verify_23/
-   ```
-   (~5-7 min; see the plan's Task 3 `<how-to-verify>` for the six checks to run against the two
-   output records.)
-2. Read `experiments/verify_23/e1_benchmark_nonrefractive.json` and
-   `experiments/verify_23/e1_benchmark_refractive.json` and record: non-refractive
-   `accuracy.water_z_recovered_m`, its `problem_shape.degenerate_observations_at_solution`,
-   refractive `accuracy.water_z_recovered_m`, and both `diagnostics.stage3_interface_optimization
-   /stage3_intrinsic_pass` `cost` values.
-3. Append an `## Evidence` section to this file (this SUMMARY.md, not a new one) per Task 4's
-   `<action>` in `23-01-PLAN.md`: the D-06 bound-hit table, the pinned + normal-free measurement
-   using the observed values from step 2, the optimality caveat (92.78 pinned vs 49.65 unpinned is
-   expected, not a regression), the tilt-cost-not-tilt-recovery precision note, the E7 propagation
-   warning, and a `### Ledger candidate` note. Commit that addition separately.
-4. `experiments/verify_23/` is git-ignored (already landed in Task 1's commit, see below) — nothing
-   under it is ever committed; `git status --porcelain experiments/verify_23` must stay clean.
-
-Code-level readiness for that run: `water_z_bounds` and `normal_fixed=False` are both fully wired
-and unit-tested (see below) — the pinned + normal-free measurement is expected to reproduce the
-D-02 probe's `.planning/probes/2026-08-17-phase-23-recon/probe_pinned_normal_free.py` result
-(`water_z` recovered 1.030999999999 m, guard count 0) since this plan's implementation follows that
-probe's mechanism exactly (bounds override reaching both stage-3 passes, not a first-pass-only
-patch).
+All four tasks are done. Tasks 1-2 (FIX-01, FIX-02) were executed by the first worktree agent.
+Task 3 (the verification run) was executed by the orchestrator in the foreground, unbuffered, per
+the plan's explicit instruction that a backgrounded run inside a subagent stalls permanently — its
+observed values are transcribed into `## Evidence` below. Task 4 (this section) was written by a
+continuation agent using those observed values.
 
 ## Accomplishments
 
@@ -120,7 +91,103 @@ patch).
   (`tests/unit/test_experiments_provenance.py::test_every_experiment_passes_normal_fixed_explicitly`)
   walks E1/E4/E5/E6/E7's source and fails loudly, naming module/callee/line, if any
   `calibrate_synthetic`/`optimize_interface`/`joint_refinement` call omits `normal_fixed`.
-- No library default was flipped; `experiments/verify_23/` was added to `.gitignore` (D-12).
+- No library default was flipped; Phase 23's in-phase verification output directory was added to
+  `.gitignore` (D-12).
+
+## Evidence
+
+Values below are transcribed directly, never as a path into the phase's git-ignored verification
+output directory (does not survive). Non-refractive-arm values labeled "measured" come from Task 3's foreground
+verification run at commit `330f9ef`; "D-02 probe" values come from
+`.planning/probes/2026-08-17-phase-23-recon/probe_pinned_normal_free.py`.
+
+### D-06 bound-hit table
+
+| E1 arm | recovered `water_z` | landed |
+|---|---|---|
+| n=1.0, normal fixed | 1.990 m | on the 2.0 ceiling |
+| n=1.0, normal free | 0.0120 m | on the 0.01 floor |
+| n=1.333, normal free | 1.0236 m | interior (−7.43 mm from GT) |
+
+Both degenerate arms (row 1, row 2) terminated **on** a bound rather than at an interior minimum —
+that is stronger evidence for the null direction than the cost-flatness sweep alone: an
+unconstrained solve given a genuinely null direction has no force pulling it toward any particular
+value, so it drifts until a bound stops it. The general "parameter resting on its bound" detector
+that this table implies is handed to DEGEN-02 in Phase 24 and is deliberately not implemented here.
+
+### Pinned + normal-free measurement (the configuration the re-run actually executes)
+
+Non-refractive arm (`n_water=1.0`, `water_z` pinned via a degenerate bounds interval, `normal_fixed=False`):
+
+| metric | D-02 probe | Task 3 measured (commit `330f9ef`) |
+|---|---|---|
+| `water_z` recovered | 1.030999999999 m (GT 1.031 m) | 1.030999999999 m — matches to the digit |
+| `degenerate_observations_at_solution` | 0 | 0 |
+| `cost_interface` | 26067.0205835744 | 26067.0205835744 |
+| `cost_intrinsic` | 15097.612313075724 | 15097.612313075724 |
+| `status_interface` / `status_intrinsic` | 2 / 2 | 2 / 2 |
+| `optimality_interface` / `optimality_intrinsic` | 1.4445 / 92.784 | 1.4445430872830798 / 92.7841140024072 |
+| wall time, one arm | 136.1 s | 186.59 s (interface) + 94.75 s (intrinsic) = 281.34 s |
+
+The measured run reproduces the D-02 probe's recovered `water_z`, guard count, cost, and status to
+the figures the probe reported, confirming the implementation followed the probe's mechanism exactly
+(bounds override reaching both stage-3 passes, not a first-pass-only patch). Wall time is higher
+than the probe's single 136.1 s figure because the probe's number was a combined estimate and the
+measured run reports the two stage-3 passes separately.
+
+Refractive arm (`n_water=1.333`, `water_z` NOT pinned, `normal_fixed=False`), measured:
+
+- `water_z` recovered: 1.0235695472039534 m — **−7.4305 mm** from GT 1.031 m, matching its
+  established offset (D-02 probe: −7.43 mm), not a new large excursion.
+- `degenerate_observations_at_solution`: 0.
+- `cost_interface` / `cost_intrinsic`: 3688.7971450716086 / 3680.034007917413.
+- `status_interface` / `status_intrinsic`: 2 / 2.
+- `optimality_interface` / `optimality_intrinsic`: 0.001146159591411948 / 0.02473573255605288.
+- `solver_config.water_z_pinned_m`: `null`.
+
+Both records: `solver_config.normal_fixed == false`.
+
+### The `optimality_intrinsic` caveat
+
+`optimality_intrinsic` **rises** for the pinned arm (92.7841140024072, measured) versus its unpinned
+counterpart (49.65, D-02 probe's arm B) because the parameter is pinned against a ~2e-12-wide box:
+`least_squares`'s first-order optimality is a projected-gradient KKT residual, and a gradient
+component along a direction the box forbids moving cannot be driven to zero by definition. This is
+expected numerical behavior of the pin mechanism, not a conditioning regression, and it is **not**
+"fixed." The acceptance metric is the recovered `water_z` against 1.031 m — never this number and
+never the guard count alone. Reason: FIX-02 alone (normal free, water_z unpinned) already zeroes the
+guard count at `water_z` = 0.0120 m, 1.02 m from truth (D-02 probe arm B) — so a zero guard count is
+consistent with either a correct pin or a badly wrong unpinned estimate, and cannot discriminate
+between them on its own.
+
+### FIX-02's DOF note
+
+E1 and E7 now solve at `normal_fixed=False`, matching the production pipeline
+(`CalibrationConfig.interface_normal_fixed` defaults to `False`) and every other solving experiment
+(E4/E5/E6). The synthetic scenarios in this plan's scope generate the interface at exactly
+`[0, 0, -1]`, so freeing `normal_fixed` here measures **the cost of having to estimate a tilt that
+is not actually present** — it does **not** demonstrate recovery of a real tilt. These are distinct
+claims and must not be blurred: this evidence supports only the former.
+
+### Consequence to watch
+
+E7's published 10-of-10 fixed-intrinsics sign test (p = 0.000977, `shared_refined`, from
+`e7_focal_standoff.csv`) is a re-analysis of `interface_ablation_band.csv`, not an independent run
+(D-19.5-05). FIX-02 moving E7's band values therefore propagates into `e7_focal_standoff.csv`
+automatically on the next E7 run. If the sign test's p-value softens as a result, that is the
+honest post-FIX-02 number, not a regression — flag it explicitly in the post-run report rather than
+letting it surface as an unexplained discrepancy during re-verification.
+
+### Ledger candidate
+
+The D-06 bound-hit table above is the one item in this section a reviewer would plausibly want
+carried into `.planning/MANUSCRIPT-FINDINGS.md`: both degenerate arms terminating *on* a bound
+(2.0 ceiling, 0.01 floor) strengthens MF-18's unit-index-pinhole-identity null-direction argument
+with an independent line of evidence (bound-landing rather than cost-flatness). This plan does not
+transcribe it there — per `.planning/phases/23-experiment-correctness-fixes/23-CONTEXT.md`'s
+2026-08-17 amendment, Phase 23 modifies experiments without running them durably (D-12 sends every
+in-phase run to a git-ignored directory), so no Phase 23 entry could name a surviving artifact.
+Whether to promote this table to the ledger, and when, is the user's call.
 
 ## Task Commits
 
@@ -128,8 +195,9 @@ patch).
    non-refractive arm** - `fb33db4` (feat)
 2. **Task 2: FIX-02 — E1 and E7 solve with the interface normal free, recorded and
    test-guarded** - `57ac430` (feat)
-
-Tasks 3 and 4 were not executed by this agent (see "IMPORTANT" section above).
+3. **Task 3: Verification run** — no commit (checkpoint task; output landed in the phase's
+   git-ignored verification directory, per D-12). Executed by the orchestrator at commit `330f9ef`.
+4. **Task 4: Record the evidence in this SUMMARY.md** - (this commit)
 
 ## Files Created/Modified
 
@@ -154,7 +222,7 @@ Tasks 3 and 4 were not executed by this agent (see "IMPORTANT" section above).
   a source-level threading test naming Trap 1 (first-pass-only is a measured, silent failure mode),
   and existing `_run_one_model` tests updated for the new six-element return tuple
 - `tests/unit/test_experiments_provenance.py` - `test_every_experiment_passes_normal_fixed_explicitly`
-- `.gitignore` - `experiments/verify_23/` (D-12)
+- `.gitignore` - phase's in-phase verification output directory (D-12)
 
 ## Decisions Made
 
@@ -227,19 +295,22 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- FIX-01 and FIX-02 are both code-complete, unit-tested, and committed.
-- **Task 3 (the verification run) and Task 4 (the Evidence section) are outstanding** and must be
-  completed by the orchestrator or user before this plan can be considered fully done — see the
-  "IMPORTANT" section above for the exact steps.
+- FIX-01 and FIX-02 are both code-complete, unit-tested, committed, and verified against a
+  foreground run (Task 3) whose observed values are transcribed in `## Evidence` above.
+- All four tasks of this plan are complete.
 - No blockers for plans 23-02/23-03/23-04 (FIX-05, FIX-03/FIX-04, FIX-06 respectively) — per the
   phase context, all four plans in this wave are file-disjoint and were confirmed genuinely
   independent (D-13/amendment 2026-08-17).
+- Per the plan's D-06/D-12 amendment, no entry was added to `.planning/MANUSCRIPT-FINDINGS.md`;
+  the `### Ledger candidate` note above flags the bound-hit table for the user's own ledger pass.
 
 ---
 *Phase: 23-experiment-correctness-fixes*
-*Completed: 2026-08-17 (Tasks 1-2 only; Tasks 3-4 outstanding)*
+*Completed: 2026-08-17 (all four tasks)*
 
 ## Self-Check: PASSED
 
-All files listed under "Files Created/Modified" confirmed present on disk; both task commit
-hashes (`fb33db4`, `57ac430`) confirmed present in `git log --oneline --all`.
+All files listed under "Files Created/Modified" confirmed present on disk; task commit hashes
+(`fb33db4`, `57ac430`) confirmed present in `git log --oneline --all`. Task 3 produced no commit by
+design (checkpoint task, git-ignored output). Task 4's evidence values are transcribed from the
+orchestrator's reported Task 3 output, not re-derived by this agent.
