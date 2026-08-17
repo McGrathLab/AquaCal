@@ -179,7 +179,7 @@ Cross-cutting constraints (appear in 2+ plans):
 would actually check, split finely enough to answer the degeneracy question without re-running
 anything, and its warning stops over-firing.
 **Depends on**: Nothing (independent of Phase 23's fixes; touches different files)
-**Requirements**: DEGEN-01, DEGEN-02, DEGEN-03
+**Requirements**: DEGEN-01, DEGEN-02, DEGEN-03, DEGEN-05
 **Success Criteria** (what must be TRUE):
   1. `degenerate_observations_at_solution` appears in the production `benchmark.json` record
      instead of being dropped before it is written.
@@ -190,14 +190,26 @@ anything, and its warning stops over-firing.
   3. The persisted counter is split by failure kind and by stage.
   4. The degenerate-observation warning fires only for the cases it actually applies to, with a
      corrected cause list.
+  5. (Added 2026-08-17, DEGEN-05) Each stage's reported `optimality` is accompanied by a
+     per-parameter-block decomposition, computed in `_optim_common.py` from the layout
+     `build_structural_column_groups` already owns and recorded beside `stages.*.optimality` in
+     E1's benchmark records. A reader can then tell a KKT residual concentrated in a pinned or
+     bounded slot from one spread across extrinsics and board poses, without re-running. This
+     exists because Phase 23's verification left E1's non-refractive arm at `optimality_intrinsic`
+     92.78 against the refractive arm's 0.0247, with the ~2000x gap unexplained — see
+     `23-01-SUMMARY.md § Evidence`. Interpretation and any claim consequence belong to Phase 25
+     (BAND-01), not here.
 **Plans**: TBD
 
 ### Phase 25: Degeneracy Classification & Claim Licensing
 **Goal**: Two open questions blocking manuscript language — what the 198 unprojectable
 production-rig observations are, and what domain E1's accuracy claim may state — are answered
 and recorded before the frozen run, so neither becomes a mid-run discovery.
-**Depends on**: Nothing (investigation/decision work, not code shared with Phases 23-24)
-**Requirements**: DEGEN-04, BAND-01
+**Depends on**: Phase 24, for success criterion 4 only (added 2026-08-17). DEGEN-04 and BAND-01
+remain investigation/decision work sharing no code with Phases 23-24 and can proceed in parallel;
+only the DEGEN-05 verdict needs Phase 24's decomposition to exist first. If Phase 24 slips, run
+criteria 1-3 and carry criterion 4 rather than blocking the phase.
+**Requirements**: DEGEN-04, BAND-01, DEGEN-05 (verdict only — instrumentation is Phase 24's)
 **Success Criteria** (what must be TRUE):
   1. The production rig's 198 unprojectable observations are classified into named categories,
      with the finding recorded so the manuscript can disclose the count and say what it is.
@@ -205,6 +217,14 @@ and recorded before the frozen run, so neither becomes a mid-run discovery.
      scope decision for real-rig runs.
   3. E1's seed band gains a `noise_std` axis, with the `n_cameras` geometry axis explicitly
      marked skipped, so promoted absolute-accuracy numbers carry a stated domain.
+  4. (Added 2026-08-17) DEGEN-05's per-block optimality decomposition is read for E1's
+     non-refractive arm and a verdict recorded: either the residual is concentrated in the pinned
+     `water_z` slot (benign — the arm is stationary in the parameters that carry the comparison,
+     and the ratio claim stands as measured), or it is spread across extrinsics and board poses
+     (the arm terminates non-stationary, which *inflates* the refractive-to-non-refractive ratio
+     and means the 97–178x band is an upper-biased estimate needing a stated caveat). The verdict
+     is written down either way — "we looked and it was fine" is a result, and leaving it
+     unrecorded re-opens the question during the frozen run.
 **Plans**: TBD
 
 ### Phase 26: Full-Suite Driver & Handoff Readiness

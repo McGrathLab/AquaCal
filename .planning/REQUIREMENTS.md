@@ -84,6 +84,34 @@ submission. POST follows it.
 - [ ] **DEGEN-04**: The production rig's 198 unprojectable observations are classified, with the
       finding recorded so the manuscript can disclose the count and say what it is —
       todo `2026-08-15-classify-the-198-unprojectable-observations`
+- [ ] **DEGEN-05**: The first-order optimality reported by each stage is decomposed by parameter
+      block, so a reader can tell a residual concentrated in a pinned or bounded slot (benign)
+      from one spread across extrinsics and board poses (a non-stationary solve) without
+      re-running anything — origin `Phase 23 verification run at 330f9ef`, recorded in
+      `23-01-SUMMARY.md § Evidence`
+
+      *Why this is not covered by DEGEN-02:* DEGEN-02 splits the **degeneracy counter** by
+      failure kind and stage. This is a different quantity — the projected-gradient KKT residual
+      attributed to parameter blocks — and the two answer different questions. Keeping them
+      separate keeps the traceability honest.
+
+      *Motivating measurement (2026-08-17):* E1's non-refractive arm reports
+      `optimality_intrinsic` of 92.78 pinned, 49.65 unpinned, and 873.98 with the normal fixed,
+      against the refractive arm's 0.0247 on the same scenario and seed. The near-zero-width
+      `water_z` box explains the 49.65 → 92.78 rise. **Nothing yet explains the ~2000x gap
+      between the arms**, and the unpinned arm shows the baseline is not caused by the pin.
+      Direction of risk: if that arm is terminating non-stationary, its error is larger than the
+      true optimum, which *inflates* E1's refractive-to-non-refractive ratio rather than
+      penalizing it — so the published 97–178x band is the number exposed.
+
+      *Placement:* the decomposition is computed in `_optim_common.py`, which already owns the
+      parameter layout via `build_structural_column_groups` (it carries a dedicated `water_z`
+      group slot). Computing it in `experiments/` would duplicate that layout — the exact drift
+      that function's docstring exists to prevent. E1 records it beside the existing
+      `stages.*.optimality`, the same path `degenerate_observations_at_solution` takes.
+
+      *Deadline:* must land before the Phase 27 freeze. A diagnostic absent at the frozen sha
+      does not appear in Phase 28's results, and retrofitting it costs another full-suite run.
 
 ### Run Infrastructure (DRIVER) — one sha, every invocation, a portable handoff
 
@@ -193,6 +221,7 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | DEGEN-02 | Phase 24 | Pending |
 | DEGEN-03 | Phase 24 | Pending |
 | DEGEN-04 | Phase 25 | Pending |
+| DEGEN-05 | Phase 24 | Pending |
 | BAND-01 | Phase 25 | Pending |
 | DRIVER-01 | Phase 26 | Pending |
 | DRIVER-02 | Phase 26 | Pending |
