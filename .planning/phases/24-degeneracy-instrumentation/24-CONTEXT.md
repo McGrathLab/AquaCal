@@ -14,6 +14,35 @@ without another run, and its warning stops serving two opposite situations with 
   (E6's band already does — all 102 rows)
 - **DEGEN-02** — the counter is split by failure kind **and** by stage, with a recorded denominator
 - **DEGEN-03** — the warning is narrowed to the cases it applies to, with a corrected cause list
+- **DEGEN-05** — each stage's reported `optimality` is accompanied by a per-parameter-block
+  decomposition
+
+  > **Added to this context 2026-08-17, after the session that wrote it.** DEGEN-05 was opened at
+  > 11:58 and this context was captured at 12:52, but the discuss session had already loaded the
+  > roadmap — so the requirement is absent below and the phase looks like a three-requirement
+  > phase. `ROADMAP.md` § Phase 24 lists **DEGEN-01, 02, 03, 05** and carries a fifth success
+  > criterion. Plan for four.
+  >
+  > *What it is:* `optimality` is a single scalar that mixes three Coleman-Li scaling regimes —
+  > `v = 1` for unbounded extrinsics and board poses, `v ≈ 700` for wide-bounded intrinsics,
+  > `v ≈ 2e-12` for a pinned slot — so it is **not a like-for-like maximum across blocks**. The
+  > decomposition is computed in `_optim_common.py`, which already owns the layout via
+  > `build_structural_column_groups` (it carries a dedicated `water_z` group slot); computing it
+  > in `experiments/` would duplicate that layout, the exact drift that function's docstring
+  > exists to prevent. E1 records it beside the existing `stages.*.optimality`, the same path
+  > `degenerate_observations_at_solution` takes — so it shares D-11's plumbing rather than adding
+  > a new one.
+  >
+  > *It fits D-16, not competes with it.* Both are solve-level `SolverDiagnostics` fields keyed by
+  > parameter, both reach `benchmark.json` through the existing diagnostics path, and both want
+  > `build_parameter_labels`. Implement them together.
+  >
+  > *Evidence:* `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md` (three probes).
+  > Note what is **already settled** and must not be re-litigated during planning: the pinned
+  > `water_z` contributes 0.00% of the reported optimality (the Phase 23 documents' mechanism is
+  > wrong), FD Jacobian noise is **falsified** as the cause (a central-difference Jacobian agrees
+  > to five significant figures), and E1's non-refractive baseline **is converged** (warm restarts
+  > recover no cost). The residual finding is genuine severe ill-conditioning, curvature ~3e8.
 
 **Not this phase:** classifying the production rig's 198 (DEGEN-04, Phase 25); E1's `noise_std`
 axis (BAND-01, Phase 25); the suite driver and the `--check` contract (Phase 26); any run of the
@@ -207,8 +236,17 @@ cannot be made until DEGEN-04 reports).
 
   The consequence clause narrows to what is true: the continuation is **C0 but not C1**;
   observations continued through it carry **zero `water_z` gradient**; **every other parameter keeps
-  full gradient**, so the reported optimality remains meaningful for them. Do not claim the
+  full gradient**, so those parameters still contribute to the reported optimality. Do not claim the
   continuation is smooth.
+
+  > **Qualified 2026-08-17.** This clause originally read "*so the reported optimality remains
+  > meaningful for them*". That is too strong, and measured the same day: `optimality` is volatile
+  > at a fixed solution (92.78 → 27.58 → 2.16 across warm restarts while cost moved 1.8e-9), not
+  > comparable across parameter blocks, and unreliable at small magnitudes (44% disagreement
+  > against a 3-point reference at ~0.001, while large values are solid to 5 s.f.). The gradient
+  > *contribution* claim is what the argument needs and is correct; the *meaningfulness* claim is
+  > not this clause's to make. See `.planning/knowledge-base.md` § "`optimality` is real but
+  > volatile".
 
 ### The D-06 bound-hit detector (handed over from Phase 23)
 
@@ -225,6 +263,20 @@ cannot be made until DEGEN-04 reports).
   *Motivating evidence (Phase 23):* both degenerate E1 arms terminated on a bound — 1.990 m against
   the 2.0 ceiling, 0.0120 m against the 0.01 floor — stronger evidence for the null direction than
   the cost-flatness sweep alone.
+
+  > **Corroboration added 2026-08-17 — the detector's signal is confirmed present before anyone
+  > implements it.** The block-decomposition probe read `result.active_mask` directly at each
+  > solution: the pinned `water_z` slot reports `active_mask = 1` with a bound gap of
+  > **2.000177801164682e-12**, while every other block reports `at_bound = 0`. So scipy's own
+  > `active_mask` already carries exactly what D-16 wants to surface, on the real solve, with no
+  > new computation — the field is a *plumbing* job, not a detection problem.
+  >
+  > One design consequence: a pinned parameter is legitimately at its bound by construction, so a
+  > detector that flags "on a bound" without distinguishing *pinned by request* from *ran into a
+  > limit* will fire on E1's non-refractive arm every time and be trained away, exactly as the
+  > always-red gate in `knowledge-base.md` § "A gate FAIL that everyone has learned to expect" was.
+  > The bound gap discriminates them cheaply: ~2e-12 means pinned, a wide gap means it travelled
+  > there. Raw values in `optimality_blocks.json`.
 
 ### Verification budget
 
