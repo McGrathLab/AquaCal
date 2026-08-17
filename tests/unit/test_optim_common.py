@@ -1047,6 +1047,216 @@ class TestInvalidProjectionKeepsGradient:
         )
 
 
+class TestParameterBlockSlices:
+    """Phase 24 / DEGEN-05: the packed vector's structural block layout."""
+
+    N_CAMS = 3
+    N_FRAMES = 2
+
+    def _order(self):
+        return [f"cam{i}" for i in range(self.N_CAMS)], list(range(self.N_FRAMES))
+
+    @pytest.mark.parametrize("normal_fixed", [True, False])
+    @pytest.mark.parametrize("refine_intrinsics", [True, False])
+    @pytest.mark.parametrize("shared_interface", [True, False])
+    def test_parameter_block_slices_tile_the_packed_vector(
+        self, normal_fixed, refine_intrinsics, shared_interface
+    ):
+        """Blocks are contiguous, non-overlapping, and cover the whole vector."""
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        blocks = build_parameter_block_slices(
+            camera_order,
+            frame_order,
+            "cam0",
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        lower, _ = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            base_intrinsics=_dummy_intrinsics(camera_order)
+            if refine_intrinsics
+            else None,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        ordered = sorted(blocks.values(), key=lambda s: s.start)
+        assert ordered[0].start == 0
+        for previous, following in zip(ordered, ordered[1:]):
+            assert previous.stop == following.start, "blocks are not contiguous"
+        assert ordered[-1].stop == len(lower)
+        assert sum(s.stop - s.start for s in ordered) == len(lower)
+        # A zero-width block is omitted rather than emitted empty.
+        assert all(s.stop > s.start for s in ordered)
+        assert ("tilt" in blocks) is (not normal_fixed)
+        assert ("intrinsics" in blocks) is refine_intrinsics
+
+    def test_block_slices_agree_with_parameter_labels(self):
+        """`labels[i]` names `x[i]`, so the labels must tile the same way."""
+        from aquacal.calibration._observability import build_parameter_labels
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        for shared_interface in (True, False):
+            blocks = build_parameter_block_slices(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            labels = build_parameter_labels(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            assert len(labels) == sum(s.stop - s.start for s in blocks.values())
+
+            water_z_label = labels[blocks["water_z"].start]
+            assert water_z_label == "water_z" or water_z_label.endswith("_water_z")
+
+
+def _dummy_intrinsics(camera_order):
+    from aquacal.config.schema import CameraIntrinsics
+
+    K = np.array([[500.0, 0.0, 320.0], [0.0, 500.0, 240.0], [0.0, 0.0, 1.0]])
+    return {
+        cam: CameraIntrinsics(
+            K=K.copy(), dist_coeffs=np.zeros(5), image_size=(640, 480)
+        )
+        for cam in camera_order
+    }
+
+
+class TestDegeneracyBreakdownOut:
+    """Phase 24 / DEGEN-02: `compute_residuals`' six-key cause/fate/denominator fill.
+
+    Reuses `TestInvalidProjectionKeepsGradient`'s scene, which already produces a
+    known invalid population by lifting frame 1 above the water surface.
+    """
+
+    @staticmethod
+    def _packed(lift_frame1_above_water):
+        return TestInvalidProjectionKeepsGradient()._packed(lift_frame1_above_water)
+
+    def test_degeneracy_breakdown_out_defaults_to_none_and_records_nothing(self):
+        """The default path is byte-for-byte what every existing caller gets."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+
+        without_kwarg = compute_residuals(params, *cost_args)
+        explicit_none = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=None
+        )
+        breakdown: dict[str, int] = {}
+        instrumented = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=breakdown
+        )
+
+        np.testing.assert_array_equal(without_kwarg, explicit_none)
+        np.testing.assert_array_equal(without_kwarg, instrumented)
+        assert breakdown, "a supplied dict must be filled"
+
+    def test_clean_scene_fills_six_keys_with_zero_counts_and_a_real_denominator(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(False)
+        breakdown: dict[str, int] = {}
+        compute_residuals(params, *cost_args, degeneracy_breakdown_out=breakdown)
+
+        assert set(breakdown) == {
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+            "observations_evaluated",
+        }
+        for key in (
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+        ):
+            assert breakdown[key] == 0, breakdown
+        assert breakdown["observations_evaluated"] > 0
+
+    def test_degeneracy_breakdown_causes_sum_to_invalid_count_out(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+        by_cause = (
+            breakdown["above_interface"]
+            + breakdown["behind_camera"]
+            + breakdown["interface_below_camera"]
+        )
+        assert by_cause == counts[0]
+        assert breakdown["observations_evaluated"] >= counts[0]
+
+    def test_degeneracy_breakdown_fates_sum_to_invalid_count_out(self):
+        """The second, independent decomposition of the same invalid set."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert breakdown["extended"] + breakdown["penalized"] == counts[0]
+
+    def test_interface_below_camera_batch_is_attributed_to_that_cause_only(self):
+        """A water surface estimated below every camera center: one cause, no others.
+
+        This is a statement about the ESTIMATE -- the free `water_z` parameter has
+        excursed below the (also free) camera centers -- and never a claim that
+        hardware was submerged.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, cams, _ = self._packed(False)
+        water_z_index = 6 * (len(cams) - 1)  # normal_fixed, shared water_z
+        params = params.copy()
+        params[water_z_index] = -0.05  # below every camera center at Z = 0
+
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0
+        assert breakdown["interface_below_camera"] == counts[0]
+        assert breakdown["above_interface"] == 0
+        assert breakdown["behind_camera"] == 0
+
+
 class TestWaterZBoundsOverride:
     """FIX-01 (D-01): a `water_z_bounds` override reaching `build_bounds` pins the
     water_z slot(s) without touching the default [0.01, 2.0] bound when omitted.

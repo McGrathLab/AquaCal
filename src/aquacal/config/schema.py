@@ -607,20 +607,33 @@ class ConnectivityError(CalibrationError):
 class DegenerateObservationWarning(UserWarning):
     """Warns that observations could not be projected by the refractive model.
 
-    Emitted by Stage 3 when the solution contains board corners the refractive
-    model cannot project -- typically corners lying at or above the water
-    surface, which is physically impossible for a submerged target. Such
-    observations are continued with a pinhole extension so the solve keeps a
-    gradient, but the continuation puts the residual on a C0-but-not-C1 kink
-    at the refractive/pinhole boundary.
+    Emitted by Stage 3 when the solution contains observations the refractive
+    model cannot project. Phase 24 distinguishes three causes, named as the
+    projector names them: ``above_interface`` (the corner sits at or above the
+    estimated water surface), ``behind_camera`` (no pixel exists for it), and
+    ``interface_below_camera`` (the estimated interface fell below an estimated
+    camera center -- a solver-excursion convergence diagnostic, explicitly not a
+    claim about submerged hardware).
 
-    When this warning fires, first-order optimality is UNRELIABLE as a
-    convergence measure: the kink inflates it independent of whether the
-    solve actually converged, so neither optimality NOR the reprojection RMS
-    can be trusted to judge convergence in this state. The correct response
-    is to fix the scenario geometry so no corner sits at or above the
-    interface -- not to re-tune the solver or read either diagnostic more
-    carefully.
+    Two independent things are reported, and they must not be conflated. The
+    CAUSE above answers "what do I fix". The FATE answers "what does this cost
+    me": an ``extended`` observation was continued with the pinhole extension,
+    which is C0 but not C1 at the refractive/pinhole boundary and carries zero
+    ``water_z`` gradient, while every other parameter keeps full gradient; a
+    ``penalized`` observation sits on a flat penalty and carries no gradient at
+    all.
+
+    Warning volume scales with the degenerate FRACTION, not the raw count: below
+    1% of the stage's evaluated observations the condition is reported for the
+    record, and at or above 1% the message states that neither optimality nor the
+    reprojection RMS can be trusted for the solve as a whole. **That threshold
+    scales warning volume only** -- the ``count > 0 -> degenerate`` gate is
+    untouched, with no threshold and no tolerance.
+
+    The message names both readings and does not infer provenance: if the run is
+    an authored scenario the geometry is the fix; if it is measured hardware that
+    fix is not available, and the per-fate statement above is what the count does
+    and does not invalidate.
     """
 
     pass

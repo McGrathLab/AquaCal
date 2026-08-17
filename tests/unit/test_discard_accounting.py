@@ -18,19 +18,30 @@ B. **Counter correctness.** A clean scenario leaves every failure counter at zer
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from aquacal.calibration._observability import (
+    DEGENERACY_CAUSES,
+    DEGENERACY_FATES,
     DISCARD_KEYS,
+    DISCARD_STAGES,
     _bump,
     check_denominator_only,
     check_discard_invariants,
+    degeneracy_cause_key,
+    degeneracy_fate_key,
+    observations_evaluated_key,
 )
 from aquacal.calibration.extrinsics import estimate_board_pose, refractive_solve_pnp
-from aquacal.calibration.interface_estimation import optimize_interface
+from aquacal.calibration.interface_estimation import (
+    DEGENERACY_WARNING_FRACTION_THRESHOLD,
+    _format_degenerate_observation_warning,
+    optimize_interface,
+)
 from aquacal.calibration.refinement import joint_refinement
 from aquacal.config.schema import (
     BoardConfig,
@@ -273,6 +284,95 @@ def test_invariants_catch_an_undeclared_key():
     assert any("undeclared counter keys" in v for v in violations), violations
 
 
+def _balanced_degeneracy_stats(total: int) -> dict[str, int]:
+    """A minimal stats dict whose two degeneracy axes both sum to `total`."""
+    stage = "stage3_interface_optimization"
+    return {
+        "degenerate_observations_at_solution": total,
+        degeneracy_cause_key("above_interface", stage): total,
+        degeneracy_fate_key("extended", stage): total,
+    }
+
+
+def test_degeneracy_cause_key_raises_on_unrecognized_cause_or_stage():
+    """The closed vocabulary exists so a typo is caught, not silently bucketed."""
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_cause_key("corner_wandered_off", "stage3_interface_optimization")
+    assert "corner_wandered_off" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_cause_key("above_interface", "stage3_typo")
+    assert "stage3_typo" in str(excinfo.value)
+
+
+def test_degeneracy_fate_key_raises_on_unrecognized_fate_or_stage():
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_fate_key("evaporated", "stage3_interface_optimization")
+    assert "evaporated" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        degeneracy_fate_key("extended", "stage3_typo")
+    assert "stage3_typo" in str(excinfo.value)
+
+
+def test_unattributed_is_a_legal_stage():
+    """D-03: an absent stage label is a legitimate call pattern, not an error.
+
+    It must be visible as its own bucket rather than merged into a real stage.
+    """
+    assert "unattributed" in DISCARD_STAGES
+    for cause in DEGENERACY_CAUSES:
+        assert degeneracy_cause_key(cause, "unattributed") in DISCARD_KEYS
+    for fate in DEGENERACY_FATES:
+        assert degeneracy_fate_key(fate, "unattributed") in DISCARD_KEYS
+    assert observations_evaluated_key("unattributed") in DISCARD_KEYS
+
+
+def test_invariants_catch_a_cause_split_that_does_not_sum_to_the_merged_total():
+    """Relation 3: the merged total equals the sum of the nine cause keys."""
+    broken = _balanced_degeneracy_stats(5)
+    broken[degeneracy_cause_key("above_interface", "stage3_interface_optimization")] = 4
+
+    violations = check_discard_invariants(broken)
+    offenders = [v for v in violations if "cause split mismatch" in v]
+    assert offenders, violations
+    assert "5" in offenders[0] and "4" in offenders[0]
+
+
+def test_invariants_catch_a_fate_split_that_does_not_sum_to_the_merged_total():
+    """Relation 4: the merged total independently equals the sum of the six fate keys.
+
+    Two exact decompositions of one total is the cross-check neither axis provides
+    alone.
+    """
+    broken = _balanced_degeneracy_stats(5)
+    broken[degeneracy_fate_key("extended", "stage3_interface_optimization")] = 3
+
+    violations = check_discard_invariants(broken)
+    offenders = [v for v in violations if "fate split mismatch" in v]
+    assert offenders, violations
+    assert "5" in offenders[0] and "3" in offenders[0]
+
+
+def test_invariants_catch_causes_exceeding_the_stage_denominator():
+    """Relation 5: a stage cannot have more degenerate observations than it evaluated."""
+    stage = "stage3_interface_optimization"
+    broken = _balanced_degeneracy_stats(9)
+    broken[observations_evaluated_key(stage)] = 4
+
+    violations = check_discard_invariants(broken)
+    assert any("degeneracy denominator mismatch" in v for v in violations), violations
+
+
+def test_a_consistent_degeneracy_split_reports_no_violation():
+    """The three new relations are not vacuously failing on well-formed input."""
+    stage = "stage3_interface_optimization"
+    good = _balanced_degeneracy_stats(6)
+    good[observations_evaluated_key(stage)] = 100
+
+    assert not check_denominator_only(good)
+
+
 @pytest.mark.slow
 def test_full_run_satisfies_both_invariants():
     """On a real (synthetic) calibration, both cross-checks hold and keys are declared."""
@@ -485,3 +585,328 @@ def test_joint_refinement_signature_accepts_and_bumps_discard_stats_out():
     )
     assert refine_stats["degenerate_observations_at_solution"] == 0
     assert "degenerate_observations_at_solution" in refine_stats
+
+
+# ---------------------------------------------------------------------------
+# D. The cause/fate/stage split reaching the solver entry points (phase 24)
+# ---------------------------------------------------------------------------
+
+
+def test_unrecognized_discard_stage_raises_before_the_solve():
+    """A typo'd stage is a programming error, caught at entry, not after a solve.
+
+    Validation is deliberately at the top of the function body: raising it after
+    a multi-minute (in production, 48-87 minute) solve would waste the solve.
+    Passing deliberately-invalid detections proves the raise happens BEFORE any
+    solve setup that would itself fail on them.
+    """
+    with pytest.raises(ValueError) as excinfo:
+        optimize_interface(
+            None,
+            None,
+            None,
+            None,
+            "cam0",
+            discard_stage="stage3_typo",
+        )
+    assert "stage3_typo" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        joint_refinement(
+            stage3_result=None,
+            detections=None,
+            intrinsics=None,
+            board=None,
+            reference_camera="cam0",
+            discard_stage="stage3_typo",
+        )
+    assert "stage3_typo" in str(excinfo.value)
+
+
+@pytest.mark.slow
+def test_clean_run_emits_degeneracy_keys_at_zero():
+    """D-04: a clean solve emits the split keys PRESENT with value 0.
+
+    A zero that is present is evidence; a column that is absent is not. The
+    `in stats` assertion therefore comes before the value assertion -- reversing
+    them would let a `.get(key, 0)` reading pass on an absent key.
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stage = "stage3_interface_optimization"
+    stats: dict[str, int] = {}
+    optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stats,
+        discard_stage=stage,
+    )
+
+    for cause in DEGENERACY_CAUSES:
+        key = degeneracy_cause_key(cause, stage)
+        assert key in stats
+        assert stats[key] == 0
+    for fate in DEGENERACY_FATES:
+        key = degeneracy_fate_key(fate, stage)
+        assert key in stats
+        assert stats[key] == 0
+    assert observations_evaluated_key(stage) in stats
+    assert stats[observations_evaluated_key(stage)] > 0
+    assert stats["degenerate_observations_at_solution"] == 0
+    assert not check_denominator_only(stats), stats
+
+
+@pytest.mark.slow
+def test_absent_stage_lands_in_the_unattributed_bucket():
+    """D-03: no `discard_stage` routes to the declared bucket, not a real stage."""
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stage3_result = optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+    )
+
+    stats: dict[str, int] = {}
+    joint_refinement(
+        stage3_result=stage3_result,
+        detections=detections,
+        intrinsics=intrinsics,
+        board=board,
+        reference_camera="cam0",
+        refine_intrinsics=False,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stats,
+    )
+
+    assert observations_evaluated_key("unattributed") in stats
+    assert stats[observations_evaluated_key("unattributed")] > 0
+    for stage in ("stage3_interface_optimization", "stage3_intrinsic_pass"):
+        assert observations_evaluated_key(stage) not in stats
+
+    merged = stats["degenerate_observations_at_solution"]
+    by_cause = sum(
+        stats.get(degeneracy_cause_key(c, s), 0)
+        for c in DEGENERACY_CAUSES
+        for s in DISCARD_STAGES
+    )
+    by_fate = sum(
+        stats.get(degeneracy_fate_key(f, s), 0)
+        for f in DEGENERACY_FATES
+        for s in DISCARD_STAGES
+    )
+    assert by_cause == merged
+    assert by_fate == merged
+
+
+@pytest.mark.slow
+def test_reason_array_is_none_during_the_solve():
+    """D-06b: the projector sees `nan_reason_out=None` on every in-solve call.
+
+    Threading the diagnostic out-parameters on every residual call instead of
+    only the single post-solve one would silently convert a free diagnostic into
+    a hot-path cost on thousands of iterations -- an int8 allocation per
+    (camera, frame) per iteration -- and nothing in the type signatures would
+    catch it. Hence a spy, not a type annotation.
+    """
+    import aquacal.calibration._optim_common as optim_common
+
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+
+    real_projector = optim_common.refractive_project_batch
+    calls: list[bool] = []
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("nan_reason_out") is not None)
+        return real_projector(*args, **kwargs)
+
+    optim_common.refractive_project_batch = spy
+    try:
+        stats: dict[str, int] = {}
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stats_out=stats,
+            discard_stage="stage3_interface_optimization",
+        )
+    finally:
+        optim_common.refractive_project_batch = real_projector
+
+    assert calls, "the spy never saw a projector call"
+    n_with_array = sum(calls)
+    n_without = len(calls) - n_with_array
+
+    # Both branches are exercised: the solve's own calls pass None, and the
+    # single post-solve pass supplies an array for each (camera, frame) pair.
+    assert n_without > 0
+    assert n_with_array > 0
+    # The array-bearing calls are the trailing post-solve pass only.
+    assert all(calls[-n_with_array:])
+    assert not any(calls[:-n_with_array])
+
+
+# ---------------------------------------------------------------------------
+# E. The narrowed degenerate-observation warning (phase 24, DEGEN-03)
+# ---------------------------------------------------------------------------
+#
+# Built through the extracted formatting helper rather than a full solve, so
+# these stay off the `slow` marker. The volume branch and the text are what is
+# under test; the solve that produces the counts is tested in section D.
+
+_REFUTED_OBLIQUITY_PHRASES = ("critical angle", "total internal reflection", "oblique")
+
+
+def _breakdown(*, above=0, behind=0, below=0, extended=0, penalized=0, evaluated=1000):
+    return {
+        "above_interface": above,
+        "behind_camera": behind,
+        "interface_below_camera": below,
+        "extended": extended,
+        "penalized": penalized,
+        "observations_evaluated": evaluated,
+    }
+
+
+def test_sub_threshold_fraction_warns_quietly():
+    """Below 1% the message reports the tail without condemning the whole solve."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001213, 3
+    )
+    assert "0.200%" in message
+    assert "1000" in message
+    assert "not declared unreliable" in message
+    assert "Do not re-tune the solver." not in message
+
+
+def test_supra_threshold_fraction_warns_loudly():
+    """At or above 1% the loud variant keeps the do-not-re-tune instruction."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 300, _breakdown(above=300, extended=300, evaluated=1000), 4.3e4, 3
+    )
+    assert "30.000%" in message
+    assert "nor the reprojection RMS can be trusted to judge convergence" in message
+    assert "Do not re-tune the solver." in message
+
+
+def test_the_two_volume_variants_render_distinct_strings():
+    quiet = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001, 3
+    )
+    loud = _format_degenerate_observation_warning(
+        "Stage 3", 300, _breakdown(above=300, extended=300, evaluated=1000), 0.001, 3
+    )
+    assert quiet != loud
+
+
+def test_warning_names_the_dominant_cause():
+    """The dominant cause is named, and it is not hard-coded to above_interface."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        50,
+        _breakdown(above=5, below=45, extended=50, evaluated=1000),
+        0.5,
+        3,
+    )
+    assert "Dominant cause: interface_below_camera" in message
+    # The reframe survives into the text: a statement about the ESTIMATE.
+    assert "not a claim about submerged hardware" in message
+
+
+def test_warning_distinguishes_the_two_fates():
+    """Fate is reported separately from cause, with the right gradient claim each."""
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        10,
+        _breakdown(above=6, behind=4, extended=6, penalized=4, evaluated=1000),
+        0.5,
+        3,
+    )
+    assert "C0 but not C1" in message
+    assert "ZERO water_z gradient" in message
+    assert "NO gradient at all" in message
+    # The removed over-strong claim must not come back; it was measured false.
+    assert "remains meaningful" not in message
+
+
+def test_warning_names_both_readings_without_inferring_provenance():
+    message = _format_degenerate_observation_warning(
+        "Stage 3", 2, _breakdown(above=2, extended=2, evaluated=1000), 0.001, 3
+    )
+    assert "authored scenario" in message
+    assert "measured hardware" in message
+
+
+@pytest.mark.parametrize("n_invalid,denominator", [(2, 1000), (300, 1000)])
+def test_warning_text_omits_the_refuted_obliquity_cause(n_invalid, denominator):
+    """Beyond-critical-angle obliquity was refuted 2026-08-15 and must not appear.
+
+    `refract_ray` has zero callers in `src/`, so the projection path carries no
+    total-internal-reflection check, and `realistic` projects cleanly at chord
+    incidences to 61.5 degrees -- past the 48.61 degree critical angle.
+    """
+    message = _format_degenerate_observation_warning(
+        "Stage 3",
+        n_invalid,
+        _breakdown(above=n_invalid, extended=n_invalid, evaluated=denominator),
+        0.001,
+        3,
+    ).lower()
+    for phrase in _REFUTED_OBLIQUITY_PHRASES:
+        assert phrase not in message
+
+
+def test_threshold_is_a_module_constant_not_a_call_parameter():
+    """D-14: making it a caller parameter was rejected as source surgery."""
+    import inspect
+
+    assert DEGENERACY_WARNING_FRACTION_THRESHOLD == 0.01
+    for func in (optimize_interface, joint_refinement):
+        names = set(inspect.signature(func).parameters)
+        assert not any("threshold" in n for n in names), names
+
+
+@pytest.mark.slow
+def test_clean_solve_emits_no_degeneracy_warning():
+    """A solve with `n_invalid == 0` emits zero DegenerateObservationWarnings."""
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stage="stage3_interface_optimization",
+        )
+    degeneracy = [
+        w for w in caught if issubclass(w.category, DegenerateObservationWarning)
+    ]
+    assert not degeneracy, [str(w.message) for w in degeneracy]

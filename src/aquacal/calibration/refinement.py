@@ -11,20 +11,33 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from aquacal.calibration._observability import (
+    DEGENERACY_CAUSES,
+    DEGENERACY_FATES,
+    DISCARD_STAGES,
     OptimizerObserver,
     SolverDiagnostics,
     _bump,
     build_parameter_labels,
     capture_solver_diagnostics,
+    degeneracy_cause_key,
+    degeneracy_fate_key,
+    observations_evaluated_key,
 )
 from aquacal.calibration._optim_common import (
     build_bounds,
     build_jacobian_sparsity,
+    build_parameter_block_slices,
     build_structural_column_groups,
     compute_residuals,
     make_sparse_jacobian_func,
     pack_params,
     unpack_params,
+)
+from aquacal.calibration.interface_estimation import (
+    DEGENERACY_WARNING_FRACTION_THRESHOLD as _DEGENERACY_WARNING_FRACTION_THRESHOLD,
+)
+from aquacal.calibration.interface_estimation import (
+    _format_degenerate_observation_warning,
 )
 from aquacal.config.schema import (
     BoardPose,
@@ -36,6 +49,29 @@ from aquacal.config.schema import (
     Vec3,
 )
 from aquacal.core.board import BoardGeometry
+
+#: Degenerate fraction at or above which the warning switches to its loud variant.
+#: Held line-for-line parallel with the matching constant in
+#: `interface_estimation.py` -- the two staying in sync is why that
+#: cross-reference exists.
+#:
+#: **1%, and this scales WARNING VOLUME ONLY.** The `count > 0 -> degenerate` gate
+#: is untouched by this constant -- no threshold, no tolerance.
+#:
+#: Justified by two measurements, quoted rather than paraphrased:
+#:   - the production rig is **198 / 73,975 = 0.268%**;
+#:   - E1's degenerate arm logged **14,949** against a scenario with observations
+#:     in the tens of thousands, i.e. tens of percent.
+#: Two orders of magnitude apart, so the value is not delicate. 1% is roughly 4x
+#: the measured rig value and errs toward staying loud -- a rig that degraded to
+#: 1% would still shout.
+#:
+#: 5% was rejected: a rig at 3%, a tenfold degradation, would then be reported
+#: quietly, and that trend is exactly what a user would want shouted at. Making it
+#: a caller parameter was also rejected -- that is the same shape as the `water_z`
+#: bounds generalization this milestone deferred, i.e. source surgery days before
+#: a freeze.
+DEGENERACY_WARNING_FRACTION_THRESHOLD = _DEGENERACY_WARNING_FRACTION_THRESHOLD
 
 
 def joint_refinement(
@@ -64,6 +100,7 @@ def joint_refinement(
     diagnostics_out: SolverDiagnostics | None = None,
     discard_stats_out: dict[str, int] | None = None,
     water_z_bounds: tuple[float, float] | None = None,
+    discard_stage: str | None = None,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -125,6 +162,19 @@ def joint_refinement(
             the end of this pass when the override was not also threaded
             here. See `build_bounds` for the degenerate-interval mechanism
             (D-01).
+        discard_stage: Optional label routing this call's degeneracy counts to a
+            stage-specific set of `DISCARD_KEYS` entries. Must be one of
+            `DISCARD_STAGES`; `None` (the default) routes to the declared
+            `"unattributed"` bucket. An unrecognized string raises `ValueError`
+            at entry, before the solve.
+
+            **The stage cannot be derived, which is why it is an explicit
+            argument (D-02).** This one function bumps under two different stage
+            identities -- Stage 3 joint and Stage 3's intrinsic pass are the same
+            function, called twice. `OptimizerObserver.stage` already carries this
+            vocabulary, but the observer is opt-in and `None` on an ordinary run,
+            so deriving the label from it would silently collapse the split for
+            every production run the counter exists for.
 
     Returns:
         Tuple of:
@@ -146,6 +196,32 @@ def joint_refinement(
         - Intrinsic bounds: fx, fy in [0.5*initial, 2.0*initial],
           cx, cy in [0, image_width] and [0, image_height]
     """
+    # Validate the discard stage label ONCE, at entry, before the solve (D-03).
+    # An unrecognized string is a programming error; raising it after a
+    # multi-minute solve would waste the solve. `None` maps to the declared
+    # "unattributed" bucket. See the matching block in interface_estimation.py.
+    resolved_discard_stage = (
+        discard_stage if discard_stage is not None else ("unattributed")
+    )
+    if resolved_discard_stage not in DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard_stage {discard_stage!r}; legal stages are "
+            f"{list(DISCARD_STAGES)} (or None for {'unattributed'!r})"
+        )
+    # D-04: emit this stage's degeneracy keys at zero up front, so a clean run
+    # produces an explicit zero rather than no key at all -- a zero that is
+    # present is evidence, a column that is absent is not. `_bump(..., n=0)`
+    # creates the key at 0 if absent, and the inert path is preserved exactly:
+    # when `discard_stats_out is None` there is no dict and no keys.
+    for _cause in DEGENERACY_CAUSES:
+        _bump(
+            discard_stats_out, degeneracy_cause_key(_cause, resolved_discard_stage), 0
+        )
+    for _fate in DEGENERACY_FATES:
+        _bump(discard_stats_out, degeneracy_fate_key(_fate, resolved_discard_stage), 0)
+    _bump(discard_stats_out, observations_evaluated_key(resolved_discard_stage), 0)
+    _bump(discard_stats_out, "degenerate_observations_at_solution", 0)
+
     # Validate inputs
     extrinsics_in, distances_in, poses_in, _ = stage3_result
     if reference_camera not in extrinsics_in:
@@ -317,29 +393,87 @@ def joint_refinement(
             if use_sparse_jacobian
             else "use_sparse_jacobian=False; no column-grouping structure was built"
         ),
+        parameter_labels=build_parameter_labels(
+            camera_order,
+            frame_order,
+            reference_camera,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        ),
+        parameter_blocks=build_parameter_block_slices(
+            camera_order,
+            frame_order,
+            reference_camera,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        ),
+        bounds=(lower, upper),
     )
 
     if result.status <= 0:
         raise ConvergenceError(f"Optimization failed: {result.message}")
 
     # Degeneracy guard -- see the matching block in interface_estimation.
+    #
+    # D-06b: this `compute_residuals` call already runs AFTER `least_squares`
+    # returns, and every diagnostic out-parameter is threaded here and ONLY here.
+    # Nothing below is added to `cost_args` and nothing is threaded into the
+    # callable scipy invokes -- doing so would allocate a reason array on every
+    # one of thousands of residual evaluations, and nothing in the type
+    # signatures would catch the drift.
     invalid_counts: list[int] = []
-    compute_residuals(result.x, *cost_args, invalid_count_out=invalid_counts)
+    degeneracy_breakdown: dict[str, int] = {}
+    compute_residuals(
+        result.x,
+        *cost_args,
+        invalid_count_out=invalid_counts,
+        degeneracy_breakdown_out=degeneracy_breakdown,
+    )
     n_invalid = invalid_counts[0] if invalid_counts else 0
+    for _cause in DEGENERACY_CAUSES:
+        _bump(
+            discard_stats_out,
+            degeneracy_cause_key(_cause, resolved_discard_stage),
+            degeneracy_breakdown[_cause],
+        )
+    for _fate in DEGENERACY_FATES:
+        _bump(
+            discard_stats_out,
+            degeneracy_fate_key(_fate, resolved_discard_stage),
+            degeneracy_breakdown[_fate],
+        )
+    _bump(
+        discard_stats_out,
+        observations_evaluated_key(resolved_discard_stage),
+        degeneracy_breakdown["observations_evaluated"],
+    )
+    # The merged key is retained unchanged so the production gate and
+    # check_rerun_gates.py keep reading the same number.
     _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
+    # D-08: no hard raise for any cause, `interface_below_camera` included. A
+    # transient solver excursion must not abort a solve that converged, and the
+    # suite runs unattended on a machine nobody is watching. It counts and warns
+    # like the other causes; the text is what distinguishes it.
+    #
+    # The rendered text branches on cause AND fraction against
+    # DEGENERACY_WARNING_FRACTION_THRESHOLD above, names the three real causes,
+    # and keeps the two fates' consequences apart: an `extended` observation sits
+    # on a pinhole continuation that is C0 but not C1 and carries zero water_z
+    # gradient (every other parameter keeps full gradient), while a `penalized`
+    # one carries no gradient at all. The old clause asserting that the reported
+    # optimality stays a meaningful quantity for the surviving parameters must
+    # not be restored -- it was measured false the same day it was written.
     if n_invalid > 0:
         warnings.warn(
-            f"Stage 3's intrinsic pass finished with {n_invalid} observation(s) "
-            f"the refractive model could not project (corners at or above the "
-            f"water surface, or behind a camera). These were continued with a "
-            f"pinhole extension, which puts the residual on a C0-but-not-C1 "
-            f"kink at the refractive/pinhole boundary -- first-order "
-            f"optimality ({getattr(result, 'optimality', float('nan')):.4g}, "
-            f"termination status {result.status}) is UNRELIABLE as a "
-            f"convergence measure here, and neither it nor the reprojection "
-            f"RMS can be trusted to judge convergence. Fix the scenario "
-            f"geometry so no corner sits at or above the interface; do not "
-            f"re-tune the solver.",
+            _format_degenerate_observation_warning(
+                "Stage 3's intrinsic pass",
+                n_invalid,
+                degeneracy_breakdown,
+                getattr(result, "optimality", float("nan")),
+                result.status,
+            ),
             DegenerateObservationWarning,
             stacklevel=2,
         )
