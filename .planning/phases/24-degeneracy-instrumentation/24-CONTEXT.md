@@ -209,7 +209,8 @@ cannot be made until DEGEN-04 reports).
 
 ### Persistence — where the numbers land
 
-- **D-09: CSVs get the merged total plus one column per kind (~4 columns); the full kind × stage
+- **D-09 (SUPERSEDED IN PART — see the REVISED note below; the column count is now 6, not ~4):**
+  **CSVs get the merged total plus one column per kind (~4 columns); the full kind × stage
   breakdown and the per-stage denominators go to a JSON sidecar per run.**
 
   Enough to answer *"benign tail or solver excursion?"* by eye across a whole band, without adding
@@ -217,6 +218,36 @@ cannot be made until DEGEN-04 reports).
   E6's existing column rather than redefining it, per the established experiment pattern.
 
   Applies to **E5, E1 and E7** — E6's band already persists the merged column on all 102 rows.
+
+  > **REVISED 2026-08-17 (the user's call), after D-06's reversal produced two axes.** "One column
+  > per kind" no longer resolves: there are now three *causes* and two *fates*, not one kind list.
+  > **Both axes go in the CSV** — merged total + 3 cause columns + 2 fate columns = **6 columns.**
+  > The stage breakdown and the per-stage denominators still go to the JSON sidecar.
+  >
+  > *Why both, when the original capped at ~4:* the cap existed to avoid ~12 columns, and 6 is
+  > comfortably under it. The binding constraint named above — E6's committed 102-row shape — does
+  > not actually apply, because this phase does not touch E6 at all.
+  >
+  > *Why neither axis can be the one published:* they answer different questions. **Fate** answers
+  > *"can I trust this row's `optimality`?"* — `penalized > 0` means zero gradient, which is what
+  > invalidates the convergence diagnostic. **Cause** answers *"what do I fix?"* —
+  > `interface_below_camera` is a solver excursion, `above_interface` is scenario geometry.
+  > Publishing one and burying the other in a sidecar forces a guess about which question the
+  > future reader has, and the sidecar is the artifact nobody opens while scanning a band.
+  >
+  > *The structural bonus:* each axis independently sums to the merged total, so a six-column CSV
+  > is **self-validating** — a bookkeeping bug appears as a row where the two axes disagree,
+  > visible by eye. Publishing one axis discards that check.
+  >
+  > *Mitigation for the double-count hazard* (a reader summing cause and fate columns together):
+  > column names must carry the axis, in the **full** form matching the key scheme —
+  > `degenerate_observations_cause_*` and `degenerate_observations_fate_*`. Suppressing an axis to
+  > prevent misreading is weaker than naming it so misreading is obvious.
+  >
+  > *(Corrected 2026-08-17: an earlier draft of this note wrote the short prefixes `degen_cause_*` /
+  > `degen_fate_*` while also requiring "matching the key scheme" — the two could not both hold.
+  > The full form wins: it matches `DISCARD_KEYS`, and it sits beside E6's already-committed
+  > `degenerate_observations_at_solution` column without a spelling discontinuity.)*
 
 - **D-10: the observation denominator is an explicit per-stage counter, not derived.**
   `compute_residuals` counts the observations it actually evaluated and emits it as a declared key
@@ -370,9 +401,21 @@ cannot be made until DEGEN-04 reports).
   `refinement.py:315-335`). The wave model's disjointness assumption is spatial, and this violates
   it in exactly the way the knowledge base warns about.
 
-- **D-20: one commit per requirement, even inside the shared plan.** Carries Phase 23's D-14
-  forward. Plan 1 ships DEGEN-02, DEGEN-03 and the bound-hit detector as separate commits so they
-  bisect apart.
+- **D-20: no commit mixes two requirements** (reworded 2026-08-17 — see below). Carries Phase 23's
+  D-14 forward. Plan 1 ships DEGEN-02, DEGEN-03 and the bound-hit detector as separate commits so
+  they bisect apart.
+
+  > **Reworded 2026-08-17 (the user's call).** This previously read "one commit per requirement,"
+  > which was ambiguous once DEGEN-02 grew to three commits (reason plumbing, counting core,
+  > wiring). The stated purpose is *"so they bisect apart"*, and **more** granular commits inside a
+  > requirement bisect better, not worse. The property that matters is that no commit mixes two
+  > requirements; the minimum count was never the point.
+  >
+  > Squashing to literally one commit per requirement would also be actively harmful here: plan
+  > 24-01's resumption contract uses per-task commit boundaries as handback points, so squashing
+  > Tasks 1-3 would leave Tasks 1-2 uncommitted at the exact moment an executor hands back. That is
+  > the "finished-but-uncommitted work that dies with the worktree" failure the knowledge base
+  > already records.
 
 - **D-21: keep both `_optim_common.py` diffs minimal and reviewable.** Phase 23's FIX-01 also
   touches this file, and Phase 29's E2 sanity control (~3e-09, same-seed) is what proves neither
