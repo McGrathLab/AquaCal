@@ -12,6 +12,26 @@ from aquacal.config.schema import Vec2, Vec3
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface, ray_plane_intersection
 
+# ---------------------------------------------------------------------------
+# NaN reason codes (phase 24, DEGEN-02)
+# ---------------------------------------------------------------------------
+#
+# The batch projector returns NaN pixels at four distinct failure branches. These
+# int8 codes let a caller learn WHICH branch fired, per point, through the opt-in
+# `nan_reason_out` out-parameter, instead of re-deriving the predicate at the call
+# site. They are written at the failure branches only -- never inside the Newton
+# loop -- so the projection arithmetic is untouched.
+#
+# NAN_REASON_INTERFACE_BELOW_CAMERA is a statement about the ESTIMATE: the
+# estimated interface fell below an estimated camera center (h_c = water_z - C_z,
+# with both terms free parameters during a solve). It is a convergence diagnostic
+# of solver excursion. It is NEVER a claim that hardware was submerged -- physical
+# submersion is out of scope for this library.
+NAN_REASON_NONE = 0
+NAN_REASON_INTERFACE_BELOW_CAMERA = 1
+NAN_REASON_ABOVE_INTERFACE = 2
+NAN_REASON_BEHIND_CAMERA = 3
+
 
 def snells_law_3d(
     incident_direction: Vec3, surface_normal: Vec3, n_ratio: float
@@ -577,6 +597,8 @@ def _refractive_project_newton_batch(
     max_iterations: int = 10,
     tolerance: float = 1e-9,
     return_diagnostics: bool = False,
+    *,
+    nan_reason_out: NDArray[np.int8] | None = None,
 ) -> NDArray[np.float64] | tuple[NDArray[np.float64], dict]:
     """
     Project multiple 3D underwater points to 2D pixels (vectorized Newton-Raphson).
@@ -601,16 +623,36 @@ def _refractive_project_newton_batch(
         tolerance: Convergence tolerance
         return_diagnostics: If True, also return a per-point diagnostics dict (default
             False; production callers never set this).
+        nan_reason_out: Optional, keyword-only, purely observational per-point `int8`
+            array of length N. `None` by default -- when `None`, this function
+            allocates nothing and pays one identity test, matching the established
+            opt-in out-parameter pattern at `calibration/_observability.py:44-49`.
+            The CALLER allocates the array (a callee cannot rebind a caller's name,
+            so it is filled in place) and MUST supply it zero-initialized
+            (`np.zeros(n, dtype=np.int8)`), so a value left untouched means
+            `NAN_REASON_NONE`. Filled at the four failure branches with
+            `NAN_REASON_INTERFACE_BELOW_CAMERA`, `NAN_REASON_ABOVE_INTERFACE` or
+            `NAN_REASON_BEHIND_CAMERA`. Nothing is written inside the Newton loop,
+            and the return type is unchanged by this parameter.
 
     Returns:
         Array of shape (N, 2) with pixel coordinates (invalid projections have NaN
         values), or, if `return_diagnostics=True`, a tuple of that array and a
         diagnostics dict.
+
+    Raises:
+        ValueError: If `nan_reason_out` is supplied with a length other than N.
     """
 
     points = np.asarray(points_3d, dtype=np.float64)
     n_points = len(points)
     result = np.full((n_points, 2), np.nan, dtype=np.float64)
+
+    if nan_reason_out is not None and len(nan_reason_out) != n_points:
+        raise ValueError(
+            f"nan_reason_out has length {len(nan_reason_out)} but there are "
+            f"{n_points} points; the caller must allocate one entry per point."
+        )
 
     C = camera.C
     z_int = interface.get_water_z(camera.name)
@@ -620,6 +662,10 @@ def _refractive_project_newton_batch(
     # Camera should be above interface
     h_c = z_int - C[2]
     if h_c <= 0:
+        # Failure branch 1: the whole batch is NaN because the estimated interface
+        # fell below the estimated camera center.
+        if nan_reason_out is not None:
+            nan_reason_out[:] = NAN_REASON_INTERFACE_BELOW_CAMERA
         if return_diagnostics:
             return result, _empty_batch_diagnostics()
         return result
@@ -636,6 +682,13 @@ def _refractive_project_newton_batch(
 
     # Handle points directly below camera separately
     on_axis = (h_q > 0) & (r_q < 1e-10)
+
+    # Failure branch 2: `~valid & ~on_axis` is exactly `h_q <= 0`, i.e. the point sits
+    # at or above the estimated interface. Written BEFORE the `len(valid_indices) == 0`
+    # early return below, or that return path would lose its reasons.
+    if nan_reason_out is not None:
+        nan_reason_out[~valid & ~on_axis] = NAN_REASON_ABOVE_INTERFACE
+
     if np.any(on_axis):
         axis_indices = np.where(on_axis)[0]
         for idx in axis_indices:
@@ -643,6 +696,9 @@ def _refractive_project_newton_batch(
             px = camera.project(P, apply_distortion=True)
             if px is not None:
                 result[idx] = px
+            elif nan_reason_out is not None:
+                # Failure branch 3: no pixel exists for this on-axis point.
+                nan_reason_out[idx] = NAN_REASON_BEHIND_CAMERA
 
     # Process valid off-axis points
     valid_indices = np.where(valid)[0]
@@ -672,6 +728,8 @@ def _refractive_project_newton_batch(
     n_iterations_executed = 0
 
     # Newton-Raphson iteration (vectorized)
+    # NOTHING may be written to `nan_reason_out` inside this loop -- the loop's
+    # inertness under the reason plumbing is the property D-18 rests on.
     for iteration in range(max_iterations):
         d_air_sq = r_p_v * r_p_v + h_c * h_c
         d_air = np.sqrt(d_air_sq)
@@ -714,6 +772,9 @@ def _refractive_project_newton_batch(
         projected = camera.project(P, apply_distortion=True)
         if projected is not None:
             result[idx] = projected
+        elif nan_reason_out is not None:
+            # Failure branch 4: no pixel exists for this off-axis point.
+            nan_reason_out[idx] = NAN_REASON_BEHIND_CAMERA
 
     if not return_diagnostics:
         return result
@@ -869,6 +930,8 @@ def refractive_project_batch(
     points_3d: NDArray[np.float64],
     max_iterations: int = 10,
     tolerance: float = 1e-9,
+    *,
+    nan_reason_out: NDArray[np.int8] | None = None,
 ) -> NDArray[np.float64]:
     """
     Project multiple 3D underwater points to 2D pixels (vectorized).
@@ -882,13 +945,23 @@ def refractive_project_batch(
         points_3d: Array of shape (N, 3) with 3D points
         max_iterations: Maximum Newton iterations (default 10)
         tolerance: Convergence tolerance (default 1e-9 meters)
+        nan_reason_out: Optional, keyword-only, purely observational per-point `int8`
+            array of length N, `None` by default. When `None` -- what production
+            passes on every hot iteration -- nothing is allocated and one identity
+            test is paid, matching the opt-in out-parameter pattern at
+            `calibration/_observability.py:44-49`. The CALLER allocates it (a callee
+            cannot rebind a caller's name, so it is filled in place) and MUST supply
+            it zero-initialized, so an untouched entry means `NAN_REASON_NONE`.
+            Supplying it does not change the return type and does not change a single
+            returned pixel.
 
     Returns:
         Array of shape (N, 2) with pixel coordinates.
         Invalid projections have NaN values.
 
     Raises:
-        ValueError: If interface normal is not horizontal [0, 0, -1]
+        ValueError: If interface normal is not horizontal [0, 0, -1], or if
+            `nan_reason_out` is supplied with a length other than N.
 
     Example:
         >>> import numpy as np
@@ -913,5 +986,10 @@ def refractive_project_batch(
         )
 
     return _refractive_project_newton_batch(
-        camera, interface, points_3d, max_iterations, tolerance
+        camera,
+        interface,
+        points_3d,
+        max_iterations,
+        tolerance,
+        nan_reason_out=nan_reason_out,
     )

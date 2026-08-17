@@ -9,6 +9,10 @@ from aquacal.config.schema import CameraExtrinsics, CameraIntrinsics
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import (
+    NAN_REASON_ABOVE_INTERFACE,
+    NAN_REASON_BEHIND_CAMERA,
+    NAN_REASON_INTERFACE_BELOW_CAMERA,
+    NAN_REASON_NONE,
     _refractive_project_newton_batch,
     refractive_back_project,
     refractive_project,
@@ -1168,3 +1172,190 @@ class TestDeprecatedShimsRemoved:
         import aquacal.core.refractive_geometry as m
 
         assert not hasattr(m, "refractive_project_fast_batch")
+
+
+class TestBatchNanReason:
+    """Phase 24 / DEGEN-02: the opt-in per-point NaN reason out-parameter.
+
+    Structured like `TestBatchNewtonDiagnostic` above -- both prove an opt-in
+    observability channel on the production batch projector does not move the pixels.
+    """
+
+    @staticmethod
+    def _flipped_camera():
+        """Camera at the origin rotated 180 degrees about X, so it looks along -Z.
+
+        `C` is still the origin, so `h_c = water_z - 0 > 0` and the interface check
+        passes; but every interface point at `z = water_z > 0` lands at negative
+        `z_cam`, so `Camera.project` returns `None` and the real behind-camera branch
+        fires. This exercises the branch rather than monkeypatching `Camera.project`.
+        """
+        intrinsics = CameraIntrinsics(
+            K=np.array([[500, 0, 320], [0, 500, 240], [0, 0, 1]], dtype=np.float64),
+            dist_coeffs=np.zeros(5),
+            image_size=(640, 480),
+        )
+        R = np.diag([1.0, -1.0, -1.0])
+        extrinsics = CameraExtrinsics(R=R, t=np.zeros(3))
+        return Camera("cam0", intrinsics, extrinsics)
+
+    def test_reason_array_does_not_change_the_pixels(
+        self, simple_camera, simple_interface
+    ):
+        """D-18, projector half: supplying the reason array is numerically inert.
+
+        `refractive_project_batch` is a pure function, so exact equality is the right
+        assertion -- the conditioning caveat applies to solves, not to one projection
+        call.
+        """
+        points = np.array(
+            [
+                [0.05, 0.02, 0.5],
+                [0.20, -0.10, 0.9],
+                [0.0, 0.0, 0.6],  # on-axis
+                [0.1, 0.1, 0.05],  # above the interface -> NaN
+            ]
+        )
+
+        without = refractive_project_batch(simple_camera, simple_interface, points)
+        reasons = np.zeros(len(points), dtype=np.int8)
+        with_reasons = refractive_project_batch(
+            simple_camera, simple_interface, points, nan_reason_out=reasons
+        )
+
+        np.testing.assert_array_equal(without, with_reasons)
+
+    def test_interface_below_camera_fills_the_whole_batch(self, simple_camera):
+        """D-07 geometry 1: `h_c <= 0` is a whole-batch failure with one reason."""
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": -0.10},  # water surface above the camera center
+            n_air=1.0,
+            n_water=1.333,
+        )
+        points = np.array([[0.05, 0.02, 0.5], [0.2, -0.1, 0.9], [0.0, 0.0, 0.6]])
+        reasons = np.zeros(len(points), dtype=np.int8)
+
+        pixels = refractive_project_batch(
+            simple_camera, interface, points, nan_reason_out=reasons
+        )
+
+        assert np.all(np.isnan(pixels))
+        assert np.all(reasons == NAN_REASON_INTERFACE_BELOW_CAMERA)
+
+    def test_corner_above_interface_is_reported_as_above_interface(
+        self, simple_camera, simple_interface
+    ):
+        """D-07 geometry 2: one corner at/above the surface, one well below it."""
+        z_int = simple_interface.get_water_z(simple_camera.name)
+        points = np.array(
+            [
+                [0.05, 0.02, z_int - 0.05],  # above the interface
+                [0.05, 0.02, z_int + 0.40],  # well below it
+            ]
+        )
+        reasons = np.zeros(len(points), dtype=np.int8)
+
+        pixels = refractive_project_batch(
+            simple_camera, simple_interface, points, nan_reason_out=reasons
+        )
+
+        assert np.all(np.isnan(pixels[0]))
+        assert reasons[0] == NAN_REASON_ABOVE_INTERFACE
+        assert np.all(np.isfinite(pixels[1]))
+        assert reasons[1] == NAN_REASON_NONE
+
+    def test_corner_behind_camera_is_reported_as_behind_camera(self):
+        """D-07 geometry 3: the interface crossing lands behind the camera."""
+        camera = self._flipped_camera()
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        points = np.array([[0.05, 0.02, 0.5]])
+        reasons = np.zeros(len(points), dtype=np.int8)
+
+        pixels = refractive_project_batch(
+            camera, interface, points, nan_reason_out=reasons
+        )
+
+        assert np.all(np.isnan(pixels[0]))
+        assert reasons[0] == NAN_REASON_BEHIND_CAMERA
+
+    def test_on_axis_point_behind_camera_is_reported_as_behind_camera(self):
+        """The on-axis loop's `camera.project() is None` branch is instrumented too."""
+        camera = self._flipped_camera()
+        interface = Interface(
+            normal=np.array([0, 0, -1]),
+            camera_distances={"cam0": 0.15},
+            n_air=1.0,
+            n_water=1.333,
+        )
+        points = np.array([[0.0, 0.0, 0.5]])  # directly below the camera
+        reasons = np.zeros(len(points), dtype=np.int8)
+
+        pixels = refractive_project_batch(
+            camera, interface, points, nan_reason_out=reasons
+        )
+
+        assert np.all(np.isnan(pixels[0]))
+        assert reasons[0] == NAN_REASON_BEHIND_CAMERA
+
+    def test_every_nan_row_has_a_reason_and_every_finite_row_has_none(
+        self, simple_camera, simple_interface
+    ):
+        """The general equivalence between the LABELLING and the BEHAVIOUR.
+
+        This test is the mechanism guarding the labelling against the behaviour, which
+        is the property actually at risk once the two are written at different lines
+        (D-07 as revised). A comment is not a mechanism.
+        """
+        z_int = simple_interface.get_water_z(simple_camera.name)
+        points = np.array(
+            [
+                [0.05, 0.02, z_int + 0.40],  # valid off-axis
+                [0.20, -0.10, z_int + 0.80],  # valid off-axis
+                [0.00, 0.00, z_int + 0.50],  # valid on-axis
+                [0.10, 0.10, z_int - 0.05],  # above the interface
+                [-0.05, 0.07, z_int],  # exactly at the interface
+            ]
+        )
+        reasons = np.zeros(len(points), dtype=np.int8)
+
+        pixels = refractive_project_batch(
+            simple_camera, simple_interface, points, nan_reason_out=reasons
+        )
+
+        is_nan_row = np.isnan(pixels).any(axis=1)
+        assert is_nan_row.any(), "the batch must contain at least one failure"
+        assert (~is_nan_row).any(), "the batch must contain at least one success"
+        assert np.all(reasons[is_nan_row] != NAN_REASON_NONE)
+        assert np.all(reasons[~is_nan_row] == NAN_REASON_NONE)
+
+    def test_wrong_length_reason_array_raises(self, simple_camera, simple_interface):
+        points = np.array([[0.05, 0.02, 0.5], [0.2, -0.1, 0.9], [0.1, 0.1, 0.7]])
+        reasons = np.zeros(2, dtype=np.int8)
+
+        with pytest.raises(ValueError) as excinfo:
+            refractive_project_batch(
+                simple_camera, simple_interface, points, nan_reason_out=reasons
+            )
+
+        message = str(excinfo.value)
+        assert "2" in message
+        assert "3" in message
+
+    def test_reason_out_is_keyword_only_and_defaults_to_none(self):
+        signature = inspect.signature(refractive_project_batch)
+        parameter = signature.parameters["nan_reason_out"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is None
+
+    def test_nothing_is_written_inside_the_newton_loop(self):
+        """The inertness property D-18 rests on, asserted against the source."""
+        source = inspect.getsource(_refractive_project_newton_batch)
+        loop_start = source.index("for iteration in range(max_iterations):")
+        loop_end = source.index("if np.all(np.abs(delta) < tolerance):")
+        assert "nan_reason_out" not in source[loop_start:loop_end]
