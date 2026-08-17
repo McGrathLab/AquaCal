@@ -73,6 +73,24 @@ here.
    That is expected numerical behavior of a near-zero-width bound interval, not a conditioning
    regression. The acceptance metric stays the recovered `water_z` (D-03) — never this number.
 
+   > **CORRECTED 2026-08-17 (post-phase). The stated mechanism is wrong; the trap and the
+   > acceptance rule are right.** Measured by
+   > `.planning/probes/2026-08-17-optimality-decomposition/`: the pinned `water_z` slot
+   > contributes **0.00%** of the reported optimality (1.95e-11 of 92.78). scipy's `trf` reports
+   > `||g·v||∞` with `v` the Coleman-Li *distance to the bound*, so a pinned parameter is crushed
+   > toward zero, not inflated — the reasoning above describes an unscaled projected gradient,
+   > which is not the reported quantity. The 92.78 is entirely the max **extrinsic** gradient
+   > (extrinsics are unbounded, so `v = 1`). It is a real gradient, not Jacobian noise: a
+   > central-difference Jacobian agrees to five significant figures.
+   >
+   > Also wrong: "not a conditioning regression" is right about *regression* but wrong about
+   > *conditioning* — the solve is severely ill-conditioned (directional curvature ~3e8), it is
+   > simply not caused by the pin and not new. The solve is **not stalled**; warm restarts
+   > recover no cost.
+   >
+   > **Trap 2 still stands as an acceptance rule** — do not read the number as a pin-induced
+   > regression, and keep recovered `water_z` as the metric. Only the explanation changes.
+
 ---
 
 ## The `--check` Exclusion Contract (D-07 / D-08 / D-09)

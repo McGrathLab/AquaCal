@@ -160,6 +160,30 @@ guard count at `water_z` = 0.0120 m, 1.02 m from truth (D-02 probe arm B) — so
 consistent with either a correct pin or a badly wrong unpinned estimate, and cannot discriminate
 between them on its own.
 
+> **CORRECTED 2026-08-17, same day, after this summary was committed.** The caveat's *conclusion*
+> holds; its *mechanism* does not. Three probes in
+> `.planning/probes/2026-08-17-optimality-decomposition/` measured it directly:
+>
+> - The pinned `water_z` contributes **0.00%** of the reported optimality — 1.95e-11 out of
+>   92.7841140024072. scipy's `trf` reports `||g·v||∞` with `v` the Coleman-Li *distance to the
+>   bound the negative gradient points toward*. Pinned, that distance is ~1.8e-12, so the slot is
+>   crushed toward zero rather than inflated. The paragraph above describes an unscaled projected
+>   gradient, which is not what scipy reports. (The raw gradient on the slot is genuinely large,
+>   9.75 — it simply never reaches the reported number.)
+> - The 92.78 is **entirely the max extrinsic gradient** — extrinsics are unbounded, so `v = 1`
+>   and the reported optimality *is* the raw gradient there.
+> - It is **not Jacobian noise**: a central-difference Jacobian agrees to five significant figures
+>   (92.7841 vs 92.7843).
+> - The arm is **converged**: warm-restarting from its own solution recovers no cost (relative
+>   drop 1.8e-9). The real cause is severe ill-conditioning — optimality swings 92.78 → 27.58 →
+>   2.16 across restarts at effectively fixed cost, implying directional curvature ~3e8.
+>
+> **The acceptance metric was correct and is unaffected**: recovered `water_z` = 1.030999999999
+> against ground truth 1.031. Everything else in this summary — the bound-hit table, the FIX-02
+> DOF note, the E7 consequence-to-watch line — stands as written. Only this caveat's explanation
+> of *why* the number is large is superseded. This requirement now tracks as **DEGEN-05** in
+> Phase 24.
+
 ### FIX-02's DOF note
 
 E1 and E7 now solve at `normal_fixed=False`, matching the production pipeline

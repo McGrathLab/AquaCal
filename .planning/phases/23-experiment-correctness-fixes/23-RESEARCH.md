@@ -81,6 +81,32 @@ the unprojected component of the gradient along that direction cannot be driven 
 definition. It does not indicate a stalled or ill-conditioned solve; `status_intrinsic` still
 reports `2` (`ftol` satisfied) and cost matches the unpinned run closely.
 
+> **CORRECTED 2026-08-17 (post-phase), by three probes in
+> `.planning/probes/2026-08-17-optimality-decomposition/`.** Two claims in the paragraph above are
+> wrong:
+>
+> 1. **"large exactly *because* the parameter is pinned"** — no. The pinned `water_z` slot
+>    contributes **0.00%** of the reported optimality (1.95e-11 of 92.78). scipy's `trf` reports
+>    `||g·v||∞` where `v` is the Coleman-Li *distance to the bound*; pinned, that distance is
+>    ~1.8e-12, so the slot's contribution is crushed toward zero rather than inflated. The
+>    paragraph describes an *unscaled* projected gradient, which scipy does not report. The 92.78
+>    is entirely the max **extrinsic** gradient (`v = 1`, unbounded). The raw gradient on the
+>    pinned slot genuinely is large (9.75) — that half of the intuition was right — but it never
+>    reaches the reported number.
+> 2. **"does not indicate a stalled or ill-conditioned solve"** — half right. **Not stalled**:
+>    warm-restarting each solve from its own solution recovers no cost (largest relative drop
+>    1.8e-9), so the arm is converged and E1's comparison is fair. But it **is** ill-conditioned,
+>    severely: optimality swings 92.78 → 27.58 → 2.16 across restarts while cost moves 1.8e-9,
+>    implying directional curvature ~3e8.
+>
+> Not the cause: finite-difference Jacobian error was tested and **falsified** — a
+> central-difference Jacobian agrees to five significant figures (92.7841 vs 92.7843), which also
+> validates the library's FD step rule.
+>
+> The **Verdict** section below is unaffected: the pinned + normal-free combination does not
+> degrade conditioning, `water_z` recovers to ground truth, and cost is essentially unchanged.
+> Only the explanation of the optimality number changes.
+
 ### Verdict
 
 **The pinned + normal-free combination does NOT degrade conditioning**, once the pin is threaded
