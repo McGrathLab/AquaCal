@@ -1,0 +1,192 @@
+{
+  "records": [
+    {
+      "label": "call_1",
+      "reported_optimality": 0.001146159591411948,
+      "cost": 3688.7971450716086,
+      "loss": "huber",
+      "f_scale": 1.0,
+      "variants": {
+        "production": {
+          "optimality": 0.001146159591411948,
+          "max_abs_grad": 0.0011311137582197262,
+          "seconds": 5.582003831863403
+        },
+        "3-point": {
+          "optimality": 0.0016551822521440373,
+          "max_abs_grad": 0.0016204691504633217,
+          "ratio_production_over_this": 0.6924673037831769,
+          "max_abs_jacobian_diff_vs_production": 6.872929913015469e-05,
+          "seconds": 11.941198110580444
+        },
+        "2-point_rel_1e-6": {
+          "optimality": 1.3256225441439824,
+          "max_abs_grad": 1.3256225441439824,
+          "ratio_production_over_this": 0.000864619869717196,
+          "max_abs_jacobian_diff_vs_production": 0.41106424145556275,
+          "seconds": 5.93213152885437
+        },
+        "2-point_rel_1e-8": {
+          "optimality": 127.92966459669998,
+          "max_abs_grad": 127.92966459669998,
+          "ratio_production_over_this": 8.95929489868696e-06,
+          "max_abs_jacobian_diff_vs_production": 37.85541648554516,
+          "seconds": 6.100321531295776
+        },
+        "2-point_rel_1e-10": {
+          "optimality": 6793.324984428203,
+          "max_abs_grad": 6793.324984428203,
+          "ratio_production_over_this": 1.6871849853189685e-07,
+          "max_abs_jacobian_diff_vs_production": 2706.2714910531813,
+          "seconds": 5.990695238113403
+        }
+      },
+      "pipeline_validated": true,
+      "reconstruction_relative_error": 0.0,
+      "n_column_groups": 15,
+      "fd_noise_ratio": 0.6924673037831769,
+      "verdict": "gradient is real (FD not the driver)"
+    },
+    {
+      "label": "call_2",
+      "reported_optimality": 0.02473573255605288,
+      "cost": 3680.034007917413,
+      "loss": "huber",
+      "f_scale": 1.0,
+      "variants": {
+        "production": {
+          "optimality": 0.02473573255605288,
+          "max_abs_grad": 0.02473573255605288,
+          "seconds": 7.0459654331207275
+        },
+        "3-point": {
+          "optimality": 0.02443923250953617,
+          "max_abs_grad": 0.02443923250953617,
+          "ratio_production_over_this": 1.012132134116774,
+          "max_abs_jacobian_diff_vs_production": 7.802888626429194e-05,
+          "seconds": 13.254378318786621
+        },
+        "2-point_rel_1e-6": {
+          "optimality": 0.2979147706507774,
+          "max_abs_grad": 0.2979147706507774,
+          "ratio_production_over_this": 0.08302956077679235,
+          "max_abs_jacobian_diff_vs_production": 0.06251930240740933,
+          "seconds": 7.23750376701355
+        },
+        "2-point_rel_1e-8": {
+          "optimality": 10.89942321082981,
+          "max_abs_grad": 10.89942321082981,
+          "ratio_production_over_this": 0.002269453353410035,
+          "max_abs_jacobian_diff_vs_production": 4.030263025195495,
+          "seconds": 6.816972255706787
+        },
+        "2-point_rel_1e-10": {
+          "optimality": 1666.7127676213408,
+          "max_abs_grad": 1666.7127676213408,
+          "ratio_production_over_this": 1.4841029022267964e-05,
+          "max_abs_jacobian_diff_vs_production": 510.21062240735296,
+          "seconds": 6.610346078872681
+        }
+      },
+      "pipeline_validated": true,
+      "reconstruction_relative_error": 0.0,
+      "n_column_groups": 17,
+      "fd_noise_ratio": 1.012132134116774,
+      "verdict": "gradient is real (FD not the driver)"
+    },
+    {
+      "label": "call_3",
+      "reported_optimality": 1.4445430872830798,
+      "cost": 26067.0205835744,
+      "loss": "huber",
+      "f_scale": 1.0,
+      "variants": {
+        "production": {
+          "optimality": 1.4445430872830798,
+          "max_abs_grad": 11.566137197519389,
+          "seconds": 5.394719362258911
+        },
+        "3-point": {
+          "optimality": 1.4444439287404407,
+          "max_abs_grad": 95.47849907723491,
+          "ratio_production_over_this": 1.0000686482463363,
+          "max_abs_jacobian_diff_vs_production": 1.7446756723865158,
+          "seconds": 11.669334411621094
+        },
+        "2-point_rel_1e-6": {
+          "optimality": 1.4451604959828614,
+          "max_abs_grad": 11.566137197519389,
+          "ratio_production_over_this": 0.9995727749952356,
+          "max_abs_jacobian_diff_vs_production": 0.015555427445349324,
+          "seconds": 5.872977256774902
+        },
+        "2-point_rel_1e-8": {
+          "optimality": 13.609689315275318,
+          "max_abs_grad": 13.609689315275318,
+          "ratio_production_over_this": 0.1061407835123573,
+          "max_abs_jacobian_diff_vs_production": 1.5505069731170806,
+          "seconds": 5.823506593704224
+        },
+        "2-point_rel_1e-10": {
+          "optimality": 880.6688623975109,
+          "max_abs_grad": 880.6688623975109,
+          "ratio_production_over_this": 0.0016402795068176837,
+          "max_abs_jacobian_diff_vs_production": 92.85567168964877,
+          "seconds": 5.857101202011108
+        }
+      },
+      "pipeline_validated": true,
+      "reconstruction_relative_error": 0.0,
+      "n_column_groups": 15,
+      "fd_noise_ratio": 1.0000686482463363,
+      "verdict": "gradient is real (FD not the driver)"
+    },
+    {
+      "label": "call_4",
+      "reported_optimality": 92.7841140024072,
+      "cost": 15097.612313075724,
+      "loss": "huber",
+      "f_scale": 1.0,
+      "variants": {
+        "production": {
+          "optimality": 92.7841140024072,
+          "max_abs_grad": 92.7841140024072,
+          "seconds": 8.31053113937378
+        },
+        "3-point": {
+          "optimality": 92.78428389290184,
+          "max_abs_grad": 92.78428389290184,
+          "ratio_production_over_this": 0.9999981689733701,
+          "max_abs_jacobian_diff_vs_production": 1.5916509381592097,
+          "seconds": 15.649999856948853
+        },
+        "2-point_rel_1e-6": {
+          "optimality": 92.78433062086305,
+          "max_abs_grad": 92.78433062086305,
+          "ratio_production_over_this": 0.9999976653551909,
+          "max_abs_jacobian_diff_vs_production": 0.0022724462651133592,
+          "seconds": 7.436160087585449
+        },
+        "2-point_rel_1e-8": {
+          "optimality": 92.78385212220729,
+          "max_abs_grad": 92.78385212220729,
+          "ratio_production_over_this": 1.0000028224760442,
+          "max_abs_jacobian_diff_vs_production": 0.27817264427467236,
+          "seconds": 7.365411281585693
+        },
+        "2-point_rel_1e-10": {
+          "optimality": 98.28605721901079,
+          "max_abs_grad": 98.28605721901079,
+          "ratio_production_over_this": 0.9440211218937838,
+          "max_abs_jacobian_diff_vs_production": 16.884286587311408,
+          "seconds": 7.49215841293335
+        }
+      },
+      "pipeline_validated": true,
+      "reconstruction_relative_error": 0.0,
+      "n_column_groups": 17,
+      "fd_noise_ratio": 0.9999981689733701,
+      "verdict": "gradient is real (FD not the driver)"
+    }
+  ]
+}

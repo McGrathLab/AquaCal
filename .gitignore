@@ -330,3 +330,4 @@ experiments/results_linux32gb/e2_*/reconstruction_errors.csv
 # instead.
 experiments/verify_23/
 experiments/verify_23_optblocks/
+experiments/verify_23_fdnoise/

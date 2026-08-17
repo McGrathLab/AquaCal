@@ -212,3 +212,85 @@ current 1.0) while moving the baseline to ~2.8 / ~1.9. That rule changes nothing
 about the method and only re-tunes the baseline, so it is the defensible form of
 the test. Comparison metric must be **accuracy, not cost** -- changing `f_scale`
 changes the objective, so costs are not comparable across runs.
+
+---
+
+# Follow-up 2: FD-noise discriminator (2026-08-17)
+
+**Script:** `probe_fd_noise.py` · **Raw:** `fd_noise.json` · **Log:** `fd_noise.log`
+
+Self-validation gate passed on all four calls: the production Jacobian
+reproduced scipy's *reported* optimality to `rel_err = 0.00e+00`, confirming the
+huber `rho` triple, `scale_for_robust_loss_function`, and Coleman-Li norm were
+reimplemented correctly before any Jacobian was swapped.
+
+## Finding 7 — FD noise is NOT the driver; the gradient is real
+
+| Call | reported (production J) | 3-point J | production / 3-point |
+|---|---|---|---|
+| 1 refractive, interface | 0.00114616 | 0.00165518 | 0.69 |
+| 2 refractive, intrinsic | 0.0247357 | 0.0244392 | 1.012 |
+| 3 non-refractive, interface | 1.44454 | 1.44444 | 1.000 |
+| 4 non-refractive, intrinsic | **92.7841** | **92.7843** | **1.000** |
+
+**The 92.78 agrees with a central-difference Jacobian to five significant
+figures.** Hypothesis 2 (FD noise dominating a near-zero true gradient) is
+falsified. `optimality` in this library measures a real gradient, not Jacobian
+error, and no benchmark record needs re-interpreting on those grounds.
+
+## Finding 8 — hypothesis 1 confirmed: severe ill-conditioning
+
+With the gradient established as real and accurate, the warm-restart result
+(Finding 5) admits only one reading: the restart genuinely moved to a nearby
+point with a far smaller gradient while cost barely changed. Order of magnitude
+from call 4 -- cost fell 2.7e-5 against a gradient of 92.78, so the step was
+~3e-7; the gradient fell ~90 over that step, implying directional curvature
+~3e8.
+
+So the solution sits in an extremely narrow, high-curvature valley. Cost is flat
+along the floor while the gradient swings by 43x. **This is genuine
+ill-conditioning, measured -- not an artifact, and not the pin.**
+
+## Finding 9 — the library's FD step choice is validated, and the failure mode is magnitude-dependent
+
+The step-size sweep is a strong positive result for the library:
+
+| Call | production | 2-pt 1e-6 | 2-pt 1e-8 | 2-pt 1e-10 |
+|---|---|---|---|---|
+| 1 | 0.00114616 | 1.3256 | 127.93 | 6793.3 |
+| 4 | 92.7841 | 92.7843 | 92.7839 | 98.286 |
+
+Naive step choices are catastrophic where the true gradient is small (call 1
+inflates by 6 orders at `rel_step` 1e-10), and harmless where it is large (call 4
+is stable across every step tried). The production Jacobian tracks the 3-point
+reference in both regimes, so **whatever step rule the library uses is doing its
+job**.
+
+The practical consequence is a *magnitude-dependent* reliability rule, which is
+sharper than the existing "never quote optimality beyond 1 significant figure":
+
+- **large optimality values are trustworthy** (92.78 is real to 5 s.f.)
+- **small ones are not** -- call 1's production 0.001146 against the 3-point
+  reference 0.001655 is a 44% disagreement, so differences between two small
+  optimality values carry no information
+
+That asymmetry matters for anyone comparing the refractive arm's 0.0247 against
+the non-refractive 92.78: the *large* number is solid, the *small* one is soft,
+and the gap is real regardless.
+
+## Net position across all three probes
+
+1. E1's baseline is converged; the comparison is fair; the 97-178x band stands. ✓
+2. The pinned `water_z` contributes 0.00% of reported optimality — the mechanism
+   in Phase 23's documents is wrong, though its acceptance criteria are unaffected. ✓
+3. `optimality` is a real gradient measure, not FD noise. ✓
+4. It is nonetheless **unstable at a fixed solution (43x)** because the problem is
+   genuinely, severely ill-conditioned — and it mixes three Coleman-Li scaling
+   regimes across parameter blocks, so it is not comparable across blocks either.
+
+Nothing here is a defect in any shipped number. The open item is **interpretive**:
+`optimality_stage3_interface_optimization` ships in `benchmark_grid.csv` and
+`benchmark_grid.tex` to Zenodo, where a reader meets a volatile, block-incomparable,
+magnitude-dependent quantity with no caveat attached. That is the same shape as
+MF-17 (E7's vacuous `no_signature` nulls), which FIX-04 has just addressed by
+labelling.
