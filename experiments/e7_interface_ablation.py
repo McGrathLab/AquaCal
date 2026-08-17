@@ -152,6 +152,18 @@ PRIMARY_ARM = "percamera_fixed"
 # `intrinsics_source` CSV column, not only the prose.
 INTRINSICS_FIXED_SOURCE = "ground_truth"
 
+# FIX-02: the library's optimize_interface/joint_refinement signatures default
+# normal_fixed=True, but E2's real-rig run and the manuscript's tab:cpr rows
+# were produced at normal_fixed=False -- so E7 omitting the argument silently
+# solved a problem two tilt DOF smaller than production. The one recorded
+# rationale for the old True default (19.2-01-SUMMARY.md:105) is about keeping
+# already-committed Phase-19.1 records bit-identical; that premise is gone
+# because the v2.1 re-run replaces every artifact by design. Mirrors E3/E4/E5/
+# E6's *_NORMAL_FIXED module-level constant convention, referenced at both
+# solver call sites in _run_arm and in _build_arm_benchmark_payload's
+# solver_config so the resolved value has one origin.
+E7_NORMAL_FIXED = False
+
 CHECK_RTOL = 1e-6
 ABLATION_KEY_COLUMNS = ["arm", "camera"]
 # D-19.4-14: the band CSV carries every seed's rows, so `seed` joins the key
@@ -323,6 +335,7 @@ def _run_arm(
         loss_scale=1.0,
         min_corners=4,
         verbose=0,
+        normal_fixed=E7_NORMAL_FIXED,
         shared_interface=shared_interface,
         observer=observer_stage3,
         diagnostics_out=diag_stage3,
@@ -355,6 +368,7 @@ def _run_arm(
             loss_scale=1.0,
             min_corners=4,
             verbose=0,
+            normal_fixed=E7_NORMAL_FIXED,
             shared_interface=shared_interface,
             observer=observer_intrinsic_pass,
             diagnostics_out=diag_intrinsic_pass,
@@ -546,6 +560,7 @@ def _build_arm_benchmark_payload(arm: ArmResult, scenario) -> tuple[dict, dict, 
         "loss_scale": 1.0,
         "refine_intrinsics": arm.refine_intrinsics,
         "shared_interface": arm.shared_interface,
+        "normal_fixed": E7_NORMAL_FIXED,
         "n_water": scenario.n_water,
         "n_air": scenario.n_air,
     }

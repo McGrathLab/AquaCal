@@ -409,6 +409,15 @@ def _run_one_model(scenario, n_water, seed):
         },
         timings_out=timings,
         discard_stats_out=discard_stats,
+        # FIX-02: the library signature defaults normal_fixed=True, but
+        # CalibrationConfig.interface_normal_fixed defaults to False, and E2's
+        # real-rig run and the manuscript's tab:cpr rows were produced at
+        # False -- so omitting this argument silently solved a problem two
+        # tilt DOF smaller. The one recorded rationale for the old True
+        # default (19.2-01-SUMMARY.md:105) is about keeping already-committed
+        # Phase-19.1 records bit-identical; that premise is gone because the
+        # v2.1 re-run replaces every artifact by design.
+        normal_fixed=False,
         water_z_bounds=water_z_bounds,
     )
     diagnostics = {
@@ -679,6 +688,7 @@ def _run_full(args: argparse.Namespace) -> int:
                 "n_water": n_water,
                 "n_air": 1.0,
                 "shared_interface": True,
+                "normal_fixed": False,
                 "ftol": diagnostics_by_model[label][
                     "stage3_interface_optimization"
                 ].ftol,
@@ -785,6 +795,7 @@ def _run_smoke(args: argparse.Namespace) -> int:
                     "n_water": n_water,
                     "n_air": 1.0,
                     "shared_interface": True,
+                    "normal_fixed": False,
                     "ftol": diagnostics_by_model[label][
                         "stage3_interface_optimization"
                     ].ftol,
@@ -1021,6 +1032,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             "n_water": n_water,
             "n_air": 1.0,
             "shared_interface": True,
+            "normal_fixed": False,
             "ftol": last_diagnostics_by_model[label][
                 "stage3_interface_optimization"
             ].ftol,
