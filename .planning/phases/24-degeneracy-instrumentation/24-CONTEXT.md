@@ -58,6 +58,12 @@ cannot be made until DEGEN-04 reports).
   and `realistic` projects cleanly at chord incidences to 61.5°, past the 48.61° critical angle.
 - The projection maths is not touched. The pinhole continuation is correct; the bookkeeping and
   the label around it are not.
+
+  > **Clarified 2026-08-17 (D-06 revision).** `core/refractive_geometry.py` IS now edited — but for
+  > bookkeeping only: an opt-in, `None`-defaulted reason array written at four existing failure
+  > branches, all outside the Newton loop. No arithmetic, no termination rule, no clip, and no
+  > return-type change. "The projection maths is not touched" stays literally true, and is the
+  > property D-18 asserts.
 - No plan writes `.planning/MANUSCRIPT-FINDINGS.md` (Phase 23's 2026-08-17 amendment). Evidence
   goes in each plan's own `SUMMARY.md` under `## Evidence`.
 
@@ -133,25 +139,69 @@ cannot be made until DEGEN-04 reports).
   *This question answers itself for free in Phase 28* once the split ships — which is why no
   in-phase probe was taken (see D-13).
 
-- **D-06: `h_c <= 0` is recomputed in `compute_residuals`, not plumbed out of the projector.**
-  `water_zs[cam_name]` and the camera extrinsics are already in scope at `_optim_common.py:684-695`.
-  One comparison per (camera, frame) — outside the per-point loop, so `_observability.py`'s
-  hot-path prohibition is respected.
+- **D-06 (REVISED 2026-08-17 — see amendment note): the NaN *reason* is plumbed out of
+  `refractive_project_batch` via an opt-in, `None`-defaulted out-parameter.** The projector fills a
+  per-point `int8` reason array at its four existing failure sites; `compute_residuals` reads it
+  instead of re-deriving anything.
 
-  *Why not a flag out of `refractive_project_batch`:* it would be authoritative by construction
-  (the condition is evaluated once per batch at `refractive_geometry.py:622`, so reporting it is
-  cheap), but it changes core geometry's return contract — the one file where the TIR branches were
-  deliberately left silent to protect published wall-clock numbers.
+  The four sites are already cleanly separated in that function's control flow, so this is a
+  read-off, not a new detection:
+  1. `refractive_geometry.py:622` — `h_c <= 0`, whole batch → `interface_below_camera`
+  2. the `valid` mask, which after the `on_axis` branch is exactly `h_q <= 0` → `above_interface`
+  3. `camera.project()` returning `None` in the on-axis loop → `behind_camera`
+  4. `camera.project()` returning `None` in the final projection loop → `behind_camera`
 
-  *Accepted cost:* the predicate now exists in two places and can drift. Mitigated by D-07.
+  **Nothing is written inside the Newton loop.** `delta`, `r_p_v`, the clip and the termination
+  check are untouched. When the out-parameter is `None` — which is what production passes on every
+  hot iteration — the function allocates nothing and pays one identity test, matching
+  `_observability.py:44-49`'s established opt-in pattern.
 
-- **D-07: a unit test asserts the two predicates agree.** Construct a geometry with the interface
-  below a camera center; assert `refractive_project_batch` returns an all-NaN batch **and** that
-  `compute_residuals` classifies it as `interface_below_camera`. If either side's condition
-  changes, the test fails.
+  *Why this reverses the original decision:* the original rejected it to protect
+  `core/refractive_geometry.py`'s return contract. But (a) that function **already carries an
+  opt-in diagnostics flag** (`return_diagnostics`), which does strictly *more* invasive work —
+  it allocates two arrays and computes `np.abs(delta)` on every Newton iteration, inside the loop;
+  (b) an out-parameter avoids `return_diagnostics`' wart of changing the return *type*; and (c) an
+  argument production passes as `None` cannot perturb the arithmetic, so the E2 sanity control has
+  nothing to detect. D-18 proves that here rather than inferring it four phases later.
 
-  *Why a test and not a comment:* a comment is not a mechanism. This project's knowledge base
-  carries the recurring lesson that acknowledgment does not prevent recurrence.
+  *What it buys, beyond retiring the duplicated predicate:*
+  - **The kind-precedence rule becomes unnecessary.** With cause available per point, cause and
+    fate are independent: cause comes from the reason array, fate (`extended` vs `penalized`) from
+    `unextendable`. The invariant becomes `sum over reasons == n_invalid` — derived and exact,
+    rather than resting on an invented tie-break between `interface_below_camera` and `extended`.
+  - **`extended` stops being a grab-bag.** Its split into `above_interface` and `behind_camera` is
+    a direct down payment on Phase 25's DEGEN-04 question about the production rig's 198. Report
+    the split; **do not interpret it here** — the classification claim is Phase 25's.
+
+- **D-07 (REVISED 2026-08-17): a unit test asserts the reason array agrees with the observable
+  outcome.** There is no longer a duplicated predicate to guard, so the test changes shape: construct
+  a geometry with the interface below a camera center and assert `refractive_project_batch` returns
+  an all-NaN batch **and** reports every point's reason as `interface_below_camera`; add the
+  matching case for a corner above the interface and one behind the camera. The test now guards the
+  *labelling* against the *behaviour*, which is the property that was actually at risk.
+
+  *Why a test and not a comment:* unchanged — a comment is not a mechanism, and this project's
+  knowledge base carries the recurring lesson that acknowledgment does not prevent recurrence.
+
+- **D-06b (NEW 2026-08-17): the diagnostic out-parameters are threaded ONLY on the post-solve
+  evaluation, never during the solve.** The counting apparatus already works this way today — the
+  `_bump` at `interface_estimation.py:419` and `refinement.py:329` runs *after* `least_squares`
+  returns, against one extra `compute_residuals(result.x, ...)` call. Every new out-parameter
+  (the reason array, the kind breakdown, D-10's denominator) inherits that placement.
+
+  *Why this is stated as a decision rather than left implicit:* threading the new out-parameters on
+  every call instead of only the post-solve one would silently convert a free diagnostic into a
+  hot-path cost on thousands of iterations, and nothing in the type signatures would catch it. A
+  test asserts the projector is called with a `None` reason array during the solve.
+
+  > **Amendment note (2026-08-17, the user's call).** D-06 and D-07 as originally captured chose to
+  > recompute `h_c <= 0` at the call site and accept a duplicated predicate. On review during
+  > planning the risk of plumbing was found to be overstated: the writes are ~5 lines, all at
+  > existing failure branches, all outside the Newton loop, in a function that already ships a more
+  > invasive opt-in diagnostic. The reversal also removes the kind-precedence rule that planning had
+  > to invent to keep the three kinds from double-counting — the overlap it patched was an artifact
+  > of mixing a cause-bucket with two fate-buckets, which having the cause per point dissolves.
+  > The original decisions are preserved above in struck form for the record.
 
 - **D-08: no hard raise for this kind.** A transient solver excursion must not abort a solve that
   converged, and Phase 28 runs the suite unattended on a machine nobody is watching. It counts and
@@ -511,9 +561,10 @@ All three carry `resolves_phase: 24` frontmatter, so folding was not re-asked.
 - **Making the 1% warning threshold a parameter** — D-14. Same shape as Phase 23's D-05 deferral of
   the hardcoded `water_z` bounds: source generalization days before a freeze. Revisit
   post-submission, alongside that todo.
-- **Plumbing a NaN-reason flag out of `refractive_project_batch`** — D-06's rejected alternative.
-  It is the authoritative route and would retire D-07's duplicated predicate entirely; it belongs
-  with any future work that reopens `core/refractive_geometry.py`.
+- ~~**Plumbing a NaN-reason flag out of `refractive_project_batch`** — D-06's rejected
+  alternative.~~ **ADOPTED 2026-08-17** — no longer deferred; see the revised D-06. It was the
+  authoritative route, it retires D-07's duplicated predicate, and it removes the need for a
+  kind-precedence rule.
 - **Registering these artifacts in `rerun_19_3.sh`** — D-12. Explicitly Phase 26's (DRIVER-01), with
   a note left by this phase.
 - **The real-rig degeneracy gate scope decision** — remains deferred and cannot be made until
