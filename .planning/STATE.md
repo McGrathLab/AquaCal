@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: roadmapped
-last_updated: "2026-08-15T15:03:36.414Z"
-last_activity: 2026-08-15
+status: planning
+stopped_at: Phase 23 context gathered
+last_updated: "2026-08-17T12:38:00.513Z"
+last_activity: 2026-08-17
 progress:
   total_phases: 8
   completed_phases: 0
@@ -31,10 +32,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 23 (Experiment Correctness Fixes) — not yet planned
+Phase: 23 (Experiment Correctness Fixes) — context gathered, not yet planned
 Plan: —
-Status: Roadmapped, ready to plan
-Last activity: 2026-08-15 — ROADMAP.md and REQUIREMENTS.md traceability written for v2.1
+Status: Context captured, ready to plan
+Last activity: 2026-08-17 — `23-CONTEXT.md` written; four plans decided (FIX-01+02, FIX-05,
+FIX-03+04, FIX-06), one commit per requirement
 
 ## Roadmap Summary (v2.1)
 
@@ -76,13 +78,16 @@ changed). Four corrections landed in ROADMAP.md, REQUIREMENTS.md and the todos:
    phrased on the count passes whether or not the pin exists. FIX-01 now lands **before** FIX-02
    in the non-refractive arm, and the combined pinned/normal-free configuration — the one the
    re-run executes — is still unmeasured and must be emitted first.
+
 2. **E4's `--check` is structurally always-red** on `exit_code` and `status_reason` while its 33
    metric columns reproduce to 1e-6, so it cannot verify FIX-05; and `_run_check` is itself on the
    defective path (**two** call sites). DRIVER-03 must settle the contract early — Phase 23
    consumes it.
+
 3. **FIX-06 is four code sites, not three**, the unfiled one being `e2_real_rig.py:555-563`'s
    "60 → 12 → 1,817" against the verified 262 → 52 → 7,762.
    `19.1-E2-FRAMESET-PROVENANCE.md` gets a supersession header, not an edit.
+
 4. **Phase 29's E2 sanity control is same-seed only** — 3.07e-09 across platforms at seed 42, but
    a 0.761→0.910 px band across seeds.
 
@@ -172,9 +177,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-Last session: 2026-08-15 — ROADMAP.md and REQUIREMENTS.md traceability written; 23/23 v2.1
-requirements mapped across Phases 23-30 with 100% coverage validated.
-Stopped at: roadmap complete, awaiting user approval, then `/gsd:plan-phase 23`.
+Last session: 2026-08-17 — Phase 23 recon corrections landed in ROADMAP/REQUIREMENTS/todos
+(`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
+(`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
+Stopped at: Phase 23 context gathered
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
