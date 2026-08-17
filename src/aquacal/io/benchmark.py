@@ -392,6 +392,7 @@ def assemble_benchmark_record(
     accuracy: dict,
     environment: dict,
     memory_readings: dict | None = None,
+    discard_stats: dict | None = None,
 ) -> dict:
     """Assemble the full `benchmark.json` record (BENCH-01, BENCH-03, BENCH-04).
 
@@ -425,11 +426,24 @@ def assemble_benchmark_record(
             ordered dict keyed by boundary name in temporal order (starting
             with `"_baseline"`), each value the `capture_peak_memory()`
             reading taken at that boundary (D-18).
+        discard_stats: `None` (the default) when the caller has no discard
+            accounting to record -- no `"discard_stats"` key appears anywhere
+            in the returned record, following `memory_readings`' precedent
+            exactly (this function never invents an empty block). Otherwise
+            the run's whole `discard_stats` dict, passed through UNMODIFIED
+            (D-11). Deliberately not a hand-picked field list: DEGEN-01's
+            defect was a counter that lived in `discard_stats` and was never
+            written into the record, and a curated field list reproduces that
+            defect the next time a counter is added. Its vocabulary is the
+            closed `DISCARD_KEYS` set in
+            `aquacal.calibration._observability`, so a new counter reaches
+            `benchmark.json` without this function naming it.
 
     Returns:
         A fully JSON-serializable dict with top-level keys `schema_version`,
         `problem_shape`, `stages`, `solver_config`, `accuracy`, `environment`,
-        and (only when `memory_readings` is not `None`) `memory`.
+        (only when `memory_readings` is not `None`) `memory`, and (only when
+        `discard_stats` is not `None`) `discard_stats`.
     """
     stages: dict[str, dict] = {}
     for stage_name, diag in diagnostics.items():
@@ -461,6 +475,11 @@ def assemble_benchmark_record(
         "accuracy": _to_native(accuracy),
         "environment": _to_native(environment),
     }
+
+    # Own top-level block, whole dict, unmodified (D-11). Omitted entirely when
+    # None -- the same "never invent an empty block" rule `memory` follows.
+    if discard_stats is not None:
+        record["discard_stats"] = _to_native(discard_stats)
 
     if memory_readings is not None:
         previous_reading = memory_readings.get("_baseline")

@@ -1713,6 +1713,22 @@ def run_calibration_from_config(
             "n_cameras": len(final_intrinsics),
             "n_frames_calibration": len(optim_detections.frames),
             "n_frames_holdout": len(val_detections.frames),
+            # The merged degeneracy total is recorded in BOTH places, on
+            # purpose (D-11):
+            #   * the whole `discard_stats` dict goes in as its own top-level
+            #     block below, which is the structural half -- every future
+            #     counter then reaches benchmark.json automatically. DEGEN-01's
+            #     defect was precisely a field that existed in `discard_stats`
+            #     and was never written into `problem_shape`, and a hand-picked
+            #     field list reproduces that defect's exact shape.
+            #   * this mirror exists only so the pre-existing read shape keeps
+            #     working -- check_rerun_gates.py's first lookup is
+            #     `record["problem_shape"][key]`, and every existing consumer
+            #     keeps its key.
+            # Accepted cost: some duplication with diagnostics.json.
+            "degenerate_observations_at_solution": discard_stats.get(
+                "degenerate_observations_at_solution", 0
+            ),
         }
         solver_config = {
             "robust_loss": config.robust_loss,
@@ -1741,6 +1757,9 @@ def run_calibration_from_config(
             # absent behavior is unambiguous even if the collector happened
             # to end up empty for an unrelated reason.
             memory_readings=memory_readings if config.benchmark_memory else None,
+            # Copied, as the save_diagnostic_report call above already does,
+            # so the record can never alias a dict that later mutates.
+            discard_stats=dict(discard_stats),
         )
         write_benchmark_json(benchmark_record, config.output_dir / "benchmark.json")
         print("  Saved benchmark.json")
