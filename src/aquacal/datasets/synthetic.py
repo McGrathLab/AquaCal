@@ -181,11 +181,17 @@ def generate_camera_array(
         layout: Camera arrangement - "grid", "line", or "ring"
         spacing: Distance between adjacent cameras (meters)
         height_above_water: Mean interface distance (meters). Defaults to the
-            module-level ``WATER_Z`` (the real-rig standoff, ~1.031 m;
-            D-19.3-09) -- not a shallow 0.15 m tank. A lens framed for a
-            1-2 m board-to-camera range needs a standoff in that range to
-            avoid over-filling the frame; pass an explicit shallower value
-            only when that mismatch is intentional.
+            module-level ``WATER_Z`` = 1.031 m, which is a FROZEN DESIGN
+            CONSTANT that *approximates* the real-rig standoff rather than
+            measuring it -- consistent with the note at ``:290`` and the
+            provenance block above the constant. The rig's own estimated
+            ``water_z`` is 1.0738404 m with a per-camera ``h_c`` range of
+            1.047-1.113 m; the synthetic rig approximates the hardware by
+            intent and must not be reconciled toward it (D-19.3-09). Not a
+            shallow 0.15 m tank: a lens framed for a 1-2 m board-to-camera
+            range needs a standoff in that range to avoid over-filling the
+            frame; pass an explicit shallower value only when that mismatch
+            is intentional.
         height_variation: Std dev of per-camera height variation (meters),
             applied to camera height (``C_z``; D-19.4-09), not the water
             surface. Every camera shares one water plane at
