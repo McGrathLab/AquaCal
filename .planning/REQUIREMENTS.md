@@ -25,7 +25,7 @@ submission. POST follows it.
 
 ### Experiment Correctness (FIX) — changes a number, or what a number is licensed to say
 
-- [ ] **FIX-01**: E1's non-refractive arm pins `water_z`, which is an exact null direction there,
+- [x] **FIX-01**: E1's non-refractive arm pins `water_z`, which is an exact null direction there,
       driving the arm's 14,949 degenerate observations to zero without pinning it in the
       refractive arm — todo `2026-08-15-pin-water-z-in-e1-non-refractive-arm`
 
@@ -36,16 +36,16 @@ submission. POST follows it.
       removed, so it is corroboration only. **Lands before FIX-02** in the non-refractive arm; the
       pinned-and-normal-free combination is unmeasured and its `water_z` is the first thing the
       implementation must emit.
-- [ ] **FIX-02**: E1 and E7 solve with the interface normal free, matching the production
+- [x] **FIX-02**: E1 and E7 solve with the interface normal free, matching the production
       pipeline's DOF count instead of inheriting the library signature default —
       todo `2026-08-15-e1-and-e7-run-with-the-interface-normal-fixed-unlike-everything-else`
-- [ ] **FIX-03**: E6 reports signed, gauge-corrected Z error and emits the per-camera
+- [x] **FIX-03**: E6 reports signed, gauge-corrected Z error and emits the per-camera
       decomposition behind the collinear caveat, both landing in the same change —
       todo `2026-08-15-e6-z-error-reporting-and-per-camera-gauge-decomposition`
-- [ ] **FIX-04**: E7's `fixed` rows are labelled vacuous-by-construction rather than reported as
+- [x] **FIX-04**: E7's `fixed` rows are labelled vacuous-by-construction rather than reported as
       a measured `no_signature` verdict —
       todo `2026-08-15-e7-vacuous-fixed-rows-ship-as-measured-nulls`
-- [ ] **FIX-05**: E4's aggregator resolves E2's benchmark row relative to the active output
+- [x] **FIX-05**: E4's aggregator resolves E2's benchmark row relative to the active output
       directory, so the real-rig row survives `--out` —
       todo `2026-08-13-e4-aggregator-hardcodes-e2-benchmark-path`
 
@@ -54,7 +54,7 @@ submission. POST follows it.
       cannot be the verification: 33 of its 35 columns already reproduce to 1e-6, while `exit_code`
       (hardcoded `None` at :1872) and `status_reason` can never match — red before the fix and red
       after. Consumes DRIVER-03's `--check` contract decision rather than inventing a local one.
-- [ ] **FIX-06**: The stale provenance strings in `e2_real_rig.py` and `synthetic.py` describe what
+- [x] **FIX-06**: The stale provenance strings in `e2_real_rig.py` and `synthetic.py` describe what
       is actually true — todo
       `2026-08-15-correct-stale-strings-in-e2-and-the-synthetic-generator`
 
@@ -211,12 +211,12 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-01 | Phase 23 | Pending |
-| FIX-02 | Phase 23 | Pending |
-| FIX-03 | Phase 23 | Pending |
-| FIX-04 | Phase 23 | Pending |
-| FIX-05 | Phase 23 | Pending |
-| FIX-06 | Phase 23 | Pending |
+| FIX-01 | Phase 23 | Complete |
+| FIX-02 | Phase 23 | Complete |
+| FIX-03 | Phase 23 | Complete |
+| FIX-04 | Phase 23 | Complete |
+| FIX-05 | Phase 23 | Complete |
+| FIX-06 | Phase 23 | Complete |
 | DEGEN-01 | Phase 24 | Pending |
 | DEGEN-02 | Phase 24 | Pending |
 | DEGEN-03 | Phase 24 | Pending |

@@ -376,7 +376,7 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 20. Refractive Index Helper | v2.0 | 0/0 | Deferred → carried forward | - |
 | 21. New-Feature Documentation & Dataset Refresh | v2.0 | 12/12 | Complete | 2026-08-11 |
 | 22. Release Cut | v2.0 | 0/0 | Deferred → carried forward | - |
-| 23. Experiment Correctness Fixes | v2.1 | 4/4 | Complete   | 2026-08-17 |
+| 23. Experiment Correctness Fixes | v2.1 | 4/4 | Complete    | 2026-08-17 |
 | 24. Degeneracy Instrumentation | v2.1 | 0/TBD | Not started | - |
 | 25. Degeneracy Classification & Claim Licensing | v2.1 | 0/TBD | Not started | - |
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 0/TBD | Not started | - |
