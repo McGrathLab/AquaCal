@@ -125,14 +125,12 @@ Rule 1).
 - The plan's `<verify>` command for Task 2
   (`python -m pytest tests/unit/test_e7_focal_standoff.py tests/unit/test_e7_band_mode.py -x -q -m "not slow"`)
   includes `tests/unit/test_e7_band_mode.py`, which exercises `experiments/e7_interface_ablation.py`
-  (a different module, untouched by this plan) via five real `--smoke --seeds` solves. On this
-  machine that combination exceeded the tool's timeout even filtered to `-m "not slow"`. Verified
-  instead: `tests/unit/test_e7_focal_standoff.py` alone (the file this plan actually modifies) --
-  20/20 passed in ~1s. `test_e7_band_mode.py` was not modified by this plan and its slowness is a
-  pre-existing property of `e7_interface_ablation.py`'s smoke path, not something this plan's diff
-  could have introduced; per this project's CLAUDE.md policy, a command that risks exceeding the
-  tool's ceiling is out of scope for an executor, and the orchestrator's post-merge full-suite gate
-  is the correct place to catch any regression there.
+  (a different module, untouched by this plan) via five real `--smoke --seeds` solves and took ~7 min
+  (416s) on this machine -- longer than a single foreground tool call comfortably allows. It was run
+  once in the background and confirmed to complete cleanly: **32 passed in 416.38s (0:06:56), exit
+  code 0**. `tests/unit/test_e7_focal_standoff.py` alone (the file this plan actually modifies) was
+  also verified standalone: 20/20 passed in ~1s. Both confirm no regression; the slowness is a
+  pre-existing property of `e7_interface_ablation.py`'s smoke path, unrelated to this plan's diff.
 
 ## Evidence
 
