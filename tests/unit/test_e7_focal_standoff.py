@@ -241,10 +241,19 @@ class TestBuildFocalStandoffDf:
         assert (refined_rows["mean_within_seed_correlation"].notna()).all()
         assert (refined_rows["scope"] == SCOPE_TEXT).all()
 
-    def test_column_set_unchanged(self):
+    def test_original_column_set_and_order_unchanged(self):
+        """The nine original columns keep their names AND their positions.
+
+        Re-anchored (plan 24-02) from an exact whole-header equality: the six
+        degeneracy columns are APPENDED, so `== [...nine...]` necessarily
+        fails while the property the test exists to protect -- that no
+        pre-existing column was renamed, reordered or dropped -- still holds.
+        Asserting the prefix keeps that property and adds the append-only
+        constraint, rather than deleting the check.
+        """
         df = self._hand_built_band_df()
         result = build_focal_standoff_df(df)
-        assert list(result.columns) == [
+        assert list(result.columns)[:9] == [
             "arm",
             "n_seeds",
             "n_cameras_per_seed",
@@ -255,6 +264,25 @@ class TestBuildFocalStandoffDf:
             "verdict",
             "scope",
         ]
+        assert list(result.columns)[9:] == [
+            "degenerate_observations_at_solution",
+            "degenerate_observations_cause_above_interface",
+            "degenerate_observations_cause_behind_camera",
+            "degenerate_observations_cause_interface_below_camera",
+            "degenerate_observations_fate_extended",
+            "degenerate_observations_fate_penalized",
+        ]
+
+    def test_band_without_degeneracy_columns_yields_none_not_zero(self):
+        """A band CSV regenerated before plan 24-02 has none of the six
+        columns. The output must then say "never measured" (`None`), never
+        "measured and found clean" (`0`) -- collapsing the two would let a
+        pre-instrumentation artifact read as a verified-clean one."""
+        df = self._hand_built_band_df()
+        assert "degenerate_observations_at_solution" not in df.columns
+        result = build_focal_standoff_df(df)
+        for column in list(result.columns)[9:]:
+            assert result[column].isna().all()
 
 
 class TestPairedArmDifference:

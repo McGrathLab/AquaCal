@@ -83,6 +83,20 @@ E7's production scenario is inert under this phase's `src` fix (see the
 CORRECTION note below); the `--seeds` band exists for reproducibility of
 MF-05's numbers, not because they move.
 
+**The six degeneracy columns and the breakdown sidecar (DEGEN-01/DEGEN-02 via
+plan 24-02, D-09 as revised 2026-08-17).** `ABLATION_COLUMNS` gained six
+APPENDED columns: `degenerate_observations_at_solution` plus three
+`degenerate_observations_cause_*` (`above_interface`, `behind_camera`,
+`interface_below_camera`) and two `degenerate_observations_fate_*`
+(`extended`, `penalized`). Cause and fate are two INDEPENDENT AXES over the
+same set of invalid observations, not disjoint buckets -- **never add a cause
+column to a fate column.** Each axis sums independently and exactly to
+`degenerate_observations_at_solution`, so a row where the two axes disagree is
+a bookkeeping bug, visible by eye. All six are per-ARM values repeated on that
+arm's camera rows. The per-stage breakdown and the per-stage
+`observations_evaluated__*` denominators are NOT in the CSV -- they go to
+`e7_degeneracy_breakdown.json`, keyed by arm.
+
 **D-19.3-11: this module RECORDS the final-solution guard count; it does
 not GATE on it.** E7 has no per-arm `status` column -- each arm's
 `e7_benchmark_<arm>.json` carries `problem_shape.
@@ -118,6 +132,11 @@ from aquacal.core.board import BoardGeometry
 from aquacal.datasets import create_scenario, generate_synthetic_detections
 from aquacal.io import capture_environment
 from aquacal.validation.conditioning import save_conditioning_report
+from experiments._degeneracy import (
+    DEGENERACY_COLUMNS,
+    summarize_degeneracy_columns,
+    write_degeneracy_breakdown,
+)
 from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
@@ -191,7 +210,30 @@ ABLATION_COLUMNS = [
     "focal_drift_pct",
     "standoff_m",
     "reprojection_rms_px_control",
+    # DEGEN-01/DEGEN-02 via plan 24-02, D-09 as revised 2026-08-17. APPENDED,
+    # never inserted, so every pre-existing column keeps its index.
+    #
+    # `cause` and `fate` are two INDEPENDENT AXES over the same set of
+    # degenerate observations, not disjoint buckets: cause answers "what do I
+    # fix?", fate answers "can I trust this arm's optimality?". NEVER add a
+    # cause column to a fate column -- that double-counts. EACH AXIS SUMS
+    # INDEPENDENTLY TO `degenerate_observations_at_solution`, so a row where
+    # the two axes disagree is a bookkeeping bug, visible by eye; that
+    # self-validating property is why both axes are published.
+    #
+    # Per-ARM values, summed across this arm's stages and repeated on each of
+    # its camera rows -- matching `ArmResult.degenerate_observations_at_
+    # solution`'s existing per-arm convention. The per-stage breakdown and the
+    # `observations_evaluated__*` denominators live in the
+    # `e7_degeneracy_breakdown.json` sidecar, never in this CSV.
+    "degenerate_observations_at_solution",
+    "degenerate_observations_cause_above_interface",
+    "degenerate_observations_cause_behind_camera",
+    "degenerate_observations_cause_interface_below_camera",
+    "degenerate_observations_fate_extended",
+    "degenerate_observations_fate_penalized",
 ]
+assert tuple(ABLATION_COLUMNS[-6:]) == DEGENERACY_COLUMNS
 
 STAGE_INTERFACE = "stage3_interface_optimization"
 STAGE_INTRINSIC_PASS = "stage3_intrinsic_pass"
@@ -213,6 +255,7 @@ class ArmResult:
         observers: dict[str, OptimizerObserver],
         elapsed_seconds: dict[str, float],
         degenerate_observations_at_solution: int = 0,
+        discard_stats: dict[str, int] | None = None,
     ) -> None:
         self.arm_name = arm_name
         self.shared_interface = shared_interface
@@ -230,6 +273,12 @@ class ArmResult:
         # occur anywhere in this arm's solve"), matching plan 19.3-02's own
         # whole-run-summed convention for this same key.
         self.degenerate_observations_at_solution = degenerate_observations_at_solution
+        # The RAW per-stage counters behind that merged total (plan 24-02),
+        # summed across this arm's stages key-by-key so the cause x stage and
+        # fate x stage entries and the `observations_evaluated__*`
+        # denominators all survive to the `e7_degeneracy_breakdown.json`
+        # sidecar. `None` when the counts were never computed for this arm.
+        self.discard_stats = discard_stats
 
     @property
     def intrinsics_source(self) -> str:
@@ -345,6 +394,10 @@ def _run_arm(
     diagnostics[STAGE_INTERFACE] = diag_stage3
     observers[STAGE_INTERFACE] = observer_stage3
     n_degenerate = discard_stats_stage3.get("degenerate_observations_at_solution", 0)
+    # Key-by-key sum across this arm's stages. The stage is already carried in
+    # each split key's `__<stage>` suffix, so summing the two dicts loses
+    # nothing -- Stage 3's and the intrinsic pass's entries have disjoint keys.
+    arm_discard_stats: dict[str, int] = dict(discard_stats_stage3)
 
     intrinsics_final = scenario.intrinsics
     if refine_intrinsics:
@@ -380,6 +433,8 @@ def _run_arm(
         n_degenerate += discard_stats_intrinsic_pass.get(
             "degenerate_observations_at_solution", 0
         )
+        for key, value in discard_stats_intrinsic_pass.items():
+            arm_discard_stats[key] = arm_discard_stats.get(key, 0) + value
 
     if n_degenerate > 0:
         # D-19.3-11: recorded and warned about, never gated -- E7 has no
@@ -405,6 +460,7 @@ def _run_arm(
         observers=observers,
         elapsed_seconds=elapsed_seconds,
         degenerate_observations_at_solution=n_degenerate,
+        discard_stats=arm_discard_stats,
     )
 
 
@@ -420,6 +476,9 @@ def _build_ablation_rows(arm: ArmResult, scenario) -> list[dict]:
     conditioning correlation block -- it is never itself named a degeneracy.
     """
     rows = []
+    # Per-ARM, computed once: degeneracy is a property of the arm's solve, not
+    # of any individual camera.
+    degeneracy_columns = summarize_degeneracy_columns(arm.discard_stats)
     for cam in sorted(scenario.intrinsics):
         water_z_recovered = float(arm.water_zs[cam])
         water_z_gt = float(scenario.water_zs[cam])
@@ -454,6 +513,7 @@ def _build_ablation_rows(arm: ArmResult, scenario) -> list[dict]:
                 "focal_drift_pct": focal_drift_pct,
                 "standoff_m": camera_height_recovered,
                 "reprojection_rms_px_control": float(arm.rms),
+                **degeneracy_columns,
             }
         )
     return rows
@@ -587,6 +647,15 @@ def _write_ablation_artifacts(
         force=force,
     )
 
+    # D-09's sidecar half, keyed by arm: the cause x stage and fate x stage
+    # breakdown plus the per-stage `observations_evaluated__*` denominators,
+    # written as the RAW dict (same structural argument as D-11 -- a counter
+    # added to the library later arrives here unnamed by this script).
+    write_degeneracy_breakdown(
+        out_dir / "e7_degeneracy_breakdown.json",
+        {arm.arm_name: dict(arm.discard_stats or {}) for arm in results},
+    )
+
     with tempfile.TemporaryDirectory(prefix="e7_conditioning_") as tmp:
         tmp_dir = Path(tmp)
         npz_arrays: dict = {}
@@ -686,9 +755,15 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     and one `e7_benchmark_<arm>.json` per arm, additively carrying
     `solver_config["seeds"] = seeds`. Deliberately does NOT write
     `interface_ablation.csv`, conditioning JSON/NPZ, or trace CSVs -- those
-    remain exclusively the single-seed run's artifacts. E7's CSV columns
-    (`ABLATION_COLUMNS`) are unchanged by this plan -- E7 already carries its
-    claim quantity (`camera_height_drift_mm`); only the sidecar is new.
+    remain exclusively the single-seed run's artifacts. `ABLATION_COLUMNS` was
+    unchanged by D-19.4-14 -- E7 already carried its claim quantity
+    (`camera_height_drift_mm`) and gained only the sidecar there; the six
+    degeneracy columns it carries now were appended later, by plan 24-02.
+
+    Also writes `e7_seed_band_degeneracy_breakdown.json`, keyed by seed then
+    arm. Deliberately NOT the single-seed `e7_degeneracy_breakdown.json`: a
+    band run must never overwrite a single-seed artifact, exactly as the two
+    provenance sidecars are kept apart.
 
     The benchmark payload (`problem_shape`/`timings`/`diagnostics`/`accuracy`)
     is taken from the LAST seed in `seeds`' run, since a single provenance
@@ -708,11 +783,15 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
 
     last_results: list[ArmResult] = []
     last_scenario = None
+    breakdown_by_seed: dict[str, dict] = {}
 
     def _runner(seed: int) -> pd.DataFrame:
         nonlocal last_results, last_scenario
         results, scenario = run_all_arms(seed=seed, smoke=smoke)
         last_results, last_scenario = results, scenario
+        breakdown_by_seed[str(seed)] = {
+            arm.arm_name: dict(arm.discard_stats or {}) for arm in results
+        }
         rows: list[dict] = []
         for arm in results:
             rows.extend(_build_ablation_rows(arm, scenario))
@@ -758,6 +837,10 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             sort_keys=True,
         )
     print(f"Wrote {sidecar_path}")
+
+    write_degeneracy_breakdown(
+        out_dir / "e7_seed_band_degeneracy_breakdown.json", breakdown_by_seed
+    )
 
     for arm in last_results:
         problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(

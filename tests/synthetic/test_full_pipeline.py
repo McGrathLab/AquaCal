@@ -654,3 +654,50 @@ class TestBenchmarkJsonIntegration:
             record = json.load(f)
 
         assert record["solver_config"]["seed"] == 1234
+
+    def test_benchmark_json_carries_discard_stats_and_the_mirrored_total(
+        self, scenario_ideal, tmp_path
+    ):
+        """DEGEN-01 end to end, through the PRODUCTION writer (D-17).
+
+        `calibrate_synthetic` (`aquacal.datasets.pipelines`) and
+        `run_calibration_from_config` (`aquacal.calibration.pipeline`) are two
+        DIFFERENT writers of a calibration run's artifacts, and DEGEN-01's
+        defect lives in the production one: `discard_stats` was assembled and
+        threaded through every solver call, then dropped on the floor at
+        `problem_shape` construction, so the very number
+        `check_rerun_gates.py` reads was absent from the record it reads. A
+        test exercising only `calibrate_synthetic` verifies nothing about that
+        claim, which is why this test goes through
+        `_run_full_pipeline_with_mocked_video_io` (only video decode is
+        stubbed).
+
+        Also the first end-to-end verification of D-04's zero-emission: on a
+        clean run the counters are PRESENT at 0, not absent. That is what lets
+        `check_rerun_gates.py`'s `cannot confirm zero` branch pass rather than
+        FAIL.
+        """
+        _run_full_pipeline_with_mocked_video_io(scenario_ideal, tmp_path)
+
+        with open(tmp_path / "benchmark.json") as f:
+            record = json.load(f)
+
+        assert "discard_stats" in record
+        block = record["discard_stats"]
+
+        # Plan 24-01's two independent axes plus the per-stage denominator all
+        # reach the record automatically, because the WHOLE dict is passed.
+        assert any(k.startswith("degenerate_observations_cause_") for k in block)
+        assert any(k.startswith("degenerate_observations_fate_") for k in block)
+        assert any(k.startswith("observations_evaluated__") for k in block)
+
+        # The mirror keeps check_rerun_gates.py's FIRST read shape working.
+        assert "degenerate_observations_at_solution" in record["problem_shape"]
+        assert (
+            record["problem_shape"]["degenerate_observations_at_solution"]
+            == block["degenerate_observations_at_solution"]
+        )
+
+        # D-04: present AND zero on a clean synthetic run.
+        assert record["problem_shape"]["degenerate_observations_at_solution"] == 0
+        assert block["degenerate_observations_at_solution"] == 0

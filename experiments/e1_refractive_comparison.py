@@ -18,7 +18,21 @@ Emits into `--out`:
     external figures repository (read-only, outside this repo) reads (D-19). Do not
     add, remove, reorder, or rename a column.
   exp2_spatial_errors.csv -- E1's own new output, no committed baseline (D-20); not
-    compared by --check.
+    compared by --check. Carries the SIX degeneracy columns (DEGEN-01/DEGEN-02 via
+    plan 24-02): `degenerate_observations_at_solution` plus three
+    `degenerate_observations_cause_*` and two `degenerate_observations_fate_*`.
+    Cause and fate are two INDEPENDENT AXES over the same set of invalid
+    observations, not disjoint buckets -- **never add a cause column to a fate
+    column.** Each axis sums independently and exactly to
+    `degenerate_observations_at_solution`, so a row where the two axes disagree is
+    a bookkeeping bug, visible by eye. The counter is a per-MODEL quantity, so
+    every row of a model repeats that model's six values. The three FIXED-CONTRACT
+    CSVs above deliberately did NOT gain these columns (D-19 pins their headers
+    byte-for-byte for an external figures repository).
+  e1_degeneracy_breakdown.json -- the per-stage half D-09 keeps out of the CSVs:
+    the full cause x stage and fate x stage breakdown and the per-stage
+    `observations_evaluated__*` denominators, keyed by model label, written as the
+    raw `discard_stats` dict.
   e1_benchmark_refractive.json, e1_benchmark_nonrefractive.json -- two distinct
     direct-call provenance records (D-09), one per model, because E1 calibrates twice.
   exp1_band.csv, e1_seed_band_provenance.json -- written only by `--seeds`
@@ -107,6 +121,11 @@ from aquacal.datasets import (
 )
 from aquacal.io import capture_environment
 from aquacal.validation.reconstruction import triangulate_charuco_corners
+from experiments._degeneracy import (
+    DEGENERACY_COLUMNS,
+    summarize_degeneracy_columns,
+    write_degeneracy_breakdown,
+)
 from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
@@ -268,7 +287,39 @@ EXP3_COLUMNS = [
     "anisotropy_ratio",
     "n_points",
 ]
-SPATIAL_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m", "signed_error_mm"]
+SPATIAL_COLUMNS = [
+    "test_depth_m",
+    "model",
+    "x_m",
+    "y_m",
+    "z_m",
+    "signed_error_mm",
+    # DEGEN-01/DEGEN-02 via plan 24-02, D-09 as revised 2026-08-17. APPENDED,
+    # never inserted. This is the ONLY `_build_dataframes` output that may
+    # carry them: `EXP1_COLUMNS`, `EXP2_COLUMNS` and `EXP3_COLUMNS` pin
+    # byte-identical headers for an external, read-only figures repository
+    # (D-19, "do not add, remove, reorder, or rename a column"), whereas
+    # `exp2_spatial_errors.csv` is E1's own output with no committed baseline
+    # and is not compared by `--check` (D-20). The counter is a per-MODEL
+    # quantity, so every row of a given model repeats that model's values --
+    # no per-point split of it is fabricated.
+    #
+    # `cause` and `fate` are two INDEPENDENT AXES over the same set of
+    # degenerate observations, not disjoint buckets. NEVER add a cause column
+    # to a fate column -- that double-counts. EACH AXIS SUMS INDEPENDENTLY TO
+    # `degenerate_observations_at_solution`, so a row where the two axes
+    # disagree is a bookkeeping bug, visible by eye.
+    #
+    # The per-stage breakdown and the `observations_evaluated__*` denominators
+    # live in the `e1_degeneracy_breakdown.json` sidecar, not here.
+    "degenerate_observations_at_solution",
+    "degenerate_observations_cause_above_interface",
+    "degenerate_observations_cause_behind_camera",
+    "degenerate_observations_cause_interface_below_camera",
+    "degenerate_observations_fate_extended",
+    "degenerate_observations_fate_penalized",
+]
+assert tuple(SPATIAL_COLUMNS[-6:]) == DEGENERACY_COLUMNS
 
 # D-260807-dcv: the manuscript's ~135x headline ratio (main.tex L68/L281) is raw
 # `z_rmse_mm` at the deepest test point, and `z_rmse_mm` previously lived ONLY in
@@ -470,7 +521,9 @@ def merge_band_columns(df_exp2: pd.DataFrame, df_exp3: pd.DataFrame) -> pd.DataF
     return merged.reindex(columns=BAND_MERGED_COLUMNS)
 
 
-def _build_dataframes(scenario, results, seed, test_depths=None):
+def _build_dataframes(
+    scenario, results, seed, test_depths=None, discard_stats_by_model=None
+):
     """Run the depth sweep and assemble the four output DataFrames.
 
     `results` is a dict keyed by model label ("refractive"/"non_refractive") mapping
@@ -482,9 +535,24 @@ def _build_dataframes(scenario, results, seed, test_depths=None):
         test_depths: Depths to sweep. Defaults to the module-level `TEST_DEPTHS`
             (the full eight-depth preset); `--smoke` passes a single trivial depth
             instead, without mutating the module constant.
+        discard_stats_by_model: Each model label's raw `discard_stats` dict
+            from `_run_one_model`, used to fill `exp2_spatial_errors.csv`'s
+            six appended degeneracy columns. `None` (the default) writes
+            `None` in all six rather than `0` -- `0` means "measured and found
+            clean", `None` means "never measured for this row".
     """
     depths = TEST_DEPTHS if test_depths is None else test_depths
     board = BoardGeometry(scenario.board_config)
+    # Per-MODEL, computed once: the counter is a property of the model's
+    # solve, not of any individual reconstructed point.
+    degeneracy_by_model = {
+        label: summarize_degeneracy_columns(
+            None
+            if discard_stats_by_model is None
+            else discard_stats_by_model.get(label)
+        )
+        for label in results
+    }
 
     errors_by_model = {
         label: compute_per_camera_errors(result, scenario, gauge_correct_z=True)
@@ -585,6 +653,7 @@ def _build_dataframes(scenario, results, seed, test_depths=None):
                             "y_m": sp.positions[j, 1],
                             "z_m": sp.positions[j, 2],
                             "signed_error_mm": sp.signed_errors[j] * 1000,
+                            **degeneracy_by_model[label],
                         }
                     )
     df_exp2 = pd.DataFrame(rows_exp2, columns=EXP2_COLUMNS)
@@ -636,7 +705,7 @@ def _run_full(args: argparse.Namespace) -> int:
 
     print("\nEvaluating depth sweep and anisotropy...")
     df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
-        scenario, results, args.seed
+        scenario, results, args.seed, discard_stats_by_model=discard_stats_by_model
     )
 
     write_experiment_csv(
@@ -710,6 +779,20 @@ def _run_full(args: argparse.Namespace) -> int:
         )
         print(f"Wrote {record_path}")
 
+    # D-09's sidecar half, keyed by model label: the cause x stage and
+    # fate x stage breakdown plus the per-stage `observations_evaluated__*`
+    # denominators, none of which belong in a CSV. The RAW dict is written,
+    # unaggregated -- same structural argument as D-11, so a counter added to
+    # the library later arrives here without this script naming it. Each
+    # arm's per-block `optimality_by_block` decomposition needs no work here:
+    # it is a `SolverDiagnostics` field, so `assemble_benchmark_record`
+    # already emits it beside that stage's `optimality` in
+    # `e1_benchmark_<model>.json`.
+    write_degeneracy_breakdown(
+        out_dir / "e1_degeneracy_breakdown.json",
+        {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+    )
+
     print("\nE1 run complete.")
     return 0
 
@@ -743,7 +826,11 @@ def _run_smoke(args: argparse.Namespace) -> int:
             water_z_pin_by_model[label] = water_z_pin
 
         df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
-            scenario, results, args.seed, test_depths=smoke_depths
+            scenario,
+            results,
+            args.seed,
+            test_depths=smoke_depths,
+            discard_stats_by_model=discard_stats_by_model,
         )
 
         write_experiment_csv(
@@ -815,6 +902,10 @@ def _run_smoke(args: argparse.Namespace) -> int:
                 },
                 force=True,
             )
+        write_degeneracy_breakdown(
+            tmp_path / "e1_degeneracy_breakdown.json",
+            {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+        )
         print(f"Smoke-wrote all six artifacts to {tmp_path}")
 
     return 0
