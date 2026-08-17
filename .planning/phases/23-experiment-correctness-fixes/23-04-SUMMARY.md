@@ -124,3 +124,10 @@ None - no external service configuration required.
 ---
 *Phase: 23-experiment-correctness-fixes*
 *Completed: 2026-08-17*
+
+## Self-Check: PASSED
+
+- FOUND: `tests/unit/test_stale_provenance_strings.py`
+- FOUND: `.planning/phases/23-experiment-correctness-fixes/23-04-SUMMARY.md`
+- FOUND: commit `3f867c2`
+- FOUND: commit `defc75a`
