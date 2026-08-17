@@ -107,12 +107,25 @@ submission. POST follows it.
       reports. The reported number is **entirely the max extrinsic gradient** (extrinsics are
       unbounded, so `v = 1`): 92.78 non-refractive against 0.0247 refractive, a 3751x gap where
       the residual-magnitude ratio is only 2.03x. Both passes terminated on `ftol`, never `gtol`
-      — cost stopped moving while the gradient stayed large. So the non-refractive arm is **not
-      demonstrably stationary**, and the cause is not the pin.
+      — cost stopped moving while the gradient stayed large.
 
-      Direction of risk unchanged: an under-converged *baseline* arm has larger error than its
-      true optimum, which *inflates* E1's refractive-to-non-refractive ratio rather than
-      penalizing it — so the published 97–178x band is the number exposed.
+      *Resolved the same day by the warm-restart test (`probe_warm_restart.py`):* restarting each
+      solve from its own solution recovers **no cost** (largest relative drop 1.8e-9, on the
+      non-refractive intrinsic pass). **E1's baseline is converged and the comparison is fair** —
+      the ratio is not inflated by under-optimization, and the 97–178x band is *strengthened*, not
+      threatened. The fairness objection this requirement was opened over is answered.
+
+      *What replaces it — the reason the requirement still stands:* `optimality` is **unstable at
+      a fixed solution**. Cost moves 1.8e-9 while the reported number goes 92.78 → 27.58 → 2.16, a
+      43x range (control: the one solve whose cost moved exactly zero reports a bit-identical
+      optimality all three times). Two candidates, not separable from current data: extreme
+      gradient sensitivity in a narrow valley, or **finite-difference Jacobian noise dominating a
+      near-zero true gradient** — the gradient is `J^T r` with `J` built by finite differences, and
+      FD error scales with residual magnitude. If the latter, `optimality` in *every* benchmark
+      record this library writes is partly measuring Jacobian noise rather than conditioning.
+      Discriminator: recompute the gradient at a fixed solution with a higher-accuracy or analytic
+      Jacobian (`experiments/fd_jacobian_accuracy.py` is the natural instrument). The genuine
+      conditioning gap survives either way, at ~2.16 vs 0.00116 rather than 3751x.
 
       *Third regime found:* the scalar also mixes `v ≈ 700` for wide-bounded intrinsics (call 4's
       intrinsics block reads 49.97 scaled against a 0.068 raw gradient). `optimality` is therefore

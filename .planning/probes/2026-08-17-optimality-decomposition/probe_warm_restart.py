@@ -126,7 +126,15 @@ def main() -> int:
         try:
             for k in range(N_RESTARTS):
                 t1 = time.time()
-                restarted = real_ls(args[0], current.x, *args[2:], **kwargs)
+                # x0 may arrive positionally (args[1]) or as a keyword. Rebuilding
+                # it the wrong way raises "got multiple values for argument 'x0'",
+                # which on the first run silently produced zero restarts.
+                if len(args) >= 2:
+                    restarted = real_ls(args[0], current.x, *args[2:], **kwargs)
+                else:
+                    restart_kwargs = dict(kwargs)
+                    restart_kwargs["x0"] = current.x
+                    restarted = real_ls(*args, **restart_kwargs)
                 secs = time.time() - t1
                 new_cost = float(restarted.cost)
                 drop = prev_cost - new_cost
@@ -157,17 +165,26 @@ def main() -> int:
         finally:
             state["inner"] = False
 
-        total_rel = (float(result.cost) - prev_cost) / max(
-            abs(float(result.cost)), 1e-30
-        )
-        rec["total_relative_cost_drop"] = float(total_rel)
-        rec["verdict"] = (
-            "UNDER-CONVERGED" if total_rel > 1e-6 else "stalled at/near a minimum"
-        )
-        print(
-            f"  => total relative cost drop {100 * total_rel:.6f}%  [{rec['verdict']}]",
-            flush=True,
-        )
+        # Never default to a conclusion. If no restart actually ran, the probe
+        # measured nothing and must say so rather than reporting "stalled",
+        # which is what the 2026-08-17 first run wrongly did.
+        if not rec["restarts"]:
+            rec["total_relative_cost_drop"] = None
+            rec["verdict"] = "INDETERMINATE -- no restart completed"
+            print(f"  => {rec['verdict']}", flush=True)
+        else:
+            total_rel = (float(result.cost) - prev_cost) / max(
+                abs(float(result.cost)), 1e-30
+            )
+            rec["total_relative_cost_drop"] = float(total_rel)
+            rec["verdict"] = (
+                "UNDER-CONVERGED" if total_rel > 1e-6 else "stalled at/near a minimum"
+            )
+            print(
+                f"  => total relative cost drop {100 * total_rel:.6f}%  "
+                f"[{rec['verdict']}]",
+                flush=True,
+            )
 
         RECORDS.append(rec)
         return result

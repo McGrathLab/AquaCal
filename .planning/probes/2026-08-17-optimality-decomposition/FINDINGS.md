@@ -68,6 +68,11 @@ Both passes terminated `status = 2` (`ftol`), never `gtol` (1e-8). So the non-re
 stopped because *cost stopped moving*, with the gradient still far from zero — the signature of a
 stalled trust region or a very flat ill-conditioned valley, not of a stationary point.
 
+> **PARTLY SUPERSEDED by Findings 4-5 (warm-restart test, same day).** The inference that the arm
+> is "not stationary" does not survive: restarts recover no cost, and the 92.78 itself is unstable
+> at a fixed solution (92.78 → 2.16). The *measurement* above is correct; the *interpretation* of
+> it as non-stationarity was wrong. The genuine conditioning gap is ~2.16 vs 0.00116, not 3751x.
+
 ## Finding 3 — `optimality` is not comparable across blocks
 
 Call 4's intrinsics block reports scaled 49.97 against a raw gradient of 0.068 — the CL distance
@@ -91,6 +96,12 @@ under-converged *baseline* arm has larger error than its true optimum, which **i
 refractive-to-non-refractive ratio rather than penalizing it. The 97-178x band is the exposed
 number.
 
+> **SUPERSEDED by Finding 4 (same day).** The warm-restart test answered this: the baseline is
+> converged, restarts recover ~0 cost, and E1's ratio is **not** inflated by under-optimization.
+> The risk described in this paragraph was real to raise and turned out not to materialize. Read
+> Finding 4 as the settled position; this paragraph is kept to show what was believed before the
+> follow-up ran.
+
 ## Open, for Phase 24/25
 
 1. Is the extrinsic gradient at termination genuinely non-stationary, or is the trust region
@@ -103,3 +114,101 @@ number.
    `23-VALIDATION.md:72-74`, `23-RESEARCH.md:76`, `23-01-PLAN.md:103`, `23-01-SUMMARY.md:153`.
    Left un-edited here deliberately — those are committed phase artifacts, and amending them is the
    user's call.
+
+---
+
+# Follow-up: warm-restart test (2026-08-17)
+
+**Script:** `probe_warm_restart.py` · **Raw:** `warm_restart.json` · **Log:** `warm_restart.log`
+
+## Probe defect on the first attempt — recorded deliberately
+
+The first run passed `x0` positionally while E1 passes it as a keyword, so every
+restart raised `got multiple values for argument 'x0'` and **zero restarts ran**.
+The verdict logic then defaulted to `"stalled at/near a minimum"` on an empty
+restart list — i.e. it reported the reassuring answer having measured nothing.
+
+Fixed twice over: the call now handles both calling conventions, and an empty
+restart list yields `INDETERMINATE -- no restart completed` rather than a
+conclusion. This is the same class of defect as FIX-05's always-red `--check`,
+in the opposite direction — a gate that cannot fail is as useless as one that
+cannot pass.
+
+## Finding 4 — both arms are converged in cost; the comparison is fair
+
+Restarting each solve from its own solution (trust region reset, two successive
+restarts) recovers essentially nothing:
+
+| Solve | base cost | after 2 restarts | relative drop |
+|---|---|---|---|
+| refractive, interface | 3688.797145 | 3688.797145 | 0 |
+| refractive, intrinsic | 3680.034008 | 3680.034008 | 2.6e-13 |
+| non-refractive, interface | 26067.02058 | 26067.02058 | 2.1e-12 |
+| non-refractive, intrinsic | 15097.61231 | 15097.61228 | 1.8e-9 |
+
+**E1's non-refractive baseline is not under-optimized.** The ratio is therefore
+not inflated by a badly-converged baseline, and the fairness objection raised
+when DEGEN-05 was opened is answered in E1's favour. This *strengthens* the
+97-178x band rather than threatening it.
+
+## Finding 5 — `optimality` is unstable at a fixed solution
+
+Cost does not move, yet the reported optimality collapses on restart:
+
+| Solve | base | restart 1 | restart 2 |
+|---|---|---|---|
+| non-refractive, intrinsic | 92.78 | 27.58 | **2.16** |
+| non-refractive, interface | 1.4445 | 0.0039 | 0.0041 |
+| refractive, intrinsic | 0.0247 | 0.00121 | 0.00116 |
+| refractive, interface | 0.00114616 | 0.00114616 | 0.00114616 |
+
+A 43x range at the same solution point. Consistency check: call 1 moved exactly
+zero in cost and its optimality is bit-identical across all three runs, so the
+effect tracks tiny movements in `x` rather than being random.
+
+Two candidate causes, not separable from this data:
+
+1. **Extreme gradient sensitivity** — a narrow, high-curvature valley where cost
+   changes quadratically but the gradient changes fast.
+2. **Finite-difference Jacobian noise** — the gradient is `J^T r` with `J` built
+   by finite differences. Near a minimum the true gradient is ~0, so the computed
+   one is dominated by FD error, which scales with residual magnitude. This would
+   also explain why the arm with ~2x larger residuals shows a far larger
+   optimality.
+
+(2) is the more consequential hypothesis: if FD error dominates, then
+`optimality` in **every** benchmark record this library writes is partly
+measuring Jacobian noise rather than conditioning. `experiments/fd_jacobian_accuracy.py`
+already exists and is the natural instrument. Discriminator: recompute the
+gradient at a fixed solution with a higher-accuracy (or analytic) Jacobian and
+see whether the reported optimality falls.
+
+The genuine conditioning gap survives either way: after restarts, non-refractive
+2.16 vs refractive 0.00116. The arm really is worse-conditioned -- roughly 43x
+less dramatically than the headline number implied.
+
+## Finding 6 — the Huber knee explains the arms' asymmetry
+
+Measured independently of the restart machinery, so unaffected by the defect above:
+
+| Solve | median \|r\| | p90 \|r\| | past knee (`f_scale` = 1.0) |
+|---|---|---|---|
+| refractive, interface | 0.3357 | 0.8232 | **4.5%** |
+| refractive, intrinsic | 0.3351 | 0.8226 | **4.5%** |
+| non-refractive, interface | 0.9444 | 2.8225 | **47.7%** |
+| non-refractive, intrinsic | 0.6174 | 1.8233 | **29.4%** |
+
+The refractive arm sits almost entirely inside the quadratic region; a third to a
+half of the non-refractive arm's residuals are past the knee, in the linear
+regime where curvature collapses. A 6-10x difference in how much of the problem
+is effectively linearized is a sufficient explanation for the non-refractive
+arm's earlier `ftol` trip and larger apparent gradient.
+
+**Open, and now an estimator question rather than a convergence one:** the
+baseline is optimized under a robust loss whose knee suits the *other* arm's
+residual scale. A symmetric rule -- `f_scale = 3 x median|r|` -- reproduces the
+status quo for the refractive arm almost exactly (3 x 0.3357 = 1.007 vs the
+current 1.0) while moving the baseline to ~2.8 / ~1.9. That rule changes nothing
+about the method and only re-tunes the baseline, so it is the defensible form of
+the test. Comparison metric must be **accuracy, not cost** -- changing `f_scale`
+changes the objective, so costs are not comparable across runs.

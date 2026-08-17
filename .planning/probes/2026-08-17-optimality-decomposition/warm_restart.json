@@ -1,0 +1,177 @@
+{
+  "n_restarts": 2,
+  "records": [
+    {
+      "label": "call_1",
+      "base": {
+        "cost": 3688.7971450716086,
+        "optimality": 0.001146159591411948,
+        "status": 2,
+        "nfev": 14,
+        "seconds": 71.98104429244995
+      },
+      "restarts": [
+        {
+          "index": 1,
+          "cost": 3688.7971450716086,
+          "cost_drop": 0.0,
+          "relative_cost_drop": 0.0,
+          "optimality": 0.001146159591411948,
+          "status": 3,
+          "nfev": 2,
+          "seconds": 6.175126552581787
+        },
+        {
+          "index": 2,
+          "cost": 3688.7971450716086,
+          "cost_drop": 0.0,
+          "relative_cost_drop": 0.0,
+          "optimality": 0.001146159591411948,
+          "status": 3,
+          "nfev": 2,
+          "seconds": 6.147613763809204
+        }
+      ],
+      "residuals": {
+        "n_residuals": 29898,
+        "median_abs_residual": 0.3356752837035799,
+        "mean_abs_residual": 0.39773669337588774,
+        "p90_abs_residual": 0.823190120753361,
+        "max_abs_residual": 2.1603161616342277,
+        "f_scale": 1.0,
+        "fraction_past_huber_knee": 0.04498628670814101
+      },
+      "total_relative_cost_drop": 0.0,
+      "verdict": "stalled at/near a minimum"
+    },
+    {
+      "label": "call_2",
+      "base": {
+        "cost": 3680.034007917413,
+        "optimality": 0.02473573255605288,
+        "status": 2,
+        "nfev": 4,
+        "seconds": 29.781643390655518
+      },
+      "restarts": [
+        {
+          "index": 1,
+          "cost": 3680.0340079164444,
+          "cost_drop": 9.686118573881686e-10,
+          "relative_cost_drop": 2.6320731148251555e-13,
+          "optimality": 0.001209164423698894,
+          "status": 2,
+          "nfev": 2,
+          "seconds": 14.763870477676392
+        },
+        {
+          "index": 2,
+          "cost": 3680.0340079164253,
+          "cost_drop": 1.9099388737231493e-11,
+          "relative_cost_drop": 5.190003325008715e-15,
+          "optimality": 0.0011588096383547963,
+          "status": 4,
+          "nfev": 2,
+          "seconds": 15.126481771469116
+        }
+      ],
+      "residuals": {
+        "n_residuals": 29898,
+        "median_abs_residual": 0.335066000521806,
+        "mean_abs_residual": 0.3973308513196819,
+        "p90_abs_residual": 0.8226146831214578,
+        "max_abs_residual": 2.2294107345628618,
+        "f_scale": 1.0,
+        "fraction_past_huber_knee": 0.04508662786808482
+      },
+      "total_relative_cost_drop": 2.6839731480752287e-13,
+      "verdict": "stalled at/near a minimum"
+    },
+    {
+      "label": "call_3",
+      "base": {
+        "cost": 26067.0205835744,
+        "optimality": 1.4445430872830798,
+        "status": 2,
+        "nfev": 25,
+        "seconds": 93.74723291397095
+      },
+      "restarts": [
+        {
+          "index": 1,
+          "cost": 26067.020583520338,
+          "cost_drop": 5.4060365073382854e-08,
+          "relative_cost_drop": 2.073898890748101e-12,
+          "optimality": 0.0038992314798633743,
+          "status": 3,
+          "nfev": 13,
+          "seconds": 30.6096293926239
+        },
+        {
+          "index": 2,
+          "cost": 26067.020583520312,
+          "cost_drop": 2.546585164964199e-11,
+          "relative_cost_drop": 9.769375663032849e-16,
+          "optimality": 0.00407375592385506,
+          "status": 3,
+          "nfev": 14,
+          "seconds": 32.031373023986816
+        }
+      ],
+      "residuals": {
+        "n_residuals": 29898,
+        "median_abs_residual": 0.9443541531907726,
+        "mean_abs_residual": 1.2770872167692646,
+        "p90_abs_residual": 2.8224728057246122,
+        "max_abs_residual": 12.056383764907423,
+        "f_scale": 1.0,
+        "fraction_past_huber_knee": 0.47708876847949694
+      },
+      "total_relative_cost_drop": 2.074875828314402e-12,
+      "verdict": "stalled at/near a minimum"
+    },
+    {
+      "label": "call_4",
+      "base": {
+        "cost": 15097.612313075724,
+        "optimality": 92.7841140024072,
+        "status": 2,
+        "nfev": 9,
+        "seconds": 63.32562589645386
+      },
+      "restarts": [
+        {
+          "index": 1,
+          "cost": 15097.612285727202,
+          "cost_drop": 2.7348522053216584e-05,
+          "relative_cost_drop": 1.8114468358371213e-09,
+          "optimality": 27.58166297315256,
+          "status": 2,
+          "nfev": 2,
+          "seconds": 14.70833683013916
+        },
+        {
+          "index": 2,
+          "cost": 15097.61228383734,
+          "cost_drop": 1.8898626876762137e-06,
+          "relative_cost_drop": 1.251762631010752e-10,
+          "optimality": 2.1638793924023503,
+          "status": 2,
+          "nfev": 3,
+          "seconds": 14.873950958251953
+        }
+      ],
+      "residuals": {
+        "n_residuals": 29898,
+        "median_abs_residual": 0.6173826706655063,
+        "mean_abs_residual": 0.8667853696909301,
+        "p90_abs_residual": 1.8233359105177782,
+        "max_abs_residual": 10.407968944163258,
+        "f_scale": 1.0,
+        "fraction_past_huber_knee": 0.29420028095524786
+      },
+      "total_relative_cost_drop": 1.9366230987114466e-09,
+      "verdict": "stalled at/near a minimum"
+    }
+  ]
+}
