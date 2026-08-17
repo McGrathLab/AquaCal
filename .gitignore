@@ -323,3 +323,9 @@ experiments/results_linux32gb/e2_*/reconstruction_errors.csv
 !experiments/results_linux32gb/e2_timing/run.log
 !experiments/results_linux32gb/e2_memory/run.log
 !experiments/results_linux32gb/e2_cv413/run.log
+
+# Phase 23's in-phase verification output directory (D-12). Every run this
+# phase's plans schedule lands here at one seed and is never committed; the
+# evidence it produces is transcribed into each plan's own 23-0N-SUMMARY.md
+# instead.
+experiments/verify_23/

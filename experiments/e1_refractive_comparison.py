@@ -143,6 +143,83 @@ BENCHMARK_FILENAMES = {
     "non_refractive": "e1_benchmark_nonrefractive.json",
 }
 
+# D-01/FIX-01: at n_water=1.0 the refractive projector IS the pinhole projector
+# (tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity, agreement
+# to atol=1e-12), so water_z is an EXACT null direction in this arm -- the cost is
+# flat to 13 significant figures over a 1.5 m sweep while the domain guard climbs
+# 0 -> 14,949. A degenerate bounds interval of this half-width around the
+# scenario's own ground-truth water_z pins the parameter without removing it from
+# the problem. Measured 2026-08-17 (probe_pinned_normal_free.py, both stage-3
+# passes patched): recovered water_z = 1.030999999999 m against GT 1.031 m.
+WATER_Z_PIN_HALF_WIDTH = 1e-12
+
+
+def resolve_water_z_pin(scenario, n_water: float) -> float | None:
+    """Return the water_z value to pin the non-refractive arm at, or None.
+
+    Returns `None` whenever `n_water != 1.0` -- the refractive arm must stay
+    unpinned (water_z is genuinely observable there; pinning it inflates the
+    headline ratio to a flattering 168x and breaks the manuscript's
+    stable-anisotropy claim, `.planning/MANUSCRIPT-FINDINGS.md:972`).
+
+    At `n_water == 1.0`, reads the scenario's own ground-truth `water_zs` and
+    returns the single shared value. Raises `ValueError` if the scenario's
+    cameras do not share one water_z -- a shared pin is undefined for a
+    non-shared ground truth (E1's `SCENARIO_NAME = "realistic"` scenario
+    always shares one, via `generate_real_rig_array`).
+    """
+    if n_water != 1.0:
+        return None
+    distinct = set(scenario.water_zs.values())
+    if len(distinct) != 1:
+        raise ValueError(
+            f"resolve_water_z_pin: scenario '{scenario.name}' does not share a "
+            f"single water_z across cameras -- found {sorted(distinct)}. A "
+            "shared pin is undefined for a non-shared ground truth."
+        )
+    return next(iter(distinct))
+
+
+def build_water_z_provenance(pin: float | None) -> dict:
+    """D-04 provenance triple for a benchmark record's `solver_config`.
+
+    Both arms carry the same key set (`water_z_pinned_m`, `water_z_pin_mechanism`,
+    `water_z_pin_reason`) so a reader diffing the non-refractive and refractive
+    records finds both the asymmetry and its justification without leaving the
+    artifact.
+    """
+    if pin is None:
+        return {
+            "water_z_pinned_m": None,
+            "water_z_pin_mechanism": None,
+            "water_z_pin_reason": (
+                "deliberately NOT pinned: under refraction water_z is genuinely "
+                "observable and estimating it is the method's contribution "
+                "(.planning/MANUSCRIPT-FINDINGS.md:972)."
+            ),
+        }
+    return {
+        "water_z_pinned_m": pin,
+        "water_z_pin_mechanism": (
+            "degenerate bounds interval (lb = ub -/+ 1e-12) on the water_z "
+            "slot, threaded from the experiment to build_bounds at BOTH "
+            "stage-3 passes (interface_estimation.py and refinement.py); the "
+            "parameter stays packed and is not removed from the problem"
+        ),
+        "water_z_pin_reason": (
+            "at n_water=1.0 the refractive projector IS the pinhole projector "
+            "(tests/unit/test_refractive_geometry.py::"
+            "TestUnitIndexPinholeIdentity, agreement to atol=1e-12), so "
+            "water_z is an exact null direction in this arm -- sweeping it "
+            "over 1.5 m leaves the cost constant to 13 significant figures "
+            "while the domain-guard count climbs 0 -> 14,949 -- and pinning "
+            "it is therefore a reparameterization of a null space, not a "
+            "model change. measurement: "
+            ".planning/MANUSCRIPT-FINDINGS.md:892-903"
+        ),
+    }
+
+
 # Pinned key columns for sort-before-write / --check row realignment (Pitfall 5).
 EXP1_KEY_COLUMNS = ["camera", "model"]
 EXP2_KEY_COLUMNS = ["test_depth_m", "model"]
@@ -297,18 +374,30 @@ def compute_xyz_errors(calibration, test_poses, test_detections, board):
 
 def _run_one_model(scenario, n_water, seed):
     """Calibrate one model and return (result, detections, timings, diagnostics,
-    discard_stats).
+    discard_stats, water_z_pin).
 
     `discard_stats["degenerate_observations_at_solution"]` (D-19.3-11) is the
     final-solution guard count `calibrate_synthetic` recorded via
     `discard_stats_out`; a non-zero count logs one prominent warning here so
     it is never silently swallowed, but this function never raises on it --
     the library records, the harness (or plan 19.3-08's queue script) gates.
+
+    `water_z_pin` (FIX-01) is the resolved pin value (or `None`) from
+    `resolve_water_z_pin` -- all four of E1's call sites (`_run_full`,
+    `_run_smoke`, `_run_check`, `_run_band`) reach the solver through this one
+    function, so the pin is resolved and applied here rather than at each
+    caller.
     """
     diag_stage3 = SolverDiagnostics()
     diag_intrinsic_pass = SolverDiagnostics()
     timings: dict[str, float] = {}
     discard_stats: dict[str, int] = {}
+    water_z_pin = resolve_water_z_pin(scenario, n_water)
+    water_z_bounds = (
+        (water_z_pin - WATER_Z_PIN_HALF_WIDTH, water_z_pin + WATER_Z_PIN_HALF_WIDTH)
+        if water_z_pin is not None
+        else None
+    )
     result, detections = calibrate_synthetic(
         scenario,
         n_water=n_water,
@@ -320,6 +409,7 @@ def _run_one_model(scenario, n_water, seed):
         },
         timings_out=timings,
         discard_stats_out=discard_stats,
+        water_z_bounds=water_z_bounds,
     )
     diagnostics = {
         "stage3_interface_optimization": diag_stage3,
@@ -334,7 +424,7 @@ def _run_one_model(scenario, n_water, seed):
             n_water,
             n_degenerate,
         )
-    return result, detections, timings, diagnostics, discard_stats
+    return result, detections, timings, diagnostics, discard_stats, water_z_pin
 
 
 def merge_band_columns(df_exp2: pd.DataFrame, df_exp3: pd.DataFrame) -> pd.DataFrame:
@@ -522,16 +612,18 @@ def _run_full(args: argparse.Namespace) -> int:
     timings_by_model = {}
     diagnostics_by_model = {}
     discard_stats_by_model = {}
+    water_z_pin_by_model = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, timings, diagnostics, discard_stats = _run_one_model(
-            scenario, n_water, args.seed
+        result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+            _run_one_model(scenario, n_water, args.seed)
         )
         print(f"  Reprojection RMS: {result.diagnostics.reprojection_error_rms:.4f} px")
         results[label] = (result, detections)
         timings_by_model[label] = timings
         diagnostics_by_model[label] = diagnostics
         discard_stats_by_model[label] = discard_stats
+        water_z_pin_by_model[label] = water_z_pin
 
     print("\nEvaluating depth sweep and anisotropy...")
     df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
@@ -596,8 +688,14 @@ def _run_full(args: argparse.Namespace) -> int:
                 "gtol": diagnostics_by_model[label][
                     "stage3_interface_optimization"
                 ].gtol,
+                **build_water_z_provenance(water_z_pin_by_model[label]),
             },
-            accuracy={"reprojection_rms_px": result.diagnostics.reprojection_error_rms},
+            accuracy={
+                "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                "water_z_recovered_m": float(
+                    next(iter(result.cameras.values())).water_z
+                ),
+            },
             force=args.force,
         )
         print(f"Wrote {record_path}")
@@ -623,14 +721,16 @@ def _run_smoke(args: argparse.Namespace) -> int:
         timings_by_model = {}
         diagnostics_by_model = {}
         discard_stats_by_model = {}
+        water_z_pin_by_model = {}
         for label, n_water in MODELS:
-            result, detections, timings, diagnostics, discard_stats = _run_one_model(
-                scenario, n_water, args.seed
+            result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+                _run_one_model(scenario, n_water, args.seed)
             )
             results[label] = (result, detections)
             timings_by_model[label] = timings
             diagnostics_by_model[label] = diagnostics
             discard_stats_by_model[label] = discard_stats
+            water_z_pin_by_model[label] = water_z_pin
 
         df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
             scenario, results, args.seed, test_depths=smoke_depths
@@ -694,9 +794,13 @@ def _run_smoke(args: argparse.Namespace) -> int:
                     "gtol": diagnostics_by_model[label][
                         "stage3_interface_optimization"
                     ].gtol,
+                    **build_water_z_provenance(water_z_pin_by_model[label]),
                 },
                 accuracy={
-                    "reprojection_rms_px": result.diagnostics.reprojection_error_rms
+                    "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                    "water_z_recovered_m": float(
+                        next(iter(result.cameras.values())).water_z
+                    ),
                 },
                 force=True,
             )
@@ -721,8 +825,8 @@ def _run_check(args: argparse.Namespace) -> int:
     results = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, _timings, _diagnostics, _discard_stats = _run_one_model(
-            scenario, n_water, args.seed
+        result, detections, _timings, _diagnostics, _discard_stats, _water_z_pin = (
+            _run_one_model(scenario, n_water, args.seed)
         )
         results[label] = (result, detections)
 
@@ -788,6 +892,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     last_timings_by_model: dict = {}
     last_diagnostics_by_model: dict = {}
     last_discard_stats_by_model: dict = {}
+    last_water_z_pin_by_model: dict = {}
     last_scenario = None
     # `run_seed_band` returns ONE concatenated frame and stamps `seed` onto it
     # itself; it cannot return two, and its signature is shared with E7 so it
@@ -799,20 +904,23 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     def _runner(seed: int) -> pd.DataFrame:
         nonlocal last_results, last_timings_by_model, last_diagnostics_by_model
         nonlocal last_discard_stats_by_model, last_scenario
+        nonlocal last_water_z_pin_by_model
 
         scenario = create_scenario(scenario_name, seed=seed)
         results: dict = {}
         timings_by_model: dict = {}
         diagnostics_by_model: dict = {}
         discard_stats_by_model: dict = {}
+        water_z_pin_by_model: dict = {}
         for label, n_water in MODELS:
-            result, detections, timings, diagnostics, discard_stats = _run_one_model(
-                scenario, n_water, seed
+            result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+                _run_one_model(scenario, n_water, seed)
             )
             results[label] = (result, detections)
             timings_by_model[label] = timings
             diagnostics_by_model[label] = diagnostics
             discard_stats_by_model[label] = discard_stats
+            water_z_pin_by_model[label] = water_z_pin
 
         df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
             scenario, results, seed, test_depths=depths
@@ -823,6 +931,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         last_timings_by_model = timings_by_model
         last_diagnostics_by_model = diagnostics_by_model
         last_discard_stats_by_model = discard_stats_by_model
+        last_water_z_pin_by_model = water_z_pin_by_model
         last_scenario = scenario
 
         return merge_band_columns(df_exp2, df_exp3)
@@ -922,6 +1031,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 "stage3_interface_optimization"
             ].gtol,
             "seeds": list(seeds),
+            **build_water_z_provenance(last_water_z_pin_by_model[label]),
         }
         write_direct_call_benchmark(
             record_path,
@@ -936,7 +1046,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             timings=last_timings_by_model[label],
             diagnostics=last_diagnostics_by_model[label],
             solver_config=solver_config,
-            accuracy={"reprojection_rms_px": result.diagnostics.reprojection_error_rms},
+            accuracy={
+                "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                "water_z_recovered_m": float(
+                    next(iter(result.cameras.values())).water_z
+                ),
+            },
             # Force is NOT implied for any artifact besides the band CSV
             # (D-19.4-14) -- normal resumability applies here.
             force=force,

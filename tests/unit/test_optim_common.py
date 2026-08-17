@@ -1045,3 +1045,72 @@ class TestInvalidProjectionKeepsGradient:
         assert costs[0] < costs[1] < costs[2], (
             f"cost is not monotone in height above the interface: {costs}"
         )
+
+
+class TestWaterZBoundsOverride:
+    """FIX-01 (D-01): a `water_z_bounds` override reaching `build_bounds` pins the
+    water_z slot(s) without touching the default [0.01, 2.0] bound when omitted.
+    """
+
+    N_CAMS = 3
+    N_FRAMES = 2
+
+    def _order(self):
+        camera_order = [f"cam{i}" for i in range(self.N_CAMS)]
+        frame_order = list(range(self.N_FRAMES))
+        return camera_order, frame_order
+
+    @pytest.mark.parametrize("normal_fixed", [True, False])
+    @pytest.mark.parametrize("shared_interface", [True, False])
+    def test_override_pins_exactly_the_water_z_slot(
+        self, normal_fixed, shared_interface
+    ):
+        camera_order, frame_order = self._order()
+        pin_lo, pin_hi = 1.031 - 1e-12, 1.031 + 1e-12
+
+        lower, upper = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+            water_z_bounds=(pin_lo, pin_hi),
+        )
+        lower_default, upper_default = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        n_tilt_params = 0 if normal_fixed else 2
+        n_extrinsic_params = 6 * (self.N_CAMS - 1)
+        n_water_z_params = 1 if shared_interface else self.N_CAMS
+        water_z_idx = n_tilt_params + n_extrinsic_params
+
+        water_z_slice = slice(water_z_idx, water_z_idx + n_water_z_params)
+        np.testing.assert_allclose(lower[water_z_slice], pin_lo)
+        np.testing.assert_allclose(upper[water_z_slice], pin_hi)
+
+        # Everything outside the water_z slot is untouched relative to the
+        # default-bound call.
+        mask = np.ones_like(lower, dtype=bool)
+        mask[water_z_slice] = False
+        np.testing.assert_array_equal(lower[mask], lower_default[mask])
+        np.testing.assert_array_equal(upper[mask], upper_default[mask])
+
+    def test_omitting_override_leaves_default_bound_byte_identical(self):
+        """Not passing water_z_bounds must reproduce today's [0.01, 2.0] exactly."""
+        camera_order, frame_order = self._order()
+        lower_a, upper_a = build_bounds(camera_order, frame_order, "cam0")
+        lower_b, upper_b = build_bounds(
+            camera_order, frame_order, "cam0", water_z_bounds=None
+        )
+        np.testing.assert_array_equal(lower_a, lower_b)
+        np.testing.assert_array_equal(upper_a, upper_b)
+
+        n_extrinsic_params = 6 * (self.N_CAMS - 1)
+        water_z_idx = n_extrinsic_params
+        assert lower_a[water_z_idx] == pytest.approx(0.01)
+        assert upper_a[water_z_idx] == pytest.approx(2.0)
