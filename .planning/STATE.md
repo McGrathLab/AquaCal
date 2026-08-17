@@ -67,6 +67,31 @@ and an explicit E7 before/after comparison (FIX-02's two extra free parameters c
 published 10-of-10 result); and POST-02 was re-timed to RUN-05 in Phase 29, because the paper
 cannot be submitted citing an archive that contradicts its own §3.
 
+**Revised 2026-08-17 after pre-planning recon on Phase 23** (read-only measurement, no source
+changed). Four corrections landed in ROADMAP.md, REQUIREMENTS.md and the todos:
+
+1. **FIX-01's acceptance criterion was vacuous and is now the recovered `water_z` against ground
+   truth 1.031 m.** Measured: FIX-02 alone drives E1's guard count 14,949 → 0 with `water_z` at
+   0.0120 m, at a cost identical to the unpinned solve to 10 significant figures. A criterion
+   phrased on the count passes whether or not the pin exists. FIX-01 now lands **before** FIX-02
+   in the non-refractive arm, and the combined pinned/normal-free configuration — the one the
+   re-run executes — is still unmeasured and must be emitted first.
+2. **E4's `--check` is structurally always-red** on `exit_code` and `status_reason` while its 33
+   metric columns reproduce to 1e-6, so it cannot verify FIX-05; and `_run_check` is itself on the
+   defective path (**two** call sites). DRIVER-03 must settle the contract early — Phase 23
+   consumes it.
+3. **FIX-06 is four code sites, not three**, the unfiled one being `e2_real_rig.py:555-563`'s
+   "60 → 12 → 1,817" against the verified 262 → 52 → 7,762.
+   `19.1-E2-FRAMESET-PROVENANCE.md` gets a supersession header, not an edit.
+4. **Phase 29's E2 sanity control is same-seed only** — 3.07e-09 across platforms at seed 42, but
+   a 0.761→0.910 px band across seeds.
+
+Also narrowed: DEGEN-01 (E6's band already persists the counter; the gap is E5/E1/E7), and FIX-03
+(the layout axis already runs all six seeds — MF-12's hand analysis was seed-43-only, not the
+sweep; the reproducible difference is 0.3592 mm, not 0.3600). **Phase 23's "six independent
+single-file fixes" framing does not survive:** three of the six interact. The phase boundary is
+unchanged, the plan decomposition is not six-way parallel.
+
 **Coverage:** 23/23 v2.1 requirement IDs mapped to exactly one phase, no orphans. (The milestone
 brief's "19 todos" is the pending-todo backlog file count; the discrete requirement IDs derived
 from those todos number 23 — see REQUIREMENTS.md § Traceability for the note.)

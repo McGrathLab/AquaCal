@@ -1,0 +1,74 @@
+[
+  {
+    "label": "n1.0_normalfixed_TRUE  (committed baseline)",
+    "n_water": 1.0,
+    "normal_fixed": true,
+    "elapsed_s": 190.4,
+    "degenerate_observations_at_solution": 14949,
+    "discard_stats": {
+      "pnp_attempts_total": 511,
+      "pnp_attempts_nonrefractive": 511,
+      "degenerate_observations_at_solution": 14949
+    },
+    "optimality_interface": 0.003955892975227471,
+    "optimality_intrinsic": 873.9763807429454,
+    "cost_interface": 26067.02058352036,
+    "cost_intrinsic": 15097.621078614444,
+    "status_interface": 3,
+    "status_intrinsic": 3,
+    "water_z_estimated": 1.9900948702944146,
+    "timings": {
+      "stage3_interface_optimization": 141.98740589999943,
+      "stage3_intrinsic_pass": 46.84356610000032
+    },
+    "ok": true
+  },
+  {
+    "label": "n1.0_normalfixed_FALSE (FIX-02 alone)",
+    "n_water": 1.0,
+    "normal_fixed": false,
+    "elapsed_s": 138.2,
+    "degenerate_observations_at_solution": 0,
+    "discard_stats": {
+      "pnp_attempts_total": 511,
+      "pnp_attempts_nonrefractive": 511,
+      "degenerate_observations_at_solution": 0
+    },
+    "optimality_interface": 7.284926295332703,
+    "optimality_intrinsic": 49.651241910874205,
+    "cost_interface": 26067.020584816863,
+    "cost_intrinsic": 15097.612288746863,
+    "status_interface": 2,
+    "status_intrinsic": 2,
+    "water_z_estimated": 0.011959561136834829,
+    "timings": {
+      "stage3_interface_optimization": 84.98803449999832,
+      "stage3_intrinsic_pass": 51.85850919999939
+    },
+    "ok": true
+  },
+  {
+    "label": "n1.333_normalfixed_FALSE (refractive control)",
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "elapsed_s": 136.1,
+    "degenerate_observations_at_solution": 0,
+    "discard_stats": {
+      "pnp_attempts_total": 511,
+      "pnp_attempts_refractive": 511,
+      "degenerate_observations_at_solution": 0
+    },
+    "optimality_interface": 0.001146159591411948,
+    "optimality_intrinsic": 0.02473573255605288,
+    "cost_interface": 3688.7971450716086,
+    "cost_intrinsic": 3680.034007917413,
+    "status_interface": 2,
+    "status_intrinsic": 2,
+    "water_z_estimated": 1.0235695472039534,
+    "timings": {
+      "stage3_interface_optimization": 66.67971630000102,
+      "stage3_intrinsic_pass": 26.36574230000042
+    },
+    "ok": true
+  }
+]

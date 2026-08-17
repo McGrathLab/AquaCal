@@ -49,8 +49,10 @@ worst-behaved camera dropped after seeing the data) — and the prose says "per-
 
 **What does reproduce, and is worth preserving:** the mechanism. Seed 43's
 `water_z_error_mm_mean` is 18.8547 and `z_position_error_mm_mean` is −18.4947 (opposite sign
-conventions); the difference is **0.3600 mm**, matching MF-12's reported `h_c` signed mean to the
-digit. The re-solve was faithful to the production run — only its output was never kept.
+conventions); the difference is **0.3592 mm**, matching MF-12's reported `h_c` signed mean.
+(Corrected 2026-08-17 from `0.3600`, which was a rounding of the same quantity, not a second
+measurement — the reproducible value from the committed columns is 0.3592.) The re-solve was
+faithful to the production run — only its output was never kept.
 
 ## Why it must land before the run
 
@@ -70,8 +72,12 @@ surface, rather than about four times worse at recovering the physical standoff.
 - Emit a **per-camera** table — one row per (configuration, seed, camera) — carrying raw Z error,
   gauge-corrected Z error, and `h_c` error. Per-camera rather than pre-aggregated is the whole
   point: it lets any reader apply or reject the `cam0`/`cam1` exclusions themselves.
-- Run the layout axis at **all six seeds (42–47)**, not seed 43 alone. Inside a full sweep the
-  extra five cost almost nothing and turn the caveat from an anecdote into a band.
+- ~~Run the layout axis at **all six seeds (42–47)**, not seed 43 alone.~~ **Already done —
+  verified 2026-08-17.** The layout axis runs all six seeds today; it was MF-12's *hand analysis*
+  that was seed-43-only, not the sweep. So this bullet is no work: the seeds are already there, and
+  what the fix must do is make the new signed/gauge-corrected columns and the per-camera table span
+  them, turning the caveat into a band without re-running anything extra. This makes FIX-03
+  smaller than it reads.
 - Bump the CSV schema version if E6 guards its column set, and record the bump in the SUMMARY.
 - Record the exact derivation of the four quantities — which columns, which aggregation, which
   cameras — in `.planning/MANUSCRIPT-FINDINGS.md`, so ledger rows can be written on the manuscript

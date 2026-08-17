@@ -118,17 +118,36 @@ suite rather than a moving target.
 **Depends on**: Nothing (first phase of the milestone)
 **Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06
 **Success Criteria** (what must be TRUE):
-  1. E1's non-refractive arm pins `water_z` and its degenerate-observation guard count drops
-     to 0 (from 14,949), while the refractive arm is left unpinned.
+  1. E1's non-refractive arm pins `water_z` — verified by the arm's **recovered `water_z` reading
+     ground truth 1.031 m**, with the guard count's drop to 0 (from 14,949) reported as
+     corroboration — while the refractive arm is left unpinned. The guard count alone is not the
+     test: FIX-02 alone zeroes it at a `water_z` of 0.0120 m (measured 2026-08-17), so a
+     criterion phrased on the count passes whether or not the pin exists.
   2. E1 and E7 solve with the interface normal free, matching the production pipeline's DOF
-     count instead of the library's `normal_fixed` signature default.
+     count instead of the library's `normal_fixed` signature default. **FIX-01 lands before
+     FIX-02 in the non-refractive arm**, and the combined pinned-`water_z`/free-normal
+     configuration — which is what the re-run executes, and which no probe could reach before the
+     pin existed — has its `water_z` and guard count emitted and checked here.
   3. E6's report shows signed, gauge-corrected Z error together with the per-camera
      decomposition, both behind the existing collinear caveat.
   4. E7's `fixed` rows are labelled vacuous-by-construction rather than presented as a measured
      `no_signature` verdict.
-  5. E4's aggregator resolves E2's benchmark row correctly under a custom `--out` directory, and
-     the three stale provenance strings in `e2_real_rig.py`/`synthetic.py` describe what is
-     actually true.
+  5. E4's aggregator resolves E2's benchmark row correctly under a custom `--out` directory —
+     at **both** call sites, including `_run_check` (`e4_benchmark_grid.py:1876`) — and the
+     **four** stale provenance sites in `e2_real_rig.py`/`synthetic.py` describe what is actually
+     true, with `19.1-E2-FRAMESET-PROVENANCE.md` carrying a supersession header rather than an
+     edit.
+  6. FIX-05 is verified by something other than `--check`, or by a `--check` whose contract
+     excludes `exit_code` and `status_reason`. Today those two columns can never match (33 of 35
+     already reproduce to 1e-6), so `--check` reads red before and after the fix and would hide a
+     regression instead of catching one. This is DRIVER-03's decision to make; Phase 23 consumes
+     it rather than answering it locally, which means the two phases must agree before either
+     ships.
+
+**Note on independence**: the phase brief calls these "six independent single-file fixes." Recon on
+2026-08-17 found three of them are not: FIX-01 and FIX-02 interact and must be sequenced, FIX-05 is
+two call sites plus a `--check` contract shared with Phase 26, and FIX-06 is four sites across two
+trees. The phase boundary is unchanged — the plan decomposition inside it is not six-way parallel.
 **Plans**: TBD
 
 ### Phase 24: Degeneracy Instrumentation
@@ -140,7 +159,10 @@ anything, and its warning stops over-firing.
 **Success Criteria** (what must be TRUE):
   1. `degenerate_observations_at_solution` appears in the production `benchmark.json` record
      instead of being dropped before it is written.
-  2. E5 and the band runs persist the counter in their own output artifacts.
+  2. E5 and the band runs persist the counter in their own output artifacts. (Narrowed
+     2026-08-17: **E6's band already does** — the column is present on all 102 rows. The real gap
+     is E5, E1 and E7; E1's 14,949 lives only in `e1_benchmark_nonrefractive.json →
+     problem_shape` and reaches no CSV.)
   3. The persisted counter is split by failure kind and by stage.
   4. The degenerate-observation warning fires only for the cases it actually applies to, with a
      corrected cause list.
@@ -236,6 +258,12 @@ manuscript-facing number traceable to it.
      `_optim_common.py`, this check is also what proves the degeneracy instrumentation did not
      perturb the solve. A drift to ~1e-2 means the run is broken in a way no completeness gate
      detects — check it explicitly, do not leave it to whoever reads the results.
+
+     **The control is same-seed only.** Verified 2026-08-17: a §3 quantity reproduces across the
+     Windows→Linux span to **3.07e-09**, better than the 1.5e-8 quoted above — but E2's *seed*
+     band on the same quantity spans 0.761→0.910 px. So compare seed 42 against seed 42 and
+     nothing else; run the control across seeds and a healthy run looks catastrophically broken.
+     State the seed in the gate's own output so the comparison cannot be misread later.
   3. **E7's ablation conclusion is compared before and after, explicitly.** FIX-02 gives E7 two
      extra free parameters per interface, which is exactly the kind of change that could soften
      the fixed-intrinsics arm's published 10-of-10 sign test (p = 0.00098, supplement §14). If

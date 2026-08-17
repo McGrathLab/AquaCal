@@ -41,7 +41,9 @@ provenance so the asymmetry is self-explaining.
   `e1_refractive_comparison.py:137` is where the two arms diverge.
 - Emit a field in `e1_benchmark_nonrefractive.json` stating that `water_z` was held, so a reader
   diffing the two benchmark records sees the difference rather than inferring it.
-- Expect the arm's `degenerate_observations_at_solution` to read 0 afterwards. That is the check.
+- Expect the arm's `degenerate_observations_at_solution` to read 0 afterwards. **That is a
+  necessary condition, not the check** — see § The guard count is not a valid acceptance test
+  below, added 2026-08-17. The check is the recovered `water_z` against ground truth 1.031 m.
 
 **Predicted magnitude, for the record only.** `HANDOFF.json:119` defers this item because it
 "deliberately shifts a published number in its 4th significant figure". The measured shift is
@@ -154,3 +156,41 @@ pass). That does not weaken the attribution (both stages are the same unit-index
 the raw numbers should not be quoted as solution-state counts.
 
 Method and provenance: `Desktop/aquacal-scoping-probes-findings-2026-08-15.md` §2.
+
+---
+
+## The guard count is not a valid acceptance test (measured 2026-08-17)
+
+**FIX-02 alone zeroes the guard count, without this pin, at a `water_z` 1.02 m from ground truth.**
+Three solves of E1 at seed 42, mirroring `_run_one_model`, with `normal_fixed` as the only knob:
+
+| | A: n=1.0, normal fixed | B: n=1.0, **normal free** (= FIX-02) | C: n=1.333, normal free |
+|---|---|---|---|
+| `degenerate_observations_at_solution` | **14,949** | **0** | 0 |
+| `water_z` (GT **1.031 m**) | 1.990 m | **0.0120 m** | 1.02357 m (−7.43 mm) |
+| `cost_interface` | 26067.020583**52** | 26067.020584**82** | 3688.797 |
+| `optimality_interface` | 3.96e-03 | 7.28e+00 | 1.15e-03 |
+
+Arm A reproduces the committed baseline exactly (14,949; optimality 9e+02), so the harness is
+sound. Arm B clears the counter because the surface wandered *below the cameras* instead of *above
+the targets* — same null direction, different landing spot, cost identical to 10 significant
+figures. The counter measures where the free parameter happened to land, not whether it was
+removed.
+
+**Consequences for this fix:**
+
+- **The acceptance criterion becomes the recovered `water_z`, checked against 1.031 m.** With the
+  pin in place that is trivially true by construction, which is the point: the check that proves
+  the pin is present is that the value *is* the pinned one and the emitted provenance field says
+  so. Zero guard count is reported alongside, as corroboration.
+- **Sequence FIX-01 and FIX-02 together for the non-refractive arm, and land FIX-01 first.** If
+  FIX-02 lands alone, the arm reports a clean guard count and this todo looks discharged when
+  nothing was pinned. If verification runs after both, the stated criterion passes either way.
+- **FIX-01 + FIX-02 combined is still unmeasured** — `water_z` pinned *and* the normal free, which
+  is the configuration the re-run actually uses. No probe can reach it until the pin exists, so the
+  first thing the implementation should emit is that arm's `water_z` and guard count.
+- **FIX-02 is safe for the refractive arm** — arm C recovers `water_z` to −7.43 mm and is the
+  best-conditioned of the three. This pin stays out of it, as § Do not requires.
+
+Probe and full findings: `.planning/probes/2026-08-17-phase-23-recon/`
+(`probe_normal_fixed.py`, `probe_normal_fixed.json`, `PHASE-23-RECON-FINDINGS.md`).

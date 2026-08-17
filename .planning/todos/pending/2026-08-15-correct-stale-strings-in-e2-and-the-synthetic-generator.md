@@ -70,6 +70,37 @@ so the module contradicts itself within a hundred lines.
   (`Spinoffs/papers/aquacal/AUDIT-goal4.md`, V-012 and the Pass A residual-risk log, TODO ledger
   T-08/T-10), plus the 2026-08-12 archive-repointing observation.
 
+## A fourth site, found 2026-08-17 — and it is the worst of them
+
+`e2_real_rig.py:555-563` carries the same retired-archive claim as site 1, in its most detailed and
+most wrong form. It is a code comment on the explicit-config branch:
+
+```
+# Explicit-config path (added 2026-07-27). The PUBLISHED Zenodo archive is a
+# ~4.3x frame-subsampled extraction of the capture that produced the
+# manuscript's section-3 numbers (60 usable frames -> 12 validation -> 1,817
+# comparisons, versus ~260 -> 52 -> 7,762). Reproducing section-3 therefore
+# requires pointing at the full-frameset config; ...
+```
+
+Against the values verified 2026-08-12 (262 usable → 210/52 split → 200 calibration frames →
+`num_comparisons = 7762`), the "60 → 12 → 1,817" triple is not merely stale — it is a concrete,
+citable set of wrong numbers sitting next to the correct ones, describing the archive the re-run
+consumes. Site 1's help text and this comment are the same claim; fix them in one pass or they
+diverge again.
+
+**The reference it cites needs a header, not an edit.**
+`.planning/phases/19.1-experiment-suite-consolidation/19.1-E2-FRAMESET-PROVENANCE.md:35-48` states
+the same subsampling. That document is **correct as history** — it describes record `18645385`,
+which really was subsampled. Rewriting it would destroy the provenance trail. Add a supersession
+header saying the archive was repointed to `21889922` in `25655f7` and that the frameset numbers
+below describe the superseded record. The `## Solution` bullet above already says to "check ...
+any `19.1-E2-FRAMESET-PROVENANCE.md` references"; this settles what that check should conclude.
+
+**So the count is four code sites** (two of them the same claim in the same file), plus one
+planning-doc header. The title's "three stale strings" is retained as filed; the requirement text
+in `REQUIREMENTS.md` (FIX-06) has been corrected.
+
 ## Scope boundary — artifacts, not prose
 
 Library and experiment work only. The manuscript tree (`Spinoffs/papers/aquacal/`) is read-only

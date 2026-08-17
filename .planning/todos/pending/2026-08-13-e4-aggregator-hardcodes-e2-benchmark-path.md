@@ -95,3 +95,28 @@ that reading in two ways:
 still stands and gets easier, not harder — `--check` re-aggregates from the committed cells, and
 the smoke cells exercise the aggregation path in seconds. Testing this costs nothing; discovering
 it after a multi-hour grid costs the grid.
+
+## Two corrections measured 2026-08-17
+
+**1. `--check` is structurally always-red, so it cannot serve as the test above.** Run today it
+reports 9 of 10 cells mismatched. Enumerating all 35 compared columns: **33 metric columns
+reproduce to 1e-6.** The only two failures are
+
+- `exit_code` — committed `0.0` versus a recomputed `None`, because `_run_check`
+  (`e4_benchmark_grid.py:1836`) hardcodes `"exit_code": None` at **:1872**; no subprocess runs
+  under `--check`, so there is no exit code to report.
+- `status_reason` — committed `NaN` versus a recomputed `''`.
+
+Neither can ever clear, on any tree, so `--check` gives **red before the fix and red after it** and
+would mask a real regression rather than catch one. Either exclude those two columns from the
+comparison, or verify with the smoke cells only. Whichever is chosen, it is the same decision
+DRIVER-03 is making about `--check`'s contract — settle it once, there, and have this fix consume
+it rather than inventing a local answer.
+
+**2. `_run_check` is itself on the defective path.** Line **1876** calls
+`build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)` — passing the module-level
+constant directly. The Solution above describes the aggregation path only; the fix must cover
+`_run_check` as well, or `--check` under `--out` keeps importing the other machine's real-rig row
+even after the main path is corrected. There are **two call sites, not one.**
+
+Column-by-column enumeration: `.planning/probes/2026-08-17-phase-23-recon/e4_check_detail.py`.

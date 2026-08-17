@@ -28,6 +28,14 @@ submission. POST follows it.
 - [ ] **FIX-01**: E1's non-refractive arm pins `water_z`, which is an exact null direction there,
       driving the arm's 14,949 degenerate observations to zero without pinning it in the
       refractive arm — todo `2026-08-15-pin-water-z-in-e1-non-refractive-arm`
+
+      *Acceptance criterion corrected 2026-08-17.* Verified by the **recovered `water_z` against
+      ground truth 1.031 m**, not by the guard count. Measured: FIX-02 alone drives the count to 0
+      with `water_z` at 0.0120 m — 1.02 m from truth — at a cost identical to the unpinned solve to
+      10 significant figures. The count reports where the free parameter landed, not whether it was
+      removed, so it is corroboration only. **Lands before FIX-02** in the non-refractive arm; the
+      pinned-and-normal-free combination is unmeasured and its `water_z` is the first thing the
+      implementation must emit.
 - [ ] **FIX-02**: E1 and E7 solve with the interface normal free, matching the production
       pipeline's DOF count instead of inheriting the library signature default —
       todo `2026-08-15-e1-and-e7-run-with-the-interface-normal-fixed-unlike-everything-else`
@@ -40,15 +48,33 @@ submission. POST follows it.
 - [ ] **FIX-05**: E4's aggregator resolves E2's benchmark row relative to the active output
       directory, so the real-rig row survives `--out` —
       todo `2026-08-13-e4-aggregator-hardcodes-e2-benchmark-path`
-- [ ] **FIX-06**: The three stale provenance strings in `e2_real_rig.py` and `synthetic.py`
-      describe what is actually true — todo
+
+      *Scope corrected 2026-08-17.* **Two call sites**, not one: `_run_check`
+      (`e4_benchmark_grid.py:1876`) passes the module-level `E2_BENCHMARK_PATH` too. And `--check`
+      cannot be the verification: 33 of its 35 columns already reproduce to 1e-6, while `exit_code`
+      (hardcoded `None` at :1872) and `status_reason` can never match — red before the fix and red
+      after. Consumes DRIVER-03's `--check` contract decision rather than inventing a local one.
+- [ ] **FIX-06**: The stale provenance strings in `e2_real_rig.py` and `synthetic.py` describe what
+      is actually true — todo
       `2026-08-15-correct-stale-strings-in-e2-and-the-synthetic-generator`
+
+      *Count corrected 2026-08-17: **four** code sites, not three*, plus one planning-doc header.
+      The unfiled fourth is `e2_real_rig.py:555-563`, a comment carrying the retired-archive claim
+      as a concrete wrong triple ("60 usable → 12 validation → 1,817 comparisons" against the
+      verified 262 → 52 → 7,762) on the branch the re-run uses. It is the same claim as the
+      `--config` help text and must be fixed in the same pass.
+      `19.1-E2-FRAMESET-PROVENANCE.md:35-48` gets a **supersession header, not an edit** — it is
+      correct as a description of the superseded record `18645385`.
 
 ### Degeneracy Observability (DEGEN) — the gate quantity must be readable off the artifacts
 
 - [ ] **DEGEN-01**: `degenerate_observations_at_solution` reaches the production benchmark
       record and is persisted by E5 and the band runs, instead of being lost before it is
       written — todo `2026-08-15-degeneracy-counter-is-unobservable-and-merges-two-failure-kinds`
+
+      *Scope narrowed 2026-08-17:* **E6's band already persists the column** (present on all 102
+      rows). The gap is E5, E1 and E7 only. E1's 14,949 lives solely in
+      `e1_benchmark_nonrefractive.json → problem_shape` and appears in no CSV.
 - [ ] **DEGEN-02**: The counter is split by failure kind **and** by stage, so the re-run's
       artifacts can answer the degeneracy question without re-running anything —
       todo `2026-08-15-degeneracy-instrumentation-the-rerun-must-emit`
@@ -70,6 +96,13 @@ submission. POST follows it.
 - [ ] **DRIVER-03**: `--check` has a decided, documented meaning across a deliberate baseline
       re-base, with written expectations replacing the reproduction bar where schemas change —
       todo `2026-08-15-suspend-programmatic-check-for-reshaped-artifacts`
+
+      *Concrete case added 2026-08-17:* E4's `--check` is **already** structurally always-red,
+      before any schema change — `exit_code` (hardcoded `None` because no subprocess runs) and
+      `status_reason` can never match, while all 33 metric columns reproduce to 1e-6. The contract
+      must say what happens to columns that are artifacts of the checking path itself rather than
+      of the run. FIX-05 (Phase 23) consumes this answer, so the decision cannot wait for Phase 26
+      to begin — settle it early and let Phase 26 document it.
 - [ ] **DRIVER-04**: Every pre-re-run output tree is moved aside before the run, so no stale
       artifact can be mistaken for a fresh one — phase 1 of todo
       `2026-08-15-archive-stale-outputs-before-the-run-purge-them-after`
