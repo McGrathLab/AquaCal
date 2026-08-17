@@ -44,6 +44,7 @@ from experiments._io import (
 )
 from experiments.e4_benchmark_grid import (
     _NULL_METRICS,
+    CHECK_EXCLUDED_COLUMNS,
     DECLARED_CELLS,
     E2_BENCHMARK_PATH,
     GRID_BOARD_CONFIG,
@@ -1587,3 +1588,24 @@ def test_both_build_grid_dataframe_callers_resolve_relative_to_out():
             f"{fn.__name__} must not pass the bare E2_BENCHMARK_PATH constant "
             "to build_grid_dataframe"
         )
+
+
+# ---------------------------------------------------------------------------
+# D-07/D-08: the named --check exclusion list
+# ---------------------------------------------------------------------------
+
+
+def test_check_excluded_columns_is_exactly_two_named_entries():
+    """A named list beats a heuristic (D-07): growing it is a deliberate
+    test edit, never a silent inheritance."""
+    assert CHECK_EXCLUDED_COLUMNS == ("exit_code", "status_reason")
+
+
+def test_run_check_passes_exclude_columns_and_prints_the_skipped_set():
+    """D-07: _run_check must pass exclude_columns=CHECK_EXCLUDED_COLUMNS to
+    compare_experiment_csv, and must print what it skipped on every run."""
+    import inspect
+
+    source = inspect.getsource(e4_grid_module._run_check)
+    assert "exclude_columns=CHECK_EXCLUDED_COLUMNS" in source
+    assert "print(" in source

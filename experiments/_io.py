@@ -335,6 +335,7 @@ def compare_experiment_csv(
     *,
     key_columns: list[str],
     rtol: float,
+    exclude_columns: tuple[str, ...] = (),
 ) -> ComparisonReport:
     """Compare a freshly produced DataFrame against a committed baseline CSV (D-22).
 
@@ -361,6 +362,21 @@ def compare_experiment_csv(
         key_columns: Columns identifying each row, used to realign the two
             frames before comparing (not row index -- Pitfall 5).
         rtol: Relative tolerance applied to float columns only.
+        exclude_columns: Column names to drop from the CELL-level comparison
+            only (D-07/D-08). The full-header comparison above is NEVER
+            affected by this parameter -- a genuine schema change still
+            fails loudly even if the differing column is named here. This is
+            the mechanism for columns that are artifacts of the *checking
+            path* itself (e.g. a value only a live subprocess would produce)
+            rather than of the run being checked; the caller declares and
+            justifies its own list at the call site -- there is no default
+            list here, because a named list beats a heuristic (D-07: the
+            next such column should require a deliberate decision, not
+            silently inherit an exemption). A name not present in the
+            frames is silently ignored. Defaults to `()`, which leaves
+            today's exact behavior and message byte-identical. Phase 26
+            (DRIVER-03) documents this contract; the two must not diverge
+            (D-08).
 
     Returns:
         A `ComparisonReport` describing the outcome. On a header mismatch, a
@@ -455,6 +471,17 @@ def compare_experiment_csv(
         drop=True
     )
 
+    # D-07/D-08: drop the caller-named excluded columns from the CELL-level
+    # comparison only -- the header comparison above already ran on the
+    # unmodified column set, so a genuine schema change still fails even for
+    # a column named here. A name not present in the frames is ignored
+    # (the caller's declared intent, not an error).
+    excluded_present = [c for c in exclude_columns if c in fresh_sorted.columns]
+    if excluded_present:
+        fresh_sorted = fresh_sorted.drop(columns=excluded_present)
+        committed_sorted = committed_sorted.drop(columns=excluded_present)
+    compare_columns = [c for c in fresh_columns if c not in excluded_present]
+
     # A column that is all empty strings in `fresh` (e.g. status_reason on an
     # all-"ok" grid) round-trips through CSV as an all-NaN float64 column on
     # `committed`, which would otherwise misclassify it as a float column
@@ -471,11 +498,11 @@ def compare_experiment_csv(
 
     float_columns = [
         c
-        for c in fresh_columns
+        for c in compare_columns
         if pd.api.types.is_float_dtype(fresh_sorted[c])
         or pd.api.types.is_float_dtype(committed_sorted[c])
     ]
-    non_float_columns = [c for c in fresh_columns if c not in float_columns]
+    non_float_columns = [c for c in compare_columns if c not in float_columns]
 
     # A column that is MOSTLY empty strings but carries at least one real
     # string (e.g. E6's status_reason: 13 "" rows plus one genuine
@@ -524,12 +551,15 @@ def compare_experiment_csv(
             float_mismatch_error = exc
 
     if not mismatched_non_float and float_mismatch_error is None:
+        message = "Fresh output matches committed baseline within tolerance."
+        if excluded_present:
+            message += f" (excluded from cell comparison: {excluded_present})"
         return ComparisonReport(
             passed=True,
             worst_cell=None,
             worst_rtol=0.0,
             n_mismatched_cells=0,
-            message="Fresh output matches committed baseline within tolerance.",
+            message=message,
         )
 
     # Assemble the worst-offending-cell report.
@@ -608,6 +638,8 @@ def compare_experiment_csv(
         f"{n_mismatched_cells} cell(s) mismatched against {committed_path}. "
         f"Worst: {worst_cell}"
     )
+    if excluded_present:
+        message += f" (excluded from cell comparison: {excluded_present})"
     return ComparisonReport(
         passed=False,
         worst_cell=worst_cell,

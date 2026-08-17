@@ -184,6 +184,27 @@ GRID_BOARD_CONFIG = BoardConfig(
 
 CHECK_RTOL = 1e-6
 
+# D-07/D-08: --check's named exclusion list, declared here (not in
+# experiments/_io.py, which owns the shared MECHANISM only -- see
+# compare_experiment_csv's exclude_columns docstring) because putting the
+# list in the shared module would silently grant the exemption to every
+# experiment's --check, including ones nobody has audited for always-red
+# columns. Measured 2026-08-17 (.planning/probes/2026-08-17-phase-23-recon/
+# e4_check_detail.py, 35 columns x 10 rows): all 33 OTHER columns reproduce
+# to 1e-6 on the committed tree; only these two fail, and can never pass:
+#
+# - "exit_code": _run_check hardcodes "exit_code": None (no subprocess runs
+#   under --check) while the committed CSV holds 0.0 from the real run that
+#   produced it. Synthesizing "exit_code: 0" from the committed record was
+#   considered and rejected -- it fabricates a field in a provenance
+#   artifact (D-07).
+# - "status_reason": an empty-string-versus-NaN round-trip through CSV.
+#
+# A third entry here is a deliberate decision requiring the same
+# measurement-backed justification, not a silent inheritance (D-07: a named
+# list beats a heuristic).
+CHECK_EXCLUDED_COLUMNS: tuple[str, ...] = ("exit_code", "status_reason")
+
 # The exit code run_grid_cell's --cell child returns when
 # write_direct_call_benchmark skipped an existing file (force=False). Lets
 # run_cell_subprocess map a skip onto status="skipped_existing" without
@@ -1939,9 +1960,23 @@ def _run_check(args: argparse.Namespace) -> int:
     logger.info("E2 real-rig record: %s (%s)", e2_path, e2_note)
     print(f"E2 real-rig record: {e2_path} ({e2_note})")
 
+    # D-07: print what --check skips, unconditionally, pass or fail -- so a
+    # reader of a green --check knows exactly what green does not cover.
+    print(
+        "--check excludes these columns from cell comparison (never "
+        f"reproducible under --check, D-07): {', '.join(CHECK_EXCLUDED_COLUMNS)} "
+        "-- exit_code: _run_check hardcodes None (no subprocess runs under "
+        "--check) while the committed CSV holds the real run's exit code; "
+        "status_reason: empty-string-versus-NaN round-trip through CSV."
+    )
+
     df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     report = compare_experiment_csv(
-        df, committed_path, key_columns=GRID_KEY_COLUMNS, rtol=CHECK_RTOL
+        df,
+        committed_path,
+        key_columns=GRID_KEY_COLUMNS,
+        rtol=CHECK_RTOL,
+        exclude_columns=CHECK_EXCLUDED_COLUMNS,
     )
     print(report.message)
     return exit_code_for(report)
