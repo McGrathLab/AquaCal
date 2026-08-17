@@ -11,11 +11,17 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from aquacal.calibration._observability import (
+    DEGENERACY_CAUSES,
+    DEGENERACY_FATES,
+    DISCARD_STAGES,
     OptimizerObserver,
     SolverDiagnostics,
     _bump,
     build_parameter_labels,
     capture_solver_diagnostics,
+    degeneracy_cause_key,
+    degeneracy_fate_key,
+    observations_evaluated_key,
 )
 from aquacal.calibration._optim_common import (
     build_bounds,
@@ -64,6 +70,7 @@ def joint_refinement(
     diagnostics_out: SolverDiagnostics | None = None,
     discard_stats_out: dict[str, int] | None = None,
     water_z_bounds: tuple[float, float] | None = None,
+    discard_stage: str | None = None,
 ) -> tuple[
     dict[str, CameraExtrinsics],
     dict[str, float],
@@ -125,6 +132,19 @@ def joint_refinement(
             the end of this pass when the override was not also threaded
             here. See `build_bounds` for the degenerate-interval mechanism
             (D-01).
+        discard_stage: Optional label routing this call's degeneracy counts to a
+            stage-specific set of `DISCARD_KEYS` entries. Must be one of
+            `DISCARD_STAGES`; `None` (the default) routes to the declared
+            `"unattributed"` bucket. An unrecognized string raises `ValueError`
+            at entry, before the solve.
+
+            **The stage cannot be derived, which is why it is an explicit
+            argument (D-02).** This one function bumps under two different stage
+            identities -- Stage 3 joint and Stage 3's intrinsic pass are the same
+            function, called twice. `OptimizerObserver.stage` already carries this
+            vocabulary, but the observer is opt-in and `None` on an ordinary run,
+            so deriving the label from it would silently collapse the split for
+            every production run the counter exists for.
 
     Returns:
         Tuple of:
@@ -146,6 +166,32 @@ def joint_refinement(
         - Intrinsic bounds: fx, fy in [0.5*initial, 2.0*initial],
           cx, cy in [0, image_width] and [0, image_height]
     """
+    # Validate the discard stage label ONCE, at entry, before the solve (D-03).
+    # An unrecognized string is a programming error; raising it after a
+    # multi-minute solve would waste the solve. `None` maps to the declared
+    # "unattributed" bucket. See the matching block in interface_estimation.py.
+    resolved_discard_stage = (
+        discard_stage if discard_stage is not None else ("unattributed")
+    )
+    if resolved_discard_stage not in DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard_stage {discard_stage!r}; legal stages are "
+            f"{list(DISCARD_STAGES)} (or None for {'unattributed'!r})"
+        )
+    # D-04: emit this stage's degeneracy keys at zero up front, so a clean run
+    # produces an explicit zero rather than no key at all -- a zero that is
+    # present is evidence, a column that is absent is not. `_bump(..., n=0)`
+    # creates the key at 0 if absent, and the inert path is preserved exactly:
+    # when `discard_stats_out is None` there is no dict and no keys.
+    for _cause in DEGENERACY_CAUSES:
+        _bump(
+            discard_stats_out, degeneracy_cause_key(_cause, resolved_discard_stage), 0
+        )
+    for _fate in DEGENERACY_FATES:
+        _bump(discard_stats_out, degeneracy_fate_key(_fate, resolved_discard_stage), 0)
+    _bump(discard_stats_out, observations_evaluated_key(resolved_discard_stage), 0)
+    _bump(discard_stats_out, "degenerate_observations_at_solution", 0)
+
     # Validate inputs
     extrinsics_in, distances_in, poses_in, _ = stage3_result
     if reference_camera not in extrinsics_in:
@@ -323,9 +369,41 @@ def joint_refinement(
         raise ConvergenceError(f"Optimization failed: {result.message}")
 
     # Degeneracy guard -- see the matching block in interface_estimation.
+    #
+    # D-06b: this `compute_residuals` call already runs AFTER `least_squares`
+    # returns, and every diagnostic out-parameter is threaded here and ONLY here.
+    # Nothing below is added to `cost_args` and nothing is threaded into the
+    # callable scipy invokes -- doing so would allocate a reason array on every
+    # one of thousands of residual evaluations, and nothing in the type
+    # signatures would catch the drift.
     invalid_counts: list[int] = []
-    compute_residuals(result.x, *cost_args, invalid_count_out=invalid_counts)
+    degeneracy_breakdown: dict[str, int] = {}
+    compute_residuals(
+        result.x,
+        *cost_args,
+        invalid_count_out=invalid_counts,
+        degeneracy_breakdown_out=degeneracy_breakdown,
+    )
     n_invalid = invalid_counts[0] if invalid_counts else 0
+    for _cause in DEGENERACY_CAUSES:
+        _bump(
+            discard_stats_out,
+            degeneracy_cause_key(_cause, resolved_discard_stage),
+            degeneracy_breakdown[_cause],
+        )
+    for _fate in DEGENERACY_FATES:
+        _bump(
+            discard_stats_out,
+            degeneracy_fate_key(_fate, resolved_discard_stage),
+            degeneracy_breakdown[_fate],
+        )
+    _bump(
+        discard_stats_out,
+        observations_evaluated_key(resolved_discard_stage),
+        degeneracy_breakdown["observations_evaluated"],
+    )
+    # The merged key is retained unchanged so the production gate and
+    # check_rerun_gates.py keep reading the same number.
     _bump(discard_stats_out, "degenerate_observations_at_solution", n_invalid)
     if n_invalid > 0:
         warnings.warn(

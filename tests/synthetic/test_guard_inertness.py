@@ -42,6 +42,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from aquacal.calibration._observability import (
+    DEGENERACY_CAUSES,
+    DEGENERACY_FATES,
+    DISCARD_STAGES,
+    check_denominator_only,
+    degeneracy_cause_key,
+    degeneracy_fate_key,
+    observations_evaluated_key,
+)
 from aquacal.calibration.extrinsics import build_pose_graph, estimate_extrinsics
 from aquacal.calibration.interface_estimation import optimize_interface
 from aquacal.calibration.refinement import joint_refinement
@@ -91,6 +100,8 @@ def _run_full_calibration(
     refine_intrinsics: bool,
     shared_interface: bool,
     discard_stats_out: dict[str, int] | None,
+    discard_stage_stage3: str | None = None,
+    discard_stage_intrinsic_pass: str | None = None,
 ):
     """Replicate `calibrate_synthetic`'s Stage 3 (+ optional intrinsic pass) call
     shape exactly, but return board poses too (which `calibrate_synthetic`'s
@@ -114,6 +125,7 @@ def _run_full_calibration(
         normal_fixed=normal_fixed,
         shared_interface=shared_interface,
         discard_stats_out=discard_stats_out,
+        discard_stage=discard_stage_stage3,
     )
 
     if refine_intrinsics:
@@ -135,6 +147,7 @@ def _run_full_calibration(
                 normal_fixed=normal_fixed,
                 shared_interface=shared_interface,
                 discard_stats_out=discard_stats_out,
+                discard_stage=discard_stage_intrinsic_pass,
             )
         )
 
@@ -227,3 +240,103 @@ def test_guard_count_recording_is_inert(
     # populated-zero and an absent key must stay distinguishable (None vs {}).
     assert "degenerate_observations_at_solution" in stats
     assert isinstance(stats["degenerate_observations_at_solution"], int)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "normal_fixed,refine_intrinsics,shared_interface",
+    [
+        (True, False, True),
+        (True, True, True),
+    ],
+    ids=["stage3-only", "with-intrinsic-pass"],
+)
+def test_split_counters_and_reason_plumbing_are_inert(
+    normal_fixed, refine_intrinsics, shared_interface
+):
+    """D-18, solve-level companion: phase 24's split counters move no numbers.
+
+    Supplying `discard_stats_out` is now what causes `compute_residuals` to
+    allocate the projector's `nan_reason_out` array on the post-solve evaluation,
+    so this single comparison covers BOTH the new counters and the reason
+    plumbing reaching the projector. The projector's own exact-pixel inertness is
+    proven separately at the unit level in
+    `tests/unit/test_refractive_geometry.py::TestBatchNanReason`.
+
+    Asserted on **cost** (the returned RMS) and on the "ideal" scenario, which is
+    well conditioned. This project's rule is that bit-identity gates are
+    conditioning-dependent, so an ill-conditioned scene must never be the vehicle
+    for this claim -- see `.planning/knowledge-base.md` § "Bit-identity gates
+    depend on conditioning".
+
+    Why this is verified here rather than left to Phase 29's E2 sanity control:
+    that control fires four phases later against a tree that also contains Phase
+    23's solver-touching changes, so a failure there would not attribute to this
+    phase -- and by then the freeze has happened.
+    """
+    seed = 42
+    scenario, board, detections, reference_camera, initial_extrinsics = _stage2_inputs(
+        seed
+    )
+
+    result_none = _run_full_calibration(
+        scenario,
+        board,
+        detections,
+        reference_camera,
+        initial_extrinsics,
+        normal_fixed=normal_fixed,
+        refine_intrinsics=refine_intrinsics,
+        shared_interface=shared_interface,
+        discard_stats_out=None,
+    )
+
+    stats: dict[str, int] = {}
+    result_split = _run_full_calibration(
+        scenario,
+        board,
+        detections,
+        reference_camera,
+        initial_extrinsics,
+        normal_fixed=normal_fixed,
+        refine_intrinsics=refine_intrinsics,
+        shared_interface=shared_interface,
+        discard_stats_out=stats,
+        discard_stage_stage3="stage3_interface_optimization",
+        discard_stage_intrinsic_pass="stage3_intrinsic_pass",
+    )
+
+    # Cost agreement is the load-bearing assertion; bit-identity of the whole
+    # solution is asserted too because this scenario is well conditioned.
+    assert result_none[3] == result_split[3]
+    _assert_bit_identical(result_none, result_split)
+
+    # The split actually landed, and both decompositions are exact.
+    merged = stats["degenerate_observations_at_solution"]
+    by_cause = sum(stats.get(k, 0) for k in _cause_keys())
+    by_fate = sum(stats.get(k, 0) for k in _fate_keys())
+    assert by_cause == merged
+    assert by_fate == merged
+    # `check_denominator_only`: producer/consumer agreement is a whole-run
+    # relation and this harness runs Stage 3 only. Relations 3-5 hold regardless.
+    assert not check_denominator_only(stats), check_denominator_only(stats)
+
+    stage_key = observations_evaluated_key("stage3_interface_optimization")
+    assert stage_key in stats
+    assert stats[stage_key] > 0
+
+
+def _cause_keys():
+    return [
+        degeneracy_cause_key(cause, stage)
+        for cause in DEGENERACY_CAUSES
+        for stage in DISCARD_STAGES
+    ]
+
+
+def _fate_keys():
+    return [
+        degeneracy_fate_key(fate, stage)
+        for fate in DEGENERACY_FATES
+        for stage in DISCARD_STAGES
+    ]

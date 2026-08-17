@@ -153,6 +153,7 @@ def calibrate_from_detections(
         min_corners=min_corners,
         verbose=verbose,
         discard_stats_out=discard_stats_out,
+        discard_stage="stage3_interface_optimization",
     )
     board_poses = {bp.frame_idx: bp for bp in opt_poses_list}
 
@@ -1029,6 +1030,7 @@ def run_calibration_from_config(
             shared_interface=config.shared_interface,
             diagnostics_out=diagnostics_out,
             discard_stats_out=discard_stats,
+            discard_stage="stage3_interface_optimization",
         )
 
     # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
@@ -1278,6 +1280,7 @@ def run_calibration_from_config(
                 "stage3_intrinsic_pass", SolverDiagnostics()
             ),
             discard_stats_out=discard_stats,
+            discard_stage="stage3_intrinsic_pass",
         )
         elapsed = time.perf_counter() - t0
         timings["stage3_intrinsic_pass"] = elapsed

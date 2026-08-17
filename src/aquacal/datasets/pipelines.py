@@ -168,6 +168,7 @@ def calibrate_synthetic(
         normal_fixed=normal_fixed,
         discard_stats_out=discard_stats_out,
         water_z_bounds=water_z_bounds,
+        discard_stage="stage3_interface_optimization",
     )
     if timings_out is not None:
         timings_out["stage3_interface_optimization"] = time.perf_counter() - _t0
@@ -202,6 +203,7 @@ def calibrate_synthetic(
                 normal_fixed=normal_fixed,
                 discard_stats_out=discard_stats_out,
                 water_z_bounds=water_z_bounds,
+                discard_stage="stage3_intrinsic_pass",
             )
         )
         if timings_out is not None:

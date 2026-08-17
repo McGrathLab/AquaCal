@@ -580,3 +580,183 @@ def test_joint_refinement_signature_accepts_and_bumps_discard_stats_out():
     )
     assert refine_stats["degenerate_observations_at_solution"] == 0
     assert "degenerate_observations_at_solution" in refine_stats
+
+
+# ---------------------------------------------------------------------------
+# D. The cause/fate/stage split reaching the solver entry points (phase 24)
+# ---------------------------------------------------------------------------
+
+
+def test_unrecognized_discard_stage_raises_before_the_solve():
+    """A typo'd stage is a programming error, caught at entry, not after a solve.
+
+    Validation is deliberately at the top of the function body: raising it after
+    a multi-minute (in production, 48-87 minute) solve would waste the solve.
+    Passing deliberately-invalid detections proves the raise happens BEFORE any
+    solve setup that would itself fail on them.
+    """
+    with pytest.raises(ValueError) as excinfo:
+        optimize_interface(
+            None,
+            None,
+            None,
+            None,
+            "cam0",
+            discard_stage="stage3_typo",
+        )
+    assert "stage3_typo" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        joint_refinement(
+            stage3_result=None,
+            detections=None,
+            intrinsics=None,
+            board=None,
+            reference_camera="cam0",
+            discard_stage="stage3_typo",
+        )
+    assert "stage3_typo" in str(excinfo.value)
+
+
+@pytest.mark.slow
+def test_clean_run_emits_degeneracy_keys_at_zero():
+    """D-04: a clean solve emits the split keys PRESENT with value 0.
+
+    A zero that is present is evidence; a column that is absent is not. The
+    `in stats` assertion therefore comes before the value assertion -- reversing
+    them would let a `.get(key, 0)` reading pass on an absent key.
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stage = "stage3_interface_optimization"
+    stats: dict[str, int] = {}
+    optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stats,
+        discard_stage=stage,
+    )
+
+    for cause in DEGENERACY_CAUSES:
+        key = degeneracy_cause_key(cause, stage)
+        assert key in stats
+        assert stats[key] == 0
+    for fate in DEGENERACY_FATES:
+        key = degeneracy_fate_key(fate, stage)
+        assert key in stats
+        assert stats[key] == 0
+    assert observations_evaluated_key(stage) in stats
+    assert stats[observations_evaluated_key(stage)] > 0
+    assert stats["degenerate_observations_at_solution"] == 0
+    assert not check_denominator_only(stats), stats
+
+
+@pytest.mark.slow
+def test_absent_stage_lands_in_the_unattributed_bucket():
+    """D-03: no `discard_stage` routes to the declared bucket, not a real stage."""
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+    stage3_result = optimize_interface(
+        detections,
+        intrinsics,
+        extrinsics,
+        board,
+        "cam0",
+        initial_water_zs=water_zs,
+        verbose=0,
+        min_corners=6,
+    )
+
+    stats: dict[str, int] = {}
+    joint_refinement(
+        stage3_result=stage3_result,
+        detections=detections,
+        intrinsics=intrinsics,
+        board=board,
+        reference_camera="cam0",
+        refine_intrinsics=False,
+        verbose=0,
+        min_corners=6,
+        discard_stats_out=stats,
+    )
+
+    assert observations_evaluated_key("unattributed") in stats
+    assert stats[observations_evaluated_key("unattributed")] > 0
+    for stage in ("stage3_interface_optimization", "stage3_intrinsic_pass"):
+        assert observations_evaluated_key(stage) not in stats
+
+    merged = stats["degenerate_observations_at_solution"]
+    by_cause = sum(
+        stats.get(degeneracy_cause_key(c, s), 0)
+        for c in DEGENERACY_CAUSES
+        for s in DISCARD_STAGES
+    )
+    by_fate = sum(
+        stats.get(degeneracy_fate_key(f, s), 0)
+        for f in DEGENERACY_FATES
+        for s in DISCARD_STAGES
+    )
+    assert by_cause == merged
+    assert by_fate == merged
+
+
+@pytest.mark.slow
+def test_reason_array_is_none_during_the_solve():
+    """D-06b: the projector sees `nan_reason_out=None` on every in-solve call.
+
+    Threading the diagnostic out-parameters on every residual call instead of
+    only the single post-solve one would silently convert a free diagnostic into
+    a hot-path cost on thousands of iterations -- an int8 allocation per
+    (camera, frame) per iteration -- and nothing in the type signatures would
+    catch it. Hence a spy, not a type annotation.
+    """
+    import aquacal.calibration._optim_common as optim_common
+
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.3, 0.5))
+    )
+
+    real_projector = optim_common.refractive_project_batch
+    calls: list[bool] = []
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("nan_reason_out") is not None)
+        return real_projector(*args, **kwargs)
+
+    optim_common.refractive_project_batch = spy
+    try:
+        stats: dict[str, int] = {}
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stats_out=stats,
+            discard_stage="stage3_interface_optimization",
+        )
+    finally:
+        optim_common.refractive_project_batch = real_projector
+
+    assert calls, "the spy never saw a projector call"
+    n_with_array = sum(calls)
+    n_without = len(calls) - n_with_array
+
+    # Both branches are exercised: the solve's own calls pass None, and the
+    # single post-solve pass supplies an array for each (camera, frame) pair.
+    assert n_without > 0
+    assert n_with_array > 0
+    # The array-bearing calls are the trailing post-solve pass only.
+    assert all(calls[-n_with_array:])
+    assert not any(calls[:-n_with_array])
