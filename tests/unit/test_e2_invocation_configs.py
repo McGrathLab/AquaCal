@@ -118,12 +118,23 @@ def _changed_line_indices(before: str, after: str) -> list[int]:
 
 
 def test_changes_exactly_one_plus_len_overrides_lines_when_keys_preexist():
-    overrides = {"benchmark_memory": True, "log_all_observation_depths": False}
+    # Both override values differ from the source, so all three lines
+    # (paths.output_dir plus the two internals keys) actually change.
+    overrides = {"benchmark_memory": True, "log_all_observation_depths": True}
     result = build_internals_variant_config(
         FIXTURE_CONFIG, "/new/output_dir", overrides
     )
     changed = _changed_line_indices(FIXTURE_CONFIG, result)
     assert len(changed) == 1 + len(overrides)
+
+
+def test_rewriting_a_key_preserves_its_trailing_inline_comment():
+    result = build_internals_variant_config(
+        FIXTURE_CONFIG, "/new/output_dir", {"benchmark_memory": True}
+    )
+    assert (
+        "  benchmark_memory: true  # Opt-in: per-stage peak RSS" in result.splitlines()
+    )
 
 
 def test_every_comment_and_unrelated_line_survives_byte_for_byte():
