@@ -57,7 +57,45 @@ carries NO accuracy claim (D-19.3-17 demoted it)** -- this band exists for
 reproducibility, not because E1's numbers move: E1's production
 `SCENARIO_NAME = "realistic"` resolves to `generate_real_rig_array()`'s
 frozen shared `water_z` and is INERT under this phase's interface fix (it
-never reaches `generate_camera_array`). A `--seeds` run NEVER writes
+never reaches `generate_camera_array`). **That demotion is qualified as of
+2026-08-15 -- see STATED DOMAIN immediately below, which is the other half
+of this and must be read with it.**
+
+**STATED DOMAIN (BAND-01, D-14).** E1's absolute-accuracy numbers are to be
+quoted ONLY over this domain: the `realistic` scenario's single 12-camera
+synthetic geometry, ten seeds, detection noise from 0.25 px to 1.2 px, and
+the eight test depths of `TEST_DEPTHS` (1.10 m to 2.50 m). Outside it --
+another rig geometry, a noisier detector, a deeper test point -- E1's
+numbers are unlicensed. This sentence states the domain the claim WILL BE
+quoted over; it is NOT a measured result of the phase that wrote it. The
+four-level ten-seed band that establishes the domain (640 band rows / 960
+parameter-band rows, ~7 h) is EXECUTED IN Phase 28 at the frozen sha and
+verified in Phase 29 (D-21). Phase 25 ran a two-seed probe only, which
+licenses no manuscript-facing number, because two seeds cannot separate a
+noise effect from seed variance. What already supports the claim is
+measured and independent of that band: warm-restarting each solve from its
+own solution recovers no cost (largest relative drop 1.8e-9), so the
+non-refractive baseline is CONVERGED and the comparison is fair -- the
+97-178x band is strengthened, not caveated
+(`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`). The
+one caveat that travels with the band, stated here in the same paragraph so
+it can never be read as under-convergence: the non-refractive baseline arm
+is **severely ill-conditioned** (directional curvature ~3e8). That is a
+property of fitting a pinhole model to refracted data -- expected, not a
+defect, and explicitly NOT a reason to qualify the accuracy claim (D-16).
+
+**Why the band's numbers moved (D-13, anti-confusion note -- no emitter and
+no computed delta by decision).** Two things changed at once: the
+`NOISE_LEVELS` axis above, and FIX-02 freeing the interface normal
+(`normal_fixed=False`). No attribution is computed between them, because
+the old normal-fixed version will not be published and no manuscript-facing
+number depends on the split. Read a moved number accordingly: it is not a
+regression and does not need its cause re-derived. If the two must be
+separated, THE 0.5 px ROW IS THE CLEAN `normal_fixed` ISOLATOR -- 0.5 px is
+the preset default the committed baseline was produced at, so the noise
+axis contributes nothing there and any residual move is FIX-02's.
+
+A `--seeds` run NEVER writes
 `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
 `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those remain
 exclusively the single-seed run's artifacts. The band CSV write always
@@ -1190,7 +1228,26 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 # parameter-level columns, which previously existed per-seed
                 # only in gitignored sweep output.
                 "scope": (
-                    "This band varies the SEED across E1's depth-generalization "
+                    "STATED DOMAIN (BAND-01, D-14): E1's absolute-accuracy "
+                    "numbers are to be quoted ONLY over the 'realistic' "
+                    "scenario's single 12-camera synthetic geometry, ten "
+                    "seeds, detection noise from 0.25 px to 1.2 px, and the "
+                    "eight test depths 1.10-2.50 m. That is the domain the "
+                    "claim WILL BE quoted over, not a measured result of the "
+                    "phase that wrote this sentence: the four-level ten-seed "
+                    "band establishing it (640/960 rows) is executed in Phase "
+                    "28 at the frozen sha and verified in Phase 29 (D-21). "
+                    "Supporting evidence, already measured: warm restarts "
+                    "recover no cost (largest relative drop 1.8e-9), so the "
+                    "non-refractive baseline is converged and the comparison "
+                    "is fair. The caveat travelling with it, stated together "
+                    "so it cannot be read as under-convergence: that baseline "
+                    "arm is severely ill-conditioned (~3e8 directional "
+                    "curvature), which is a property of fitting a pinhole "
+                    "model to refracted data -- expected, not a defect, and "
+                    "not a reason to qualify the accuracy claim (D-16). "
+                    "This band varies the SEED and (BAND-01) the DETECTION "
+                    "NOISE across E1's depth-generalization "
                     "and xy-vs-z anisotropy sweep on the 'realistic' synthetic "
                     "scenario, and bounds seed-to-seed variance of "
                     "exp1_band.csv's metrics -- including z_rmse_mm, the column "
@@ -1200,9 +1257,11 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                     "parameter-level columns emitted in exp1_parameter_band.csv "
                     "(focal_length_error_pct, reprojection_rms_px, and the "
                     "per-camera position errors), over the same seeds and the "
-                    "same scenario. It is NOT a physical-rig or real-data claim, "
-                    "and this sidecar neither asserts nor denies an accuracy "
-                    "claim for E1 (D-19.3-17 already demoted E1's own)."
+                    "same scenario. It is NOT a physical-rig or real-data claim: "
+                    "D-19.3-17's demotion of E1's own accuracy claim is "
+                    "qualified, not reversed, by the stated domain above -- "
+                    "E1 bounds estimator variance under stated noise, and E2 "
+                    "carries the accuracy claim against reality."
                 ),
             },
             f,
