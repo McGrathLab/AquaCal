@@ -550,6 +550,10 @@ suite's runtime, and overengineering in a codebase that may not be reopened afte
 
 ### A. The suite is ~50 h at Windows-box speed, not 24–30 h
 
+> **SUPERSEDED by § E below (2026-08-18).** Two stage timings used here are anomalous; the
+> corrected serial estimate is ≈ 22–26 h. The machine correction and the no-timing-recorded
+> observation still stand.
+
 Measured from `experiments/rerun_19_{3,4,5}_state.tsv`, which stamp ISO start/complete per stage:
 
 | stage | wall clock | source |
@@ -668,4 +672,63 @@ block of run time), `--baseline-dir` (without it E2's ~1e-8 control and E3's tie
 the run manifest, the full `--smoke` pass, the dry-run harness extension, a small set of stage-list
 unit tests, and the `README.md` §2 rewrite.
 
-*Amended: 2026-08-18*
+### E. Correction to § A, and the concurrency decision (probe landed 2026-08-18)
+
+Probe: `.planning/probes/2026-08-18-solver-concurrency/` — `FINDINGS.md`, `summary.json`,
+`samples.csv`. **Read FINDINGS.md before planning the driver's stage model or Phase 28's schedule.**
+
+**⚠ § A's ~50 h figure is WRONG and is superseded. The corrected serial estimate is ≈ 22–26 h.**
+
+The error: § A used `e1` and `e7` wall clock from the 19.4 state file, and those two rows are
+anomalous by ~27×. Measured directly on 2026-08-18, an `e1_refractive_comparison` single-seed run
+completes in **5.3 min** (19.3: 5.7 min; 19.4: 152 min), producing complete and correct output —
+`exp1_parameter_errors.csv` 25 rows, `exp2_depth_generalization.csv` 17, `exp3_xy_vs_z_anisotropy.csv`
+17, matching the committed artifacts exactly. Every *other* stage moves a consistent 1.6–2.0×
+between 19.3 and 19.4 (the known machine swing); `e1` and `e7` do not fit that pattern. 19.4 is the
+phase that fixed the grid-family clearance floor, and during that run those two solves ground on
+against still-marginal geometry. **Use 19.3 or the probe for `e1`/`e7`; 19.4 remains sound for
+`e5`, `e6`, `e4`.** § A's `e7_band` upper bound of 8.8 h is likewise a loose mtime bracket; the
+stage is probably 1–2 h and **nothing measures it** — one E7 single-seed run (~10 min) would settle
+it, and D-38's budget should either take that measurement or state the uncertainty.
+
+- **D-51: the corrected serial estimate is ≈ 22–26 h at Windows-box speed** with D-40/41/42
+  applied, dominated by `e6_band` at **8.9 h — roughly 40% of the whole suite**, and the critical
+  path under any scheduling. It is the highest-value target if more time must be found later.
+
+**D-52: selective concurrency is ADOPTED** (author, 2026-08-18). Measured: a solve holds a **median
+0.99 cores of 20**, mean 1.20, p95 2.01, peak 2.56 — stable through Stage 3 — so ~30 of the target's
+32 cores idle during every accuracy stage. No thread limit is set anywhere in `src/` or
+`experiments/`; the dense-Jacobian `tr_solver='exact'` path is BLAS-threaded in principle but at
+P ≈ 700–1,350 the serial Python-level FD loop dominates.
+
+  The stage list gains a **serial/concurrent attribute plus a worker count**:
+
+  - **Serial and alone** — `e4`, `e4_repeat`, `e2_timing`, `e2_memory` (~6–7 h). Review H4's
+    rationale is *timing integrity*, and it is preserved exactly where it applies.
+  - **Concurrent, 4–5 wide** — every accuracy stage (~16–19 h of work), bounded by the longest
+    single stage rather than the sum.
+  - **Expected total ≈ 15–16 h**, a saving of ~8–10 h. Requires **no change to any experiment**,
+    only the driver's stage model — a smaller change than several of the items cut in § D.
+
+  **Three hard constraints on the stage model:**
+
+  1. **`e6_repeat1` and `e6_band` must never overlap.** `run_stage_e6_repeat1` does
+     `rm -rf ${OUT_DIR}/e6_configs` and deletes `generalization_sweep.csv` / `e6_provenance.json`
+     under the shared `OUT_DIR`, which `e6_band` also writes. (Moot for `e6_repeat2`, which D-42
+     turns off.)
+  2. **At most one 200-frame-class stage at a time** — E2 and E4's 200-frame cells peak at
+     9.3–11.3 GiB. Five 3.5 GiB stages plus one of those is 27.8 of ~31 GiB, too tight. Peak RSS
+     tracks frame count: 30 frames < 1 GiB (E5), 100 frames 2.7–3.5 GiB (**E6's band, all 102 rows
+     at `n_frames=100`**), 200 frames 9.3–11.3 GiB.
+  3. **Concurrent stages share `experiments/results/`,** so any shared artifact name is a
+     collision. The expectation manifest already enumerates every artifact — verify filename
+     disjointness there, not by inspection.
+
+  **Not attempted, deliberately:** splitting `e6_band` across processes by seed. It attacks the
+  critical path directly but needs a merge step and provenance handling inside the experiment,
+  which is out of proportion to a phase just de-scoped in § D.
+
+  One confirmation belongs in **Phase 27's Linux smoke**: that the same OpenBLAS build behaves the
+  same way on the target. Two minutes there, not a reason to defer.
+
+*Amended: 2026-08-18 (second pass, post-probe)*
