@@ -69,6 +69,13 @@ published bytes. CI is green on all six jobs. The library is tagged v2.0.0/v2.0.
 
 **Hard deadline still live:** revised SoftwareX manuscript due **2026-08-21**.
 
+**Phase 24 complete (2026-08-18)** — degeneracy instrumentation. The counter is now observable
+end to end: it reaches `benchmark.json`, is split on independent cause and fate axes (14 -> 32
+`DISCARD_KEYS`), carries a per-stage `e{N}_degeneracy_breakdown.json` sidecar, and its warning
+is narrowed by cause and fraction instead of over-firing. Optimality is decomposed per parameter
+block, and a bound-hit detector separates pinned-by-request from ran-into-a-limit. Verified 5/5;
+full suite 1932 passed, 0 failed.
+
 ## Current Milestone: v2.1 Clean Experimental Suite
 
 **Goal:** Land every experiment-suite fix that changes what the suite measures, records, or can
@@ -244,4 +251,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-15 — milestone v2.1 Clean Experimental Suite started*
+*Last updated: 2026-08-18 — Phase 24 Degeneracy Instrumentation complete*
