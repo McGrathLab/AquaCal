@@ -239,3 +239,54 @@ edit from Phase 24 would be something the audit has to reconcile rather than sim
 Library and experiment work only. The manuscript tree (`Spinoffs/papers/aquacal/`) is read-only
 from this repo. Where a fix has a manuscript consequence, emit the artifact and record the
 derivation in `.planning/MANUSCRIPT-FINDINGS.md`; the prose is the manuscript session's.
+
+---
+
+## Phase 25 additions (written 2026-08-18 by plan 25-08 — for DRIVER-01's completeness audit)
+
+Phase 25 shipped; everything below is already on disk. Nothing here is a proposal.
+
+### FIRST AND MOST IMPORTANT — the code and the committed artifacts disagree ON PURPOSE
+
+For three phases, E1's band code emits a shape the committed band artifacts do not have. This is
+deliberate, decided as **D-21** on 2026-08-18. Read this before writing any gate.
+
+- **The code emits `noise_std` and four noise levels as of Phase 25.** Plan 25-04 added `noise_std`
+  to **both** `BAND_KEY_COLUMNS` and `PARAMETER_BAND_KEY_COLUMNS`, nested `NOISE_LEVELS` inside
+  `_run_band`, and collapsed the list under `--smoke`.
+- **`experiments/results/exp1_band.csv` and `exp1_parameter_band.csv` stay at 160 and 240 rows,
+  with NO `noise_std` column, through Phases 25, 26 and 27.** Phase 25's noise run is a **two-seed
+  probe** written to `.planning/probes/2026-08-18-e1-noise-axis/` and is deliberately not committed
+  to `experiments/results/` — a probe-shaped artifact there would be neither the old contract nor
+  the frozen run's shape.
+- **The 640 / 960 shape, with four `noise_std` values `{0.25, 0.5, 0.82, 1.2}`, is a PHASE 28
+  expectation.** It is produced by the ten-seed band at the frozen sha and verified in Phase 29.
+  **No Phase 26 gate may assert 640 or 960, and none may require a `noise_std` column in
+  `experiments/results/`.** A gate that does will fail every run until Phase 28.
+
+### New library artifacts
+
+- **`degenerate_observations.csv`** — new per-observation sidecar written beside `diagnostics.json`,
+  **only when at least one flagged row exists**. A clean run legitimately produces no file, so the
+  completeness gate must treat its absence as **pass, not fail**. Column order is pinned by
+  `DEGENERATE_OBSERVATION_COLUMNS` in `src/aquacal/validation/diagnostics.py` — import it rather
+  than hard-coding the list.
+- **`all_observation_depths.csv`** — new, written only when `internals.log_all_observation_depths`
+  is true. Phase 26's driver passes that flag for **E2 and nothing else**. Column order pinned by
+  `OBSERVATION_DEPTH_COLUMNS` in the same module. Expect ~11 MB on the 13-camera rig.
+- Both sidecars carry a `stage` column. **A stage-agnostic `len()` double-counts** any observation
+  flagged in both stage-3 passes — group by `stage` first. (The 2026-08-18 E2 probe happened to
+  flag only in `stage3_intrinsic_pass`, so its 198 is a distinct count, but that is a property of
+  that run, not a guarantee.)
+
+### Text-only changes
+
+- **`benchmark_grid.tex`** gains a `%` comment block — the D-17 optimality caveat, emitted from
+  `OPTIMALITY_CAVEAT_TEX` in `experiments/e4_benchmark_grid.py`. All lines start with `%`.
+  `GRID_COLUMNS` / `GRID_SUMMARY_COLUMNS` are unchanged at 36 / 7; **the CSV schema did not move.**
+- `e6_generalization_sweep.py` gains a pointer comment to E4's caveat. No schema change.
+
+### Unchanged and must stay byte-identical
+
+`exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`, `exp3_xy_vs_z_anisotropy.csv` — the
+three fixed-contract CSVs the external figures repository reads.
