@@ -20,7 +20,13 @@ Four gates, applied per experiment:
                                own filesystem mtime is used as that evidence). Every
                                git_sha found across the WHOLE run must be IDENTICAL --
                                a split sha means something was committed while a stage was
-                               still running.
+                               still running. Gate 3 also verifies the suite-level
+                               `run_manifest.json` (DRIVER-02): it exists, every required
+                               environment field is non-null (including the OpenCV PyPI
+                               build suffix `cv2.__version__` drops), its git_sha agrees
+                               with the artifacts', and the tree was not dirty. Those four
+                               are ALL hard FAIL and never N/A -- a provenance mismatch
+                               that only warns is a provenance mismatch that ships (D-21).
     Gate 4 (optimality):       first-order optimality is present (not null) per stage.
 
 E3 runs no calibration at all, so gates 1, 2 and 4 are N/A for it -- reported explicitly
@@ -50,6 +56,24 @@ from pathlib import Path
 from typing import Literal
 
 import pandas as pd
+
+try:
+    from experiments._run_manifest import (
+        REQUIRED_MANIFEST_FIELDS,
+        RUN_MANIFEST_FILENAME,
+    )
+except ModuleNotFoundError:  # pragma: no cover - script-path invocation
+    # The driver invokes this file BY PATH (`"${GATE_PYTHON}"
+    # experiments/check_rerun_gates.py <out_dir>`, rerun_19_5.sh:257), which
+    # puts `experiments/` on sys.path but NOT the repository root, so the
+    # sibling package import above cannot resolve. Adding the root here keeps
+    # both invocation styles working; a bare `from _run_manifest import ...`
+    # would instead break `python -m` and the unit tests.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from experiments._run_manifest import (
+        REQUIRED_MANIFEST_FIELDS,
+        RUN_MANIFEST_FILENAME,
+    )
 
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
@@ -1729,10 +1753,14 @@ def _collect_all_json_paths(out_dir: Path) -> list[Path]:
     return paths
 
 
-def _check_git_sha_consistency(out_dir: Path) -> GateResult:
-    """Gate 3's cross-artifact form: every git_sha found across the WHOLE run
-    must be identical. This is the machine-checkable form of "commit nothing
-    while a run is in flight" -- a split sha means exactly that happened.
+def _collect_artifact_shas(out_dir: Path) -> dict[str, list[str]]:
+    """Map every distinct `environment.git_sha` under `out_dir` to the artifacts
+    carrying it.
+
+    Factored out of `_check_git_sha_consistency` so the run-manifest gate can
+    compare against the SAME sha set rather than re-deriving one. D-21 is
+    explicit that Gate 3 already establishes sha agreement and does it better
+    than a per-experiment assertion, so the manifest check reuses it.
     """
     shas: dict[str, list[str]] = {}
     for path in _collect_all_json_paths(out_dir):
@@ -1742,6 +1770,15 @@ def _check_git_sha_consistency(out_dir: Path) -> GateResult:
         sha = (record.get("environment") or {}).get("git_sha")
         if sha:
             shas.setdefault(sha, []).append(str(path.relative_to(out_dir)))
+    return shas
+
+
+def _check_git_sha_consistency(out_dir: Path) -> GateResult:
+    """Gate 3's cross-artifact form: every git_sha found across the WHOLE run
+    must be identical. This is the machine-checkable form of "commit nothing
+    while a run is in flight" -- a split sha means exactly that happened.
+    """
+    shas = _collect_artifact_shas(out_dir)
 
     if len(shas) <= 1:
         only_sha = next(iter(shas), None)
@@ -1763,6 +1800,160 @@ def _check_git_sha_consistency(out_dir: Path) -> GateResult:
         "queue's run was in flight (" + "; ".join(parts) + ")"
     )
     return GateResult("ALL", "gate3_git_sha_consistency", "FAIL", detail)
+
+
+def _check_run_manifest(out_dir: Path) -> list[GateResult]:
+    """Gate 3's suite-level form (DRIVER-02, D-21): verify the run manifest.
+
+    Four assertions, ALL of them hard FAIL and never "not applicable":
+
+        1. `run_manifest.json` exists under `out_dir` and parses.
+        2. Every name in `REQUIRED_MANIFEST_FIELDS` is present and non-null.
+        3. Its `git_sha` agrees with the single sha `_check_git_sha_consistency`
+           already establishes across the run's artifacts.
+        4. The working tree was NOT dirty when the run started.
+
+    A missing manifest is reported FAIL rather than skipped, on purpose. The todo
+    DRIVER-02 comes from is explicit: a provenance mismatch that only warns is a
+    provenance mismatch that ships, and an absent manifest is the loudest
+    mismatch there is -- it is a run nobody can attribute to a commit.
+
+    Note on assertion 4: dirtiness is recorded post-hoc only. D-47 cut the
+    dirty-tree pre-flight REFUSAL because `experiments/results/` is tracked, so
+    the run dirties its own tree and a refusal would kill every resume after the
+    first crash. A gate verdict can never kill a run.
+    """
+    gate_prefix = "gate3_run_manifest"
+    path = out_dir / RUN_MANIFEST_FILENAME
+    manifest = _load_json(path)
+
+    if manifest is None:
+        return [
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_present",
+                "FAIL",
+                f"no {RUN_MANIFEST_FILENAME} under {out_dir} -- this run cannot be "
+                "attributed to a commit or a machine (DRIVER-02, D-19)",
+            )
+        ]
+    if "_load_error" in manifest:
+        return [
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_present",
+                "FAIL",
+                f"{RUN_MANIFEST_FILENAME} could not be parsed: "
+                f"{manifest['_load_error']}",
+            )
+        ]
+
+    results = [
+        GateResult(
+            "ALL",
+            f"{gate_prefix}_present",
+            "PASS",
+            f"{RUN_MANIFEST_FILENAME} found and parsed",
+        )
+    ]
+
+    # 2. Required-field completeness. The field list is IMPORTED from the
+    # emitter -- a second copy here is exactly the drift D-05 exists to prevent.
+    null_fields = sorted(
+        name for name in REQUIRED_MANIFEST_FIELDS if manifest.get(name) is None
+    )
+    if null_fields:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_fields",
+                "FAIL",
+                "required manifest fields are missing or null: "
+                + ", ".join(null_fields),
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_fields",
+                "PASS",
+                f"all {len(REQUIRED_MANIFEST_FIELDS)} required environment fields "
+                "are present and non-null",
+            )
+        )
+
+    # 3. Agreement with the sha set Gate 3 already collects.
+    manifest_sha = manifest.get("git_sha")
+    artifact_shas = _collect_artifact_shas(out_dir)
+    disagreeing = sorted(sha for sha in artifact_shas if sha != manifest_sha)
+    if not artifact_shas:
+        # An empty set cannot disagree. Covering an empty tree is the
+        # completeness gate's job, not Gate 3's -- do not widen this here.
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "PASS",
+                f"manifest git_sha is {manifest_sha}; no artifact carries a "
+                "git_sha to compare against",
+            )
+        )
+    elif disagreeing:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "FAIL",
+                f"manifest git_sha ({manifest_sha}) disagrees with the sha(s) the "
+                f"artifacts carry ({', '.join(disagreeing)}) -- the manifest does "
+                "not describe the code that produced these artifacts",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "PASS",
+                f"manifest git_sha matches every artifact ({manifest_sha})",
+            )
+        )
+
+    # 4. Dirty-tree state.
+    git_dirty = manifest.get("git_dirty")
+    if git_dirty is None:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "FAIL",
+                "manifest records no git_dirty state, so the run cannot be shown "
+                "to have come from a committed tree",
+            )
+        )
+    elif git_dirty:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "FAIL",
+                "the working tree was DIRTY when this run started "
+                f"(git_describe: {manifest.get('git_describe')}) -- the recorded "
+                "git_sha does not fully describe the code that ran",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "PASS",
+                "the working tree was clean when this run started",
+            )
+        )
+
+    return results
 
 
 def run_all_gates(out_dir: Path) -> list[GateResult]:
@@ -1826,6 +2017,8 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
         committed_metrics_path=out_dir / "real_rig_metrics.json",
     )
     results.append(_check_git_sha_consistency(out_dir))
+    # DRIVER-02 / D-21: the suite-level run manifest, all hard FAIL.
+    results += _check_run_manifest(out_dir)
     return results
 
 

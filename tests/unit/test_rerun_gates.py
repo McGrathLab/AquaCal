@@ -778,6 +778,9 @@ class TestMainCli:
         pd.DataFrame({"seed": [42]}).to_csv(
             tmp_path / "interface_ablation.csv", index=False
         )
+        # DRIVER-02: a tree with no run manifest is no longer "fully passing" --
+        # Gate 3 FAILs hard on its absence (D-21).
+        _write_json(tmp_path / RUN_MANIFEST_FILENAME, _good_manifest(git_sha=sha))
 
         exit_code = main([str(tmp_path)])
         captured = capsys.readouterr()
