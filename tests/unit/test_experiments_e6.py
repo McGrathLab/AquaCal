@@ -1299,3 +1299,54 @@ def test_degenerate_column_appended_last():
         m.E6_COLUMNS.index("degenerate_observations_at_solution")
         == len(m.E6_COLUMNS) - 3
     )
+
+
+def test_degenerate_gate_predicate_is_still_count_greater_than_zero(
+    tmp_path, monkeypatch
+):
+    """D-05: E6's gate is exactly `count > 0 -> degenerate`, exercised
+    BEHAVIOURALLY at the boundary rather than read off source text.
+
+    A softening into a threshold ("real rigs tolerate a few") would keep the
+    existing count-3 assertions passing while silently letting count 1 through,
+    so the smallest nonzero count is the case that pins it. Phase 25's D-04
+    settled the gate-scope question by removing real-rig runs from the gate's
+    reach, NOT by loosening this predicate.
+    """
+    configs = m.build_axis_configurations()
+    config = configs[0]
+
+    # Each invocation gets its own out_dir: run_configuration caches an outcome
+    # per config_key under out_dir/e6_configs/, so reusing one directory would
+    # replay the first call's checkpoint instead of re-exercising the gate.
+
+    # Exactly one degenerate observation -- the smallest nonzero count.
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=1)
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=10, out_dir=tmp_path / "count_1"
+    )
+    assert outcome["status"] == "degenerate"
+    assert outcome["status_reason"] != ""
+    assert outcome["degenerate_observations_at_solution"] == 1
+
+    # Zero -- ok, with the column present and zero.
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=0)
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=10, out_dir=tmp_path / "count_0"
+    )
+    assert outcome["status"] == "ok"
+    assert outcome["status_reason"] == ""
+    assert outcome["degenerate_observations_at_solution"] == 0
+
+    # The smoke carve-out holds at that same boundary count, and above it.
+    for count in (1, 7):
+        _patch_run_configuration_internals(monkeypatch, degenerate_count=count)
+        outcome = m.run_configuration(
+            config,
+            seed=42,
+            n_frames=10,
+            out_dir=tmp_path / f"smoke_{count}",
+            is_smoke=True,
+        )
+        assert outcome["status"] == "ok"
+        assert outcome["degenerate_observations_at_solution"] == count

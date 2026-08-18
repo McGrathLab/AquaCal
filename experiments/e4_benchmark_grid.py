@@ -975,6 +975,21 @@ def run_grid_cell(
             # build_grid_dataframe, which only declared production cells
             # ever reach (SMOKE_CELLS never call it, see _run_smoke_cells),
             # so --smoke can never see a false failure from this count.
+            #
+            # GATE SCOPE (D-04, phase 25): this gate is SYNTHETIC-ONLY and does
+            # not extend to real-rig runs. E4's geometry is *authored*, so an
+            # unprojectable observation means the scenario was malformed and the
+            # cell must fail; a physical rig's geometry is *given*, so a small
+            # unprojectable fraction is a fact about the deployment rather than a
+            # library defect. That was settled on MECHANISM -- which failure kind
+            # dominates -- not on a count, because the real rig's published count
+            # is a sum accumulated across solver stages. The tripwire that
+            # re-opens it is a materially populated camera_model_failure bucket
+            # (NAN_REASON_BEHIND_CAMERA with a positive h_q) in Phase 29's frozen
+            # table. Long form: the "Gate scope" block in
+            # src/aquacal/calibration/_observability.py; evidence (PROVISIONAL,
+            # D-02): .planning/probes/2026-08-17-degeneracy-classification/.
+            # None of that loosens the predicate here -- see D-05.
             logger.warning(
                 "Cell %s recorded %d degenerate observation(s) at the final "
                 "solution -- first-order optimality is unreliable for this "

@@ -82,6 +82,63 @@ logger = logging.getLogger(__name__)
 # CSV, where a reader who summed a cause column and a fate column together would
 # double the true total.
 
+# ---------------------------------------------------------------------------
+# Gate scope: the degeneracy gate is SYNTHETIC-ONLY (phase 25, DEGEN-04, D-04)
+# ---------------------------------------------------------------------------
+#
+# THE DECISION. The production degeneracy gate -- a recorded
+# `degenerate_observations_at_solution > 0` forcing a cell's status to
+# "degenerate" -- applies to the SYNTHETIC harnesses only
+# (`experiments/e4_benchmark_grid.py`, `experiments/e6_generalization_sweep.py`).
+# It does NOT extend to real-rig runs, and the production pipeline deliberately
+# reports no such status.
+#
+# WHY: AUTHORED GEOMETRY VERSUS GIVEN GEOMETRY. A synthetic scenario's geometry
+# is *authored* -- every camera pose, water height and board placement was chosen
+# by the harness. An observation that cannot be projected at the solution
+# therefore means the scenario itself was malformed, and the cell must fail
+# rather than contribute a number. A physical rig's geometry is *given*: the
+# board went where the operator put it, and a small unprojectable fraction is a
+# fact about the deployment -- a calibration board riding at or breaking the
+# water surface on a pass -- not a defect in this library. Gating a real run on
+# it would discard a sound calibration for describing its own session honestly.
+#
+# WHY THIS WAS SETTLED ON MECHANISM, NOT ON A COUNT. The count was never
+# load-bearing. The production rig's published figure is a sum accumulated across
+# solver stages through one un-reset `discard_stats` dict, so it may double-count
+# an observation invalid in two stages; that invalidated the original
+# 0.268%-of-observations argument outright. What licenses the decision is instead
+# WHICH FAILURE KIND DOMINATES. The instrumented probe at
+# `.planning/probes/2026-08-17-degeneracy-classification/` measured it: every
+# flagged observation was `above_interface` (`NAN_REASON_ABOVE_INTERFACE`, a
+# corner sitting millimetres to centimetres ABOVE the water surface, where the
+# refractive projection is undefined by construction), the other two causes were
+# empty -- not small, empty -- and they were confined to a handful of frames in
+# two bursts on an otherwise healthy run. That is a data-geometry condition, not
+# a solver pathology. Every number in that probe is PROVISIONAL: Phase 29's
+# frozen table is the sole source of any count that ships (D-02), and no figure
+# from the probe may be quoted as a published quantity.
+#
+# THE TRIPWIRE THAT RE-OPENS THIS. If Phase 29's frozen table shows a MATERIALLY
+# POPULATED `camera_model_failure` bucket -- `NAN_REASON_BEHIND_CAMERA` recorded
+# with a POSITIVE `h_q`, i.e. the corner was legitimately under water and the
+# camera model still failed to place a pixel -- then the geometry was fine and
+# the projection was not. That is a library limitation rather than a deployment
+# fact, and it is a DIFFERENT decision: this rationale is void and the gate's
+# scope must be revisited. Nothing else re-opens it; a change in the raw count
+# alone does not.
+#
+# WHAT MUST NEVER BE RESTORED. The synthetic gate predicate is exactly
+# `count > 0 -> degenerate`, with a smoke-path carve-out and nothing else
+# (D-05, `19.3-07-PLAN.md`). It must NOT be softened into a threshold, a
+# tolerance or a fraction-of-observations rule. "Real rigs tolerate a few" is an
+# argument about real rigs, which this decision has already removed from the
+# gate's scope -- it is not a reason to loosen the synthetic one.
+#
+# This block is PROSE ONLY. No bucket vocabulary, constant or accessor belongs
+# here: the taxonomy lives in `experiments/_degeneracy.py` (D-06), and the
+# library emits raw reason codes, never classified names.
+
 #: Why the refractive projection failed. Read off the projector's reason array,
 #: never re-derived at the call site.
 _DEGENERACY_CAUSES: tuple[str, ...] = (
