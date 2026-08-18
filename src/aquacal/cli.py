@@ -627,6 +627,7 @@ def _generate_config_yaml(
             "  save_stage_calibrations: true   # Dump each stage's intermediate calibration to <output_dir>/internals/",
             "  # save_optimization_trace: false  # Per-iteration CSV trace for each bundle-adjustment stage",
             "  # save_conditioning: false        # Jacobian spectrum + parameter correlation at the solution (expensive)",
+            "  # log_all_observation_depths: false   # h_q for every observation at each stage-3 solution (~10 MB on a 13-camera rig)",
             "",
             "seed: 42                 # Master seed for the calibration/validation frame split",
             "",

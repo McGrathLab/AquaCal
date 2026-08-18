@@ -388,6 +388,9 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     save_conditioning = bool(internals.get("save_conditioning", False))
     save_benchmark = bool(internals.get("save_benchmark", True))
     benchmark_memory = bool(internals.get("benchmark_memory", False))
+    log_all_observation_depths = bool(
+        internals.get("log_all_observation_depths", False)
+    )
 
     # Reproducibility
     seed = int(data.get("seed", 42))
@@ -423,6 +426,7 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         save_conditioning=save_conditioning,
         save_benchmark=save_benchmark,
         benchmark_memory=benchmark_memory,
+        log_all_observation_depths=log_all_observation_depths,
         seed=seed,
         shared_interface=shared_interface,
         initial_water_z=initial_water_z,
@@ -766,6 +770,25 @@ def run_calibration_from_config(
     # degenerate-PnP guard was entirely silent before this.
     discard_stats: dict[str, int] = {}
 
+    # Accumulators for the per-observation degeneracy sinks (plan 25-01).
+    # `degeneracy_details` is always on: it holds one row per FLAGGED
+    # observation, a population that is empty on a clean rig and of order a few
+    # hundred rows when it is not, so the cost is negligible and the payoff is
+    # that a non-zero degeneracy count stops being a bare number.
+    # `observation_depths` holds one row per EVALUATED observation (~74k per
+    # stage) and stays None unless the config asks for it -- None is what makes
+    # plan 25-01's sink bit-identically inert, so the ordinary run pays nothing.
+    #
+    # Both accumulate ACROSS stage-3 calls, including the second `_run_stage3`
+    # invocation when `reject_outlier_frames` fires. The resulting double-count
+    # is expected and is inherited from the Phase 24 counters (the published 198
+    # is itself a cross-stage sum); the per-row `stage` stamp is what makes the
+    # distinct count recoverable downstream.
+    degeneracy_details: list[dict] = []
+    observation_depths: list[dict] | None = (
+        [] if config.log_all_observation_depths else None
+    )
+
     # Accumulator for per-stage solver diagnostics (BENCH-01/BENCH-04), keyed
     # by benchmark.json stage name. Populated unconditionally (cheap; no
     # extra least_squares calls), consumed only if config.save_benchmark.
@@ -1031,6 +1054,8 @@ def run_calibration_from_config(
             diagnostics_out=diagnostics_out,
             discard_stats_out=discard_stats,
             discard_stage="stage3_interface_optimization",
+            degeneracy_details_out=degeneracy_details,
+            observation_depths_out=observation_depths,
         )
 
     # Observers are needed when EITHER the per-iteration trace (HOOK-02) or
@@ -1281,6 +1306,8 @@ def run_calibration_from_config(
             ),
             discard_stats_out=discard_stats,
             discard_stage="stage3_intrinsic_pass",
+            degeneracy_details_out=degeneracy_details,
+            observation_depths_out=observation_depths,
         )
         elapsed = time.perf_counter() - t0
         timings["stage3_intrinsic_pass"] = elapsed
@@ -1624,6 +1651,8 @@ def run_calibration_from_config(
         timings=timings_payload,
         frame_rejection=frame_rejection_info,
         discard_stats=dict(discard_stats),
+        degeneracy_details=degeneracy_details,
+        observation_depths=observation_depths,
     )
     print(f"  Saved diagnostics to {config.output_dir}")
 

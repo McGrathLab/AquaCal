@@ -312,6 +312,15 @@ class CalibrationConfig:
             measurement mode, plus a whole-run top-level reading. Off by
             default per BENCH-02's requirement that memory measurement never
             run unless explicitly requested.
+        log_all_observation_depths: Opt-in. If True, records the depth below the
+            water surface (h_q, meters) of EVERY evaluated observation at each
+            Stage 3 solution — not just the degenerate ones — and writes them to
+            output_dir/all_observation_depths.csv. This is what makes a flagged
+            observation's depth interpretable against the population it came
+            from, rather than as a bare number. Roughly 74k rows per stage and
+            ~10 MB on the 13-camera production rig, so it is off by default; it
+            is consumed only by the post-solve residual evaluation and never
+            runs inside the solve.
         seed: Master seed controlling the calibration/validation frame holdout
             split, for reproducibility across repeated runs. Default 42.
         shared_interface: Analysis/ablation option, NOT a recommended setting.
@@ -362,6 +371,7 @@ class CalibrationConfig:
     save_conditioning: bool = False  # Opt-in: Jacobian singular-value spectrum + parameter correlation matrix at the solution
     save_benchmark: bool = True  # Write output_dir/benchmark.json every run (BENCH-04); cheap, on by default
     benchmark_memory: bool = False  # Opt-in: per-stage-boundary peak-RSS reading in benchmark.json (BENCH-02)
+    log_all_observation_depths: bool = False  # Opt-in: h_q for EVERY observation at each stage-3 solution, not just flagged ones (~74k rows/stage, ~10 MB on the 13-camera rig); post-solve residual evaluation only, never inside the solve
     seed: int = 42  # Master seed for the pipeline's holdout split (reproducibility)
     shared_interface: bool = True  # Analysis/ablation only: False gives each camera its own water_z (not recommended for production; the shared-interface assumption underlies the paper's central claim)
     initial_water_z: dict[str, float] | None = None
