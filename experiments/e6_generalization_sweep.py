@@ -29,7 +29,12 @@ or name a verdict anywhere (D-12). Interpretation is manuscript work.
 
 Invoked as `python -m experiments.e6_generalization_sweep`. Inherits the
 shared five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`,
-`--check`) from `experiments._io.build_experiment_arg_parser` (D-21).
+`--check`) from `experiments._io.build_experiment_arg_parser` (D-21), plus
+`--no-fail-fast`, `--seeds`, and `--axes`. `--axes` (D-40) selects a SUBSET of
+the axes to sweep; it defaults to all of them, so every pre-D-40 invocation is
+unchanged. The frozen re-run passes `--axes index,layout,cameras`, dropping
+the `scale` axis -- 18 of the band's 102 cells, and zero rows of the
+manuscript's `numbers-ledger.tsv`.
 
 Emits `generalization_sweep.csv` (one row per axis value, tidy long format,
 keyed on `(axis, axis_value)`) plus one small per-configuration JSON under
@@ -55,6 +60,7 @@ import shutil
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -356,7 +362,73 @@ _SMOKE_N_FRAMES = 8
 # ---------------------------------------------------------------------------
 
 
-def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
+ALL_AXES: tuple[str, ...] = ("index", "layout", "scale", "cameras")
+
+
+def resolve_axes(
+    axes: Sequence[str] | None = None, include_cameras_axis: bool = False
+) -> tuple[str, ...]:
+    """Resolve an `--axes` selection into the axes that will actually be
+    emitted, in `ALL_AXES`'s own emission order (D-40, plan 26-05).
+
+    **Composition rule (the two flags UNION, they never fight).** `axes` and
+    `include_cameras_axis` are both REQUESTS; neither can veto the other's:
+
+    - `index`, `layout` and `scale` are emitted when `axes` is `None` (no
+      restriction) or names them.
+    - `cameras` is emitted when `include_cameras_axis` is True, OR when `axes`
+      is a genuine RESTRICTION (a proper subset of `ALL_AXES`) that names
+      `cameras`.
+
+    Passing the full set is deliberately identical to passing `None` -- it is
+    no restriction at all, so the cameras axis stays gated on
+    `include_cameras_axis` alone. That is what makes the `--axes` CLI default
+    (`"index,layout,scale,cameras"`) inert: `_run_full` still gets 14
+    configurations and `_run_seed_band` still gets 17, exactly as before.
+
+    Args:
+        axes: Axis names to select, or `None` for "all axes" (the default,
+            preserving every existing call site's behaviour).
+        include_cameras_axis: See `build_axis_configurations`.
+
+    Returns:
+        The emitted axis names, ordered as in `ALL_AXES`.
+
+    Raises:
+        ValueError: If `axes` is empty, or names an axis not in `ALL_AXES`. A
+            silently-ignored typo would produce a band that is quietly the
+            wrong shape while still exiting 0 (T-26-16), which is exactly the
+            failure mode E6's all-failed-rows trap already has.
+    """
+    if axes is None:
+        selected = set(ALL_AXES)
+        is_restriction = False
+    else:
+        requested = tuple(axes)
+        if not requested:
+            raise ValueError(
+                "axes must name at least one axis; a zero-configuration sweep "
+                f"is never intended. Valid axes: {', '.join(ALL_AXES)}."
+            )
+        unknown = [name for name in requested if name not in ALL_AXES]
+        if unknown:
+            raise ValueError(
+                f"unknown axis name(s): {', '.join(unknown)}. "
+                f"Valid axes: {', '.join(ALL_AXES)}."
+            )
+        selected = set(requested)
+        is_restriction = selected != set(ALL_AXES)
+
+    emit_cameras = include_cameras_axis or (is_restriction and "cameras" in selected)
+    resolved = [name for name in ("index", "layout", "scale") if name in selected]
+    if emit_cameras:
+        resolved.append("cameras")
+    return tuple(resolved)
+
+
+def build_axis_configurations(
+    include_cameras_axis: bool = False, axes: Sequence[str] | None = None
+) -> list[dict]:
     """Expand the axes into one flat list of configuration dicts.
 
     Each dict carries `axis`, `axis_value` (always a string, since the axes'
@@ -385,6 +457,16 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             rows with `depth_range=None`, `xy_extent=None`, `spacing=None`
             so the geometry derives from `n_cameras` alone, exactly as the
             baseline's own geometry does.
+        axes: D-40 (plan 26-05). Axis names to emit, or `None` (the default)
+            for all of them -- so every pre-D-40 call site is unchanged. The
+            frozen re-run passes `("index", "layout", "cameras")`, dropping
+            the `scale` axis: 3 of the band's 17 configurations, 18 of its 102
+            cells, and zero rows of the manuscript's `numbers-ledger.tsv`.
+            Selection FILTERS -- it never reorders or reshapes -- so each
+            emitted axis's block is element-for-element what the unrestricted
+            call emits. See `resolve_axes` for the (union) composition rule
+            with `include_cameras_axis`, and for the `ValueError` raised on an
+            unknown or empty selection.
 
     Returns:
         A list of length `len(INDEX_AXIS_VALUES) + len(LAYOUT_AXIS_VALUES) +
@@ -393,11 +475,13 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
         `is_baseline=True` (4 when `include_cameras_axis=True`). The first
         14 entries are always identical, element-for-element, to the
         default call's full return value -- the cameras axis only appends,
-        never reorders.
+        never reorders. A restricted `axes` selection drops whole axis
+        blocks from this list and changes nothing else about it.
     """
+    resolved_axes = resolve_axes(axes=axes, include_cameras_axis=include_cameras_axis)
     configs: list[dict] = []
 
-    for value in INDEX_AXIS_VALUES:
+    for value in INDEX_AXIS_VALUES if "index" in resolved_axes else []:
         is_baseline = value == BASELINE_N_WATER
         configs.append(
             {
@@ -414,7 +498,7 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    for value in LAYOUT_AXIS_VALUES:
+    for value in LAYOUT_AXIS_VALUES if "layout" in resolved_axes else []:
         is_baseline = value == BASELINE_LAYOUT
         configs.append(
             {
@@ -431,7 +515,9 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    for label, depth_range, xy_extent, spacing in SCALE_AXIS_VALUES:
+    for label, depth_range, xy_extent, spacing in (
+        SCALE_AXIS_VALUES if "scale" in resolved_axes else []
+    ):
         is_baseline = label == BASELINE_SCALE
         configs.append(
             {
@@ -448,7 +534,7 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    if include_cameras_axis:
+    if "cameras" in resolved_axes:
         for value in CAMERAS_AXIS_VALUES:
             is_baseline = value == BASELINE_N_CAMERAS
             configs.append(
@@ -1310,12 +1396,31 @@ def _band_smoke_configurations() -> list[dict]:
     return [baseline, cameras_non_baseline]
 
 
+def _band_scope_string(resolved_axes: Sequence[str]) -> str:
+    """The band provenance sidecar's `scope` string, naming the axes that were
+    ACTUALLY run (D-19.5-05, D-40).
+
+    Built from the resolved selection rather than hardcoded: a scope string
+    claiming coverage the run did not have -- e.g. still saying
+    "index/layout/scale/cameras" after `--axes index,layout,cameras` dropped
+    the scale axis -- is precisely the class of defect FIX-06 cleaned up
+    (T-26-15).
+    """
+    return (
+        "varies: seed (scenario/detection-generation randomness) across "
+        f"every {'/'.join(resolved_axes)} axis configuration. bounds: "
+        "seed-to-seed accuracy variance on this synthetic sweep only -- not "
+        "a physical-rig or real-data claim (D-19.5-05)."
+    )
+
+
 def _run_seed_band(
     seeds: list[int],
     out_dir: Path,
     smoke: bool,
     force: bool,
     fail_fast: bool,
+    axes: Sequence[str] | None = None,
 ) -> None:
     """`--seeds`: run E6's per-configuration sweep once per seed, over the
     17-configuration axis set (index + layout + scale + cameras), and emit
@@ -1323,8 +1428,14 @@ def _run_seed_band(
 
     Never writes `generalization_sweep.csv` at `out_dir` -- only
     `generalization_sweep_band.csv` and `e6_seed_band_provenance.json`.
+
+    `axes` (D-40) narrows that set: `("index", "layout", "cameras")` drops the
+    scale axis for 14 configurations per seed rather than 17. The resolved
+    selection is recorded in the sidecar's `axes` field AND in its `scope`
+    string, so a narrowed band never claims coverage it does not have.
     """
     environment = capture_environment()
+    resolved_axes = resolve_axes(axes=axes, include_cameras_axis=True)
     n_frames = _SMOKE_N_FRAMES if smoke else BASELINE_N_FRAMES
     refine_intrinsics = not smoke
     per_seed_status_counts: dict[int, dict[str, int]] = {}
@@ -1352,7 +1463,7 @@ def _run_seed_band(
             shutil.rmtree(seed_dir)
         seed_dir.mkdir(parents=True, exist_ok=True)
 
-        configs = build_axis_configurations(include_cameras_axis=True)
+        configs = build_axis_configurations(include_cameras_axis=True, axes=axes)
         if smoke:
             configs = _band_smoke_configurations()
         df = run_sweep(
@@ -1404,27 +1515,27 @@ def _run_seed_band(
                 "environment": environment,
                 "solver_config": {"seeds": list(seeds)},
                 "include_cameras_axis": True,
+                # D-40: the axes this band ACTUALLY swept, resolved from
+                # --axes. Read this alongside the row count -- a 14-
+                # configuration band is a deliberate scale-axis drop, not a
+                # truncated run.
+                "axes": list(resolved_axes),
                 "status_counts_by_seed": {
                     str(seed): counts for seed, counts in per_seed_status_counts.items()
                 },
                 # D-19.5-05: this band varies ONLY the seed (scenario/
                 # detection-generation randomness), across every
                 # configuration in build_axis_configurations(
-                # include_cameras_axis=True) -- it bounds seed-to-seed
-                # accuracy variance on E6's index/layout/scale/cameras
-                # axes. It does NOT bound anything about a real physical
+                # include_cameras_axis=True, axes=axes) -- it bounds
+                # seed-to-seed accuracy variance on whichever of E6's
+                # index/layout/scale/cameras axes the `axes` field above
+                # names. It does NOT bound anything about a real physical
                 # rig, tank, or medium (E2 anchors that separately), and a
                 # `status != "ok"` count in status_counts_by_seed means
                 # that seed did not converge for at least one
                 # configuration -- read the counts, never the process exit
                 # code (E4/E6's silent-failure trap).
-                "scope": (
-                    "varies: seed (scenario/detection-generation "
-                    "randomness) across every index/layout/scale/cameras "
-                    "axis configuration. bounds: seed-to-seed accuracy "
-                    "variance on this synthetic sweep only -- not a "
-                    "physical-rig or real-data claim (D-19.5-05)."
-                ),
+                "scope": _band_scope_string(resolved_axes),
             },
             f,
             indent=2,
@@ -1469,7 +1580,36 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "mandatory, not tidiness, since E6's checkpoint cache is seed-blind "
         "(see _run_seed_band's docstring).",
     )
+    parser.add_argument(
+        "--axes",
+        type=_parse_axes_argument,
+        default=ALL_AXES,
+        help="D-40: comma-separated subset of the axes to sweep (valid: "
+        + ",".join(ALL_AXES)
+        + "). Defaults to all of them, so a bare invocation is unchanged. "
+        "The frozen re-run passes --seeds <list> --axes index,layout,cameras, "
+        "dropping the scale axis for 14 x 6 = 84 band rows instead of 17 x 6 "
+        "= 102: scale is 18 of the 102 cells (~1.9h of a ~22-26h serial "
+        "budget) and appears in ZERO rows of the manuscript's "
+        "numbers-ledger.tsv -- all 11 numbers backed by "
+        "generalization_sweep_band.csv sit on the cameras, index or layout "
+        "axes. An unknown or empty selection is an error, never a silently "
+        "mis-shaped band. Note the cameras axis is additionally requested by "
+        "band mode itself, so omitting it here does not drop it from a "
+        "--seeds run (see resolve_axes).",
+    )
     return parser
+
+
+def _parse_axes_argument(raw: str) -> tuple[str, ...]:
+    """argparse type for `--axes`: a comma-separated axis list to a tuple.
+
+    Validation happens here, so a typo fails at parse time with argparse's own
+    error path rather than mid-sweep (T-26-16).
+    """
+    names = tuple(part.strip() for part in raw.split(",") if part.strip())
+    resolve_axes(axes=names)
+    return names
 
 
 def _validate_e6_args(
@@ -1685,7 +1825,11 @@ def _run_full(args: argparse.Namespace) -> int:
     """
     out_dir = resolve_out_dir(args.out)
     environment = capture_environment()
-    configs = build_axis_configurations()
+    # D-40: `--axes`'s default is the full set, which resolve_axes treats as
+    # no restriction at all -- so the single-seed sweep is unchanged (14
+    # configurations, cameras still band-mode-only) unless a subset is asked
+    # for explicitly.
+    configs = build_axis_configurations(axes=args.axes)
     per_camera_rows: list[dict] = []
     try:
         df = run_sweep(
@@ -1747,6 +1891,7 @@ def main(argv: list[str] | None = None) -> int:
             smoke=args.smoke,
             force=args.force,
             fail_fast=not args.no_fail_fast,
+            axes=args.axes,
         )
         return 0
 
