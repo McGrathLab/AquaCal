@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 26 planned -- 10 plans in 7 waves
-last_updated: "2026-08-18T20:15:21.704Z"
-last_activity: 2026-08-18 -- Phase 26 planning complete
+stopped_at: Phase 26 context gathered
+last_updated: "2026-08-18T20:17:03.684Z"
+last_activity: 2026-08-18 -- Phase 26 execution started
 progress:
   total_phases: 8
   completed_phases: 3
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 25 — degeneracy classification claim licensing
+**Current focus:** Phase 26 — full-suite-driver-handoff-readiness
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -32,10 +32,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-18 -- Phase 26 planning complete
+Phase: 26 (full-suite-driver-handoff-readiness) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 26
+Last activity: 2026-08-18 -- Phase 26 execution started
 FIX-03+04, FIX-06), one commit per requirement
 
 ## Roadmap Summary (v2.1)
