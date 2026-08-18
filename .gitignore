@@ -331,3 +331,14 @@ experiments/results_linux32gb/e2_*/reconstruction_errors.csv
 experiments/verify_23/
 experiments/verify_23_optblocks/
 experiments/verify_23_fdnoise/
+
+# D-19 / plan 25-05: the Huber-knee probe raw calibration outputs. 13 MB EACH,
+# dominated by a 13 MB exp2_spatial_errors.csv per arm -- too large to commit, and
+# regenerable from probe_fscale.py at 054d753 (~10 min wall clock for both arms).
+# The evidence MF-21 cites is committed and unaffected: FINDINGS.md carries every
+# number, fscale_accuracy_comparison.csv carries the derived control-vs-treatment
+# comparison, and calls_{control,treatment}.json carry the per-solve records.
+# Same policy as experiments/verify_23*/ above: raw run output stays out, the
+# transcribed evidence stays in.
+.planning/probes/2026-08-17-huber-knee/e1_control/
+.planning/probes/2026-08-17-huber-knee/e1_treatment/
