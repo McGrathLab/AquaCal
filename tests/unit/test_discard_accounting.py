@@ -910,3 +910,133 @@ def test_clean_solve_emits_no_degeneracy_warning():
         w for w in caught if issubclass(w.category, DegenerateObservationWarning)
     ]
     assert not degeneracy, [str(w.message) for w in degeneracy]
+
+
+# ---------------------------------------------------------------------------
+# F. The per-observation detail sink's caller-side stamps (phase 25, DEGEN-04)
+# ---------------------------------------------------------------------------
+#
+# `compute_residuals` emits raw geometry and nothing else; `stage` (D-07) and the
+# `truncated` / `n_*_at_stage` pair (D-10) are stamped at the two post-solve call
+# sites, which is where the validated stage label and the independently exact
+# aggregate both already live. These two tests pin that seam.
+
+
+@pytest.mark.slow
+def test_detail_rows_carry_a_legal_stage_label():
+    """D-07: every emitted row carries the stage that was asked for.
+
+    A per-observation record without its stage cannot be reconciled against the
+    cross-stage total, so the stamp is mandatory rather than optional. Both
+    entry points are exercised because the two call sites must not diverge.
+    """
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=0, depth_range=(0.152, 0.17))
+    )
+
+    stage = "stage3_interface_optimization"
+    rows: list[dict] = []
+    depths: list[dict] = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DegenerateObservationWarning)
+        stage3_result = optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stage=stage,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+    assert rows, "the pinned scene stopped producing flagged observations"
+    for row in rows:
+        assert row["stage"] in DISCARD_STAGES
+        assert row["stage"] == stage
+        assert row["truncated"] is False
+        assert row["n_flagged_at_stage"] == len(rows)
+    assert depths
+    for row in depths:
+        assert row["stage"] == stage
+        assert row["truncated"] is False
+        assert row["n_observations_at_stage"] == len(depths)
+
+    # The second call site, in refinement.py, must stamp identically.
+    refine_stage = "stage3_intrinsic_pass"
+    refine_rows: list[dict] = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DegenerateObservationWarning)
+        joint_refinement(
+            stage3_result=stage3_result,
+            detections=detections,
+            intrinsics=intrinsics,
+            board=board,
+            reference_camera="cam0",
+            refine_intrinsics=False,
+            verbose=0,
+            min_corners=6,
+            discard_stage=refine_stage,
+            degeneracy_details_out=refine_rows,
+        )
+    for row in refine_rows:
+        assert row["stage"] in DISCARD_STAGES
+        assert row["stage"] == refine_stage
+
+
+@pytest.mark.slow
+def test_row_cap_truncates_rows_but_the_aggregate_count_stays_exact(monkeypatch):
+    """D-10: truncation stops rows, never the count.
+
+    The aggregate is read off the Phase 24 counter, which is computed in the same
+    pass but independently of the row list, so a capped table still reports the
+    true flagged total -- and says so, in the artifact itself, on every row.
+    """
+    import aquacal.calibration._optim_common as optim_common
+
+    monkeypatch.setattr(optim_common, "DEGENERACY_DETAIL_ROW_CAP_PER_STAGE", 3)
+
+    intrinsics, extrinsics, board, water_zs, detections = (
+        _build_three_camera_board_scene(seed=5, depth_range=(0.151, 0.175))
+    )
+    stage = "stage3_interface_optimization"
+    rows: list[dict] = []
+    stats: dict[str, int] = {}
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        optimize_interface(
+            detections,
+            intrinsics,
+            extrinsics,
+            board,
+            "cam0",
+            initial_water_zs=water_zs,
+            verbose=0,
+            min_corners=6,
+            discard_stats_out=stats,
+            discard_stage=stage,
+            degeneracy_details_out=rows,
+        )
+
+    n_flagged = stats["degenerate_observations_at_solution"]
+    assert n_flagged > 3, (
+        "the pinned scene no longer produces more flagged observations than the "
+        f"patched cap; got {n_flagged}"
+    )
+    assert len(rows) == 3
+    assert rows[0]["truncated"] is True
+    # The aggregate is asserted through the STAMP, not through `len(rows)` --
+    # deriving it from row count is exactly the bug D-10 exists to prevent.
+    assert rows[0]["n_flagged_at_stage"] == n_flagged
+    assert all(r["n_flagged_at_stage"] == n_flagged for r in rows)
+
+    cap_warnings = [
+        w
+        for w in caught
+        if not issubclass(w.category, DegenerateObservationWarning)
+        and "row cap" in str(w.message)
+    ]
+    assert len(cap_warnings) == 1, [str(w.message) for w in cap_warnings]
