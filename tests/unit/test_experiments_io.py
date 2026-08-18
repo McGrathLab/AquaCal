@@ -892,3 +892,91 @@ class TestBaselineDir:
                 key_columns=EXP1_KEY_COLUMNS,
                 rtol=CHECK_RTOL,
             )
+
+
+class TestBaselineDirE3Plumbing:
+    """Phase 26 / DRIVER-03: E3's `--check` argument plumbing (D-10, D-12).
+
+    Deliberately drives the parser and the resolution helper only. `_run_check`
+    recomputes a Newton sweep over the rig's working volume -- it is an
+    experiment, not a unit test, and this suite never runs one. E3 has no
+    dedicated CLI test file, so these live beside the helper tests to keep
+    `-k baseline` a single selector.
+    """
+
+    def test_e3_parser_exposes_baseline_dir_and_all_five_shared_flags(self):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        parser = build_arg_parser()
+        options = {o for a in parser._actions for o in a.option_strings}
+        assert {"--seed", "--out", "--force", "--smoke", "--check"} <= options
+        assert "--baseline-dir" in options
+
+    def test_e3_check_resolves_baselines_under_baseline_dir(self, tmp_path):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        archive = tmp_path / "pre_rerun_baseline" / "results"
+        out = tmp_path / "fresh"
+        args = build_arg_parser().parse_args(
+            ["--check", "--baseline-dir", str(archive), "--out", str(out)]
+        )
+        assert args.check is True
+        assert resolve_baseline_dir(args.baseline_dir, out) == archive
+        # A --check run writes nowhere, and resolution creates nothing.
+        assert not archive.exists()
+
+    def test_e3_check_without_the_flag_resolves_under_out(self, tmp_path):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        out = tmp_path / "fresh"
+        args = build_arg_parser().parse_args(["--check", "--out", str(out)])
+        assert args.baseline_dir is None
+        assert resolve_baseline_dir(args.baseline_dir, out) == out
+
+    def test_e3_rejects_baseline_dir_with_force(self, capsys):
+        from experiments.e3_derived_quantities import (
+            _validate_e3_args,
+            build_arg_parser,
+        )
+
+        parser = build_arg_parser()
+        args = parser.parse_args(["--check", "--force", "--baseline-dir", "x"])
+        with pytest.raises(SystemExit):
+            _validate_e3_args(parser, args)
+        err = capsys.readouterr().err
+        assert "--baseline-dir" in err
+        assert "--force" in err
+
+    def test_e3_rejects_baseline_dir_without_check(self, capsys):
+        from experiments.e3_derived_quantities import (
+            _validate_e3_args,
+            build_arg_parser,
+        )
+
+        parser = build_arg_parser()
+        args = parser.parse_args(["--baseline-dir", "x"])
+        with pytest.raises(SystemExit):
+            _validate_e3_args(parser, args)
+        err = capsys.readouterr().err
+        assert "--baseline-dir" in err
+        assert "--check" in err
+
+    def test_e3_main_exits_nonzero_for_baseline_dir_with_force(self):
+        from experiments.e3_derived_quantities import main
+
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--check", "--force", "--baseline-dir", "x"])
+        assert excinfo.value.code != 0
+
+    def test_e3_run_check_accepts_baseline_dir_keyword(self):
+        """Signature-level assertion: `_run_check` gained a keyword-only
+        `baseline_dir` defaulting to None, so existing callers keep working.
+        """
+        import inspect
+
+        from experiments.e3_derived_quantities import _run_check
+
+        sig = inspect.signature(_run_check)
+        param = sig.parameters["baseline_dir"]
+        assert param.kind is inspect.Parameter.KEYWORD_ONLY
+        assert param.default is None
