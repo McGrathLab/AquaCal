@@ -378,3 +378,55 @@ def test_water_z_bounds_threads_through_both_stage3_call_sites():
         inspect.getsource(calibrate_synthetic).count("water_z_bounds=water_z_bounds")
         == 2
     )
+
+
+def test_fixed_contract_columns_are_unchanged():
+    """`exp1_parameter_errors.csv`, `exp2_depth_generalization.csv` and
+    `exp3_xy_vs_z_anisotropy.csv` are read BYTE-FOR-BYTE by an external,
+    read-only figures repository (D-19: "do not add, remove, reorder, or
+    rename a column").
+
+    BAND-01 adds a `noise_std` column to the two BAND artifacts. It must NEVER
+    appear in these three, and neither must anything else: the literals below
+    are copied from the module as it stood before the noise axis landed, and a
+    diff against them is the whole point of the test.
+    """
+    from experiments.e1_refractive_comparison import (
+        EXP1_COLUMNS,
+        EXP2_COLUMNS,
+        EXP3_COLUMNS,
+    )
+
+    assert EXP1_COLUMNS == [
+        "camera",
+        "model",
+        "focal_length_error_pct",
+        "z_position_error_mm",
+        "xy_position_error_mm",
+        "gt_x_m",
+        "gt_y_m",
+        "gt_z_m",
+        "est_x_m",
+        "est_y_m",
+        "est_z_m",
+        "reprojection_rms_px",
+    ]
+    assert EXP2_COLUMNS == [
+        "test_depth_m",
+        "model",
+        "signed_mean_mm",
+        "rmse_mm",
+        "scale_factor",
+        "calib_depth_min_m",
+        "calib_depth_max_m",
+    ]
+    assert EXP3_COLUMNS == [
+        "test_depth_m",
+        "model",
+        "xy_rmse_mm",
+        "z_rmse_mm",
+        "anisotropy_ratio",
+        "n_points",
+    ]
+    for columns in (EXP1_COLUMNS, EXP2_COLUMNS, EXP3_COLUMNS):
+        assert "noise_std" not in columns
