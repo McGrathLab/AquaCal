@@ -294,6 +294,8 @@ def optimize_interface(
     discard_stats_out: dict[str, int] | None = None,
     water_z_bounds: tuple[float, float] | None = None,
     discard_stage: str | None = None,
+    degeneracy_details_out: list[dict] | None = None,
+    observation_depths_out: list[dict] | None = None,
 ) -> tuple[dict[str, CameraExtrinsics], dict[str, float], list[BoardPose], float]:
     """
     Jointly optimize camera extrinsics, interface distances, and board poses.
@@ -351,6 +353,23 @@ def optimize_interface(
             pattern (unit tests, direct calls) and must stay visible rather than
             be merged into a real stage. An unrecognized string raises
             `ValueError` at entry, before the solve.
+        degeneracy_details_out: Optional list, purely observational, defaulting to
+            None. When supplied it is EXTENDED with one row per flagged
+            observation at the final solution (DEGEN-04), as produced by
+            `compute_residuals`' `degeneracy_details_out` sink, with three
+            columns stamped on here that the library core cannot know: `stage`
+            (this call's `resolved_discard_stage`, already validated against
+            `DISCARD_STAGES` at entry, so every row carries a closed-vocabulary
+            label -- D-07), `n_flagged_at_stage` (the exact aggregate, taken from
+            the independent counter and never from row count) and `truncated`
+            (D-10, so a reader of the artifact alone can never mistake a
+            row-capped table for a complete one).
+        observation_depths_out: Optional list, purely observational, defaulting to
+            None. The full-population twin of `degeneracy_details_out` (D-09):
+            one `h_q` row per EVALUATED observation, stamped with `stage`,
+            `n_observations_at_stage` and `truncated`. ~74k rows per stage on the
+            production rig, hence off by default and reached only through an
+            explicit config flag.
 
     Returns:
         Tuple of:
@@ -610,16 +629,45 @@ def optimize_interface(
     # Nothing below is added to `cost_args` and nothing is threaded into the
     # callable scipy invokes -- doing so would allocate a reason array on every
     # one of thousands of residual evaluations, and nothing in the type
-    # signatures would catch the drift.
+    # signatures would catch the drift. That rule now covers two more sinks --
+    # `degeneracy_details_out` (one row per flagged observation, DEGEN-04) and
+    # `observation_depths_out` (one row per evaluated observation, D-09) -- and
+    # it binds them harder than the counters: a per-observation sink threaded
+    # into the callable scipy invokes would allocate ~480M rows on E1's
+    # non-refractive arm.
     invalid_counts: list[int] = []
     degeneracy_breakdown: dict[str, int] = {}
+    detail_rows: list[dict] | None = [] if degeneracy_details_out is not None else None
+    depth_rows: list[dict] | None = [] if observation_depths_out is not None else None
     compute_residuals(
         result.x,
         *cost_args,
         invalid_count_out=invalid_counts,
         degeneracy_breakdown_out=degeneracy_breakdown,
+        degeneracy_details_out=detail_rows,
+        observation_depths_out=depth_rows,
     )
     n_invalid = invalid_counts[0] if invalid_counts else 0
+    # D-07 + D-10, stamped here because this is where the stage label and the
+    # independently exact aggregate both live. `resolved_discard_stage` was
+    # validated against `DISCARD_STAGES` at entry, so the stamp inherits the
+    # closed vocabulary for free; `truncated` compares emitted rows against a
+    # count that never came from `len(rows)`.
+    if degeneracy_details_out is not None:
+        _truncated = len(detail_rows) < n_invalid
+        for _row in detail_rows:
+            _row["stage"] = resolved_discard_stage
+            _row["n_flagged_at_stage"] = n_invalid
+            _row["truncated"] = _truncated
+        degeneracy_details_out.extend(detail_rows)
+    if observation_depths_out is not None:
+        _n_evaluated = degeneracy_breakdown["observations_evaluated"]
+        _truncated = len(depth_rows) < _n_evaluated
+        for _row in depth_rows:
+            _row["stage"] = resolved_discard_stage
+            _row["n_observations_at_stage"] = _n_evaluated
+            _row["truncated"] = _truncated
+        observation_depths_out.extend(depth_rows)
     for _cause in DEGENERACY_CAUSES:
         _bump(
             discard_stats_out,
