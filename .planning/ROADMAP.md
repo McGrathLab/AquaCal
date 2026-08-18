@@ -326,7 +326,19 @@ it gets built, then amended at the freeze.)
 
   4. Every pre-existing output tree is moved aside (not deleted) before a driver invocation, so a
      fresh run cannot be confused with a stale one.
-**Plans**: TBD
+**Plans**: 10 plans
+
+Plans:
+- [ ] 26-01-PLAN.md — Archive-aside (DRIVER-04) and the four unit-test repairs it forces
+- [ ] 26-02-PLAN.md — Run-manifest emitter and the hard-FAIL Gate 3 extension (DRIVER-02)
+- [ ] 26-03-PLAN.md — Expectation manifest and the completeness gate with a stage/profile selector
+- [ ] 26-04-PLAN.md — `_io.py` baseline-dir helpers, the missing-baseline N/A guard, and E3
+- [ ] 26-05-PLAN.md — E6 `--axes` selector, so D-40's `scale`-axis cut is implementable
+- [ ] 26-06-PLAN.md — E2's four invocations (config variants) plus `--baseline-dir` and the N/A guard
+- [ ] 26-07-PLAN.md — `run_experiment_suite.sh`: rename, union-and-lift from 19.5, full stage list
+- [ ] 26-08-PLAN.md — Pre-flight, sticky exit, end-of-run roll-up, concurrency pool, dry-run tests
+- [ ] 26-09-PLAN.md — README §2/§7 rewrite, expectation sheet, MF-23, archive the two old drivers
+- [ ] 26-10-PLAN.md — Orchestrator's full `--smoke` acceptance pass (checkpoint)
 
 ### Phase 27: Frozen Single-Sha Handoff Package
 
