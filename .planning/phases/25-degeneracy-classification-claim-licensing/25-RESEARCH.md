@@ -1139,7 +1139,10 @@ not `PipelineConfig`; and `scenario.noise_std`'s test-set pass-through is at `:6
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **All five resolved during planning, 2026-08-18** — resolution noted under each question,
+> citing the plan that settled it. Kept verbatim as the audit trail.
 
 1. **Does `exp1_parameter_band.csv` gain `noise_std`, and do both key lists gain it?** *(blocks BAND-01's plan)*
    - **What we know:** `_run_band` writes both band CSVs from the same per-seed accumulators. With
@@ -1153,26 +1156,36 @@ not `PipelineConfig`; and `scenario.noise_std`'s test-set pass-through is at `:6
    - **Recommendation:** add `noise_std` to both band CSVs and to **both** key column lists. Surface
      this to the user as a one-line confirmation during planning; it is a five-minute answer and a
      silently-broken artifact otherwise. Do not proceed on the literal reading.
+   - **RESOLVED (25-04):** taken as recommended — `noise_std` added to **both** `BAND_KEY_COLUMNS`
+     and `PARAMETER_BAND_KEY_COLUMNS`; `exp1_parameter_band.csv` goes 240 → 960. The departure from
+     D-12's literal text is documented in-source and in 25-04 Task 1, not silent.
 
 2. **`chord_incidence_deg` vs an `exit_angle_deg` NaN column.** The refracted exit angle is
    genuinely unrecoverable for a flagged observation (§ Detail Sink). Recommend the chord angle
    under an unambiguous name; confirm the naming so it is never mistaken for the refracted angle.
+   - **RESOLVED (25-01):** the column is `chord_incidence_deg`; `exit_angle_deg` is never emitted,
+     because `r_p` does not exist for a flagged point.
 
 3. **Does the D-17 caveat extend to E6's `generalization_sweep.csv`?** Same column, same Zenodo
    destination, not named in D-17. Recommend at minimum a code comment pointing at the E4 caveat.
    User call on whether that is in scope.
+   - **RESOLVED (25-05):** minimum action only — a pointer comment in E6's column list referring to
+     E4's caveat. Scope not silently expanded.
 
 4. **Where does the D-17 caveat live for `benchmark_grid.csv` specifically?** The `.tex` has a
    comment surface; the CSV has none that survives `pd.read_csv`. Options: (a) code comment +
    module docstring + MF-21 only; (b) a sibling `benchmark_grid_notes.md` shipped with the artifact.
    Recommend (a) plus MF-21 — the CSV's consumers are the `.tex` and the figures repo, both of which
    will meet the `.tex` caveat.
+   - **RESOLVED (25-05):** option (a) — code comment + module docstring + MF-21. No sibling notes file.
 
 5. **Sequencing of the two long runs.** E2 (~1 h, 10.26 GiB peak) and the E1 band (~7 h) must not
    overlap on 16.86 GB. Which goes first is a plan-decomposition call: E2 first unblocks D-04's
    gate-scope decision, which is criterion 2; the band unblocks criterion 3. Recommend **E2 first**,
    because D-04's rationale text is downstream of it and the band run can proceed overnight
    afterwards.
+   - **RESOLVED (wave graph):** E2 first (wave 3), E1 band last (wave 5), separated by the doc-only
+     25-07. The wave barrier guarantees they never overlap on the 16.86 GB machine.
 
 ---
 
