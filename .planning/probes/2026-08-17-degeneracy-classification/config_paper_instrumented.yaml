@@ -1,0 +1,118 @@
+# AquaCal -- INSTRUMENTED COPY for probe 2026-08-17-degeneracy-classification
+#
+# Created 2026-08-18 for Phase 25 plan 25-06 (DEGEN-04): classify the production
+# rig's unprojectable observations.
+#
+# This file differs from config_paper.yaml in EXACTLY ONE key: the internals block
+# below sets log_all_observation_depths: true. Nothing else is changed, and
+# config_paper.yaml itself is NOT edited in place.
+#
+# Run under OpenCV 4.13.0 (the pin that produces 198 rather than 194 -- D-01).
+#
+# AquaCal -- real-rig archive: PAPER REPRODUCTION CONFIG
+#
+# This config reproduces Section 3 of the AquaCal paper from the frames shipped
+# in this archive. The frames are already subsampled at every 30th video frame,
+# so detection.frame_step is 1 here (1 over these images == 30 over the source
+# video, which is what the release run used).
+#
+# Expected runtime  : ~50 minutes on a modern desktop
+# Expected peak RAM : ~11 GiB  -- give this run the machine to itself
+#
+# Run with:  python -u -m aquacal calibrate config_paper.yaml
+
+board:
+  squares_x: 12
+  squares_y: 9
+  square_size: 0.06
+  marker_size: 0.045
+  dictionary: DICT_5X5_100
+  legacy_pattern: false
+intrinsic_board:
+  squares_x: 11
+  squares_y: 8
+  square_size: 0.02
+  marker_size: 0.015
+  dictionary: DICT_4X4_100
+  legacy_pattern: true
+cameras:
+- e3v829d
+- e3v82e0
+- e3v82f9
+- e3v831e
+- e3v832e
+- e3v8334
+- e3v83e9
+- e3v83eb
+- e3v83ee
+- e3v83ef
+- e3v83f0
+- e3v83f1
+auxiliary_cameras:
+- e3v8250
+fisheye_cameras:
+- e3v8250
+paths:
+  intrinsic_videos:
+    e3v8250: intrinsic/e3v8250/
+    e3v829d: intrinsic/e3v829d/
+    e3v82e0: intrinsic/e3v82e0/
+    e3v82f9: intrinsic/e3v82f9/
+    e3v831e: intrinsic/e3v831e/
+    e3v832e: intrinsic/e3v832e/
+    e3v8334: intrinsic/e3v8334/
+    e3v83e9: intrinsic/e3v83e9/
+    e3v83eb: intrinsic/e3v83eb/
+    e3v83ee: intrinsic/e3v83ee/
+    e3v83ef: intrinsic/e3v83ef/
+    e3v83f0: intrinsic/e3v83f0/
+    e3v83f1: intrinsic/e3v83f1/
+  extrinsic_videos:
+    e3v8250: extrinsic/e3v8250/
+    e3v829d: extrinsic/e3v829d/
+    e3v82e0: extrinsic/e3v82e0/
+    e3v82f9: extrinsic/e3v82f9/
+    e3v831e: extrinsic/e3v831e/
+    e3v832e: extrinsic/e3v832e/
+    e3v8334: extrinsic/e3v8334/
+    e3v83e9: extrinsic/e3v83e9/
+    e3v83eb: extrinsic/e3v83eb/
+    e3v83ee: extrinsic/e3v83ee/
+    e3v83ef: extrinsic/e3v83ef/
+    e3v83f0: extrinsic/e3v83f0/
+    e3v83f1: extrinsic/e3v83f1/
+  output_dir: output
+interface:
+  n_air: 1.0
+  n_water: 1.333
+  normal_fixed: false
+  initial_water_z:
+    e3v829d: 1.0
+    e3v82e0: 1.0
+    e3v82f9: 1.0
+    e3v831e: 1.0
+    e3v832e: 1.0
+    e3v8334: 1.0
+    e3v83e9: 1.0
+    e3v83eb: 1.0
+    e3v83ee: 1.0
+    e3v83ef: 1.0
+    e3v83f0: 1.0
+    e3v83f1: 1.0
+    e3v8250: 1.0
+optimization:
+  robust_loss: huber
+  loss_scale: 1.0
+  max_calibration_frames: 200
+  refine_intrinsics: true
+  refine_auxiliary_intrinsics: true
+detection:
+  min_corners: 8
+  min_cameras: 2
+  frame_step: 1
+validation:
+  holdout_fraction: 0.2
+  save_detailed_residuals: true
+
+internals:
+  log_all_observation_depths: true   # h_q for every observation at each stage-3 solution
