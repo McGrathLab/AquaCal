@@ -681,3 +681,116 @@ class TestWallClockBudget:
         assert self._midpoint(
             summary["expected_total_with_concurrency_hours"]
         ) < self._midpoint(summary["serial_total_hours"])
+
+
+class TestExpectationSheet:
+    """D-08: ``experiments/EXPECTATIONS.md``'s generated region is RENDERED
+    from the manifest, never hand-maintained.
+
+    DRIVER-03 requires a written hand-verification sheet to exist BEFORE the
+    frozen run, because the run is what it will be checked against. A sheet
+    that drifted from the manifest is worse than no sheet: a hand-verifier
+    comparing a finished tree against stale expectations produces a confident
+    wrong verdict, which is the same failure class as F-001 (a run that exited
+    0 while a band CSV was never produced at all).
+
+    CONTEXT amendment section D's D-44 proposed cutting this renderer and this
+    test, on the grounds that the sheet is authored once and frozen days later.
+    ``26-VALIDATION.md``'s contract requires them, and plan 26-09 resolved the
+    conflict in favour of keeping both: they are cheap, and they make D-05's
+    "one list" claim literally true rather than aspirational.
+    """
+
+    @staticmethod
+    def _sheet_module():
+        return importlib.import_module("experiments.render_expectation_sheet")
+
+    @staticmethod
+    def _drifted_manifest():
+        """A copy of the manifest with exactly one pinned row count moved."""
+        drifted = json.loads(json.dumps(MANIFEST))
+        for artifact in drifted["artifacts"]:
+            if artifact["rows"].get("full") is not None:
+                artifact["rows"]["full"] += 1
+                return drifted
+        raise AssertionError("no artifact pins a full-profile row count")
+
+    def test_the_sheet_has_exactly_one_generated_region(self):
+        sheet = self._sheet_module()
+        text = sheet.SHEET_PATH.read_text(encoding="utf-8")
+        assert text.count(sheet.BEGIN_MARKER) == 1
+        assert text.count(sheet.END_MARKER) == 1
+
+    def test_the_committed_sheet_is_up_to_date_with_the_manifest(self):
+        """The freshness assertion itself."""
+        sheet = self._sheet_module()
+        text = sheet.SHEET_PATH.read_text(encoding="utf-8")
+        _, generated, _ = sheet.split_sheet(text)
+        assert generated == sheet.render_sheet(), (
+            "experiments/EXPECTATIONS.md's generated region no longer matches "
+            "experiments/suite_expectations.json. Regenerate it with: "
+            "python -m experiments.render_expectation_sheet --write"
+        )
+
+    def test_check_exits_zero_against_the_committed_sheet(self):
+        assert self._sheet_module().main(["--check"]) == 0
+
+    def test_a_stale_sheet_makes_check_exit_non_zero(self, monkeypatch):
+        """The gate genuinely fails when the manifest moves under the sheet."""
+        sheet = self._sheet_module()
+        monkeypatch.setattr(
+            sheet, "load_expectations", lambda *a, **k: self._drifted_manifest()
+        )
+        assert sheet.main(["--check"]) != 0
+
+    def test_a_stale_sheet_names_the_regeneration_command(self, monkeypatch, capsys):
+        """A failure that does not say how to fix it costs more than no check."""
+        sheet = self._sheet_module()
+        monkeypatch.setattr(
+            sheet, "load_expectations", lambda *a, **k: self._drifted_manifest()
+        )
+        sheet.main(["--check"])
+        captured = capsys.readouterr()
+        assert "render_expectation_sheet --write" in captured.out + captured.err
+
+    def test_rendering_the_sheet_twice_is_idempotent(self):
+        sheet = self._sheet_module()
+        once = sheet.replace_generated_region(
+            sheet.SHEET_PATH.read_text(encoding="utf-8"), sheet.render_sheet()
+        )
+        twice = sheet.replace_generated_region(once, sheet.render_sheet())
+        assert once == twice
+
+    def test_regenerating_the_sheet_never_touches_the_hand_written_prose(self):
+        """Everything outside the markers is prose the renderer must not own."""
+        sheet = self._sheet_module()
+        text = sheet.SHEET_PATH.read_text(encoding="utf-8")
+        head, _, tail = sheet.split_sheet(text)
+        rewritten = sheet.replace_generated_region(text, "regenerated\n")
+        new_head, new_generated, new_tail = sheet.split_sheet(rewritten)
+        assert (new_head, new_tail) == (head, tail)
+        assert new_generated == "regenerated\n"
+
+    def test_every_full_profile_artifact_has_a_row_in_the_sheet(self):
+        """The sheet is the hand-verifier's checklist; an artifact missing from
+        it is an artifact nobody looks at."""
+        generated = self._sheet_module().render_sheet()
+        missing = [
+            artifact["name"]
+            for artifact in ARTIFACTS
+            if "full" in artifact["profiles"] and artifact["name"] not in generated
+        ]
+        assert missing == []
+
+    def test_the_sheet_marks_every_shape_only_column(self):
+        """Existence and row count are not correctness: a gauge-corrected column
+        populated with uncorrected values passes every completeness check. The
+        sheet is where that gap is closed, so it must name those columns."""
+        generated = self._sheet_module().render_sheet()
+        shape_only = {
+            column
+            for artifact in ARTIFACTS
+            for column in artifact["shape_only_columns"]
+        }
+        assert shape_only, "the manifest declares no shape-only columns at all"
+        assert [c for c in sorted(shape_only) if c not in generated] == []
