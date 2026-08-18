@@ -68,23 +68,23 @@ submission. POST follows it.
 
 ### Degeneracy Observability (DEGEN) — the gate quantity must be readable off the artifacts
 
-- [ ] **DEGEN-01**: `degenerate_observations_at_solution` reaches the production benchmark
+- [x] **DEGEN-01**: `degenerate_observations_at_solution` reaches the production benchmark
       record and is persisted by E5 and the band runs, instead of being lost before it is
       written — todo `2026-08-15-degeneracy-counter-is-unobservable-and-merges-two-failure-kinds`
 
       *Scope narrowed 2026-08-17:* **E6's band already persists the column** (present on all 102
       rows). The gap is E5, E1 and E7 only. E1's 14,949 lives solely in
       `e1_benchmark_nonrefractive.json → problem_shape` and appears in no CSV.
-- [ ] **DEGEN-02**: The counter is split by failure kind **and** by stage, so the re-run's
+- [x] **DEGEN-02**: The counter is split by failure kind **and** by stage, so the re-run's
       artifacts can answer the degeneracy question without re-running anything —
       todo `2026-08-15-degeneracy-instrumentation-the-rerun-must-emit`
-- [ ] **DEGEN-03**: The degenerate-observation warning is narrowed to the cases it actually
+- [x] **DEGEN-03**: The degenerate-observation warning is narrowed to the cases it actually
       applies to, and its cause list is corrected before it ships to users —
       todo `2026-08-15-narrow-the-degenerate-observation-warning`
 - [ ] **DEGEN-04**: The production rig's 198 unprojectable observations are classified, with the
       finding recorded so the manuscript can disclose the count and say what it is —
       todo `2026-08-15-classify-the-198-unprojectable-observations`
-- [ ] **DEGEN-05**: The first-order optimality reported by each stage is decomposed by parameter
+- [x] **DEGEN-05**: The first-order optimality reported by each stage is decomposed by parameter
       block, so a reader can tell a residual concentrated in a pinned or bounded slot (benign)
       from one spread across extrinsics and board poses (a non-stationary solve) without
       re-running anything — origin `Phase 23 verification run at 330f9ef`, recorded in
@@ -257,11 +257,11 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | FIX-04 | Phase 23 | Complete |
 | FIX-05 | Phase 23 | Complete |
 | FIX-06 | Phase 23 | Complete |
-| DEGEN-01 | Phase 24 | Pending |
-| DEGEN-02 | Phase 24 | Pending |
-| DEGEN-03 | Phase 24 | Pending |
+| DEGEN-01 | Phase 24 | Complete |
+| DEGEN-02 | Phase 24 | Complete |
+| DEGEN-03 | Phase 24 | Complete |
 | DEGEN-04 | Phase 25 | Pending |
-| DEGEN-05 | Phase 24 | Pending |
+| DEGEN-05 | Phase 24 | Complete |
 | BAND-01 | Phase 25 | Pending |
 | DRIVER-01 | Phase 26 | Pending |
 | DRIVER-02 | Phase 26 | Pending |
