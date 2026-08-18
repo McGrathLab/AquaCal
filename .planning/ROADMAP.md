@@ -331,30 +331,30 @@ it gets built, then amended at the freeze.)
 Plans:
 **Wave 1**
 
-- [ ] 26-01-PLAN.md — Archive-aside (DRIVER-04) and the four unit-test repairs it forces
-- [ ] 26-02-PLAN.md — Run-manifest emitter and the hard-FAIL Gate 3 extension (DRIVER-02)
-- [ ] 26-05-PLAN.md — E6 `--axes` selector, so D-40's `scale`-axis cut is implementable
+- [x] 26-01-PLAN.md — Archive-aside (DRIVER-04) and the four unit-test repairs it forces
+- [x] 26-02-PLAN.md — Run-manifest emitter and the hard-FAIL Gate 3 extension (DRIVER-02)
+- [x] 26-05-PLAN.md — E6 `--axes` selector, so D-40's `scale`-axis cut is implementable
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 26-03-PLAN.md — Expectation manifest and the completeness gate with a stage/profile selector
-- [ ] 26-04-PLAN.md — `_io.py` baseline-dir helpers, the missing-baseline N/A guard, and E3
+- [x] 26-03-PLAN.md — Expectation manifest and the completeness gate with a stage/profile selector
+- [x] 26-04-PLAN.md — `_io.py` baseline-dir helpers, the missing-baseline N/A guard, and E3
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 26-06-PLAN.md — E2's four invocations (config variants) plus `--baseline-dir` and the N/A guard
+- [x] 26-06-PLAN.md — E2's four invocations (config variants) plus `--baseline-dir` and the N/A guard
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 26-07-PLAN.md — `run_experiment_suite.sh`: rename, union-and-lift from 19.5, full stage list
+- [x] 26-07-PLAN.md — `run_experiment_suite.sh`: rename, union-and-lift from 19.5, full stage list
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 26-08-PLAN.md — Pre-flight, sticky exit, end-of-run roll-up, concurrency pool, dry-run tests
+- [x] 26-08-PLAN.md — Pre-flight, sticky exit, end-of-run roll-up, concurrency pool, dry-run tests
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 26-09-PLAN.md — README §2/§7 rewrite, expectation sheet, MF-23, archive the two old drivers
+- [x] 26-09-PLAN.md — README §2/§7 rewrite, expectation sheet, MF-23, archive the two old drivers
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -523,7 +523,7 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 23. Experiment Correctness Fixes | v2.1 | 4/4 | Complete    | 2026-08-17 |
 | 24. Degeneracy Instrumentation | v2.1 | 2/2 | Complete    | 2026-08-18 |
 | 25. Degeneracy Classification & Claim Licensing | v2.1 | 8/8 | Complete   | 2026-08-18 |
-| 26. Full-Suite Driver & Handoff Readiness | v2.1 | 0/TBD | Not started | - |
+| 26. Full-Suite Driver & Handoff Readiness | v2.1 | 9/10 | In Progress|  |
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/TBD | Not started | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 0/TBD | Not started | - |
 | 29. Gate Verification & Results Commit | v2.1 | 0/TBD | Not started | - |
