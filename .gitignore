@@ -257,6 +257,14 @@ seed_sweep_19_3/
 # only, never a record of a real run (see that script's STATE_FILE block).
 experiments/rerun_19_5_state.dryrun.tsv
 
+# Dry-run state from experiments/run_experiment_suite.sh (D-25's stem). The
+# path carries the frozen short sha (D-23 as halved by D-48), hence the glob.
+# Control-flow rehearsal only, never a record of a real run -- and the whole
+# reason it has its own path is that a dry-run state file left where the real
+# one lives makes the NEXT real launch a silent no-op (every stage skipped,
+# exit 0, no artifacts).
+experiments/run_experiment_suite_state.*.dryrun.tsv
+
 # Pre-launch gate log (phase 19.5) -- rerunnable, not an artifact
 experiments/prelaunch_gate_19_5.log
 
@@ -265,6 +273,12 @@ experiments/prelaunch_gate_19_5.log
 # cites rerun_19_4.log for exactly that). Un-ignore it against *.log above so
 # plan 10 commits it without needing "git add -f".
 !experiments/rerun_19_5.log
+
+# Same reasoning for the one driver's own log (D-25's stem): the production
+# queue log IS a citable artifact -- the human-readable record of which seeds
+# were requested and which stages ran. Un-ignored against *.log above so it is
+# committable without "git add -f".
+!experiments/run_experiment_suite.log
 
 # E2's band working tree (experiments/results_e2_band, plan 19.5-10, COV-07).
 # run_stage_e2_band does `rm -rf` on this directory before every run, so it is
