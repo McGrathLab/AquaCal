@@ -1257,6 +1257,284 @@ class TestDegeneracyBreakdownOut:
         assert breakdown["behind_camera"] == 0
 
 
+class TestPerObservationDetailSinks:
+    """Phase 25 / DEGEN-04: the per-observation joint the Phase 24 marginals lack.
+
+    Reuses `TestInvalidProjectionKeepsGradient`'s scene, which already produces a
+    known invalid population by lifting frame 1 above the water surface.
+    """
+
+    WATER_Z = 0.15
+
+    @staticmethod
+    def _packed(lift_frame1_above_water):
+        return TestInvalidProjectionKeepsGradient()._packed(lift_frame1_above_water)
+
+    @classmethod
+    def _packed_partially_flagged(cls):
+        """A scene whose flagged corner ids are NON-CONTIGUOUS within a view.
+
+        Frame 1's board is rotated about the world Y axis and parked so that it
+        STRADDLES the interface: a corner is above or below the water according
+        to its board-local x. Charuco corners are ordered row-major with x
+        varying fastest, so the two columns nearest the surface flag in every
+        row and the flagged set interleaves with the clean one instead of
+        forming a prefix -- which is exactly what an `i`/`k` index-space mix-up
+        needs in order to be visible. The 0.195 m offset was chosen against the
+        board's own corner table (z spans 0.0903 m under this tilt) so the
+        crossing lands mid-board.
+        """
+        params, cost_args, cams, frame_order = cls._packed(False)
+        params = params.copy()
+        pose_block_start = 6 * (len(cams) - 1) + 1  # normal_fixed, shared water_z
+        offset = pose_block_start + frame_order.index(1) * 6
+        params[offset : offset + 3] = np.array([0.0, 0.6, 0.0])
+        params[offset + 3 : offset + 6] = np.array([0.0, 0.0, 0.195])
+        return params, cost_args, cams, frame_order
+
+    # -- 1. one row per flagged observation ---------------------------------
+
+    def test_detail_sink_emits_one_row_per_flagged_observation(self):
+        """Row count equals the independently-counted flagged total, one row each."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+        )
+
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+        assert len(rows) == counts[0]
+        by_cause = (
+            breakdown["above_interface"]
+            + breakdown["behind_camera"]
+            + breakdown["interface_below_camera"]
+        )
+        assert len(rows) == by_cause
+
+        triples = [(r["camera"], r["frame_idx"], r["corner_id"]) for r in rows]
+        assert len(set(triples)) == len(triples), "an observation was emitted twice"
+
+        expected_keys = {
+            "camera",
+            "frame_idx",
+            "corner_id",
+            "h_q_m",
+            "h_c_m",
+            "r_q_m",
+            "chord_incidence_deg",
+            "extended",
+            "nan_reason",
+        }
+        for row in rows:
+            assert set(row) == expected_keys, row
+            # D-06: the library holds no bucket name -- the cause stays a code.
+            assert isinstance(row["nan_reason"], int)
+            assert not isinstance(row["nan_reason"], bool)
+        # `stage` is the caller's to stamp (D-07); it must not appear here.
+        assert all("stage" not in r for r in rows)
+
+    # -- 2. inert when None -------------------------------------------------
+
+    def test_detail_sink_is_inert_when_none(self):
+        """D-06b: both sinks None leaves the residual vector bit-for-bit identical."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+
+        baseline = compute_residuals(params, *cost_args)
+        explicit_none = compute_residuals(
+            params,
+            *cost_args,
+            degeneracy_details_out=None,
+            observation_depths_out=None,
+        )
+        rows: list[dict] = []
+        depths: list[dict] = []
+        instrumented = compute_residuals(
+            params,
+            *cost_args,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert np.array_equal(baseline, explicit_none)
+        assert np.array_equal(baseline, instrumented)
+        assert rows, "a supplied detail list must be filled"
+        assert depths, "a supplied depth list must be filled"
+
+    # -- 3. the two index spaces must not cross -----------------------------
+
+    def test_detail_sink_index_spaces_do_not_cross(self):
+        """The flagged-subset and full-point-set index spaces must stay apart.
+
+        `unextendable` and the recomputed geometry are indexed over the flagged
+        subset (`k`); `nan_reason` and `corner_ids` over the full point set
+        (`i`). Mixing them is the most likely bug in this diff, so the scenario
+        is built to make a mix visible: the flagged corner ids interleave with
+        the clean ones.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.refractive_geometry import (
+            NAN_REASON_ABOVE_INTERFACE,
+            NAN_REASON_NONE,
+        )
+
+        params, cost_args, _, _ = self._packed_partially_flagged()
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        depths: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert counts[0] > 0
+        # Sanity: this really is the partial, interleaved case the test needs.
+        flagged_views = {(r["camera"], r["frame_idx"]) for r in rows}
+        assert flagged_views, "no flagged observation to test"
+        n_noncontiguous_views = 0
+        for cam, frame in flagged_views:
+            flagged_ids = sorted(
+                r["corner_id"]
+                for r in rows
+                if r["camera"] == cam and r["frame_idx"] == frame
+            )
+            all_ids = sorted(
+                d["corner_id"]
+                for d in depths
+                if d["camera"] == cam and d["frame_idx"] == frame
+            )
+            assert 0 < len(flagged_ids) < len(all_ids), (
+                "the view is entirely flagged or entirely clean; the index "
+                "spaces coincide and the test proves nothing"
+            )
+            if flagged_ids != list(
+                range(flagged_ids[0], flagged_ids[0] + len(flagged_ids))
+            ):
+                n_noncontiguous_views += 1
+        assert n_noncontiguous_views > 0, (
+            "no view had a non-contiguous flagged set; an off-by-k read would "
+            "still land on the right value"
+        )
+
+        # `i`-space columns: a flagged row can never carry NAN_REASON_NONE. If
+        # `nan_reason` were read at `k` instead of `i` some rows would.
+        assert all(r["nan_reason"] != NAN_REASON_NONE for r in rows)
+        assert (
+            sum(1 for r in rows if r["nan_reason"] == NAN_REASON_ABOVE_INTERFACE)
+            == breakdown["above_interface"]
+        )
+        # `k`-space columns: every above-interface row must have h_q <= 0 by the
+        # definition of that branch. Reading h_q at `i` would surface a positive.
+        for row in rows:
+            if row["nan_reason"] == NAN_REASON_ABOVE_INTERFACE:
+                assert row["h_q_m"] <= 0.0, row
+        # `extended`/`penalized` is the second `k`-space axis and must agree with
+        # the independently-counted fate marginal.
+        assert sum(1 for r in rows if r["extended"]) == breakdown["extended"]
+        assert sum(1 for r in rows if not r["extended"]) == breakdown["penalized"]
+
+    # -- 4. the recomputed geometry is the projector's ----------------------
+
+    def test_detail_sink_recomputed_geometry_matches_projector(self):
+        """h_q/h_c/r_q must be the projector's own quantities, not an approximation.
+
+        Recomputed here from `refractive_geometry.py:661,675,676-679` verbatim and
+        compared with `==`, never `pytest.approx` -- a tolerance would pass on a
+        sink that had drifted to a different (but nearby) formula.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.camera import Camera
+
+        params, cost_args, cams, frame_order = self._packed_partially_flagged()
+        detections, base_intrinsics, board, ref_cam, ref_ext = cost_args[:5]
+        del detections
+
+        rows: list[dict] = []
+        compute_residuals(params, *cost_args, degeneracy_details_out=rows)
+        assert rows
+
+        extrinsics, water_zs, board_poses, intrinsics = unpack_params(
+            params,
+            ref_cam,
+            ref_ext,
+            cams,
+            frame_order,
+            base_intrinsics=base_intrinsics,
+        )
+
+        for row in rows:
+            cam_name = row["camera"]
+            pose = board_poses[row["frame_idx"]]
+            corners_3d = board.transform_corners(pose.rvec, pose.tvec)
+            Q = corners_3d[row["corner_id"]]
+            camera = Camera(cam_name, intrinsics[cam_name], extrinsics[cam_name])
+            C = camera.C
+            z_int = water_zs[cam_name]
+
+            h_c = z_int - C[2]
+            h_q = Q[2] - z_int
+            dx = Q[0] - C[0]
+            dy = Q[1] - C[1]
+            r_q = np.sqrt(dx * dx + dy * dy)
+
+            assert row["h_c_m"] == h_c, row
+            assert row["h_q_m"] == h_q, row
+            assert row["r_q_m"] == r_q, row
+            assert row["chord_incidence_deg"] == np.degrees(
+                np.arctan2(r_q, h_c + h_q)
+            ), row
+
+    # -- 5. the full-population depth sink ----------------------------------
+
+    def test_observation_depths_sink_covers_every_observation(self):
+        """D-09: one row per EVALUATED observation, flagged or not."""
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.refractive_geometry import NAN_REASON_NONE
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        depths: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert len(depths) == breakdown["observations_evaluated"]
+        triples = [(d["camera"], d["frame_idx"], d["corner_id"]) for d in depths]
+        assert len(set(triples)) == len(triples)
+        assert all(
+            set(d) == {"camera", "frame_idx", "corner_id", "h_q_m", "nan_reason"}
+            for d in depths
+        )
+        assert all("stage" not in d for d in depths)
+
+        n_clean = sum(1 for d in depths if d["nan_reason"] == NAN_REASON_NONE)
+        assert n_clean == breakdown["observations_evaluated"] - counts[0]
+        # Every flagged observation appears in the full-population table too.
+        flagged = {(r["camera"], r["frame_idx"], r["corner_id"]) for r in rows}
+        assert flagged <= set(triples)
+
+
 class TestWaterZBoundsOverride:
     """FIX-01 (D-01): a `water_z_bounds` override reaching `build_bounds` pins the
     water_z slot(s) without touching the default [0.01, 2.0] bound when omitted.
