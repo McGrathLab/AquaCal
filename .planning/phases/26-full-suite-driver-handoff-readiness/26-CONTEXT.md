@@ -539,3 +539,133 @@ and must be read in full, including their dated appendices.
 
 *Phase: 26-full-suite-driver-handoff-readiness*
 *Context gathered: 2026-08-18*
+
+---
+
+## Amendment 2026-08-18 — runtime measurement and de-scoping
+
+Written after the initial context was committed (`15d3060`). Two author concerns drove it: the
+suite's runtime, and overengineering in a codebase that may not be reopened after submission.
+**Where this amendment conflicts with a decision above, the amendment wins.**
+
+### A. The suite is ~50 h at Windows-box speed, not 24–30 h
+
+Measured from `experiments/rerun_19_{3,4,5}_state.tsv`, which stamp ISO start/complete per stage:
+
+| stage | wall clock | source |
+|---|---|---|
+| `e6_band` | 10.8 h | measured, 19.5 |
+| `e7_band` | ≤ 8.8 h | bracketed from artifact mtimes; no timing recorded anywhere |
+| `e1_band` ×4 noise levels | ~7 h | Phase 25 estimate |
+| `e4` | 3.6 h | measured, 19.4 |
+| `e2` production + timing + memory | ~3.5 h | 48–87 min each |
+| `e6_repeat1` + `e6_repeat2` | 2.8 + 2.8 h | measured, 19.4 |
+| `e1` / `e7` / `e5` single | 2.5 / 2.2 / 0.75 h | measured, 19.4 |
+| `e2_band` / `e5_band` / `e4_repeat` | 2.4 / 2.3 / 1.0 h | measured, 19.5 |
+| `e3` + 3 orphan scripts | ~0.1 h | measured |
+| **total** | **~50 h** | |
+
+**Machine correction, and it matters.** Those measurements were taken on the **Windows box** —
+Intel Alder Lake-H, **20 logical cores, 15.7 GiB** (this is the "16 GB Windows box" of
+`linux32gb_scope.json`). Phase 28 runs on the **Linux target: i9-13900KF, 32 logical cores,
+~31 GiB**, the same machine `supplement.tex:596` credits for the nine-cell grid. The target is the
+faster box, so **~50 h is an upper bound**. Phase 28 must state which machine each estimate refers
+to; a budget that silently mixes them is worthless.
+
+**No band artifact records its own runtime** — not in the CSVs, not in the
+`e{N}_seed_band_provenance.json` sidecars. D-38's budget has nothing historical to build on beyond
+those three state files. The manifest (D-19/D-20) should fix this going forward.
+
+### B. Grid cuts taken (author, 2026-08-18)
+
+Selected against the manuscript's own `numbers-ledger.tsv` (132 rows mapping each cited number to
+its generating artifact), so each cut's claim cost is measured rather than argued.
+
+- **D-40: drop E6's `scale` axis** — 18 of 102 band cells, ~1.9 h. It appears in **zero** ledger
+  rows; all 11 numbers backed by `generalization_sweep_band.csv` sit on the `cameras`, `index` or
+  `layout` axes. E6's band composition is 17 configs × 6 seeds: index 8, cameras 3, layout 3,
+  scale 3.
+- **D-41: E1's noise axis runs 10 seeds at 0.5 px and 4 seeds at each of `{0.25, 0.82, 1.2}`** —
+  352 rows rather than 640, ~3.9 h rather than ~7. The headline 97–178× band and all 16 ledger
+  numbers backed by `exp1_band.csv` live at 0.5 px and are untouched; the three new levels deliver
+  BAND-01's *stated domain* with wider error bars, which is what the requirement asks for.
+  **This supersedes the flat 640/960 shape named in Phase 25's D-21** — the `full` profile expects
+  352 / 528 rows. Any gate asserting 640 is wrong.
+- **D-42: `e6_repeat2` is OFF, reversing D-09** — ~2.8 h. The determinism statistic (63 → 16 of
+  308 cells) is a **response-letter** number, not a §3 number, and is produced by
+  `determinism_probe.py` comparing two repeats rather than by the stage alone. Leave it off and
+  disclose the sha it was measured at. The completeness gate must not expect
+  `results_e6_repeat2/` under either profile.
+
+  *E6's `index` axis 8 → 5 was offered and NOT taken; it stays at 8 values.*
+
+**Rejected and why, so they are not revisited:** E6/E7 band seed counts (seed spread *is* the
+cited quantity in four response-letter rows; E7's refined arms are already seed-unstable past
+10 mm and Phase 29 gates on an E7 before/after comparison); E4's nine cells (`supplement.tex:605`
+is a nine-cell table and `main.tex:285` names the "nine-cell timing grid" — cutting cells means
+editing the paper).
+
+**Net: ~7.8 h off the Windows-box figure.**
+
+### C. Concurrency — the larger lever
+
+The "one calibration at a time" rule (review H4) exists to protect **timing** measurements. Only
+`e4`, `e4_repeat`, `e2_timing` and `e2_memory` are timing-sensitive (~8.6 h). The remaining ~35 h
+is accuracy work indifferent to wall clock.
+
+Established facts: **no thread limit is set anywhere** in `src/` or `experiments/`
+(`OMP_NUM_THREADS`, `MKL_NUM_THREADS`, threadpoolctl — all absent); NumPy 2.4.2 / SciPy 1.17.0 on
+`scipy-openblas`; the solve path densifies the FD Jacobian (`.toarray()`) to use
+`tr_solver='exact'`, so it mixes a BLAS-threaded factorization with a largely serial Python-level
+FD loop. Whether concurrency pays depends on that split — a property of the wheels and the problem
+shape, **not the OS**, which is why it was measured on the Windows box.
+
+Probe: `.planning/probes/2026-08-18-solver-concurrency/` — one E1 single-seed solve with a
+CPU/RSS sampler. **Read that directory's `summary.json` and `FINDINGS.md` before planning the
+driver's stage model.** Peak RSS is the binding constraint on the target (E2 alone peaks at
+10.26 GiB against ~31 GiB), and E1 is the suite's smallest solve, so its RSS is a floor and its
+headroom figure an upper bound — never a setting to copy.
+
+### D. De-scoping — protect this run, not a hypothetical future one
+
+Author's framing: *"achieving a clean, accurate baseline run"* matters more than *"protecting
+against every possible future eventuality — I may never touch this codebase again after
+submission."* Seven reductions, all taken.
+
+- **D-43: CUT D-07's coupling test.** It protects future schema-changing fixes from forgetting to
+  register their artifacts. Phases 23, 24 and 25 have shipped and no further schema-changing fix is
+  scheduled, so it defends a window that is already closed.
+- **D-44: CUT D-08's renderer and freshness test.** Keep the machine-readable manifest (the gate
+  reads it); **hand-write the prose expectation sheet once**. It is authored once and frozen days
+  later — there is no drift window to defend.
+- **D-45: DOWNGRADE D-18 to manifest-only.** Record `git describe --tags --long --dirty` in the
+  **run manifest**, a new file. Do **not** change the provenance schema in
+  `src/aquacal/io/benchmark.py`: touching every artifact writer days before a freeze risks the run
+  itself, to fix a field the manifest supersedes. Leave `aquacal_version` as-is with a documented
+  caveat naming F-002.
+- **D-46: CUT D-24's disk-headroom estimator.** Log free space and refuse below a crude absolute
+  floor. A wrong estimate is precisely the malformed-check failure mode this de-scoping targets.
+- **D-47: CUT D-24's dirty-tree refusal.** ⚠ **`experiments/results/` is tracked, so the run
+  dirties its own working tree.** A dirty-tree refusal fires on **resume** and would refuse every
+  restart after the first crash — a check that kills a run which would otherwise have succeeded.
+  Gate 3 still records dirtiness post-hoc (D-21), which can never kill a run.
+- **D-48: CUT D-23's HEAD-vs-state refusal; KEEP the sha-derived state path.** The path derivation
+  is a few lines, cannot false-positive, and structurally makes a foreign state file unreachable.
+  The separate refusal is the half that can wrongly block a 3 a.m. resume.
+- **D-49: SIMPLIFY D-06's profiles.** `smoke` asserts artifact **existence only**; `full` asserts
+  row counts. Roughly halves the manifest work and removes the class of smoke-profile row-count
+  expectations that would need maintaining twice.
+
+**D-50 — the governing principle for every remaining check.** *Every pre-flight refusal must print
+the exact override flag that bypasses it, and nothing may abort once stage 1 has begun.* A
+malformed check then costs one minute and one flag, never a night. This is what makes the surviving
+refusals safe rather than merely fewer, and it applies to D-14's `--skip-e2` and D-17's frameset
+identity check as well.
+
+**Retained deliberately:** the completeness gate itself (~100 lines; it catches the exact F-001
+mechanism), the pre-flight frameset-identity check (cheap, and it protects the largest single
+block of run time), `--baseline-dir` (without it E2's ~1e-8 control and E3's tier diff both break),
+the run manifest, the full `--smoke` pass, the dry-run harness extension, a small set of stage-list
+unit tests, and the `README.md` §2 rewrite.
+
+*Amended: 2026-08-18*
