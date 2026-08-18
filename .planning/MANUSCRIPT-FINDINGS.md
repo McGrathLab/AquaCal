@@ -2371,3 +2371,63 @@ wanted, both arms must be produced at the same sha.
 
 The noise-axis findings above are unaffected: they are measured within a single probe — same
 library, same seeds, same geometry — and are internally controlled.
+
+
+## MF-23 — `cpr_grouping.tex` is generated on every E3 run and `\input` by nothing; `tab:cpr` is hand-transcribed
+
+**Status:** **SETTLED as a finding; the remedy is OPEN and is the manuscript session's call.**
+Nothing in this entry changes a published number.
+**Found:** 2026-08-18, verified against the live manuscript during Phase 26 context (D-11/D-39)
+**Source of truth:** `.planning/phases/26-full-suite-driver-handoff-readiness/26-CONTEXT.md` D-11
+and D-39; the emitter is `experiments/e3_derived_quantities.py:815` (`--include-per-camera-latex`
+at `:902`)
+**Affects:** `tab:cpr` at `supplement.tex:449`, and any future claim that the supplement's
+parameter/group counts are emitter-backed
+
+### The finding
+
+E3 writes `cpr_grouping.tex` on every run — a LaTeX fragment rendering the `cpr_grouping.csv`
+rows. `tab:cpr` lives at `supplement.tex:449`, has **six rows, all shared-interface**, and the
+generated fragment is **not `\input` anywhere in the manuscript**. The published table is
+**hand-transcribed**.
+
+The two are consistent today. That is the problem: consistency is currently a property of
+somebody having typed carefully, not of a build step. A generated artifact that nothing consumes
+gives *false assurance* — a reader (or a future gate) sees an emitter, a CSV and a `.tex` fragment
+and concludes the table is machine-produced, when the only thing standing between the code and the
+supplement is a transcription.
+
+This is the same class as **"a hand-transcribed parameter count off by ten"**, named in DRIVER-03's
+own "Do not" list. The failure mode is not that the numbers are wrong now; it is that nothing would
+catch them going wrong.
+
+### Why `--include-per-camera-latex` stays OFF (D-11)
+
+The flag renders `shared_interface=False` rows into `cpr_grouping.tex` as well. Since `tab:cpr`'s
+six rows are all shared-interface, turning it on would enlarge a fragment nothing reads and invite
+exactly the wrong inference — that the fragment is the source of a table it does not feed. The flag
+stays off for the v2.1 re-run, and the suite driver's `e6`/`e3` stages say so at the call site.
+
+### The interaction that makes this worth recording now
+
+**Phase 27's pre-freeze gate requires every §3-facing number to have a generating emitter.**
+`tab:cpr` has one — and nothing consumes it. A gate that checks "is there an emitter?" passes here;
+a gate that checks "does the published number come *from* the emitter?" does not. Whichever way
+Phase 27 words that check, this table is the case that distinguishes the two wordings, so it should
+be decided deliberately rather than discovered by a gate.
+
+### What is NOT licensed by this entry
+
+- **No number in `tab:cpr` is challenged.** The six rows were not re-derived here and no discrepancy
+  was found; the finding is about the *provenance path*, not the values.
+- **The manuscript was not edited, and must not be edited on the strength of this entry alone.**
+  `Spinoffs/papers/aquacal/` is read-only from this repo. Whether to `\input` the fragment, to drop
+  it, or to leave the transcription and add a check is the manuscript session's decision.
+- **This does not imply the fragment is wrong.** It implies only that its correctness is currently
+  unverified by anything mechanical.
+
+### Where this is also recorded
+
+`experiments/README.md` §2 previously claimed `cpr_grouping.csv` was the sole origin of `tab:cpr`.
+Plan 26-09 replaced that section with this finding; the README and this entry must agree, and the
+README points here for the derivation.

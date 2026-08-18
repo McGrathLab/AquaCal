@@ -168,11 +168,17 @@ echo "--- 3. LEGALITY_PROBE -----------------------------------------"
 if [ ! -x "$PYTHON_BIN" ] && ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   fail LEGALITY_PROBE "interpreter not found at $PYTHON_BIN (Git Bash 'python' is Anaconda base, not the AquaCal env)"
 else
-  # Read the seed list from rerun_19_5.sh rather than keeping a second copy
-  # here. A duplicated hardcoded list is the one way this check can pass while
-  # the queue runs a seed nobody probed -- exactly the failure the probe
-  # exists to prevent. Union of E6's and E5's lists, since both are probed.
-  QUEUE_SH="$REPO_ROOT/experiments/rerun_19_5.sh"
+  # Read the seed list from the driver rather than keeping a second copy here.
+  # A duplicated hardcoded list is the one way this check can pass while the
+  # queue runs a seed nobody probed -- exactly the failure the probe exists to
+  # prevent. Union of E6's and E5's lists, since both are probed.
+  #
+  # Repointed from rerun_19_5.sh to run_experiment_suite.sh in plan 26-09, when
+  # the two superseded drivers were archived (DRIVER-04 / ruling A3). The grep
+  # is unchanged because the new driver declares the same two variables in the
+  # same shape; what changed is that the seeds now come from the script that
+  # will actually run, which is the whole point of not keeping a second copy.
+  QUEUE_SH="$REPO_ROOT/experiments/run_experiment_suite.sh"
   PROBE_SEEDS="$(
     grep -E '^(E6|E5)_BAND_SEEDS=' "$QUEUE_SH" \
       | cut -d'"' -f2 | tr ',' '\n' | sort -n -u | paste -sd, -
@@ -180,7 +186,7 @@ else
   if [ -z "$PROBE_SEEDS" ]; then
     fail LEGALITY_PROBE "could not read E6/E5_BAND_SEEDS from $QUEUE_SH"
   fi
-  echo "LEGALITY_PROBE: seeds read from rerun_19_5.sh = ${PROBE_SEEDS}"
+  echo "LEGALITY_PROBE: seeds read from run_experiment_suite.sh = ${PROBE_SEEDS}"
   LEGALITY_LOG="$(mktemp)"
   PROBE_SEEDS="$PROBE_SEEDS" "$PYTHON_BIN" - <<'PY' >"$LEGALITY_LOG" 2>&1
 import os
@@ -390,8 +396,9 @@ cat <<EOF
 
  Frozen sha: $FROZEN_SHA   (recorded in $SHA_FILE)
 
- THE TREE IS NOW FROZEN. From this moment until the queue finishes (~15 h
- nominal, 26 h ceiling -- see experiments/rerun_19_5.sh's own header):
+ THE TREE IS NOW FROZEN. From this moment until the queue finishes (~15-17 h
+ with the 4-wide pool, ~28-31 h serial -- see experiments/EXPECTATIONS.md and
+ experiments/run_experiment_suite.sh's own header):
    - NOTHING is committed, staged, tagged, checked out or pushed.
    - NO tests are run.
    - NO other work happens on this box -- one production calibration at a time.
