@@ -54,12 +54,12 @@ files; the requirement → automated-command mapping is fixed here.
 | DEGEN-04 | Row cap truncates rows but the aggregate count stays exact; `truncated` stamp present (D-10) | unit | `pytest tests/unit/test_discard_accounting.py -k row_cap -x` | ❌ W0 |
 | DEGEN-04 | Classifier buckets each `nan_reason` code correctly; (b) separated from (a) **by code, not by `h_q`** | unit | `pytest tests/unit/test_discard_accounting.py -k classify -x` | ❌ W0 |
 | DEGEN-04 | Sidecar not written when zero flagged rows (D-08); written when ≥1 | unit | `pytest tests/unit/test_diagnostics.py -k degenerate_sidecar -x` | ❌ W0 |
-| DEGEN-04 | Config flag defaults **off** and round-trips through `load_config` (D-09) | unit | `pytest tests/unit/test_cli.py tests/unit/test_internals.py -k log_all_observation -x` | ❌ W0 |
+| DEGEN-04 | Config flag defaults **off** and round-trips through `load_config` (D-09) | unit | `pytest tests/unit/test_pipeline.py -k "load_config or internals" -x` | ❌ W0 |
 | DEGEN-04 | The 198 classify to named buckets; bucket (a) dominates | **artifact inspection** | the E2 probe run + `FINDINGS.md` | orchestrator |
 | BAND-01 | `exp1_band.csv` has 640 rows, a `noise_std` column, 4 distinct values | unit (monkeypatched `_run_one_model`) | `pytest tests/unit/test_e1_band_mode.py -k noise_axis_shape -x` | ❌ W0 |
 | BAND-01 | **No duplicate keys** in either band CSV under the new key lists (PITFALL B1) | unit | `pytest tests/unit/test_e1_band_mode.py -k no_duplicate_keys -x` | ❌ W0 |
 | BAND-01 | `_run_smoke` / `_run_check` / single-seed paths write no `noise_std` and are unchanged (D-12) | unit | `pytest tests/unit/test_e1_band_mode.py tests/unit/test_experiments_e1.py -k "smoke or check" -x` | partial ✓ |
-| BAND-01 | The three fixed-contract CSVs' headers are byte-unchanged | unit | `pytest tests/unit/test_experiments_e1.py -k columns -x` | likely ✓ |
+| BAND-01 | The three fixed-contract CSVs' headers are byte-unchanged | unit | `pytest tests/unit/test_experiments_e1.py -k columns -x` | ❌ W0 |
 | BAND-01 | The D-14 stated-domain sentence is present beside the demotion note | unit (source-text assertion, FIX-06 precedent) | `pytest tests/unit/test_experiment_inertness.py -k stated_domain -x` | ❌ W0 |
 | BAND-01 | The band's actual numbers at 4 noise levels | **artifact inspection** | the ~7 h band run + committed CSVs | orchestrator |
 | DEGEN-05 | D-18's four correction headers exist | **verification command** | `grep -c "CORRECTED 2026-08-17" <4 files>` | ✓ at `02fe224` |
@@ -80,6 +80,14 @@ files; the requirement → automated-command mapping is fixed here.
 - [ ] `tests/unit/test_e1_band_mode.py` — 3 new tests, all with `_run_one_model` monkeypatched so no real solve runs (BAND-01)
 - [ ] `tests/unit/test_experiments_e4.py` — 1 new test for the D-17 caveat
 - [ ] `tests/unit/test_experiment_inertness.py` — 2 new source-text assertions (D-14, D-04)
+- [ ] `tests/unit/test_experiments_e1.py` — 1 new test asserting `EXP1/EXP2/EXP3_COLUMNS` are unchanged
+      (**correction, 2026-08-18:** no such assertion exists today — this row was wrongly marked
+      "likely ✓"; the only column assertions are `>=` subset checks on the *band* CSVs in
+      `test_e1_band_mode.py:143,151,167`)
+- [ ] `tests/unit/test_pipeline.py` — 1 new test for the D-09 flag, alongside
+      `test_load_config_with_internals_and_seed` (`:300-316`) and the defaults block (`:160-171`)
+      (**correction, 2026-08-18:** `tests/unit/test_internals.py` covers `io/internals.py`, not
+      config — it is the wrong home for this test)
 - [ ] No framework install needed — pytest and the env are present.
 
 ---
