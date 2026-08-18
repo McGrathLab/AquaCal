@@ -138,7 +138,8 @@ completed: 2026-08-18
 - `python -m pytest tests/unit/test_e1_band_mode.py -k TestNoiseAxis -q` → 3 passed in 1.66 s.
 - `python -m pytest tests/unit/test_experiments_e1.py -q` → 13 passed in 50.28 s.
 - `python -m pytest tests/unit/test_experiment_inertness.py -q` → 11 passed in 1.24 s.
-- Full three-file run: see "Post-write verification" below.
+- **Full three-file run (the plan's verification command):** `python -m pytest tests/unit/test_e1_band_mode.py tests/unit/test_experiments_e1.py tests/unit/test_experiment_inertness.py -q` → **46 passed in 2325.37s (0:38:45)**, exit 0. Run detached and polled, never waited on inside the tool ceiling.
+- `-k "smoke or check"` coverage across the band-mode and E1 files is included in that 46 and unchanged: `_run_smoke`, `_run_check` and the single-seed path all still pass.
 - `python -c "import experiments.e1_refractive_comparison as m; print(m.NOISE_LEVELS, m.BAND_KEY_COLUMNS, m.PARAMETER_BAND_KEY_COLUMNS)"` → `[0.25, 0.5, 0.82, 1.2] ['seed', 'noise_std', 'test_depth_m', 'model'] ['seed', 'noise_std', 'camera', 'model']`.
 - `grep -vE '^\s*#' experiments/_io.py | grep -c noise_std` → 0; `git diff --stat experiments/_io.py` → empty.
 - `grep -c n_cameras experiments/e1_refractive_comparison.py` → 4.
@@ -151,6 +152,13 @@ completed: 2026-08-18
 - Phase 28 executes the four-level ten-seed band of record at the frozen sha; Phase 29 verifies 640/960 and the four `noise_std` values.
 - **Not done here, and owned by another plan:** D-14's second half — the MF-NN entry in `.planning/MANUSCRIPT-FINDINGS.md` carrying the derivation for the manuscript session. That file is another wave-1 executor's and was deliberately not touched.
 - STATE.md and ROADMAP.md were deliberately NOT modified — the orchestrator owns those after merge.
+
+## Self-Check: PASSED
+
+- `experiments/e1_refractive_comparison.py`, `tests/unit/test_e1_band_mode.py`, `tests/unit/test_experiments_e1.py`, `tests/unit/test_experiment_inertness.py`, `25-04-SUMMARY.md` — all present.
+- Commits `cc088b1`, `ab1539a`, `dd794fb`, `a551357` — all found in `git log`.
+- No stubs. No new threat surface (local experiment harness, no network/auth/untrusted input); T-25-10 and T-25-11 are mitigated as planned, T-25-12 by `test_fixed_contract_columns_are_unchanged`.
+- `STATE.md` and `ROADMAP.md` untouched, as required.
 
 ---
 *Phase: 25-degeneracy-classification-claim-licensing*
