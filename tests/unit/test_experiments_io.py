@@ -752,9 +752,23 @@ class TestSeed:
 
 class TestCommittedRecordUntouchedBySeed:
     def test_e1_committed_record_has_no_seed_key(self):
+        """Phase 26 / DRIVER-04 (D-28) moved the committed baselines to
+        experiments/pre_rerun_baseline/ so the frozen sha ships with an empty
+        experiments/results/. This asserts a property of the COMMITTED record,
+        so the archive is its subject. Anchored to the repo root rather than
+        cwd (WR-06) and guarded, so a fresh clone -- which has neither tree --
+        skips rather than erroring.
+        """
         import pathlib
 
-        record = json.loads(
-            pathlib.Path("experiments/results/e1_benchmark_refractive.json").read_text()
+        baseline = (
+            pathlib.Path(__file__).resolve().parents[2]
+            / "experiments"
+            / "pre_rerun_baseline"
+            / "results"
+            / "e1_benchmark_refractive.json"
         )
+        if not baseline.exists():
+            pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
+        record = json.loads(baseline.read_text())
         assert "seed" not in record["solver_config"]
