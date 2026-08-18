@@ -414,3 +414,18 @@ experiments/pre_rerun_baseline/results_linux32gb/e2_*/reconstruction_errors.csv
 # Mirrors experiments/verify_23*/ -- D-31's untracked probe trees, moved aside
 # as LOCAL HYGIENE only (they are gitignored and never travel to the run box).
 experiments/pre_rerun_baseline/verify_probes/
+
+# The reduced-scale (--smoke) output trees, written ONLY by
+# `bash experiments/run_experiment_suite.sh --smoke`. They are ACCEPTANCE
+# EVIDENCE that each stage's invocation line is correct -- never an artifact,
+# never a number, and never comparable to anything under experiments/results/.
+# The driver forces these directories precisely so a reduced-scale pass cannot
+# be mistaken for, or overwrite, a production result (research SP-7).
+#
+# The glob is deliberate: --smoke re-points every sibling tree too
+# (results_smoke_e2_band, _e2_timing, _e2_memory, _e2_invocations,
+# _e4_repeat), because run_stage_e2_band's first act is
+# `rm -rf "${OUT_DIR_E2_BAND}"` and a rehearsal must not be able to delete the
+# production band tree.
+experiments/results_smoke/
+experiments/results_smoke_*/

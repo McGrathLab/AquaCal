@@ -452,21 +452,40 @@ STAGES=(
 
 # --- Arguments --------------------------------------------------------------
 #
-# EVERY FLAG BELOW EXCEPT --profile/--remaining-hours/--start-stage IS AN
-# OVERRIDE FOR ONE PRE-FLIGHT REFUSAL (D-50). That is the whole design: a
+# EVERY FLAG BELOW EXCEPT --profile/--remaining-hours/--start-stage/--smoke IS
+# AN OVERRIDE FOR ONE PRE-FLIGHT REFUSAL (D-50). That is the whole design: a
 # refusal that cannot be bypassed is a check that can cost a night, so every
 # refusal message names its own flag and every flag disables exactly one
 # refusal. They are enumerated in `suite_expectations.json`'s
 # `preflight.overrides` as well, so the manifest and the parser can be diffed
 # against each other.
+#
+# `--smoke` IS THE FOURTH EXCEPTION and it is not an override of anything. It
+# selects the REDUCED-SCALE PASS (see the block just below the parser). Keep it
+# out of `preflight.overrides`: it disables no refusal, and a flag listed there
+# that bypasses nothing would make the manifest/parser diff meaningless.
 SKIP_E2=0
 ALLOW_NONEMPTY_OUT=0
 ALLOW_LOW_DISK=0
 ALLOW_FRAMESET_MISMATCH=0
 ALLOW_GATE_PRECHECK_FAILURE=0
 PROFILE="full"
+# Whether `--profile` was given EXPLICITLY. `--smoke` changes the profile's
+# DEFAULT and nothing else, so `--profile full --smoke` must still be honored:
+# the two concepts stay separable (a reduced-scale run graded against the full
+# expectation set is a legitimate, if noisy, thing to ask for).
+PROFILE_EXPLICIT=0
 REMAINING_HOURS=""
 START_STAGE=1
+
+# THE REDUCED-SCALE PASS (D-33 form 1). `SUITE_SMOKE=1` in the environment is
+# equivalent to `--smoke`, for symmetry with SUITE_SERIAL/SUITE_WORKERS.
+# Normalised through a `case` so a stray value can never make `[ -eq ]` fail
+# under `set -u -o pipefail`.
+case "${SUITE_SMOKE:-0}" in
+  1|true|TRUE|yes|YES) SUITE_SMOKE=1 ;;
+  *) SUITE_SMOKE=0 ;;
+esac
 
 usage() {
   cat <<'USAGE'
@@ -479,6 +498,36 @@ Usage: bash experiments/run_experiment_suite.sh [N] [options]
                             Default: full.
   --remaining-hours H       Warn (never abort) if the estimated wall clock
                             exceeds H hours (D-38).
+
+Reduced-scale pass (NOT a pre-flight override -- it disables no refusal):
+  --smoke                   Run EVERY supporting stage at --smoke scale in one
+                            pass, so a flag typo or an import error in a
+                            stage's invocation line surfaces in minutes rather
+                            than hours into the frozen run.
+
+                            THIS PASS IS NOT EVIDENCE. It says nothing about
+                            geometry, convergence, accuracy, runtime or any
+                            published number. Every ACCEPTANCE and PRODUCTION
+                            run is at full scale, never substituted.
+
+                            Forces its own output tree
+                            (experiments/results_smoke) and never writes
+                            experiments/results, because every experiment's
+                            --smoke path branches on
+                            `args.out == parser.get_default("out")` and that
+                            default IS experiments/results (_io.py:64) -- so
+                            passing the default is indistinguishable from
+                            passing nothing and the stages would write nothing.
+
+                            Also defaults --profile to smoke. The two are
+                            separable: --profile still selects only the
+                            completeness gate's expectation profile, and an
+                            explicit --profile is honored.
+
+                            TWO STAGES ARE SKIPPED, not reduced:
+                            e7_focal_standoff (ignores --smoke and reads a
+                            hardcoded experiments/results path) and e4_repeat
+                            (--cell and --splice-repeat both refuse --smoke).
 
 Pre-flight overrides (D-50 -- each disables exactly one refusal):
   --skip-e2                 DECLARE that the E2 frameset is absent. The run
@@ -498,6 +547,7 @@ Pre-flight overrides (D-50 -- each disables exactly one refusal):
 Environment:
   SUITE_WORKERS=4           Concurrency width (bounded to 4-5; D-52).
   SUITE_SERIAL=1            Force the fully serial path.
+  SUITE_SMOKE=1             Equivalent to --smoke.
   SUITE_OUT_DIR             Output tree (test sandboxing only).
   SUITE_STATE_DIR           State-file directory (test sandboxing only).
 USAGE
@@ -510,8 +560,9 @@ while [ "$#" -gt 0 ]; do
     --allow-low-disk) ALLOW_LOW_DISK=1 ;;
     --allow-frameset-mismatch) ALLOW_FRAMESET_MISMATCH=1 ;;
     --allow-gate-precheck-failure) ALLOW_GATE_PRECHECK_FAILURE=1 ;;
-    --profile) PROFILE="${2:-}"; shift ;;
-    --profile=*) PROFILE="${1#*=}" ;;
+    --smoke) SUITE_SMOKE=1 ;;
+    --profile) PROFILE="${2:-}"; PROFILE_EXPLICIT=1; shift ;;
+    --profile=*) PROFILE="${1#*=}"; PROFILE_EXPLICIT=1 ;;
     --remaining-hours) REMAINING_HOURS="${2:-}"; shift ;;
     --remaining-hours=*) REMAINING_HOURS="${1#*=}" ;;
     --start-stage) START_STAGE="${2:-1}"; shift ;;
@@ -526,6 +577,69 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+# --- The reduced-scale pass (D-33 form 1) -----------------------------------
+#
+# WHY THIS EXISTS, stated precisely so nobody later mistakes it for a shortcut.
+# The dry-run seam (`_dry_run_active`, below) substitutes the ENTIRE command,
+# so it proves sequencing, resume and gate wiring and can NEVER prove that a
+# stage's invocation line is correct. A typo like `--out` vs `--output` in one
+# stage passes every dry-run test and every unit test, then fails hours into a
+# 22-31 hour frozen run. `--smoke` makes the REAL invocation lines executable
+# in minutes.
+#
+# 26-07'S RULE IS UNCHANGED AND MUST STAY UNCHANGED: every ACCEPTANCE and
+# PRODUCTION run is at full scale, never substituted. A `--smoke` pass is not
+# evidence about geometry, convergence, accuracy, runtime or any published
+# number, and nothing it writes may be cited. It proves one narrow thing --
+# that each stage's invocation line is correct -- and that is why it is worth
+# minutes.
+#
+# THE DISTINCT OUT DIR IS MANDATORY, NOT TIDINESS (research SP-7). Every
+# experiment's `--smoke` path branches on
+# `args.out == parser.get_default("out")`, and that default IS
+# `Path("experiments/results")` (`experiments/_io.py:64`). Passing the default
+# is INDISTINGUISHABLE from passing nothing, so E3/E4/E5/E6/E7 would each
+# silently take their `TemporaryDirectory` branch and the pass would write
+# nothing at all -- a green run that produced no evidence it ran, which is
+# F-001's shape again.
+#
+# Resolved HERE, after the parser, because `--smoke` is a flag while OUT_DIR is
+# assigned near the top of the file. `OUT_DIR_WAS_NONEMPTY` is recomputed with
+# it: the D-24 refusal must judge the tree this run will actually write.
+if [ "${SUITE_SMOKE}" -eq 1 ]; then
+  OUT_DIR="${SUITE_OUT_DIR:-experiments/results_smoke}"
+  # EVERY SIBLING OUT DIR MOVES WITH IT, and one of them is a live hazard
+  # rather than a tidiness point: `run_stage_e2_band` opens with
+  # `rm -rf "${OUT_DIR_E2_BAND}"`. Left at its production value, a
+  # reduced-scale pass would DELETE `experiments/results_e2_band` -- three
+  # 48-87 minute calibrations -- as its first act. `run_stage_e4_repeat` has
+  # the same shape against `experiments/results_e4_repeat`; it is skipped under
+  # smoke anyway, and is re-pointed regardless so the skip is not the only
+  # thing standing between a rehearsal and a destroyed production tree.
+  #
+  # The E2 timing/memory dirs move for a quieter reason: E2's `--smoke` path
+  # returns before it reads `--out` at all today, so nothing lands there now --
+  # but a dispatch line naming a PRODUCTION tree inside a reduced-scale pass is
+  # a trap waiting for the day that changes.
+  OUT_DIR_E4_REPEAT="experiments/results_smoke_e4_repeat"
+  OUT_DIR_E2_BAND="experiments/results_smoke_e2_band"
+  OUT_DIR_E2_TIMING="experiments/results_smoke_e2_timing"
+  OUT_DIR_E2_MEMORY="experiments/results_smoke_e2_memory"
+  E2_INVOCATION_DIR="${SUITE_E2_INVOCATION_DIR:-experiments/results_smoke_e2_invocations}"
+  E2_PRODUCTION_CONFIG="${E2_INVOCATION_DIR}/config_e2_classification.yaml"
+  E2_TIMING_CONFIG="${E2_INVOCATION_DIR}/config_e2_timing.yaml"
+  E2_MEMORY_CONFIG="${E2_INVOCATION_DIR}/config_e2_memory.yaml"
+  # `--profile` still selects ONLY the completeness gate's expectation profile.
+  # Smoke changes its DEFAULT and nothing else; the two concepts stay
+  # separable and an explicit `--profile full --smoke` is honored.
+  [ "${PROFILE_EXPLICIT}" -eq 0 ] && PROFILE="smoke"
+  if [ -d "${OUT_DIR}" ] && [ -n "$(ls -A "${OUT_DIR}" 2>/dev/null)" ]; then
+    OUT_DIR_WAS_NONEMPTY=1
+  else
+    OUT_DIR_WAS_NONEMPTY=0
+  fi
+fi
 
 case "${PROFILE}" in
   smoke|full) ;;
@@ -637,6 +751,60 @@ _dry_run_active() {
 
 _dry_run_stub() {
   eval "${RUN_EXPERIMENT_SUITE_DRY_RUN_CMD:-true}"
+}
+
+_smoke_args() {
+  # THE ONE PLACE the reduced-scale flag is decided. Interpolated UNQUOTED as
+  # `$(_smoke_args)` into each supporting stage's invocation line, which under
+  # `set -u` contributes exactly one word when smoke is active and exactly
+  # nothing when it is not.
+  #
+  # ONE invocation line per stage, varying only by this helper -- never two
+  # stage bodies for the two modes. That is what makes "the full-scale path did
+  # not move" provable by reading the file rather than merely asserted: with
+  # `SUITE_SMOKE` unset every line below is byte-identical to what it was.
+  #
+  # WHICH STAGES CALL IT IS A MEASURED FACT, not a documented one. Verified at
+  # the argparse level (parse-only, nothing executed) against every invocation
+  # the driver actually builds:
+  #
+  #   ACCEPTS --smoke: e3 (both --check and --force), fd_jacobian, e1,
+  #     e1_band, e7, e7_band, e5, e5_band, e6_repeat1, e6_band, e4,
+  #     reconstruction_bootstrap, e2_production, e2_timing, e2_memory,
+  #     e2_band's per-seed calibrations.
+  #
+  #   REFUSES --smoke, exit 2 -- these must NOT call this helper:
+  #     * `e2_real_rig --emit-invocation-configs` and `--emit-band-configs`
+  #       (`e2_real_rig.py:1327,1340`). Both write configs and run nothing, so
+  #       every flag implying a run is a declared conflict. They stay
+  #       full-fidelity, which is correct: they take seconds either way.
+  #     * `e4_benchmark_grid --cell` and `--splice-repeat`
+  #       (`e4_benchmark_grid.py:1890-1893`). This is why `e4_repeat` is
+  #       SKIPPED under smoke rather than reduced.
+  #
+  #   IGNORES --smoke: `e7_focal_standoff_analysis` accepts the flag from the
+  #     shared parent parser and does nothing with it, while reading the
+  #     hardcoded, cwd-relative `experiments/results/interface_ablation_band.csv`
+  #     (`:389`) instead of `--out`. Also SKIPPED under smoke.
+  [ "${SUITE_SMOKE}" -eq 1 ] && printf -- '--smoke'
+  return 0
+}
+
+_record_dispatch() {
+  # TEST-ONLY OBSERVABILITY, and the reason it exists is exact. The dry-run
+  # seam substitutes the WHOLE command, so the argv a stage would have launched
+  # is never constructed under a dry run and a flag typo passes every dry-run
+  # test. Recording the argv here makes the INVOCATION LINES THEMSELVES
+  # assertable -- including which stages carry `--smoke` and which out dir they
+  # were pointed at -- without any experiment running.
+  #
+  # `SUITE_DISPATCH_LOG` is unset in every real and dry run except the driver's
+  # own tests, where this is a no-op returning 0. `FUNCNAME[1]` names the
+  # calling stage function, so the record cannot drift from the stage it
+  # describes.
+  [ -n "${SUITE_DISPATCH_LOG:-}" ] || return 0
+  printf '%s\t%s\n' "${FUNCNAME[1]#run_stage_}" "$*" >>"${SUITE_DISPATCH_LOG}"
+  return 0
 }
 
 run_stage_preflight() {
@@ -1001,24 +1169,40 @@ run_stage_e3() {
   # one start/complete window) under the CONCURRENT scheduler rather than only
   # under the serial one. It changes neither invocation.
   local invocation="--check"
+  # `--baseline-dir` (D-12) only goes on `--check`: e3's parser rejects it
+  # with `--force`, because it names the directory --check reads baselines
+  # FROM and --force writes new ones. Without it the "control" is the tree
+  # this very stage is about to overwrite.
+  #
+  # `--check` SHORT-CIRCUITS AHEAD OF `--smoke` inside e3
+  # (`e3_derived_quantities.py:1093` vs `:1097`), so the flag is a no-op on
+  # this first invocation and is passed anyway: the point of the reduced-scale
+  # pass is to execute the line the production run executes, and e3's `--check`
+  # is seconds at any scale.
+  local -a check_cmd=(
+    python -u -m experiments.e3_derived_quantities
+    --check --baseline-dir "${BASELINE_DIR}" --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  local -a force_cmd=(
+    python -u -m experiments.e3_derived_quantities --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
   log "e3: --check FIRST (tier-by-tier snapshot of the pre-regeneration state)"
+  _record_dispatch "${check_cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
   else
-    # `--baseline-dir` (D-12) only goes on `--check`: e3's parser rejects it
-    # with `--force`, because it names the directory --check reads baselines
-    # FROM and --force writes new ones. Without it the "control" is the tree
-    # this very stage is about to overwrite.
-    python -u -m experiments.e3_derived_quantities \
-      --check --baseline-dir "${BASELINE_DIR}" --out "${OUT_DIR}"
+    "${check_cmd[@]}"
   fi
   log "e3: --check exit=$?"
   invocation="--force"
   log "e3: --force SECOND (regenerates the committed tier CSVs/LaTeX fragments)"
+  _record_dispatch "${force_cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
   else
-    python -u -m experiments.e3_derived_quantities --force --out "${OUT_DIR}"
+    "${force_cmd[@]}"
   fi
   local force_exit=$?
   log "e3: --force exit=${force_exit}"
@@ -1034,20 +1218,36 @@ run_stage_fd_jacobian() {
   # seconds. Placed early on purpose: it exercises the queue's whole plumbing
   # -- state file, dispatch, gate invocation -- at negligible cost, which is
   # exactly what D-37's shortest-first ordering is for.
+  local -a cmd=(
+    python -u -m experiments.fd_jacobian_accuracy --out "${OUT_DIR}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.fd_jacobian_accuracy --out "${OUT_DIR}" --force
+  "${cmd[@]}"
 }
 
 run_stage_e1() {
   # Single-seed production run. E1's production SCENARIO_NAME is "realistic".
+  #
+  # Under `--smoke` E1's single-seed path ALWAYS writes to a TemporaryDirectory
+  # regardless of `--out` (`e1_refractive_comparison.py:893` -- unlike E3/E4/
+  # E5/E6/E7 it does not even consult the default), so this stage produces no
+  # artifact in a reduced-scale pass. That is exactly why the manifest expects
+  # no E1 artifact under the `smoke` profile.
+  local -a cmd=(
+    python -u -m experiments.e1_refractive_comparison --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e1_refractive_comparison --force --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e1_band() {
@@ -1073,34 +1273,61 @@ run_stage_e1_band() {
   # ratio band and all sixteen ledger numbers backed by exp1_band.csv live at
   # 0.5 px. A grid that dropped it would regenerate everything except the
   # numbers actually cited.
+  #
+  # The `--seeds` band path IS checked BEFORE the smoke branch (`:1367` vs
+  # `:1370`), so unlike the single-seed stage above this one DOES land its band
+  # CSVs under `--out` at collapsed scale (one depth, one noise level).
+  local -a cmd=(
+    python -u -m experiments.e1_refractive_comparison
+    --seeds "${E1_BAND_SEEDS}" --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e1_refractive_comparison \
-    --seeds "${E1_BAND_SEEDS}" --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e7() {
   # Single-seed production run. E7 runs the "realistic" scenario, which
   # resolves to generate_real_rig_array()'s frozen shared WATER_Z and never
   # calls generate_camera_array.
+  #
+  # E7's INTERFACE ABLATION DOES honor `--smoke` (`e7_interface_ablation.py:918`,
+  # scenario "minimal"), and it is the one stage whose smoke support plan 26-11
+  # was written without: the plan's verified list named eight scripts and
+  # omitted this one. Measured, not assumed -- the argparse probe accepts the
+  # flag on this exact line and the smoke branch is the standard SP-7 shape.
+  # Omitting it would have left E7's two stages running at full scale inside a
+  # pass whose entire purpose is to finish in minutes.
+  local -a cmd=(
+    python -u -m experiments.e7_interface_ablation --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e7_interface_ablation --force --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e7_band() {
   # MF-05's per-arm bands are the milestone's only surviving accuracy claim.
   # TEN seeds: the spread is itself the cited quantity (see the seed-list note).
+  local -a cmd=(
+    python -u -m experiments.e7_interface_ablation
+    --seeds "${BAND_SEEDS}" --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e7_interface_ablation \
-    --seeds "${BAND_SEEDS}" --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e7_focal_standoff() {
@@ -1118,28 +1345,56 @@ run_stage_e7_focal_standoff() {
   #
   # It ignores --smoke entirely, which is why its artifact is expected under
   # the `full` profile only.
+  #
+  # THEREFORE IT IS SKIPPED, NOT REDUCED, UNDER `--smoke`, AND THE SKIP IS NOT
+  # A FAILURE. It accepts the flag only because the shared parent parser
+  # supplies it (`_io.py:75`) and does nothing whatsoever with it, so under a
+  # reduced-scale pass it would run at FULL scale against the hardcoded
+  # `experiments/results/interface_ablation_band.csv` -- i.e. re-analyse the
+  # PRODUCTION tree's band from a pass that never wrote it. Silently analysing
+  # the wrong tree is worse than not running: it is a number with no
+  # provenance. The manifest already expects this stage's artifact under the
+  # `full` profile only, so the roll-up does not count the omission.
+  if [ "${SUITE_SMOKE}" -eq 1 ]; then
+    log "e7_focal_standoff: SKIPPED under --smoke (DECLARED REDUCTION). It does nothing with the flag and reads the hardcoded, cwd-relative experiments/results/interface_ablation_band.csv (e7_focal_standoff_analysis.py:389) rather than --out, so a reduced-scale pass would re-analyse the PRODUCTION tree's band. Announced at launch and reprinted in the terminal summary. This is a declared omission, not a failure."
+    return 0
+  fi
+  local -a cmd=(
+    python -u -m experiments.e7_focal_standoff_analysis --out "${OUT_DIR}"
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e7_focal_standoff_analysis --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e5() {
+  local -a cmd=(
+    python -u -m experiments.e5_index_sensitivity --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e5_index_sensitivity --force --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 run_stage_e5_band() {
+  local -a cmd=(
+    python -u -m experiments.e5_index_sensitivity
+    --seeds "${E5_BAND_SEEDS}" --out "${OUT_DIR}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e5_index_sensitivity \
-    --seeds "${E5_BAND_SEEDS}" --out "${OUT_DIR}" --force
+  "${cmd[@]}"
 }
 
 run_stage_e6_repeat1() {
@@ -1159,6 +1414,11 @@ run_stage_e6_repeat1() {
   # dry-run seam, so a control-flow rehearsal DELETED committed artifacts under
   # experiments/results (a tracked directory). rerun_19_4.sh corrected it; the
   # correction is preserved here rather than the 19.3 shape.
+  local -a cmd=(
+    python -u -m experiments.e6_generalization_sweep --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     log "e6_repeat1: DRY RUN -- skipping the destructive pre-run cleanup of ${OUT_DIR}"
     _dry_run_stub
@@ -1167,7 +1427,7 @@ run_stage_e6_repeat1() {
   log "e6_repeat1: clearing any partial E6 state under ${OUT_DIR} before running"
   rm -rf "${OUT_DIR}/e6_configs"
   rm -f "${OUT_DIR}/generalization_sweep.csv" "${OUT_DIR}/e6_provenance.json"
-  python -u -m experiments.e6_generalization_sweep --force --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 # -----------------------------------------------------------------------------
@@ -1198,11 +1458,6 @@ run_stage_e6_band() {
   # re-implement that isolation -- it is mandatory correctness inside the
   # experiment script, not queue-level tidiness. No rm -rf of OUT_DIR is needed
   # or wanted here.
-  if _dry_run_active; then
-    log "e6_band: DRY RUN"
-    _dry_run_stub
-    return $?
-  fi
   #
   # The axis selection below (D-40, plan 26-05) DROPS THE SCALE AXIS,
   # cutting the band from 17 configurations to 14 and giving 14 x 6 = 84 rows.
@@ -1211,9 +1466,24 @@ run_stage_e6_band() {
   # scheduling, so the cut is where the hours actually are.
   #
   # `--include-per-camera-latex` STAYS OFF (D-11) -- see run_stage_e6_repeat1.
-  python -u -m experiments.e6_generalization_sweep \
-    --seeds "${E6_BAND_SEEDS}" --axes index,layout,cameras \
+  #
+  # Under `--smoke` the band path substitutes `_band_smoke_configurations()`
+  # (`e6_generalization_sweep.py:1467`) and `--axes` is therefore inert -- the
+  # flag is still passed, and must be, because verifying THIS line is the whole
+  # point of the reduced-scale pass.
+  local -a cmd=(
+    python -u -m experiments.e6_generalization_sweep
+    --seeds "${E6_BAND_SEEDS}" --axes index,layout,cameras
     --out "${OUT_DIR}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
+  if _dry_run_active; then
+    log "e6_band: DRY RUN"
+    _dry_run_stub
+    return $?
+  fi
+  "${cmd[@]}"
 }
 
 run_stage_e4() {
@@ -1228,11 +1498,16 @@ run_stage_e4() {
   #
   # `serial_alone` (D-52): E4 is a 200-frame-class stage whose runtime is
   # itself the reported quantity.
+  local -a cmd=(
+    python -u -m experiments.e4_benchmark_grid --force --out "${OUT_DIR}"
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.e4_benchmark_grid --force --out "${OUT_DIR}"
+  "${cmd[@]}"
 }
 
 _emit_e2_invocation_configs() {
@@ -1243,11 +1518,21 @@ _emit_e2_invocation_configs() {
   #
   # The generator REFUSES to write into or under the release config's own
   # parent directory (T-26-17), so the target is always in-repo.
+  #
+  # NO `$(_smoke_args)` HERE, AND THAT IS ENFORCED BY THE EXPERIMENT, NOT A
+  # PREFERENCE: `--emit-invocation-configs` REFUSES `--smoke` outright
+  # (`e2_real_rig.py:1338-1348`, exit 2), because it writes configs and runs
+  # nothing, so every flag implying a run is a declared conflict. It is
+  # seconds at any scale, so it stays full-fidelity under a reduced-scale pass.
   log "e2: emitting invocation configs from ${E2_RELEASE_CONFIG} into ${E2_INVOCATION_DIR}"
-  python -u -m experiments.e2_real_rig \
-    --emit-invocation-configs \
-    --config "${E2_RELEASE_CONFIG}" \
+  local -a cmd=(
+    python -u -m experiments.e2_real_rig
+    --emit-invocation-configs
+    --config "${E2_RELEASE_CONFIG}"
     --invocation-dir "${E2_INVOCATION_DIR}"
+  )
+  _record_dispatch "${cmd[@]}"
+  "${cmd[@]}"
 }
 
 run_stage_e2_production() {
@@ -1261,6 +1546,19 @@ run_stage_e2_production() {
   # It carries `internals.log_all_observation_depths: true`, which is a YAML
   # key and NOT a CLI flag (D-16) -- that is the whole reason this invocation
   # needs a generated config rather than an extra argument.
+  #
+  # E2's `--smoke` ALWAYS writes to a TemporaryDirectory and returns before it
+  # ever reads `--config` (`e2_real_rig.py:428-431`), printing a visible
+  # SKIPPED when the real-rig dataset is not cached. So a reduced-scale pass
+  # verifies that this line's FLAG NAMES parse and nothing more -- it cannot
+  # catch a bad config PATH. That limit is inherent to E2 and is why CONTEXT
+  # notes `--smoke` cannot catch a bad production YAML.
+  local -a cmd=(
+    python -u -m experiments.e2_real_rig
+    --config "${E2_PRODUCTION_CONFIG}" --out "${OUT_DIR}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     log "e2_production: DRY RUN"
     _dry_run_stub
@@ -1272,8 +1570,7 @@ run_stage_e2_production() {
   if [ "${emit_exit}" -ne 0 ]; then
     return "${emit_exit}"
   fi
-  python -u -m experiments.e2_real_rig \
-    --config "${E2_PRODUCTION_CONFIG}" --out "${OUT_DIR}" --force
+  "${cmd[@]}"
 }
 
 run_stage_e2_timing() {
@@ -1289,6 +1586,12 @@ run_stage_e2_timing() {
   # it.
   #
   # Its own out dir, so its benchmark.json is attributable to it.
+  local -a cmd=(
+    python -u -m experiments.e2_real_rig
+    --config "${E2_TIMING_CONFIG}" --out "${OUT_DIR_E2_TIMING}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     log "e2_timing: DRY RUN"
     _dry_run_stub
@@ -1300,8 +1603,7 @@ run_stage_e2_timing() {
     return "${emit_exit}"
   fi
   mkdir -p "${OUT_DIR_E2_TIMING}"
-  python -u -m experiments.e2_real_rig \
-    --config "${E2_TIMING_CONFIG}" --out "${OUT_DIR_E2_TIMING}" --force
+  "${cmd[@]}"
 }
 
 run_stage_e2_memory() {
@@ -1309,6 +1611,12 @@ run_stage_e2_memory() {
   # timing run by D-15 -- see run_stage_e2_timing. Also `serial_alone`: a
   # peak-RSS number measured while another calibration held 3.5 GiB is a
   # measurement of the queue, not of the algorithm.
+  local -a cmd=(
+    python -u -m experiments.e2_real_rig
+    --config "${E2_MEMORY_CONFIG}" --out "${OUT_DIR_E2_MEMORY}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     log "e2_memory: DRY RUN"
     _dry_run_stub
@@ -1320,8 +1628,7 @@ run_stage_e2_memory() {
     return "${emit_exit}"
   fi
   mkdir -p "${OUT_DIR_E2_MEMORY}"
-  python -u -m experiments.e2_real_rig \
-    --config "${E2_MEMORY_CONFIG}" --out "${OUT_DIR_E2_MEMORY}" --force
+  "${cmd[@]}"
 }
 
 run_stage_reconstruction_bootstrap() {
@@ -1332,11 +1639,16 @@ run_stage_reconstruction_bootstrap() {
   # `REAL_RIG_METRICS_PATH = Path("experiments/results/real_rig_metrics.json")`
   # (`reconstruction_bootstrap.py:56`), both written by e2_production. The
   # dependency is an edge in the manifest, not just this comment.
+  local -a cmd=(
+    python -u -m experiments.reconstruction_bootstrap --out "${OUT_DIR}" --force
+    $(_smoke_args)
+  )
+  _record_dispatch "${cmd[@]}"
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
-  python -u -m experiments.reconstruction_bootstrap --out "${OUT_DIR}" --force
+  "${cmd[@]}"
 }
 
 run_stage_e4_repeat() {
@@ -1349,6 +1661,21 @@ run_stage_e4_repeat() {
   # two repeats of a cell met different memory pressure because something else
   # ran between them, the "spread" would measure paging, not the algorithm -- a
   # decomposition of pure noise, this project's most recurrent error.
+  #
+  # SKIPPED, NOT REDUCED, UNDER `--smoke`, AND THE SKIP IS NOT A FAILURE.
+  # BOTH of this stage's invocation shapes REFUSE the flag outright:
+  # `e4_benchmark_grid` errors on `--cell` with `--smoke` and on
+  # `--splice-repeat` with `--smoke` (`e4_benchmark_grid.py:1890-1893`, exit 2)
+  # -- `--smoke` runs its own two trivial SMOKE_CELLS, so naming a cell as well
+  # is a contradiction the parser refuses rather than resolves. Running it
+  # without the flag instead would put a full-scale ~1 h stage inside a pass
+  # whose entire purpose is to finish in minutes. The manifest already expects
+  # this stage's artifact under the `full` profile only, so the roll-up does
+  # not count the omission.
+  if [ "${SUITE_SMOKE}" -eq 1 ]; then
+    log "e4_repeat: SKIPPED under --smoke (DECLARED REDUCTION). Both of its invocation shapes REFUSE the flag -- e4_benchmark_grid rejects --cell and --splice-repeat when --smoke is present (e4_benchmark_grid.py:1890-1893), so there is no reduced-scale form of this stage. Announced at launch and reprinted in the terminal summary. This is a declared omission, not a failure."
+    return 0
+  fi
   if _dry_run_active; then
     log "e4_repeat: DRY RUN -- skipping the pre-run clear of ${OUT_DIR_E4_REPEAT}"
     _dry_run_stub
@@ -1365,6 +1692,11 @@ run_stage_e4_repeat() {
   for repeat in 1 2; do
     for cell in "${E4_REPEAT_CELLS[@]}"; do
       log "e4_repeat: repeat ${repeat}, cell ${cell}"
+      # No `$(_smoke_args)`: `--cell` and `--smoke` are mutually exclusive by
+      # the experiment's own parser, which is why this whole stage is skipped
+      # under a reduced-scale pass rather than reduced.
+      _record_dispatch python -u -m experiments.e4_benchmark_grid \
+        --cell "${cell}" --out "${OUT_DIR_E4_REPEAT}" --force
       python -u -m experiments.e4_benchmark_grid \
         --cell "${cell}" --out "${OUT_DIR_E4_REPEAT}" --force 2>&1 | tee -a "${stage_log}"
       local cell_exit="${PIPESTATUS[0]}"
@@ -1384,8 +1716,14 @@ run_stage_e4_repeat() {
   fi
 
   log "e4_repeat: splicing ${OUT_DIR_E4_REPEAT} against the committed benchmark_grid.csv"
-  python -u -m experiments.e4_benchmark_grid \
+  # No `$(_smoke_args)`: `--splice-repeat` and `--smoke` are mutually exclusive
+  # by the experiment's own parser -- see the skip block at the top.
+  local -a splice_cmd=(
+    python -u -m experiments.e4_benchmark_grid
     --splice-repeat "${OUT_DIR_E4_REPEAT}" --out "${OUT_DIR}"
+  )
+  _record_dispatch "${splice_cmd[@]}"
+  "${splice_cmd[@]}"
 }
 
 run_stage_e2_band() {
@@ -1406,11 +1744,19 @@ run_stage_e2_band() {
   rm -rf "${OUT_DIR_E2_BAND}"
   mkdir -p "${OUT_DIR_E2_BAND}"
 
-  python -u -m experiments.e2_real_rig \
-    --emit-band-configs \
-    --config "${E2_RELEASE_CONFIG}" \
-    --band-seeds "${E2_BAND_SEEDS}" \
+  # No `$(_smoke_args)`: `--emit-band-configs` REFUSES `--smoke`
+  # (`e2_real_rig.py:1327`, exit 2) -- it writes configs and runs nothing. It
+  # is seconds at any scale, so it stays full-fidelity under a reduced-scale
+  # pass; only the per-seed CALIBRATIONS below are reduced.
+  local -a emit_cmd=(
+    python -u -m experiments.e2_real_rig
+    --emit-band-configs
+    --config "${E2_RELEASE_CONFIG}"
+    --band-seeds "${E2_BAND_SEEDS}"
     --band-dir "${OUT_DIR_E2_BAND}"
+  )
+  _record_dispatch "${emit_cmd[@]}"
+  "${emit_cmd[@]}"
   local emit_exit=$?
   log "e2_band: emit-band-configs exit=${emit_exit}"
   if [ "${emit_exit}" -ne 0 ]; then
@@ -1421,10 +1767,15 @@ run_stage_e2_band() {
   IFS=',' read -ra _E2_SEEDS <<<"${E2_BAND_SEEDS}"
   for seed in "${_E2_SEEDS[@]}"; do
     log "e2_band: seed ${seed} calibration starting (48-87 min)"
-    python -u -m experiments.e2_real_rig \
-      --config "${OUT_DIR_E2_BAND}/config_seed${seed}.yaml" \
-      --out "${OUT_DIR_E2_BAND}/seed_${seed}_e2_out" \
+    local -a seed_cmd=(
+      python -u -m experiments.e2_real_rig
+      --config "${OUT_DIR_E2_BAND}/config_seed${seed}.yaml"
+      --out "${OUT_DIR_E2_BAND}/seed_${seed}_e2_out"
       --force
+      $(_smoke_args)
+    )
+    _record_dispatch "${seed_cmd[@]}"
+    "${seed_cmd[@]}"
     local seed_exit=$?
     log "e2_band: seed ${seed} exit=${seed_exit}"
     [ "${seed_exit}" -ne 0 ] && exit_code="${seed_exit}"
@@ -1746,6 +2097,49 @@ _announce_declared_reductions() {
   # D-14. Printed at LAUNCH and again in the terminal summary, because "loud"
   # alone is a log line and nobody reads the log overnight. A silent skip must
   # be impossible.
+  if [ "${SUITE_SMOKE}" -eq 1 ]; then
+    echo "############################################################"
+    echo "# DECLARED REDUCTION: --smoke -- THIS IS A REDUCED-SCALE PASS"
+    echo "#"
+    echo "# NOTHING THIS RUN PRODUCES IS EVIDENCE. Every stage below"
+    echo "# runs at --smoke scale: tiny scenarios, a handful of frames,"
+    echo "# collapsed depth/noise/axis grids. It says NOTHING about"
+    echo "# geometry, convergence, accuracy, runtime, or any published"
+    echo "# number. Do not cite it, do not compare it to a band, and do"
+    echo "# not treat a PASS here as a suite that works."
+    echo "#"
+    echo "# The rule it does not touch: EVERY ACCEPTANCE AND PRODUCTION"
+    echo "# RUN IS AT FULL SCALE, NEVER SUBSTITUTED."
+    echo "#"
+    echo "# What this pass DOES prove, and the only thing it proves, is"
+    echo "# that each stage's INVOCATION LINE is correct -- a mistyped"
+    echo "# flag or an import error surfaces in minutes instead of hours"
+    echo "# into the frozen 22-31 hour run. The dry-run seam cannot"
+    echo "# prove that: it substitutes the whole command."
+    echo "#"
+    echo "# Output tree: ${OUT_DIR}"
+    echo "#   NEVER experiments/results. Forced, not tidy: every"
+    echo "#   experiment's --smoke path branches on"
+    echo "#   args.out == parser.get_default('out') and that default IS"
+    echo "#   experiments/results (_io.py:64), so passing it is"
+    echo "#   indistinguishable from passing nothing and the stages"
+    echo "#   would each write to a throwaway temp dir instead."
+    echo "#"
+    echo "# Completeness profile: ${PROFILE}"
+    echo "#"
+    echo "# TWO STAGES ARE SKIPPED ENTIRELY, NOT REDUCED -- declared,"
+    echo "# not silent, and neither counts as a failure:"
+    echo "#   e7_focal_standoff -- does nothing with --smoke and reads"
+    echo "#     the hardcoded, cwd-relative"
+    echo "#     experiments/results/interface_ablation_band.csv"
+    echo "#     (e7_focal_standoff_analysis.py:389) rather than --out,"
+    echo "#     so it would re-analyse the PRODUCTION tree's band."
+    echo "#   e4_repeat -- e4_benchmark_grid REFUSES --cell and"
+    echo "#     --splice-repeat when --smoke is present"
+    echo "#     (e4_benchmark_grid.py:1890-1893), so the stage has no"
+    echo "#     reduced-scale form at all."
+    echo "############################################################"
+  fi
   [ "${SKIP_E2}" -eq 1 ] || return 0
   echo "############################################################"
   echo "# DECLARED REDUCTION: --skip-e2"
@@ -1796,6 +2190,7 @@ main() {
   log "State file: ${STATE_FILE}"
   log "Resuming from stage index ${START_STAGE} (stages already marked complete are skipped regardless)."
   log "Profile: ${PROFILE}. Concurrency: $([ -n "${SUITE_SERIAL:-}" ] && echo "SERIAL (SUITE_SERIAL is set)" || echo "pooled, ${SUITE_WORKERS} wide (D-52)")."
+  log "Scale: $([ "${SUITE_SMOKE}" -eq 1 ] && echo "REDUCED (--smoke) -- NOT EVIDENCE, invocation-line verification only" || echo "FULL (production)"). Output tree: ${OUT_DIR}."
   _announce_declared_reductions
 
   mkdir -p "${STAGE_LOG_DIR}" "${STAGE_DONE_DIR}"

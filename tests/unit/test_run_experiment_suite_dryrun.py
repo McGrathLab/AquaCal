@@ -144,6 +144,7 @@ class DriverRun:
     state_file: Path
     real_state_file: Path
     marker_file: Path
+    dispatch_file: Path
     events: list[StageEvent] = field(default_factory=list)
 
     def starts(self) -> dict[str, datetime]:
@@ -180,6 +181,34 @@ class DriverRun:
 
     def gate_invocations(self) -> list[str]:
         return [stage for _, stage, _ in self.marker_lines() if stage]
+
+    def dispatches(self) -> list[tuple[str, str]]:
+        """`(stage, argv)` for every experiment invocation the driver BUILT.
+
+        This is the one thing the marker file cannot give: the dry-run seam
+        substitutes the WHOLE command, so the stub never sees the argv and a
+        mistyped flag passes every other test in this file. The driver's
+        `_record_dispatch` writes the argv it was about to launch, so these
+        assertions read the REAL invocation lines rather than a mock.
+        """
+        if not self.dispatch_file.exists():
+            return []
+        rows = []
+        for line in self.dispatch_file.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            stage, _, argv = line.partition("\t")
+            rows.append((stage, argv))
+        return rows
+
+    def dispatch_snapshot(self) -> list[str]:
+        """Every dispatched line as `stage\\targv`, sorted.
+
+        Sorted because the pool's completion order is genuinely
+        nondeterministic; the SET of invocation lines is the invariant, not
+        the order they happened to land in.
+        """
+        return sorted(f"{stage}\t{argv}" for stage, argv in self.dispatches())
 
 
 def _parse_iso(text: str) -> datetime:
@@ -221,6 +250,7 @@ def run_driver(
     serial: bool = False,
     extra_env: dict[str, str] | None = None,
     timeout: int = DRIVER_TIMEOUT_S,
+    sandbox_out: bool = True,
 ) -> DriverRun:
     """Invoke the driver ONCE, under the dry-run seam, fully sandboxed.
 
@@ -235,6 +265,13 @@ def run_driver(
         serial: Force `SUITE_SERIAL=1`.
         extra_env: Additional environment for the driver.
         timeout: Explicit subprocess timeout, always passed.
+        sandbox_out: When False, `SUITE_OUT_DIR` is NOT set, so the driver
+            resolves its own output tree. Needed only by the tests that assert
+            WHICH tree it resolves (`experiments/results` normally,
+            `experiments/results_smoke` under `--smoke`) -- a sandboxed
+            `SUITE_OUT_DIR` overrides that resolution and would make those
+            assertions vacuous. Safe because the seam is still set, so no
+            stage body runs and nothing is written; the tests assert that.
 
     Returns:
         A `DriverRun` with the exit code, stdout and the parsed state TSV.
@@ -244,16 +281,22 @@ def run_driver(
     state_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     marker = sandbox / "markers.tsv"
+    dispatch = sandbox / "dispatch.tsv"
 
     env = dict(os.environ)
     # THE SEAM. Never absent from any invocation in this file: without it the
     # driver runs the real ~22-26 hour suite.
     env["RUN_EXPERIMENT_SUITE_DRY_RUN"] = "1"
     env["RUN_EXPERIMENT_SUITE_DRY_RUN_CMD"] = stub
-    env["SUITE_OUT_DIR"] = out_dir.as_posix()
+    if sandbox_out:
+        env["SUITE_OUT_DIR"] = out_dir.as_posix()
+    else:
+        env.pop("SUITE_OUT_DIR", None)
     env["SUITE_STATE_DIR"] = state_dir.as_posix()
     env["SUITE_MARKER"] = marker.as_posix()
+    env["SUITE_DISPATCH_LOG"] = dispatch.as_posix()
     env.pop("SUITE_SERIAL", None)
+    env.pop("SUITE_SMOKE", None)
     if serial:
         env["SUITE_SERIAL"] = "1"
     if extra_env:
@@ -279,6 +322,7 @@ def run_driver(
         state_file=state_file,
         real_state_file=real_state_file,
         marker_file=marker,
+        dispatch_file=dispatch,
         events=_parse_state(state_file),
     )
 
@@ -731,4 +775,406 @@ class TestConcurrencyConstraints:
             peak = max(peak, in_flight)
         assert peak <= 5, (
             f"{peak} stages were in flight at once; the pool is bounded to 4-5"
+        )
+
+
+# ---------------------------------------------------------------------------
+# THE REDUCED-SCALE PASS (plan 26-11, D-33 form 1).
+#
+# Everything below still runs under the seam and still runs no experiment. What
+# is new is WHAT is read: `_record_dispatch` writes the argv each stage was
+# about to launch, so these assertions read the REAL invocation lines. That is
+# the gap the seam leaves open by design -- it substitutes the whole command,
+# so a mistyped flag passes every test above and then fails hours into a 22-31
+# hour frozen run.
+# ---------------------------------------------------------------------------
+
+#: The full-scale dispatch list, frozen. THIS IS THE POINT OF THE SNAPSHOT: it
+#: makes "plan 26-11 did not move the production path" CHECKABLE rather than
+#: asserted. Adding `--smoke` routing touched every one of these lines, and the
+#: only evidence that none of them changed is a literal recorded before the
+#: change and compared after it.
+#:
+#: Captured with no `SUITE_OUT_DIR`, so the paths are the ones a production run
+#: actually uses. Sorted: the pool's order is nondeterministic, the SET is the
+#: invariant.
+#:
+#: `e4_repeat` and `e2_band` are ABSENT and that is correct, not an omission:
+#: both build their invocations only AFTER the dry-run seam returns (e4_repeat
+#: behind its destructive pre-run clear, e2_band behind the emitted per-seed
+#: configs), so no dry run can observe them. They are the only two.
+_FULL_SCALE_DISPATCH_SNAPSHOT = [
+    "e1\tpython -u -m experiments.e1_refractive_comparison --force --out experiments/results",
+    "e1_band\tpython -u -m experiments.e1_refractive_comparison --seeds 42,43,44,45 --out experiments/results",
+    "e2_memory\tpython -u -m experiments.e2_real_rig --config experiments/results_e2_invocations/config_e2_memory.yaml --out experiments/results_e2_memory --force",
+    "e2_production\tpython -u -m experiments.e2_real_rig --config experiments/results_e2_invocations/config_e2_classification.yaml --out experiments/results --force",
+    "e2_timing\tpython -u -m experiments.e2_real_rig --config experiments/results_e2_invocations/config_e2_timing.yaml --out experiments/results_e2_timing --force",
+    "e3\tpython -u -m experiments.e3_derived_quantities --check --baseline-dir experiments/pre_rerun_baseline/results --out experiments/results",
+    "e3\tpython -u -m experiments.e3_derived_quantities --force --out experiments/results",
+    "e4\tpython -u -m experiments.e4_benchmark_grid --force --out experiments/results",
+    "e5\tpython -u -m experiments.e5_index_sensitivity --force --out experiments/results",
+    "e5_band\tpython -u -m experiments.e5_index_sensitivity --seeds 42,43,44,45,46,47 --out experiments/results --force",
+    "e6_band\tpython -u -m experiments.e6_generalization_sweep --seeds 42,43,44,45,46,47 --axes index,layout,cameras --out experiments/results --force",
+    "e6_repeat1\tpython -u -m experiments.e6_generalization_sweep --force --out experiments/results",
+    "e7\tpython -u -m experiments.e7_interface_ablation --force --out experiments/results",
+    "e7_band\tpython -u -m experiments.e7_interface_ablation --seeds 42,43,44,45,46,47,48,49,50,51 --out experiments/results",
+    "e7_focal_standoff\tpython -u -m experiments.e7_focal_standoff_analysis --out experiments/results",
+    "fd_jacobian\tpython -u -m experiments.fd_jacobian_accuracy --out experiments/results --force",
+    "reconstruction_bootstrap\tpython -u -m experiments.reconstruction_bootstrap --out experiments/results --force",
+]
+
+#: The stages whose experiment honors `--smoke` AND whose invocation the seam
+#: can observe. Measured at the argparse level against the exact argv the
+#: driver builds, never read off a docstring: `e7_interface_ablation` honors
+#: the flag (`e7_interface_ablation.py:918`) although plan 26-11's own verified
+#: list omitted it, and `e7_focal_standoff_analysis` accepts it from the shared
+#: parent parser while doing nothing whatsoever with it.
+_SMOKE_FLAGGED_STAGES = {
+    "e1",
+    "e1_band",
+    "e2_memory",
+    "e2_production",
+    "e2_timing",
+    "e3",
+    "e4",
+    "e5",
+    "e5_band",
+    "e6_band",
+    "e6_repeat1",
+    "e7",
+    "e7_band",
+    "fd_jacobian",
+    "reconstruction_bootstrap",
+}
+
+#: Skipped under smoke, with a DECLARED REDUCTION line. Neither is a failure.
+#: `e7_focal_standoff` does nothing with the flag and reads a hardcoded
+#: `experiments/results` path; `e4_repeat`'s `--cell` and `--splice-repeat` are
+#: both mutually exclusive with `--smoke` in e4's own parser.
+_SMOKE_SKIPPED_STAGES = {"e7_focal_standoff", "e4_repeat"}
+
+
+@pytest.fixture(scope="module")
+def full_scale_run(bash_available, tmp_path_factory) -> DriverRun:
+    """One dry run with NO smoke and NO out-dir sandbox.
+
+    The out dir is deliberately not sandboxed: these assertions are about which
+    tree the driver RESOLVES, and `SUITE_OUT_DIR` overrides that resolution.
+    """
+    return run_driver(tmp_path_factory.mktemp("fullscale"), sandbox_out=False)
+
+
+@pytest.fixture(scope="module")
+def smoke_run(bash_available, tmp_path_factory) -> DriverRun:
+    return run_driver(
+        tmp_path_factory.mktemp("smoke"), args=("--smoke",), sandbox_out=False
+    )
+
+
+class TestSmokeMode:
+    """`--smoke`: every stage's REAL invocation line, executable in minutes.
+
+    The pass this covers is NOT evidence about geometry, convergence, accuracy
+    or any published number, and no test here pretends otherwise. 26-07's rule
+    is unchanged: every acceptance and production run is at full scale, never
+    substituted. What `--smoke` buys is that a mistyped flag or a broken import
+    in one of twenty invocation lines surfaces in minutes instead of at hour 18.
+    """
+
+    def test_smoke_flags_exactly_the_supporting_stages(self, smoke_run):
+        """Every observable dispatch carries the flag, and the set is exact.
+
+        Both halves matter. "Every dispatch carries it" alone would pass on a
+        driver that dispatched only one stage; "the set is exact" alone would
+        pass on a driver that recorded the flag without passing it.
+        """
+        assert smoke_run.returncode == 0, smoke_run.stdout[-3000:]
+        flagged = {
+            stage for stage, argv in smoke_run.dispatches() if "--smoke" in argv.split()
+        }
+        unflagged = {
+            stage
+            for stage, argv in smoke_run.dispatches()
+            if "--smoke" not in argv.split()
+        }
+        assert flagged == _SMOKE_FLAGGED_STAGES, (
+            "the wrong stages carry --smoke. Missing: "
+            f"{sorted(_SMOKE_FLAGGED_STAGES - flagged)}; unexpected: "
+            f"{sorted(flagged - _SMOKE_FLAGGED_STAGES)}"
+        )
+        assert not unflagged, (
+            f"stage(s) {sorted(unflagged)} dispatched WITHOUT --smoke inside a "
+            "reduced-scale pass, so they would run at full scale -- the pass "
+            "would take hours, which is the one thing it exists not to do"
+        )
+
+    def test_smoke_skips_the_two_stages_that_cannot_take_the_flag(self, smoke_run):
+        """Skipped, declared, and NOT a failure -- all three.
+
+        A test that only checked "did not run" would pass on a driver that
+        crashed the stage, and one that only checked the exit code would pass
+        on a driver that ran it at full scale.
+        """
+        dispatched = {stage for stage, _ in smoke_run.dispatches()}
+        assert dispatched.isdisjoint(_SMOKE_SKIPPED_STAGES), (
+            f"{sorted(dispatched & _SMOKE_SKIPPED_STAGES)} dispatched under "
+            "--smoke. e7_focal_standoff would re-analyse the PRODUCTION tree's "
+            "band (it reads a hardcoded experiments/results path), and "
+            "e4_repeat's --cell/--splice-repeat are refused outright by e4's "
+            "own parser"
+        )
+        for stage in sorted(_SMOKE_SKIPPED_STAGES):
+            assert f"{stage}: SKIPPED under --smoke" in smoke_run.stdout, (
+                f"{stage} was skipped SILENTLY. A silent skip is exactly the "
+                "F-001 shape: a run that looks green while something never "
+                f"ran.\n{smoke_run.stdout[-3000:]}"
+            )
+        assert smoke_run.returncode == 0, (
+            "a declared reduction is an announced omission, not a failure; the "
+            f"run exited {smoke_run.returncode}"
+        )
+
+    def test_smoke_never_names_the_production_out_dir(self, smoke_run):
+        """The distinct out dir is MANDATORY, not tidiness (research SP-7).
+
+        Every experiment's `--smoke` path branches on
+        `args.out == parser.get_default("out")` and that default IS
+        `experiments/results` (`_io.py:64`), so passing it is indistinguishable
+        from passing nothing: E3/E4/E5/E6/E7 would each take their
+        TemporaryDirectory branch and the whole pass would write nothing while
+        exiting 0.
+
+        Compared token-by-token, never by substring: `experiments/results_smoke`
+        and `experiments/results_e2_timing` both CONTAIN `experiments/results`,
+        so a substring check would be satisfied by the very bug it must catch.
+        """
+        offenders = []
+        for stage, argv in smoke_run.dispatches():
+            tokens = argv.split()
+            for flag in ("--out", "--band-dir", "--invocation-dir"):
+                if flag in tokens:
+                    value = tokens[tokens.index(flag) + 1]
+                    if value == "experiments/results":
+                        offenders.append(f"{stage}: {flag} {value}")
+        assert not offenders, (
+            "a reduced-scale pass pointed at the PRODUCTION output tree: "
+            + "; ".join(offenders)
+        )
+        out_values = {
+            argv.split()[argv.split().index("--out") + 1]
+            for _, argv in smoke_run.dispatches()
+            if "--out" in argv.split()
+        }
+        assert "experiments/results_smoke" in out_values, (
+            "no stage was pointed at experiments/results_smoke, so the forced "
+            f"out dir did not take effect: {sorted(out_values)}"
+        )
+
+    def test_smoke_moves_every_sibling_out_dir_too(self, smoke_run):
+        """`run_stage_e2_band` OPENS with `rm -rf "${OUT_DIR_E2_BAND}"`.
+
+        Left at its production value, a rehearsal's first act would DELETE
+        `experiments/results_e2_band` -- three 48-87 minute calibrations. That
+        is the sharpest reason the sibling trees move with `OUT_DIR`, and not a
+        tidiness point. `e4_repeat` has the same shape and is skipped anyway; it
+        is re-pointed regardless, so the skip is not the only thing standing
+        between a rehearsal and a destroyed production tree.
+        """
+        production_siblings = {
+            "experiments/results_e2_band",
+            "experiments/results_e2_timing",
+            "experiments/results_e2_memory",
+            "experiments/results_e2_invocations",
+            "experiments/results_e4_repeat",
+        }
+        offenders = []
+        for stage, argv in smoke_run.dispatches():
+            for token in argv.split():
+                for sibling in production_siblings:
+                    if token == sibling or token.startswith(sibling + "/"):
+                        offenders.append(f"{stage}: {token}")
+        assert not offenders, (
+            "a reduced-scale pass named a PRODUCTION sibling tree: "
+            + "; ".join(sorted(set(offenders)))
+        )
+
+    def test_smoke_banner_says_the_pass_is_not_evidence(self, smoke_run):
+        """D-14: loud, at launch AND in the terminal summary.
+
+        The wording is load-bearing, not decoration. 26-07 built the driver so
+        acceptance and production runs are never substituted, and this plan adds
+        a substituted path next to it; the only thing keeping the two
+        distinguishable at 7 a.m. is a banner that says so in both places.
+        """
+        assert smoke_run.stdout.count("DECLARED REDUCTION") >= 2, (
+            "the reduced-scale declaration must appear at launch AND in the "
+            "terminal summary; one line at the top of an overnight log is not "
+            "a declaration"
+        )
+        for phrase in (
+            "REDUCED-SCALE PASS",
+            "NOTHING THIS RUN PRODUCES IS EVIDENCE",
+            "EVERY ACCEPTANCE AND PRODUCTION",
+            "INVOCATION LINE",
+        ):
+            assert phrase in smoke_run.stdout, (
+                f"the launch banner does not say {phrase!r}. A reduced-scale "
+                "run that does not announce what it is NOT is a number waiting "
+                f"to be quoted.\n{smoke_run.stdout[-4000:]}"
+            )
+
+    def test_smoke_completes_every_stage_and_exits_zero(self, smoke_run, manifest):
+        """A reduced-scale pass is still a whole-queue pass.
+
+        Every stage records a start and a completion line, including the two
+        that are skipped: a declared omission is a completed stage with nothing
+        dispatched, not a hole in the state file.
+        """
+        expected = {stage["id"] for stage in manifest["stages"]}
+        completed = set(smoke_run.completions())
+        assert completed == expected, (
+            "a reduced-scale pass must still traverse EVERY stage. Missing: "
+            f"{sorted(expected - completed)}; unexpected: "
+            f"{sorted(completed - expected)}\n{smoke_run.stdout[-3000:]}"
+        )
+        assert smoke_run.returncode == 0, smoke_run.stdout[-3000:]
+
+    def test_smoke_does_not_write_the_real_state_file_either(self, smoke_run):
+        """The 19.5 separation is not weakened by the new path."""
+        assert not smoke_run.real_state_file.exists()
+
+    def test_the_env_var_is_equivalent_to_the_smoke_flag(
+        self, bash_available, tmp_path
+    ):
+        """`SUITE_SMOKE=1` == `--smoke`, for symmetry with SUITE_SERIAL.
+
+        Asserted on the dispatched argv rather than on a log line, so a driver
+        that merely PRINTS that smoke is active cannot pass.
+        """
+        run = run_driver(tmp_path, extra_env={"SUITE_SMOKE": "1"}, sandbox_out=False)
+        assert run.returncode == 0, run.stdout[-3000:]
+        flagged = {
+            stage for stage, argv in run.dispatches() if "--smoke" in argv.split()
+        }
+        assert flagged == _SMOKE_FLAGGED_STAGES, (
+            "SUITE_SMOKE=1 did not select the same stage set as --smoke: "
+            f"{sorted(flagged)}"
+        )
+
+
+class TestSmokeAndProfileStaySeparable:
+    """`--profile` selects the completeness gate's expectations. That is ALL.
+
+    `--smoke` selects the SCALE the stages run at. The two were conflated in
+    plan 26-10's launch line, which asked for a `--smoke` acceptance pass and
+    would have started the full-scale 22-31 hour production suite while grading
+    it against smoke expectations. Keeping them separable is the fix.
+    """
+
+    def test_profile_defaults_to_full_without_smoke(self, full_scale_run):
+        assert "Profile: full." in full_scale_run.stdout, (
+            f"the profile default moved off 'full'\n{full_scale_run.stdout[:2000]}"
+        )
+
+    def test_smoke_defaults_the_profile_to_smoke(self, smoke_run):
+        assert "Profile: smoke." in smoke_run.stdout, (
+            f"--smoke did not default the profile\n{smoke_run.stdout[:2000]}"
+        )
+
+    def test_an_explicit_profile_beats_the_smoke_default(
+        self, bash_available, tmp_path
+    ):
+        """`--profile full --smoke` is honored.
+
+        A reduced-scale run graded against the FULL expectation set is a
+        legitimate thing to ask for -- it is how you see everything a smoke pass
+        cannot produce. It must not be silently rewritten.
+        """
+        run = run_driver(tmp_path, args=("--profile", "full", "--smoke"))
+        assert run.returncode == 0, run.stdout[-3000:]
+        assert "Profile: full." in run.stdout, (
+            "--smoke overrode an EXPLICIT --profile full; the two concepts are "
+            f"not separable any more\n{run.stdout[:2000]}"
+        )
+        flagged = {
+            stage for stage, argv in run.dispatches() if "--smoke" in argv.split()
+        }
+        assert flagged, "--profile full suppressed the reduced-scale flag routing"
+
+
+class TestFullScalePathDidNotMove:
+    """The regression rail for "production is exactly what it was".
+
+    Plan 26-11 rewrote every stage's invocation line to interpolate one helper.
+    The claim that none of them changed is worth nothing as an assertion; this
+    is the snapshot that makes it checkable.
+    """
+
+    def test_no_stage_receives_the_smoke_flag_without_it(self, full_scale_run):
+        offenders = [
+            f"{stage}: {argv}"
+            for stage, argv in full_scale_run.dispatches()
+            if "--smoke" in argv.split()
+        ]
+        assert not offenders, (
+            "a stage dispatched --smoke in a FULL-SCALE run. That is a "
+            "substituted production run, which is the one thing 26-07's design "
+            "forbids: " + "; ".join(offenders)
+        )
+
+    def test_the_full_scale_out_dir_is_still_experiments_results(self, full_scale_run):
+        out_values = {
+            argv.split()[argv.split().index("--out") + 1]
+            for _, argv in full_scale_run.dispatches()
+            if "--out" in argv.split()
+        }
+        assert "experiments/results" in out_values, (
+            "no stage was pointed at experiments/results in a full-scale run; "
+            f"the production out dir moved: {sorted(out_values)}"
+        )
+        assert "experiments/results_smoke" not in out_values, (
+            "a FULL-SCALE run wrote into the reduced-scale tree"
+        )
+
+    def test_the_full_scale_dispatch_list_matches_the_frozen_snapshot(
+        self, full_scale_run
+    ):
+        """The literal, line for line.
+
+        If this fails and the change was intended, update the snapshot IN THE
+        SAME COMMIT as the driver change and say why in the message -- the
+        snapshot's only value is that it is not edited casually.
+        """
+        assert full_scale_run.dispatch_snapshot() == _FULL_SCALE_DISPATCH_SNAPSHOT, (
+            "the full-scale dispatched command list changed.\nexpected:\n  "
+            + "\n  ".join(_FULL_SCALE_DISPATCH_SNAPSHOT)
+            + "\nactual:\n  "
+            + "\n  ".join(full_scale_run.dispatch_snapshot())
+        )
+
+    def test_the_snapshot_covers_every_stage_that_can_be_observed(
+        self, full_scale_run, manifest
+    ):
+        """Guard against a snapshot that passes because it captured nothing.
+
+        A frozen list is worthless if the mechanism that fills it silently stops
+        working, so the covered set is checked against the manifest rather than
+        against itself. `preflight` and `prelaunch_probe` invoke no experiment;
+        `e4_repeat` and `e2_band` build their invocations only after the seam
+        returns.
+        """
+        covered = {line.split("\t", 1)[0] for line in _FULL_SCALE_DISPATCH_SNAPSHOT}
+        expected = {stage["id"] for stage in manifest["stages"]} - {
+            "preflight",
+            "prelaunch_probe",
+            "e4_repeat",
+            "e2_band",
+        }
+        assert covered == expected, (
+            f"snapshot coverage drifted. Missing: {sorted(expected - covered)}; "
+            f"unexpected: {sorted(covered - expected)}"
+        )
+        assert full_scale_run.dispatch_snapshot(), (
+            "the dispatch recorder captured nothing at all, so the snapshot "
+            "test above passed vacuously"
         )
