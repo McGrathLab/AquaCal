@@ -83,3 +83,50 @@ already known to be conditioning-dependent, and Phase 23 (FIX-05) has just spent
 a task fixing a verification gate that could not fail — a suite that is fast
 because it stopped checking convergence is the same failure mode wearing
 different clothes.
+
+---
+
+## First parallel attempt — 2026-08-18, FAILED at collection (not at a test)
+
+`pytest-xdist 3.8.0` + `execnet 2.1.2` installed into the AquaCal conda env (they are now
+present; nothing was added to `pyproject.toml`). Two runs attempted at the Phase 25 wave-1 gate:
+
+1. **Against the pre-merge tree** (code-identical to Phase 24's baseline — `src/`, `tests/` and
+   `pyproject.toml` were untouched between `01bead1` and `4d2be36`, so the 1931/25 control was
+   still valid). Reached 99% in roughly 20 minutes versus 70 serial. **The result was then
+   invalidated by operator error** — the wave-1 worktree merge landed while the run was still
+   going, so its tail imported merged code. No counts should be read off it.
+
+2. **Against the merged tree**, `-n 12 --dist loadfile`: **died in 11.8 s with 2 errors, before
+   running a single test.**
+
+   ```
+   Different tests were collected between gw0 and gw1
+   ```
+
+   `gw0` collected 50 tests from `tests/synthetic/test_full_pipeline.py` that `gw1` did not.
+
+### What this is and is not
+
+It is **not** the `experiments/results` write-collision this todo predicted, and not a real test
+failure — no test executed. It is non-deterministic *collection*: workers disagreed on what the
+suite contains, which xdist treats as fatal.
+
+`tests/synthetic/__init__.py` **does** exist, so the obvious explanation — a relative import
+(`from .ground_truth import ...` at `test_full_pipeline.py:23`) without a package marker — is
+ruled out. The cause is still unknown. Next things to try, cheapest first:
+
+- `pytest tests/ --collect-only -q` twice in a row and diff, to see whether collection is
+  unstable even single-threaded.
+- `-p no:randomly` if any ordering plugin is active in the env.
+- `--import-mode=importlib` with `consider_namespace_packages`, since the mismatch is in the one
+  directory that mixes a package marker with a relative import.
+- Check for a stale `__pycache__` or a `.pyc` from a different interpreter in `tests/synthetic/`.
+
+### Sequencing note, reaffirmed the hard way
+
+This todo already said not to land xdist during a correctness gate. That was right, and the
+reason turned out to be sharper than written: the failure did not even reach a test, so it
+produced *no* signal about the phase's actual changes while still consuming a gate slot. The
+serial gate was re-launched immediately and is the number of record for the Phase 25 wave-1 gate.
+**Do this work on a quiet tree, with no phase in flight.**
