@@ -257,6 +257,13 @@ criteria 1-3 and carry criterion 4 rather than blocking the phase.
 
   3. E1's seed band gains a `noise_std` axis, with the `n_cameras` geometry axis explicitly
      marked skipped, so promoted absolute-accuracy numbers carry a stated domain.
+     **Rescoped 2026-08-18 (D-21):** what lands here is the *axis* — the code, both corrected key
+     lists, the smoke collapse, the stated-domain sentence — plus a **two-seed probe** (≈1.5 h,
+     four levels, written to `.planning/probes/2026-08-18-e1-noise-axis/`) confirming it runs end
+     to end. The **band of record** — four levels × ten seeds, 640/960 rows, ≈7 h — is executed by
+     **Phase 28** at the frozen sha and verified in **Phase 29**; running it here would measure at
+     7 h something measured again properly two phases later. `experiments/results/` therefore
+     stays at 160/240 rows through Phase 27, and no Phase 26 gate may assert 640.
 
   4. (Added 2026-08-17, rewritten same day once the probes reported) The convergence question
      behind E1's ratio is **already answered** and must not be re-derived here — see

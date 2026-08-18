@@ -61,7 +61,7 @@ files; the requirement → automated-command mapping is fixed here.
 | BAND-01 | `_run_smoke` / `_run_check` / single-seed paths write no `noise_std` and are unchanged (D-12) | unit | `pytest tests/unit/test_e1_band_mode.py tests/unit/test_experiments_e1.py -k "smoke or check" -x` | partial ✓ |
 | BAND-01 | The three fixed-contract CSVs' headers are byte-unchanged | unit | `pytest tests/unit/test_experiments_e1.py -k columns -x` | ❌ W0 |
 | BAND-01 | The D-14 stated-domain sentence is present beside the demotion note | unit (source-text assertion, FIX-06 precedent) | `pytest tests/unit/test_experiment_inertness.py -k stated_domain -x` | ❌ W0 |
-| BAND-01 | The band's actual numbers at 4 noise levels | **artifact inspection** | the ~7 h band run + committed CSVs | orchestrator |
+| BAND-01 | The probe's shape and directional read at 4 noise levels (128/192 rows, no duplicate keys) | **artifact inspection** | the ≈1.5 h two-seed probe under `.planning/probes/2026-08-18-e1-noise-axis/` (D-21) | orchestrator |
 | DEGEN-05 | D-18's four correction headers exist | **verification command** | `grep -c "CORRECTED 2026-08-17" <4 files>` | ✓ at `02fe224` |
 | DEGEN-05 | The `optimality` caveat ships in `benchmark_grid.tex` | unit (source/output-text assertion, FIX-04 precedent) | `pytest tests/unit/test_experiments_e4.py -k optimality_caveat -x` | ❌ W0 |
 | DEGEN-05 | Verdict sentence (Huber knee closed, sign + magnitude, probe cited) | **recorded decision — no test** | SUMMARY + MF-21 | — |
@@ -97,7 +97,7 @@ files; the requirement → automated-command mapping is fixed here.
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | The 198 unprojectable observations classify to named buckets | DEGEN-04 | One-off instrumented E2 run against the archive's `config_paper.yaml` under OpenCV 4.13 (48–87 min, ~10.26 GiB) | Orchestrator runs detached with `python -u`; read the sidecar, record in `FINDINGS.md` |
-| E1 band numbers at 4 noise levels | BAND-01 | ~7 h production run | Orchestrator runs detached; commit the CSVs |
+| E1 noise-axis probe at 4 noise levels, 2 seeds | BAND-01 | ≈1.5 h run, and it must not be dispatched to an executor | Orchestrator runs detached with `nohup python -u … & disown`, `--out` at the probe dir; `experiments/results/` must stay byte-unchanged. **The band of record is Phase 28's frozen run (D-21)** — 640/960 is not asserted here |
 | DEGEN-05 verdict sentence | DEGEN-05 | Recorded decision (D-19: no measurement, no artifact, no verification criterion) | Written into SUMMARY + MF-21 |
 | Gate-scope decision | D-04 | Policy call conditioned on the run's dominant bucket | Only checkable artifact is that the rationale text exists at the three named sites |
 
