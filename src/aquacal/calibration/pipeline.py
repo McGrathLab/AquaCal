@@ -388,6 +388,9 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
     save_conditioning = bool(internals.get("save_conditioning", False))
     save_benchmark = bool(internals.get("save_benchmark", True))
     benchmark_memory = bool(internals.get("benchmark_memory", False))
+    log_all_observation_depths = bool(
+        internals.get("log_all_observation_depths", False)
+    )
 
     # Reproducibility
     seed = int(data.get("seed", 42))
@@ -423,6 +426,7 @@ def load_config(config_path: str | Path) -> CalibrationConfig:
         save_conditioning=save_conditioning,
         save_benchmark=save_benchmark,
         benchmark_memory=benchmark_memory,
+        log_all_observation_depths=log_all_observation_depths,
         seed=seed,
         shared_interface=shared_interface,
         initial_water_z=initial_water_z,
