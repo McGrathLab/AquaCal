@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: completed
+status: executing
 stopped_at: Phase 26 context gathered
-last_updated: "2026-08-18T18:27:33.392Z"
+last_updated: "2026-08-18T18:27:55.311Z"
 last_activity: 2026-08-18 -- Phase 25 planning complete
 progress:
   total_phases: 8
@@ -34,7 +34,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 25
 Plan: Not started
-Status: Phase 25 complete — ready for Phase 26
+Status: executing
 Last activity: 2026-08-18 -- Phase 25 planning complete
 FIX-03+04, FIX-06), one commit per requirement
 
