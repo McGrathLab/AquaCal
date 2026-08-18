@@ -114,6 +114,27 @@ prose. The manuscript tree `Spinoffs/papers/aquacal/` is **read-only from this r
   resurface), and an **MF-NN entry in `.planning/MANUSCRIPT-FINDINGS.md`** carrying the derivation
   for the manuscript session.
 
+- **D-21 (author, 2026-08-18 — SCOPE CHANGE, supersedes 25-08's original production run):** Phase 25
+  runs the noise axis as a **quick probe only**, not as the band of record. The four-level ×
+  ten-seed band (640/960 rows, ≈ 7 h) is executed by **Phase 28** at the frozen sha on the Linux
+  machine and verified in **Phase 29** — running it here would measure, at 7 h, something that gets
+  measured again properly two phases later.
+
+  *What the probe is:* four noise levels × **two seeds** (43 and 44, both members of the committed
+  ten so the 0.5 px rows stay comparable), full eight-depth preset, real `realistic` scenario, ≈ 8
+  cells ≈ 1.5 h. `--smoke` is **not** usable for this — it switches the scenario to `ideal` and
+  (per 25-04's PITFALL B2 collapse) deliberately flattens the very axis under test.
+
+  *Where it writes:* a probe directory via `--out`, **never `experiments/results/`**. Committing a
+  probe-shaped `exp1_band.csv` would leave the repo's band artifact in a shape that is neither the
+  old 160-row contract nor the frozen run's 640, breaking Phase 26's driver expectations and the
+  `--check` comparison. The committed band artifacts stay at 160/240 rows until Phase 28.
+
+  *What the probe licenses:* that the axis runs end to end on real output, that the key lists hold
+  with no duplicate keys, and a directional read on whether error tracks noise. It licenses **no
+  §3-facing number** — two seeds cannot separate a noise effect from seed variance, and this project
+  has three times produced a decomposition of pure noise by skipping that check.
+
 ### DEGEN-05 — verdict and the optimality caveat
 
 - **D-15:** The convergence question is **already answered and must not be re-derived**. Warm
