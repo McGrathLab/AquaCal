@@ -69,8 +69,10 @@ from aquacal.datasets import generate_real_rig_array
 from aquacal.datasets.synthetic import generate_real_rig_trajectory
 from aquacal.io import capture_environment
 from experiments._io import (
+    add_baseline_dir_argument,
     build_experiment_arg_parser,
     compare_experiment_csv,
+    resolve_baseline_dir,
     resolve_out_dir,
     validate_args,
     write_experiment_csv,
@@ -904,7 +906,43 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "configuration; per-camera mode belongs where E7 frames it as a deliberate "
         "ablation (D-21).",
     )
+    add_baseline_dir_argument(parser)
     return parser
+
+
+def _validate_e3_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Enforce E3's script-local cross-flag constraints (D-12).
+
+    Call this BEFORE the shared `validate_args`, so an invocation that trips
+    both rules is reported against the script-local flag the user just added
+    rather than against the pre-existing `--check`/`--force` pair.
+
+    `--baseline-dir` names the directory `--check` reads baselines FROM, so it
+    is meaningless outside `--check` and actively misleading alongside
+    `--force` (a write mode). Silently ignoring it is precisely how a `--check`
+    ends up reporting a pass against the wrong tree (T-26-11).
+
+    Args:
+        parser: The parser `args` came from, used only for `parser.error()`.
+        args: The parsed namespace.
+
+    Raises:
+        SystemExit: Via `parser.error()`, when `--baseline-dir` is combined
+            with `--force`, or given without `--check`.
+    """
+    if args.baseline_dir is not None and args.force:
+        parser.error(
+            "--baseline-dir is incompatible with --force: --baseline-dir names "
+            "the directory --check READS committed baselines from, and --force "
+            "is a write mode"
+        )
+    if args.baseline_dir is not None and not args.check:
+        parser.error(
+            "--baseline-dir requires --check: it names the directory --check "
+            "reads committed baselines from and has no meaning in a write run"
+        )
 
 
 def _write_tier1_and_sidecar(out_dir: Path, seed: int, force: bool) -> None:
@@ -964,16 +1002,44 @@ def _write_tier4(out_dir: Path, force: bool) -> None:
     )
 
 
-def _run_check(out_dir: Path, seed: int) -> int:
+def _run_check(out_dir: Path, seed: int, *, baseline_dir: Path | None = None) -> int:
     """`--check`: compare a fresh run against committed baselines, tier by tier.
+
+    Why the suite driver runs E3's `--check` BEFORE its `--force` write, as one
+    atomic stage (D-10): **E3 is one of only two experiments whose `--check` is
+    still a real reproduction signal**, so this is one of the few places the
+    frozen run can demonstrate that the current code reproduces the committed
+    numbers at all. The ordering's original justification -- capturing the
+    prior state before `--force` overwrote it -- no longer applies, because
+    DRIVER-04 moves the whole committed tree aside to
+    `experiments/pre_rerun_baseline/` before the run; that is what
+    `baseline_dir` is for. The honest qualification on "only two": the other
+    survivor, E2, survives on only ONE of its three artifacts, and only on a
+    box whose local tree is warm -- its other two baselines are gitignored by
+    DATA-01b policy (RESEARCH SP-5).
 
     `seed` is the CLI's `--seed` (WR-05 closed): tier 2's recomputation uses the seed it
     was actually given rather than a hardcoded `seed=42`, so `--check --seed 7` cannot
     report a pass on a seed-42 recomputation it never ran.
+
+    Args:
+        out_dir: The resolved `--out` directory. Used only as the baseline
+            fallback here -- a `--check` run writes nothing.
+        seed: The CLI's `--seed`, forwarded into tier 2's recomputation.
+        baseline_dir: The `--baseline-dir` value (D-12), or None to read
+            baselines from `out_dir` exactly as before Phase 26.
+
+    Returns:
+        0 when every tier compared and passed, else 1. A baseline that is
+        absent is a FAILURE here, not an N/A: all three of E3's baselines are
+        committed by design, so a missing one means the archive was resolved
+        wrongly.
     """
     overall_passed = True
+    baselines = resolve_baseline_dir(baseline_dir, out_dir)
+    print(f"Reading committed baselines from {baselines}")
 
-    code_constants_path = out_dir / "code_constants.csv"
+    code_constants_path = baselines / "code_constants.csv"
     if not code_constants_path.exists():
         print(f"No committed baseline at {code_constants_path} to check against.")
         overall_passed = False
@@ -988,7 +1054,7 @@ def _run_check(out_dir: Path, seed: int) -> int:
         print(f"code_constants.csv: {report.message}")
         overall_passed = overall_passed and report.passed
 
-    newton_path = out_dir / "newton_iterations.csv"
+    newton_path = baselines / "newton_iterations.csv"
     if not newton_path.exists():
         print(f"No committed baseline at {newton_path} to check against.")
         overall_passed = False
@@ -1000,7 +1066,7 @@ def _run_check(out_dir: Path, seed: int) -> int:
         print(f"newton_iterations.csv: {report.message}")
         overall_passed = overall_passed and report.passed
 
-    cpr_path = out_dir / "cpr_grouping.csv"
+    cpr_path = baselines / "cpr_grouping.csv"
     if not cpr_path.exists():
         print(f"No committed baseline at {cpr_path} to check against.")
         overall_passed = False
@@ -1019,13 +1085,14 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e3_derived_quantities`."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+    _validate_e3_args(parser, args)
     validate_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.check:
         out_dir = resolve_out_dir(args.out)
-        return _run_check(out_dir, seed=args.seed)
+        return _run_check(out_dir, seed=args.seed, baseline_dir=args.baseline_dir)
 
     if args.smoke:
         # Honor an explicitly-passed --out; otherwise fall back to a throwaway temp
