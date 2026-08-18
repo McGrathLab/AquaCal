@@ -342,3 +342,61 @@ experiments/verify_23_fdnoise/
 # transcribed evidence stays in.
 .planning/probes/2026-08-17-huber-knee/e1_control/
 .planning/probes/2026-08-17-huber-knee/e1_treatment/
+
+# ---------------------------------------------------------------------------
+# Phase 26 / DRIVER-04 (D-28..D-32): the pre-re-run archive.
+#
+# Every pre-existing output tree moved to experiments/pre_rerun_baseline/ in
+# plan 26-01, immediately after the `pre-rerun-baseline` tag. NOTHING was
+# deleted -- the archive stays reachable for the whole v2.1 suite re-run
+# because E2's ~1e-8 control and E3's tier diff compare against it (D-12), and
+# `--baseline-dir` resolves here.
+#
+# Every literal-prefix rule above that names a moved tree is MIRRORED under the
+# new prefix. Without these, the ~128 untracked/ignored files that move with
+# those trees would become newly visible in `git status` and newly committable
+# -- which would re-break the repo-wide 1000 KB large-file guard the DATA-01b
+# rules exist to hold.
+#
+# The ORIGINAL rules above are deliberately kept: experiments/results/ is where
+# the fresh run writes, and the DATA-01b lines must keep applying to it.
+#
+# Phase 30 / POST-03 purges the archive; this whole block goes with it.
+# ---------------------------------------------------------------------------
+
+# Mirrors experiments/results/ (E7 conditioning arrays, DATA-01b E2 bulk, E1 spatial CSV)
+experiments/pre_rerun_baseline/results/interface_ablation_conditioning.npz
+experiments/pre_rerun_baseline/results/calibration.json
+experiments/pre_rerun_baseline/results/reprojection_residuals.csv
+experiments/pre_rerun_baseline/results/reconstruction_errors.csv
+experiments/pre_rerun_baseline/results/exp2_spatial_errors.csv
+
+# Mirrors experiments/results_e2_band/ (the ~126-file derived bulk stays out)
+experiments/pre_rerun_baseline/results_e2_band/*
+!experiments/pre_rerun_baseline/results_e2_band/config_seed*.yaml
+!experiments/pre_rerun_baseline/results_e2_band/e2_band_scope.json
+!experiments/pre_rerun_baseline/results_e2_band/seed_*_e2_out/
+experiments/pre_rerun_baseline/results_e2_band/seed_*_e2_out/*
+!experiments/pre_rerun_baseline/results_e2_band/seed_*_e2_out/real_rig_metrics.json
+
+# Mirrors experiments/results_linux32gb/ (DATA-01b bulk out, citable run logs in)
+experiments/pre_rerun_baseline/results_linux32gb/e2_*/calibration.json
+experiments/pre_rerun_baseline/results_linux32gb/e2_*/reprojection_residuals.csv
+experiments/pre_rerun_baseline/results_linux32gb/e2_*/reconstruction_errors.csv
+!experiments/pre_rerun_baseline/results_linux32gb/e4/run.log
+!experiments/pre_rerun_baseline/results_linux32gb/e2_timing/run.log
+!experiments/pre_rerun_baseline/results_linux32gb/e2_memory/run.log
+!experiments/pre_rerun_baseline/results_linux32gb/e2_cv413/run.log
+
+# Mirrors experiments/results_e4_repeat/repeat_stdout.log
+!experiments/pre_rerun_baseline/results_e4_repeat/repeat_stdout.log
+
+# The archived production queue logs stay tracked against *.log (line 59), for
+# the same reason the originals were un-ignored: they are the only surviving
+# per-stage record of the 19.4 and 19.5 queues.
+!experiments/pre_rerun_baseline/driver_state/rerun_19_4.log
+!experiments/pre_rerun_baseline/driver_state/rerun_19_5.log
+
+# Mirrors experiments/verify_23*/ -- D-31's untracked probe trees, moved aside
+# as LOCAL HYGIENE only (they are gitignored and never travel to the run box).
+experiments/pre_rerun_baseline/verify_probes/
