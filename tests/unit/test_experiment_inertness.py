@@ -193,3 +193,33 @@ def test_reference_counter_ignores_prose_but_not_code(tmp_path):
         encoding="utf-8",
     )
     assert _count_references(real_use, "generate_camera_array") > 0
+
+
+def test_e1_header_states_the_accuracy_claim_stated_domain():
+    """BAND-01/D-14: E1's module docstring records the domain over which its
+    absolute-accuracy numbers may be quoted, beside the D-19.3-17 demotion
+    note, together with the D-16 ill-conditioning caveat.
+
+    Scoped to `_E1_PATH`'s parsed docstring, never to a repository-wide grep:
+    the prose in THIS file (and in any plan or summary document) must be
+    unable to satisfy or falsify the gate. `_count_references`'s own
+    docstring records what happened the last time a source-text check here
+    was allowed to see prose it did not mean to see.
+    """
+    tree = ast.parse(_E1_PATH.read_text(encoding="utf-8"), filename=str(_E1_PATH))
+    docstring = ast.get_docstring(tree)
+    assert docstring is not None
+
+    # The noise range the domain is stated over.
+    assert "0.25" in docstring
+    assert "1.2" in docstring
+    # The seed count and the geometry the domain is stated over.
+    assert "ten seeds" in docstring
+    assert "12-camera" in docstring
+    # D-16: the caveat, paired with the converged-baseline finding.
+    assert "ill-conditioned" in docstring.lower()
+    assert "converged" in docstring.lower()
+    # D-21: the establishing band is Phase 28 work, not a Phase 25 result.
+    assert "Phase 28" in docstring
+    # D-13: the anti-confusion note names the 0.5 px isolator.
+    assert "normal_fixed" in docstring

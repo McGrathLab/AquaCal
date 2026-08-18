@@ -10,10 +10,13 @@ forbidden by this plan). None of these tests are marked slow.
 from __future__ import annotations
 
 import json
+import types
 
 import pandas as pd
 import pytest
 
+import experiments.e1_refractive_comparison as e1
+from aquacal.calibration._observability import SolverDiagnostics
 from experiments._io import build_experiment_arg_parser
 from experiments.e1_refractive_comparison import (
     BAND_MERGED_COLUMNS,
@@ -246,3 +249,135 @@ class TestSingleSeedPathUnaffected:
             a.option_strings[0] for a in parser._actions if a.option_strings
         )
         assert options == ["--check", "--force", "--out", "--seed", "--smoke"]
+
+
+# --- BAND-01: the noise_std axis -------------------------------------------
+#
+# These tests drive `_run_band` at PRODUCTION scale (10 seeds x 4 noise levels)
+# with every solve stubbed out, so the 640/960 shape and the key-uniqueness
+# contract are pinned without a single calibration running. A real band of that
+# shape is ~7 h and belongs to Phase 28 (D-21); nothing here may run one.
+
+BAND_SEEDS = [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
+STUB_CAMERAS = [f"cam{i}" for i in range(12)]
+PRESET_NOISE = 0.5
+
+
+class _StubScenario:
+    """Stand-in for `SyntheticScenario`: only the attributes `_run_band` reads,
+    plus the mutable `noise_std` the axis writes."""
+
+    def __init__(self, name: str, seed: int) -> None:
+        self.name = name
+        self.seed = seed
+        self.noise_std = PRESET_NOISE
+        self.intrinsics = dict.fromkeys(STUB_CAMERAS)
+        self.board_poses = list(range(20))
+
+
+def _patch_band_internals(monkeypatch):
+    """Stub the solve and the dataframe assembly so `_run_band`'s own loop,
+    stamping, key columns and CSV writes are the only things exercised."""
+
+    def _fake_create_scenario(scenario_name, seed=0, **kwargs):
+        return _StubScenario(scenario_name, seed)
+
+    def _fake_run_one_model(scenario, n_water, seed):
+        # Real `SolverDiagnostics` instances, not namespaces:
+        # `write_direct_call_benchmark` calls `dataclasses.asdict` on them.
+        diagnostics = {
+            key: SolverDiagnostics()
+            for key in ("stage3_interface_optimization", "stage3_intrinsic_pass")
+        }
+        result = types.SimpleNamespace(
+            diagnostics=types.SimpleNamespace(reprojection_error_rms=0.4),
+            cameras={STUB_CAMERAS[0]: types.SimpleNamespace(water_z=1.031)},
+        )
+        return result, object(), {}, diagnostics, {}, None
+
+    def _fake_build_dataframes(scenario, results, seed, test_depths=None, **kwargs):
+        depths = e1.TEST_DEPTHS if test_depths is None else test_depths
+        labels = list(results)
+        exp1_rows = [
+            dict.fromkeys(EXP1_COLUMNS, 0.0) | {"camera": camera, "model": label}
+            for label in labels
+            for camera in STUB_CAMERAS
+        ]
+        exp2_rows = [
+            dict.fromkeys(EXP2_COLUMNS, 0.0) | {"test_depth_m": depth, "model": label}
+            for label in labels
+            for depth in depths
+        ]
+        exp3_rows = [
+            dict.fromkeys(EXP3_COLUMNS, 0.0)
+            | {"test_depth_m": depth, "model": label, "n_points": 49}
+            for label in labels
+            for depth in depths
+        ]
+        return (
+            pd.DataFrame(exp1_rows, columns=EXP1_COLUMNS),
+            pd.DataFrame(exp2_rows, columns=EXP2_COLUMNS),
+            pd.DataFrame([]),
+            pd.DataFrame(exp3_rows, columns=EXP3_COLUMNS),
+        )
+
+    monkeypatch.setattr(e1, "create_scenario", _fake_create_scenario)
+    monkeypatch.setattr(e1, "_run_one_model", _fake_run_one_model)
+    monkeypatch.setattr(e1, "_build_dataframes", _fake_build_dataframes)
+
+
+class TestNoiseAxis:
+    """BAND-01: the `noise_std` axis's shape, keys and smoke collapse."""
+
+    def test_noise_axis_shape_at_band_scale(self, tmp_path, monkeypatch):
+        """Ten seeds x four noise levels: 640 band rows and 960 parameter-band
+        rows. The 960 figure is anticipated by no committed document -- this is
+        where it becomes checked."""
+        _patch_band_internals(monkeypatch)
+        e1._run_band(BAND_SEEDS, tmp_path, smoke=False, force=True)
+
+        band = pd.read_csv(tmp_path / "exp1_band.csv")
+        assert len(band) == 640
+        assert "noise_std" in band.columns
+        assert sorted(band["noise_std"].unique().tolist()) == [0.25, 0.5, 0.82, 1.2]
+
+        parameter_band = pd.read_csv(tmp_path / "exp1_parameter_band.csv")
+        assert len(parameter_band) == 960
+        assert "noise_std" in parameter_band.columns
+        assert sorted(parameter_band["noise_std"].unique().tolist()) == [
+            0.25,
+            0.5,
+            0.82,
+            1.2,
+        ]
+
+    def test_band_csvs_have_no_duplicate_keys(self, tmp_path, monkeypatch):
+        """PITFALL B1's tripwire. `write_experiment_csv` sorts by the key
+        columns and never validates uniqueness, so dropping `noise_std` from
+        either list writes a file whose every key names four rows -- silently.
+        The key lists are read from the module rather than hardcoded here, so
+        this fails if either one is narrowed later."""
+        _patch_band_internals(monkeypatch)
+        e1._run_band(BAND_SEEDS, tmp_path, smoke=False, force=True)
+
+        band = pd.read_csv(tmp_path / "exp1_band.csv")
+        assert not band.duplicated(subset=e1.BAND_KEY_COLUMNS).any()
+
+        parameter_band = pd.read_csv(tmp_path / "exp1_parameter_band.csv")
+        assert not parameter_band.duplicated(subset=PARAMETER_BAND_KEY_COLUMNS).any()
+
+    def test_smoke_band_runs_one_noise_level(self, tmp_path, monkeypatch):
+        """PITFALL B2: `--smoke` collapses the axis exactly as it collapses the
+        depth sweep, so the eight real-solve smoke tests above do not
+        quadruple. The expected row count is the pre-BAND-01 smoke count,
+        n_seeds x 1 depth x len(MODELS) -- unquadrupled."""
+        _patch_band_internals(monkeypatch)
+        e1._run_band([42, 43], tmp_path, smoke=True, force=True)
+
+        band = pd.read_csv(tmp_path / "exp1_band.csv")
+        assert band["noise_std"].nunique() == 1
+        assert len(band) == 2 * 1 * len(MODELS)
+
+        parameter_band = pd.read_csv(tmp_path / "exp1_parameter_band.csv")
+        assert parameter_band["noise_std"].nunique() == 1
+        assert len(parameter_band) == 2 * len(STUB_CAMERAS) * len(MODELS)
