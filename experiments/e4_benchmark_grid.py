@@ -73,6 +73,15 @@ CSV against the records, NOT the reproducibility of the nine calibrations
 themselves (that would be a multi-hour operation). A reader must not read a
 green `--check` as evidence the nine solves reproduce.
 
+**`optimality_stage3_interface_optimization` ships with a caveat, and the
+caveat travels inside the artifact** (D-17, DEGEN-05): the emitted
+`benchmark_grid.tex` carries `OPTIMALITY_CAVEAT_TEX` as a LaTeX comment block
+immediately before the two blocks that render the column, because the quantity
+is volatile at a fixed solution (43x across restarts at unchanged cost),
+incomparable across parameter blocks (three Coleman-Li scaling regimes), and
+reliable only at large magnitudes. Derivation:
+`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
+
 Emits `benchmark_grid.csv` and `benchmark_grid.tex` into `--out`. The tenth
 row -- the real 13-camera rig -- is never run here: it is E2's own
 pipeline-written `experiments/results/benchmark.json` (`E2_BENCHMARK_PATH`),
@@ -517,6 +526,20 @@ GRID_COLUMNS: list[str] = [
     "jacobian_elements_stage3_intrinsic_pass",
     "nfev_stage3_interface_optimization",
     "njev_stage3_interface_optimization",
+    # D-17/DEGEN-05: a MEASUREMENT, never a converged/diverged verdict, and one
+    # that must not be read as a like-for-like scalar. Measured 2026-08-17
+    # (.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md): it is
+    # VOLATILE at a fixed solution (92.78 -> 2.16 across restarts, 43x, at
+    # unchanged cost -- the problem's directional curvature is ~3e8),
+    # BLOCK-INCOMPARABLE (scipy trf reports max|g . v| and the Coleman-Li v runs
+    # v = 1 unbounded extrinsics, v ~ 700 wide-bounded intrinsics, v ~ 2e-12
+    # pinned water_z), and MAGNITUDE-DEPENDENT in reliability (92.78 is real to
+    # 5 s.f.; 0.001146 against a 3-point reference of 0.001655 is not, so
+    # differences between two SMALL values carry no information). The caveat
+    # ships to the reader in benchmark_grid.tex as OPTIMALITY_CAVEAT_TEX --
+    # keep the two in sync. Do NOT add a `#` comment line to the CSV instead
+    # (it breaks pd.read_csv and --check), and do NOT co-opt the cell-status
+    # reason column, which the status gate owns.
     "optimality_stage3_interface_optimization",
     "reprojection_rms",
     "validation_3d_error_mean",
@@ -1550,6 +1573,60 @@ def build_grid_dataframe(
     return pd.DataFrame(rows, columns=GRID_COLUMNS)
 
 
+# ---------------------------------------------------------------------------
+# D-17 (DEGEN-05): the optimality caveat, shipped inside benchmark_grid.tex.
+#
+# `optimality_stage3_interface_optimization` reaches Zenodo in both
+# benchmark_grid.csv and benchmark_grid.tex. A reader who meets the number must
+# meet its caveat in the same artifact, so the caveat travels as a LaTeX comment
+# block emitted immediately before the two blocks that carry the column. This is
+# the FIX-04 labelling pattern (e7_focal_standoff.csv's `scope` column) applied
+# to the .tex: no schema change, no CSV comment line (a leading `#` breaks
+# pd.read_csv and E4's own --check), and no co-opting of the cell-status
+# reason column, which the status gate owns.
+#
+# Every line MUST start with `%`. The block is concatenated verbatim into a
+# LaTeX document; a non-comment line here would corrupt it.
+# ---------------------------------------------------------------------------
+OPTIMALITY_CAVEAT_TEX = """\
+% ---------------------------------------------------------------------------
+% CAVEAT on optimality_stage3_interface_optimization (D-17, DEGEN-05).
+% Measured 2026-08-17; derivation and raw data in
+% .planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md
+%
+% This column is scipy trf's first-order optimality, max|g . v| over the
+% parameter vector, with v the Coleman-Li scaling vector. It is a MEASUREMENT,
+% never a converged/diverged verdict, and it has three properties a reader must
+% know before comparing two of these values:
+%
+%   (1) VOLATILE AT A FIXED SOLUTION. Restarting a converged solve from its own
+%       solution moves the reported value 92.78 -> 27.58 -> 2.16 -- a 43x swing
+%       -- while the cost does not move at all (largest relative drop 1.8e-9).
+%       The problem is genuinely, severely ill-conditioned: directional
+%       curvature ~3e8, a narrow valley whose floor is flat in cost while the
+%       gradient swings. A single reported value therefore locates a point on
+%       that floor, not a distance from the minimum.
+%
+%   (2) NOT COMPARABLE ACROSS PARAMETER BLOCKS. The Coleman-Li vector v runs
+%       three regimes in this problem: v = 1 for the unbounded extrinsics and
+%       board poses, v ~ 700 for the wide-bounded intrinsics (0.5x fx to 2x fx),
+%       and v ~ 2e-12 for a pinned water_z. One scalar mixes all three, so a
+%       value dominated by one block cannot be read against a value dominated by
+%       another. It is not a like-for-like maximum.
+%
+%   (3) MAGNITUDE-DEPENDENT IN RELIABILITY. Large values are trustworthy: 92.78
+%       agrees with a central-difference reference Jacobian to five significant
+%       figures. Small values are not: a reported 0.001146 sits against a
+%       3-point reference of 0.001655, a 44% disagreement. DIFFERENCES BETWEEN
+%       TWO SMALL OPTIMALITY VALUES CARRY NO INFORMATION.
+%
+% None of this is a defect in any number in the tables below. Finite-difference
+% Jacobian noise was tested as the driver and falsified -- the gradient this
+% column reports is real -- and the library's FD step rule tracked the 3-point
+% reference in both the large- and small-gradient regimes.
+% ---------------------------------------------------------------------------"""
+
+
 def write_grid_latex(df: pd.DataFrame, path: Path) -> None:
     """Write `benchmark_grid.tex`: two synthetic views plus a separate real-rig block.
 
@@ -1587,6 +1664,11 @@ def write_grid_latex(df: pd.DataFrame, path: Path) -> None:
         blocks = [
             "% E4 compact summary (nine synthetic cells, main-text table)",
             summary_path.read_text(),
+            # D-17: the caveat sits immediately before the only two blocks that
+            # carry optimality_stage3_interface_optimization (the compact
+            # summary above does not -- GRID_SUMMARY_COLUMNS omits it), so a
+            # reader meets it before the number in every rendering order.
+            OPTIMALITY_CAVEAT_TEX,
             "% E4 full grid (nine synthetic cells, supplement table)",
             full_path.read_text(),
             # See this function's docstring: the real-rig row is its own

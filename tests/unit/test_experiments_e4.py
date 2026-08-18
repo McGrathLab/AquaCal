@@ -58,6 +58,7 @@ from experiments.e4_benchmark_grid import (
     MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
     MEMORY_PRESSURE_NEAR_CEILING,
+    OPTIMALITY_CAVEAT_TEX,
     REPEAT_CELLS,
     SKIPPED_EXIT_CODE,
     _array_xy_span,
@@ -730,6 +731,52 @@ def test_latex_fragment_separates_real_rig(full_grid_dir, tmp_path):
     # The real-rig row's key must not appear before its own labeled block --
     # i.e. it is not folded into the earlier nine-cell blocks.
     assert real_rig_key_rendered not in text[:real_rig_marker]
+
+
+def test_latex_carries_the_optimality_caveat(full_grid_dir, tmp_path):
+    """D-17/DEGEN-05: the caveat ships inside the artifact the number ships in.
+
+    `optimality_stage3_interface_optimization` reaches Zenodo in
+    `benchmark_grid.tex`. A reader must meet its three properties -- volatile at
+    a fixed solution, block-incomparable, magnitude-dependent in reliability --
+    in the same file, BEFORE the block that renders the column.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    tex_path = tmp_path / "benchmark_grid.tex"
+    write_grid_latex(df, tex_path)
+    text = tex_path.read_text()
+
+    # The caveat block is present verbatim, so the emitted text cannot drift
+    # from the module constant without this test failing.
+    assert OPTIMALITY_CAVEAT_TEX in text
+
+    # It is a LaTeX comment through and through -- a single non-`%` line would
+    # corrupt every document that \input's this fragment.
+    caveat_lines = OPTIMALITY_CAVEAT_TEX.splitlines()
+    assert caveat_lines, "the caveat constant must not be empty"
+    for line in caveat_lines:
+        assert line.startswith("%"), f"caveat line is not a LaTeX comment: {line!r}"
+
+    # The three properties are actually stated, not merely gestured at.
+    lowered = OPTIMALITY_CAVEAT_TEX.lower()
+    assert "volatile at a fixed solution" in lowered
+    assert "not comparable across parameter blocks" in lowered
+    assert "magnitude-dependent in reliability" in lowered
+    assert "2026-08-17-optimality-decomposition" in OPTIMALITY_CAVEAT_TEX
+
+    # ORDERING, not mere presence: the caveat precedes both blocks that carry
+    # the column -- the full supplement grid and the real-rig anchor row.
+    caveat_idx = text.index(OPTIMALITY_CAVEAT_TEX)
+    full_grid_idx = text.index("% E4 full grid")
+    real_rig_idx = text.index("% E4 real-rig anchor row")
+    assert caveat_idx < full_grid_idx
+    assert caveat_idx < real_rig_idx
+
+    # And the column really is in those blocks (escaped by write_latex_fragment),
+    # so the ordering assertion above is guarding something that exists.
+    assert "optimality\\_stage3\\_interface\\_optimization" in text[full_grid_idx:]
 
 
 class TestRealChildProcess:

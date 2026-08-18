@@ -257,6 +257,12 @@ E6_COLUMNS: list[str] = [
     # converged/diverged verdict is derived from it anywhere in this module.
     # Null whenever status != "ok"; optimality_stage3_intrinsic_pass is also
     # null whenever refine_intrinsics=False, since that pass never runs.
+    # D-17/DEGEN-05: the same column E4 ships, to the same Zenodo destination.
+    # Read E4's caveat before comparing two of these values -- it is volatile at
+    # a fixed solution, incomparable across parameter blocks, and reliable only
+    # at large magnitudes. Text: `OPTIMALITY_CAVEAT_TEX` in
+    # `experiments/e4_benchmark_grid.py`; derivation:
+    # `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
     "optimality_stage3_interface_optimization",
     "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
