@@ -2175,3 +2175,135 @@ numbers at all (1e-07 across 61 quantities). MF-19's "current library" column is
 
 This also removes the reason to doubt the archive. §3 is reproducible from the published bytes
 today, on either platform, provided OpenCV is 4.13.
+
+---
+
+## MF-21 — The DEGEN-05 verdict: both fairness objections against E1 are answered in E1's favour, and the shipped `optimality` scalar now carries its caveat
+
+**Status:** CLOSED — verdict carried forward from three measured probes; **nothing here was
+re-derived** and no solve was run to write this entry
+**Found:** 2026-08-17 (optimality decomposition, warm restart, FD-noise discriminator);
+2026-08-17 (Huber knee). Recorded 2026-08-18, Phase 25 plan 25-05.
+**Source of truth:** `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md` (probe sha
+`a7f0f25`) and `.planning/probes/2026-08-17-huber-knee/FINDINGS.md` (probe sha `054d753`)
+**Opened by:** DEGEN-05, raised in `23-01-SUMMARY.md` § Evidence as an unexplained gap — E1's
+non-refractive arm reported `optimality_intrinsic` = 92.78 against the refractive arm's 0.0247 on
+the same scenario and seed, with no explanation on record.
+**Decisions:** D-15, D-16, D-17, D-18, D-19 (`25-CONTEXT.md`)
+
+### 1. The verdict on E1's comparison — converged, and the caveat that travels with it
+
+**E1's non-refractive baseline is converged, so the 97–178× band is strengthened, not caveated.**
+Restarting each solve from its own solution with the trust region reset (two successive restarts)
+recovers essentially no cost — the largest relative drop across all four solves is **1.8e-9**
+(non-refractive intrinsic pass, 15097.61231 → 15097.61228); the other three are 0, 2.6e-13 and
+2.1e-12. The fairness objection raised when DEGEN-05 was opened — that an under-converged baseline
+would carry larger error than its true optimum and so **inflate** the refractive-to-non-refractive
+ratio — does not materialise. The one caveat that does travel with the band is that the baseline
+arm is **severely ill-conditioned** (directional curvature ~3e8: cost fell 2.7e-5 over a step of
+~3e-7 while the gradient fell ~90). That is a property of fitting a pinhole model to refracted
+data — **expected, not a defect, and explicitly not a reason to qualify the accuracy claim.**
+These two statements belong in the same paragraph and must never be separated: this project's own
+Phase 23 documents already made the misreading once, taking ill-conditioning for under-convergence.
+
+### 2. The Huber knee objection is closed by measurement, not argument
+
+Finding 6 of the optimality probe measured that E1's `f_scale = 1.0` suits the refractive arm
+(4.5% of residuals past the knee) and not the baseline (29.4–47.7% past it), so the baseline was
+being fitted under a robust loss tuned to the *other* arm's residual scale. Measured at `054d753`:
+re-tuning the baseline arm only, to the symmetric rule `f_scale = 3 × median|r|` (**2.8332**
+interface pass, **1.8522** intrinsic pass), moves E1's z_rmse ratio by **-1.09%** at the deepest
+test point (123.87× → 122.52×) and by at most 6.83% anywhere.
+
+- **The risk direction was right; the magnitude is negligible.** The fairly-tuned baseline does fit
+  slightly better (mean z_rmse **-2.12%**), so the ratio does shrink — exactly the predicted sign.
+  Against a committed seed band of **97–178×** (a ~±30% spread), a 1–7% shift is an order of
+  magnitude inside the noise floor and is not a distinguishable effect.
+- **The attribution is validated by an in-run control.** The untouched refractive arm reproduced
+  the control **bit-for-bit** (`max|abs change|` = 0.000e+00 across every refractive metric),
+  confirming the patch reached only the arm it was meant to.
+- **The larger movers carry no published claim.** `xy_rmse_mm` (-10.96% mean) and the baseline's
+  `anisotropy_ratio` (+9.93% mean) are both non-refractive quantities. The published ~2.3
+  anisotropy is the **refractive** arm's, bit-identical between runs (2.4537 at 2.5 m in both).
+- One pass lands within 5% of the rule's self-consistent fixed point (2.8332 → implied 2.9601;
+  1.8522 → 1.8994), so no second iteration is needed.
+
+**The library's `f_scale` is deliberately unchanged.** Nothing measured says the symmetric rule is
+better — only that the choice does not matter at the scale of E1's claim. Re-tuning the robust loss
+is an estimator-design change and stays post-submission.
+
+**Net position: both fairness objections against E1's comparison are now answered in E1's favour**
+— one on convergence (warm restarts recover nothing), one on loss tuning (the knee is worth ~1% on
+the headline ratio). No §3-facing number changes as a result. This is a null result, recorded so
+the objections are not re-litigated.
+
+### 3. The `optimality` caveat, and the mechanism Phase 23 documented wrongly
+
+`optimality_stage3_interface_optimization` ships in `benchmark_grid.csv` / `benchmark_grid.tex` and
+in `generalization_sweep.csv` to Zenodo. It is scipy `trf`'s `max|g · v|` with `v` the Coleman-Li
+scaling vector, and it has three properties a reader must know:
+
+1. **Volatile at a fixed solution.** 92.78 → 27.58 → **2.16** across restarts, a **43×** swing,
+   while cost does not move. The genuine conditioning gap is ~2.16 vs 0.00116, not the 3751× the
+   headline numbers implied.
+2. **Not comparable across parameter blocks.** `v` runs three regimes here — `v = 1` for unbounded
+   extrinsics and board poses, `v ≈ 700` for wide-bounded intrinsics (0.5·fx to 2·fx), `v ≈ 2e-12`
+   for a pinned `water_z`. One scalar mixes all three; it is not a like-for-like maximum.
+3. **Magnitude-dependent in reliability.** Large values are trustworthy — 92.78 agrees with a
+   central-difference reference Jacobian to five significant figures. Small ones are not — a
+   reported 0.001146 against a 3-point reference of 0.001655 is a 44% disagreement. **Differences
+   between two small optimality values carry no information.** This is sharper than the existing
+   "never quote optimality beyond 1 significant figure" rule and supersedes it in practice.
+
+Finite-difference noise was tested as the driver of (1) and **falsified**: the gradient is real,
+and the library's FD step rule tracked the 3-point reference in both the large- and small-gradient
+regimes. No benchmark record needs re-interpreting on those grounds.
+
+**Correction to four Phase 23 documents (Finding 1).** `23-VALIDATION.md:72-74`,
+`23-RESEARCH.md:76`, `23-01-PLAN.md:103` and `23-01-SUMMARY.md:153` all state that
+`optimality_intrinsic` rises *because* `water_z` is pinned against a ~2e-12-wide box. **The pinned
+`water_z` contributes 0.00% of the reported optimality** (1.95e-11 of 92.78): Coleman-Li sets `v`
+to the distance to the bound the negative gradient points toward, so pinning *crushes* that slot's
+contribution rather than inflating it. The raw gradient on the slot is indeed large (9.75–11.57) —
+that half of the intuition was right — but it never reaches the reported number, which is literally
+the max **extrinsic** gradient component. **Those documents' acceptance criteria are unaffected**:
+every one was phrased on recovered `water_z`, deliberately, and all still pass. Per D-18 the four
+documents carry supersession headers pointing at the probe, bodies untouched, so the phase record
+stays honest about what was believed when (landed at `02fe224`).
+
+**Action taken (D-17, plan 25-05):** the caveat now ships inside the artifact the number ships in —
+`OPTIMALITY_CAVEAT_TEX` in `experiments/e4_benchmark_grid.py` is emitted into `benchmark_grid.tex`
+immediately before the two blocks that render the column, with a matching inline comment on
+`GRID_COLUMNS` and a pointer on E6's column list. This is the FIX-04 labelling pattern (MF-17),
+which is the shape the probe itself identified.
+
+### Consequence for the manuscript
+
+**None directly — no §3 number moves.** What this licenses is a *statement*: if a reviewer
+challenges E1's comparison as unfair to the baseline, both available forms of that challenge have
+been measured and closed, with sign and magnitude, and the answer is in E1's favour. Do not quote
+92.78, 2.16 or the 43× swing as a result about the method — they are properties of a diagnostic
+scalar, not of the calibration. Do not describe the baseline's ill-conditioning without the
+converged-baseline sentence beside it.
+
+### Forward note — the seam for anyone picking the re-tuning up later
+
+The two passes want different `f_scale` values (2.83 interface, 1.85 intrinsic), but
+`CalibrationConfig.loss_scale` (`src/aquacal/config/schema.py:335` — D-19 names the class
+`PipelineConfig`; the verified name is `CalibrationConfig`) is a **single field feeding both**,
+reaching `interface_estimation.py:543` and `refinement.py:356` as `f_scale` via
+`pipeline.py:1025,1274`. `optimize_interface` and `joint_refinement` each take `loss_scale`
+separately, so a **direct caller can differentiate the passes while the config path cannot** — any
+real per-pass rule needs that seam widened. E1 currently hardcodes `1.0` at
+`e1_refractive_comparison.py:755, 881, 1124`.
+
+**Cost datum:** a full E1 single-seed run is **400 s of solver time** (refractive 88.6 + 60.1 s;
+non-refractive 158.0 + 93.3 s) — the cheapest solve in the suite, useful for sizing any further E1
+work.
+
+### Why this entry has no verification criterion
+
+By design (D-19; `25-RESEARCH.md` § What is explicitly NOT testable, item 1). There is no
+measurement to schedule, no artifact to produce and no criterion to write — the convergence
+question was already answered and must not be re-derived. The evidence for this entry is that it
+exists and cites the two probes.
