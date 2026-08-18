@@ -1102,6 +1102,22 @@ def run_configuration(
         per_camera_rows = build_per_camera_rows(config, seed, scenario, result)
 
         n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+        # GATE SCOPE (D-04, phase 25), covering all three branches below: this
+        # gate is SYNTHETIC-ONLY and does not extend to real-rig runs. E6's
+        # geometry is *authored*, so an unprojectable observation means the
+        # configuration was malformed and it must not be reported as "ok"; a
+        # physical rig's geometry is *given*, so a small unprojectable fraction
+        # is a fact about the deployment rather than a library defect. That was
+        # settled on MECHANISM -- which failure kind dominates -- not on a count,
+        # because the real rig's published count is a sum accumulated across
+        # solver stages. The tripwire that re-opens it is a materially populated
+        # camera_model_failure bucket (NAN_REASON_BEHIND_CAMERA with a positive
+        # h_q) in Phase 29's frozen table. Long form: the "Gate scope" block in
+        # src/aquacal/calibration/_observability.py; evidence (PROVISIONAL,
+        # D-02): .planning/probes/2026-08-17-degeneracy-classification/. None of
+        # that loosens the predicate here -- the condition stays exactly
+        # "any nonzero count is degenerate", with the is_smoke carve-out and
+        # nothing else, never a threshold or tolerance (D-05).
         if n_degenerate > 0 and is_smoke:
             # Smoke carve-out (D-19.3-11, plan 19.3-07): still recorded and
             # still warned about, but a --smoke configuration must never be
@@ -1115,6 +1131,8 @@ def run_configuration(
             )
             outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
         elif n_degenerate > 0:
+            # The production branch the gate-scope note above governs: authored
+            # geometry, so any count at all is a malformed configuration.
             status_reason = (
                 f"{n_degenerate} degenerate observation(s) recorded at the final "
                 "solution -- first-order optimality is unreliable for this "

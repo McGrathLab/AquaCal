@@ -103,3 +103,48 @@ the same pattern was first seen in E1's log, where a reported `1134` is `70` + `
 **Consequence for the decision when it is picked up:** if the distinct count turns out materially
 below 198, the "small fraction is a fact about the deployment" reading gets *stronger*, not weaker.
 That is a reason to wait for the number rather than to decide now on the sum.
+
+---
+
+## Resolved 2026-08-18 — SYNTHETIC-ONLY BY DESIGN, with a recorded tripwire (DEGEN-04, D-04)
+
+**The decision.** The production degeneracy gate stays **synthetic-only**. It is not extended to
+real-rig runs, and the production pipeline reports no `status` derived from the count. The
+authored-vs-given-geometry rationale this todo sketched is the reason, and it is now written down
+where a code reader meets it.
+
+**The evidence, and why it licenses the decision.** Plan 25-06's instrumented E2 run, committed at
+`.planning/probes/2026-08-17-degeneracy-classification/FINDINGS.md`, found the flagged observations
+fall entirely into one bucket: `above_interface` — board corners sitting millimetres to centimetres
+**above** the water surface during two short bursts of frames, where the refractive projection is
+undefined by construction. The `camera_model_failure` and `interface_below_camera` buckets were
+**empty, not small**. That makes the population a **data-geometry condition, not a solver
+pathology**, on a run whose accuracy was fine. A real-rig gate failing on a nonzero count would
+have failed that run.
+
+**Every number in that probe is PROVISIONAL (D-02).** Phase 29's frozen table is the sole source of
+any count that ships. This decision rests on the dominant *mechanism*, never on a count — which is
+also why the 0.268% arithmetic this todo already retracted never had to be repaired.
+
+**The three code sites the rationale now lives at:**
+
+- `src/aquacal/calibration/_observability.py` — the "Gate scope" banner block beside the degeneracy
+  vocabularies, carrying the long form.
+- `experiments/e4_benchmark_grid.py` — appended to the existing D-19.3-11 comment on the guard
+  block in `run_grid_cell`.
+- `experiments/e6_generalization_sweep.py` — a lead-in note covering all three branches of the
+  gate in `run_configuration`.
+
+Its presence at all three is pinned by `test_gate_scope_rationale_present_at_all_three_sites` in
+`tests/unit/test_experiment_inertness.py`.
+
+**The tripwire that re-opens this.** A **materially populated `camera_model_failure` bucket**
+(`NAN_REASON_BEHIND_CAMERA` recorded with a **positive** `h_q` — the corner was legitimately
+submerged and the camera model still failed to place a pixel) in **Phase 29's frozen table**. That
+would be a library limitation rather than a deployment fact, and a different decision entirely.
+Nothing else re-opens it; a change in the raw count alone does not.
+
+**The predicate did not move.** Exactly `count > 0 -> degenerate` with the smoke carve-out only
+(D-05, `19.3-07-PLAN.md`), now pinned behaviourally at counts 0 and 1 and under smoke by
+`test_degenerate_gate_predicate_is_still_count_greater_than_zero` in `tests/unit/test_experiments_e4.py`
+and `tests/unit/test_experiments_e6.py`.
