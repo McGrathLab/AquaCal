@@ -1350,3 +1350,181 @@ def test_degenerate_gate_predicate_is_still_count_greater_than_zero(
         )
         assert outcome["status"] == "ok"
         assert outcome["degenerate_observations_at_solution"] == count
+
+
+# ---------------------------------------------------------------------------
+# D-40 (plan 26-05): the --axes selector. `scale` is 3 of the band's 17
+# configurations (18 of 102 cells) and appears in zero rows of the
+# manuscript's numbers-ledger.tsv, so the frozen re-run drops it. The
+# selector is opt-in: every existing invocation must be unchanged.
+# ---------------------------------------------------------------------------
+
+_TODAYS_DEFAULT_CONFIG_KEYS = [
+    "baseline",
+    "index_1.36",
+    "index_1.39",
+    "index_1.42",
+    "index_1.45",
+    "index_1.48",
+    "index_1.51",
+    "index_1.55",
+    "baseline",
+    "layout_ring",
+    "layout_line",
+    "scale_half_scale",
+    "baseline",
+    "scale_double_scale",
+]
+
+
+def test_all_axes_constant_names_the_four_axes_in_emission_order():
+    assert m.ALL_AXES == ("index", "layout", "scale", "cameras")
+
+
+def test_axes_default_none_is_todays_behaviour_exactly():
+    """A bare call is unchanged: same length, same order, same keys. A silent
+    default change would invalidate every committed E6 artifact."""
+    configs = m.build_axis_configurations()
+    assert [c["config_key"] for c in configs] == _TODAYS_DEFAULT_CONFIG_KEYS
+    assert configs == m.build_axis_configurations(axes=None)
+
+
+def test_axes_full_set_is_identical_to_axes_none():
+    """Passing the full set is no restriction at all -- identical to None
+    under both include_cameras_axis values (this is what the --axes default
+    string does, so the CLI default cannot change any existing run)."""
+    for include in (False, True):
+        assert m.build_axis_configurations(
+            axes=m.ALL_AXES, include_cameras_axis=include
+        ) == m.build_axis_configurations(include_cameras_axis=include)
+
+
+def test_axes_dropping_scale_gives_14_band_configurations():
+    """D-40's frozen-run selection: 14 configurations x 6 seeds = 84 rows."""
+    configs = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    assert len(configs) == 14
+    assert not any(c["axis"] == "scale" for c in configs)
+    assert {c["axis"] for c in configs} == {"index", "layout", "cameras"}
+
+
+def test_include_cameras_axis_wins_when_axes_omits_cameras():
+    """Composition rule: the two flags UNION rather than fight -- neither can
+    veto the other's request, so an axes list that omits `cameras` while
+    include_cameras_axis=True still emits it (17, not 14)."""
+    configs = m.build_axis_configurations(
+        axes=("index", "layout", "scale"), include_cameras_axis=True
+    )
+    assert len(configs) == 17
+    assert sum(1 for c in configs if c["axis"] == "cameras") == 3
+
+
+def test_axes_can_request_cameras_without_the_include_flag():
+    """The union runs the other way too: an explicit restricted selection
+    naming `cameras` emits it even at include_cameras_axis=False."""
+    configs = m.build_axis_configurations(axes=("index", "cameras"))
+    assert {c["axis"] for c in configs} == {"index", "cameras"}
+    assert len(configs) == len(m.INDEX_AXIS_VALUES) + len(m.CAMERAS_AXIS_VALUES)
+
+
+def test_axes_selection_preserves_order_and_the_ten_keys():
+    """Selection filters, it never reorders or reshapes: each selected axis's
+    block is element-for-element the default call's own block."""
+    default_configs = m.build_axis_configurations(include_cameras_axis=True)
+    expected_keys = set(default_configs[0].keys())
+    assert len(expected_keys) == 10
+    selected = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    assert selected == [c for c in default_configs if c["axis"] != "scale"]
+    for c in selected:
+        assert set(c.keys()) == expected_keys
+
+
+def test_axes_selection_keeps_a_baseline_in_every_selected_axis():
+    selected = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    baseline_axes = {c["axis"] for c in selected if c["is_baseline"]}
+    assert baseline_axes == {"index", "layout", "cameras"}
+    assert {c["config_key"] for c in selected if c["is_baseline"]} == {"baseline"}
+
+
+def test_unknown_axis_raises_valueerror_naming_it_and_the_valid_set():
+    """A silently-ignored typo would produce a band of the wrong shape that
+    still exits 0 (T-26-16)."""
+    with pytest.raises(ValueError) as excinfo:
+        m.build_axis_configurations(axes=("bogus",))
+    message = str(excinfo.value)
+    assert "bogus" in message
+    for axis in m.ALL_AXES:
+        assert axis in message
+
+
+def test_empty_axis_selection_raises_valueerror():
+    with pytest.raises(ValueError) as excinfo:
+        m.build_axis_configurations(axes=())
+    assert "axes" in str(excinfo.value)
+
+
+def test_index_axis_is_still_eight_values():
+    """D-40 explicitly offered and did NOT take the index 8->5 cut."""
+    assert len(m.INDEX_AXIS_VALUES) == 8
+
+
+def test_scale_axis_values_still_defined():
+    """The axis is deselectable, not deleted."""
+    assert len(m.SCALE_AXIS_VALUES) == 3
+
+
+def test_arg_parser_axes_flag_parses_to_a_tuple():
+    parser = m.build_arg_parser()
+    args = parser.parse_args(["--axes", "index,layout,cameras"])
+    assert args.axes == ("index", "layout", "cameras")
+
+
+def test_arg_parser_axes_default_preserves_the_full_set():
+    parser = m.build_arg_parser()
+    args = parser.parse_args([])
+    assert args.axes == m.ALL_AXES
+    assert m.build_axis_configurations(axes=args.axes) == (
+        m.build_axis_configurations()
+    )
+
+
+def test_arg_parser_still_carries_the_other_e6_flags():
+    parser = m.build_arg_parser()
+    options = {a.option_strings[0] for a in parser._actions if a.option_strings}
+    assert {"--axes", "--seeds", "--no-fail-fast"} <= options
+
+
+def test_arg_parser_axes_help_documents_the_frozen_invocation():
+    parser = m.build_arg_parser()
+    help_text = parser.format_help()
+    assert "--axes" in help_text
+    assert "numbers-ledger" in help_text
+
+
+def test_resolve_axes_reports_what_will_actually_be_emitted():
+    assert m.resolve_axes() == ("index", "layout", "scale")
+    assert m.resolve_axes(include_cameras_axis=True) == (
+        "index",
+        "layout",
+        "scale",
+        "cameras",
+    )
+    assert m.resolve_axes(
+        axes=("layout", "index", "cameras"), include_cameras_axis=True
+    ) == ("index", "layout", "cameras")
+
+
+def test_band_scope_string_names_only_the_axes_actually_run():
+    """T-26-15: a scope string claiming coverage the run did not have is
+    precisely the class of defect FIX-06 cleaned up."""
+    scope = m._band_scope_string(("index", "layout", "cameras"))
+    assert "index/layout/cameras" in scope
+    assert "scale" not in scope
+    assert "seed" in scope
+    full_scope = m._band_scope_string(("index", "layout", "scale", "cameras"))
+    assert "index/layout/scale/cameras" in full_scope
