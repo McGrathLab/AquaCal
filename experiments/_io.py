@@ -376,7 +376,19 @@ def compare_experiment_csv(
             frames is silently ignored. Defaults to `()`, which leaves
             today's exact behavior and message byte-identical. Phase 26
             (DRIVER-03) documents this contract; the two must not diverge
-            (D-08).
+            (D-08). That documentation, stated here so it cannot drift from
+            the code it describes: (1) `exclude_columns` affects the
+            CELL-level comparison ONLY -- the full-header comparison above is
+            never affected, so a genuine schema change still fails loudly;
+            (2) the sole in-repo list today is
+            `CHECK_EXCLUDED_COLUMNS = ("exit_code", "status_reason")` at
+            `experiments/e4_benchmark_grid.py:215`, which exists because both
+            columns are artifacts of the *checking path itself* (no subprocess
+            runs under `--check`) rather than of the run being checked; and
+            (3) Phase 26 adds no new exclusion list -- D-13 settled the
+            `--check` verdict as hand-verification against a written
+            expectation sheet, with automated checking re-baselined in
+            Phase 29.
 
     Returns:
         A `ComparisonReport` describing the outcome. On a header mismatch, a
@@ -646,6 +658,124 @@ def compare_experiment_csv(
         worst_rtol=worst_rtol,
         n_mismatched_cells=n_mismatched_cells,
         message=message,
+    )
+
+
+def add_baseline_dir_argument(
+    parser: argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
+    """Add the script-local `--baseline-dir` flag to `parser` (D-12).
+
+    This is deliberately NOT added to `build_experiment_arg_parser`. That
+    parser's own docstring pins the shared contract at "exactly `--seed`,
+    `--out`, `--force`, `--smoke`, `--check` -- no more, no fewer" (D-21);
+    widening it would change the CLI of all ten experiment scripts in order
+    to serve two. The two callers are `e3_derived_quantities.build_arg_parser`
+    (Phase 26 plan 26-04) and `e2_real_rig.build_arg_parser` (plan 26-06) --
+    the only scripts whose `--check` is still a real reproduction signal
+    (DRIVER-03). A reader looking for the full set will find it by grepping
+    for this function.
+
+    Args:
+        parser: The script's own parser (not the shared parent).
+
+    Returns:
+        The same `parser`, so the call can be chained.
+
+    Raises:
+        argparse.ArgumentError: If `parser` already defines `--baseline-dir`.
+            Failing loudly beats silently defining the flag twice.
+    """
+    parser.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=None,
+        help="Directory that --check reads committed baselines FROM (default: "
+        "the value of --out). The suite driver points this at "
+        "experiments/pre_rerun_baseline/results, because DRIVER-04 moved the "
+        "committed output tree aside; a --check run still writes nowhere.",
+    )
+    return parser
+
+
+def resolve_baseline_dir(baseline_dir: Path | None, out_dir: Path) -> Path:
+    """Resolve which directory `--check` reads its baselines from (D-12).
+
+    Exists so the fallback rule is written once rather than repeated at each
+    call site. Unlike `resolve_out_dir` this neither creates nor logs
+    anything: a baseline directory is read-only by construction, and a
+    `--check` run that mkdir'd its own baseline tree would manufacture the
+    very "nothing to compare against" state it is meant to detect.
+
+    Args:
+        baseline_dir: The parsed `--baseline-dir` value, or None when the flag
+            was not given.
+        out_dir: The already-resolved `--out` directory, used as the fallback
+            so every existing invocation without the flag behaves
+            byte-identically to before Phase 26.
+
+    Returns:
+        `Path(baseline_dir)` when given, else `Path(out_dir)`.
+    """
+    return Path(baseline_dir) if baseline_dir is not None else Path(out_dir)
+
+
+def compare_experiment_csv_if_present(
+    fresh: pd.DataFrame,
+    committed_path: Path,
+    *,
+    key_columns: list[str],
+    rtol: float,
+    exclude_columns: tuple[str, ...] = (),
+) -> ComparisonReport | None:
+    """`compare_experiment_csv`, but a missing baseline is N/A, not an error.
+
+    The guard is HERE, in a caller-side wrapper, and deliberately NOT inside
+    `compare_experiment_csv`. That function's totality contract (see its
+    docstring, `:348-357`) excludes I/O errors reading `committed_path` by
+    design: a caller extending it is extending a *total* function rather than
+    adding a new special case to a partial one. Weakening the inner function
+    would erase the distinction between "the baseline disagrees" and "there is
+    no baseline", which is exactly the distinction a reproduction claim rests
+    on.
+
+    The concrete case that motivates it: `e2_real_rig._run_check` compares
+    three CSVs, two of which -- `reprojection_residuals.csv` and
+    `reconstruction_errors.csv` -- are gitignored by deliberate DATA-01b
+    policy (`.gitignore:238-239`) and ship only in the Zenodo archive. Neither
+    `experiments/results/` nor the `experiments/pre_rerun_baseline/` archive
+    holds them, so today E2's `--check` raises `FileNotFoundError` *after* a
+    50-87 minute calibration has already run.
+
+    This function deliberately does NOT decide what a `None` report means for
+    the process exit code -- `exit_code_for` is not extended to accept `None`.
+    Whether an absent baseline is a benign N/A (E2's policy-gitignored pair)
+    or a genuine failure (a baseline that should exist and does not) is a
+    per-call-site judgement the caller must make explicitly.
+
+    Args:
+        fresh: The freshly computed `DataFrame` to check.
+        committed_path: Path to the repo-committed baseline CSV.
+        key_columns: Forwarded verbatim to `compare_experiment_csv`.
+        rtol: Forwarded verbatim to `compare_experiment_csv`.
+        exclude_columns: Forwarded verbatim to `compare_experiment_csv`.
+
+    Returns:
+        None when `committed_path` does not exist; otherwise exactly what
+        `compare_experiment_csv` returns for the same arguments.
+    """
+    if not Path(committed_path).exists():
+        logger.info(
+            "No committed baseline at %s -- reporting N/A rather than failing.",
+            committed_path,
+        )
+        return None
+    return compare_experiment_csv(
+        fresh,
+        committed_path,
+        key_columns=key_columns,
+        rtol=rtol,
+        exclude_columns=exclude_columns,
     )
 
 
