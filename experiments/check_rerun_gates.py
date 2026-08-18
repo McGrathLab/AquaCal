@@ -75,6 +75,12 @@ except ModuleNotFoundError:  # pragma: no cover - script-path invocation
         RUN_MANIFEST_FILENAME,
     )
 
+# DRIVER-01 / D-04's completeness gate. Its ~100 lines live in their own module
+# rather than in this 1,800-line one; this is the single import that wires them
+# in. The sys.path fallback above has already run, so script-path invocation
+# resolves it too.
+from experiments._expectations import PROFILES, check_completeness
+
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
 _GUARD_COLUMN = "degenerate_observations_at_solution"
@@ -969,7 +975,13 @@ _E6_BAND_SIDECAR = "e6_seed_band_provenance.json"
 # before the production launch on 2026-08-06 and approved with the runtime cost
 # stated (the ceiling moved 26 h -> 30 h to pay for it). This constant stayed at
 # 5 through that change and FAILed the run it was meant to certify.
+# AUTHORITY: experiments/suite_expectations.json is the single source of truth
+# for this band's shape (D-05). Keep this in step with that file's
+# generalization_sweep_band.csv `rows.full`, which is configurations x seeds --
+# 84 = 14 x 6 after D-40 dropped the scale axis. The coupling is a red test
+# (tests/unit/test_expectations.py::TestShapeConstantReconciliation), not a plea.
 _E6_EXPECTED_SEED_COUNT = 6
+# NOT derived from the manifest and NOT changed: the `cameras` axis survives D-40.
 _E6_EXPECTED_CAMERA_VALUES = (8, 12, 16)
 
 
@@ -1212,6 +1224,8 @@ _E5_BAND_CSV = "index_sensitivity_seed_band.csv"
 _E5_BAND_SIDECAR = "e5_seed_band_provenance.json"
 # Six for the same reason as _E6_EXPECTED_SEED_COUNT above -- E5's band runs the
 # same seed list (42-47).
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with that file's
+# index_sensitivity_seed_band.csv `rows.full` (66 = 11 configurations x 6 seeds).
 _E5_EXPECTED_SEED_COUNT = 6
 
 
@@ -1363,6 +1377,9 @@ _E2_BAND_SCOPE_JSON = "e2_band_scope.json"
 _E2_METRICS_FILENAME = "real_rig_metrics.json"
 _E2_METRICS_RTOL = 1e-6
 _E2_SEED_DIR_RE = re.compile(r"seed_(\d+)_e2_out")
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with the
+# e2_band stage's seed list; the manifest's e2_band entry is where that list is
+# written down.
 _E2_EXPECTED_RECORD_COUNT = 3
 
 
@@ -1576,6 +1593,8 @@ def check_e2_band(
 
 
 _E4_REPEAT_CSV = "benchmark_grid_repeat.csv"
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with that file's
+# benchmark_grid_repeat.csv `rows.full` (6 = 2 repeats x these 3 cells).
 _E4_REPEAT_CELLS = ((8, 100), (12, 100), (16, 100))
 _E4_REPEAT_SECONDS_COLUMN = "seconds_stage3_interface_optimization"
 _E4_REPEAT_NFEV_COLUMN = "nfev_stage3_interface_optimization"
@@ -1956,11 +1975,19 @@ def _check_run_manifest(out_dir: Path) -> list[GateResult]:
     return results
 
 
-def run_all_gates(out_dir: Path) -> list[GateResult]:
+def run_all_gates(
+    out_dir: Path, *, stage: str | None = None, profile: str | None = None
+) -> list[GateResult]:
     """Run every gate over every experiment's artifacts under `out_dir`.
 
     Args:
         out_dir: Root output directory (e.g. `experiments/results/`).
+        stage: Restrict the completeness gate to one stage's expected
+            artifacts. Ignored when `profile` is not supplied.
+        profile: Run the completeness gate under this expectation profile
+            (`"smoke"` or `"full"`). `None` -- the default, and what every
+            pre-existing call site passes -- skips it entirely, so no existing
+            invocation changes behaviour.
 
     Returns:
         The full list of `GateResult`s across all six experiments plus the
@@ -2019,16 +2046,45 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
     results.append(_check_git_sha_consistency(out_dir))
     # DRIVER-02 / D-21: the suite-level run manifest, all hard FAIL.
     results += _check_run_manifest(out_dir)
+    # DRIVER-01 / D-04: the completeness gate, last, and only when a profile
+    # selects it. Every gate above judges artifacts it FINDS; this one is the
+    # only one that notices an artifact that was never produced (F-001).
+    if profile is not None:
+        results += check_completeness(out_dir, profile=profile, stage=stage)
     return results
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build this script's single-argument CLI parser."""
+    """Build this script's CLI parser.
+
+    `out_dir` is positional and unchanged. `--profile` and `--stage` are both
+    OPTIONAL so every pre-existing call site -- including `rerun_19_5.sh:257`
+    and its successor in the new driver -- keeps working unchanged.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "out_dir",
         type=Path,
         help="Output directory containing the re-run's artifacts (e.g. experiments/results/).",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=PROFILES,
+        default=None,
+        help=(
+            "Also run the completeness gate under this expectation profile. "
+            "'smoke' asserts artifact existence only; 'full' asserts row "
+            "counts. Omitted: the completeness gate does not run."
+        ),
+    )
+    parser.add_argument(
+        "--stage",
+        default=None,
+        help=(
+            "Restrict the completeness gate to one stage id from "
+            "experiments/suite_expectations.json. Omitted: the end-of-run "
+            "roll-up over the whole manifest. Ignored without --profile."
+        ),
     )
     return parser
 
@@ -2037,7 +2093,7 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python experiments/check_rerun_gates.py <out_dir>`."""
     args = build_arg_parser().parse_args(argv)
     out_dir = Path(args.out_dir).resolve()
-    results = run_all_gates(out_dir)
+    results = run_all_gates(out_dir, stage=args.stage, profile=args.profile)
 
     for result in results:
         print(
