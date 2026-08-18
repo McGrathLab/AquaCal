@@ -101,7 +101,8 @@ the deadline would ship a paper citing a record whose bundled `reference_outputs
 its own §3. What stays in Phase 30 is the reconciliation *around* that archive, not the archive.
 
 - [x] **Phase 23: Experiment Correctness Fixes** - Six independent single-file fixes that change what E1, E6, E7, E4, E2, and the synthetic generator measure or are licensed to claim (completed 2026-08-17)
-- [x] **Phase 24: Degeneracy Instrumentation** - The degeneracy counter reaches the benchmark record, is persisted by E5 and the band runs, split by kind and stage, and its warning is narrowed (completed 2026-08-17)
+- [x] **Phase 24: Degeneracy Instrumentation** - The degeneracy counter reaches the benchmark record, is persisted by E5 and the band runs, split by kind and stage, and its warning is narrowed
+ (completed 2026-08-17)
 - [ ] **Phase 25: Degeneracy Classification & Claim Licensing** - The 198 unprojectable production-rig observations are classified, and E1's seed band gains the noise_std axis it needs to license an accuracy claim
 - [ ] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
@@ -240,7 +241,17 @@ criteria 1-3 and carry criterion 4 rather than blocking the phase.
      with the band is that the baseline arm is severely ill-conditioned (directional curvature
      ~3e8) — which is a property of fitting a pinhole model to refracted data, not a defect, and
      not a reason to qualify the accuracy claim.
-**Plans**: TBD
+**Plans**: 8 plans in 5 waves
+
+Plans:
+- [ ] 25-01-PLAN.md — per-observation degeneracy detail sinks in compute_residuals and both post-solve call sites (DEGEN-04)
+- [ ] 25-02-PLAN.md — the log_all_observation_depths config flag and the degenerate_observations.csv user sidecar (DEGEN-04)
+- [ ] 25-03-PLAN.md — the offline bucket classifier and its provisional-stamped table writer in experiments/_degeneracy.py (DEGEN-04)
+- [ ] 25-04-PLAN.md — E1's noise_std band axis, both key-column lists, and the stated claim domain (BAND-01)
+- [ ] 25-05-PLAN.md — the optimality caveat where the number ships, MF-21, and the carried-forward DEGEN-05 verdict (DEGEN-05)
+- [ ] 25-06-PLAN.md — ORCHESTRATOR: the provisional instrumented E2 run and the classification finding (DEGEN-04)
+- [ ] 25-07-PLAN.md — the degeneracy-gate scope decision, its rationale at three code sites, and its tripwire (DEGEN-04)
+- [ ] 25-08-PLAN.md — ORCHESTRATOR: the ~7 h four-level E1 band run, driver registration, and MF-22 (BAND-01)
 
 ### Phase 26: Full-Suite Driver & Handoff Readiness
 **Goal**: A single driver invocation covers the entire suite — nothing left for the Linux machine
