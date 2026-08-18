@@ -18,10 +18,12 @@ B. **Counter correctness.** A clean scenario leaves every failure counter at zer
 from __future__ import annotations
 
 import json
+import logging
 import warnings
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from aquacal.calibration._observability import (
@@ -51,9 +53,19 @@ from aquacal.config.schema import (
     DegenerateObservationWarning,
 )
 from aquacal.core.board import BoardGeometry
+from aquacal.core.refractive_geometry import (
+    NAN_REASON_ABOVE_INTERFACE,
+    NAN_REASON_BEHIND_CAMERA,
+    NAN_REASON_INTERFACE_BELOW_CAMERA,
+    NAN_REASON_NONE,
+)
 from aquacal.datasets import create_scenario
 from aquacal.datasets.pipelines import calibrate_synthetic
 from aquacal.datasets.synthetic import generate_synthetic_detections
+from experiments._degeneracy import (
+    classify_degenerate_observations,
+    write_degeneracy_classification,
+)
 
 ANCHOR_PATH = Path(__file__).parent.parent / "fixtures" / "discard_anchor.json"
 
@@ -1040,3 +1052,125 @@ def test_row_cap_truncates_rows_but_the_aggregate_count_stays_exact(monkeypatch)
         and "row cap" in str(w.message)
     ]
     assert len(cap_warnings) == 1, [str(w.message) for w in cap_warnings]
+
+
+# ---------------------------------------------------------------------------
+# F. The offline bucket classifier and its stamped table (phase 25, DEGEN-04)
+# ---------------------------------------------------------------------------
+#
+# The taxonomy lives in `experiments/`, never in the library (D-06), so these
+# tests build rows by hand rather than through a solve -- the classifier is a
+# pure mapping from an int8 code and must be testable without one.
+
+
+def _detail_row(nan_reason: int, *, h_q_m: float = 0.42, corner_id: int = 0) -> dict:
+    """One flagged detail row in the shape plan 25-01's sink emits."""
+    return {
+        "camera": "cam0",
+        "frame_idx": 0,
+        "corner_id": corner_id,
+        "stage": "stage3_joint_refinement",
+        "h_q_m": h_q_m,
+        "h_c_m": 1.05,
+        "r_q_m": 0.31,
+        "chord_incidence_deg": 12.5,
+        "extended": True,
+        "nan_reason": nan_reason,
+        "n_flagged_at_stage": 4,
+        "truncated": False,
+    }
+
+
+def test_classify_maps_each_nan_reason_code_to_its_bucket():
+    """Every legal code lands in exactly one named bucket; an illegal one raises."""
+    rows = [
+        _detail_row(NAN_REASON_NONE, corner_id=0),
+        _detail_row(NAN_REASON_INTERFACE_BELOW_CAMERA, corner_id=1),
+        _detail_row(NAN_REASON_ABOVE_INTERFACE, corner_id=2),
+        _detail_row(NAN_REASON_BEHIND_CAMERA, corner_id=3),
+    ]
+    classified = classify_degenerate_observations(rows)
+
+    assert classified["bucket"].tolist() == [
+        "unflagged",
+        "interface_below_camera",
+        "above_interface",
+        "camera_model_failure",
+    ]
+    # Every input column survives: the classifier ADDS a name, it does not
+    # curate the raw geometry away.
+    for column in rows[0]:
+        assert column in classified.columns
+
+    with pytest.raises(ValueError, match="unrecognized nan_reason code"):
+        classify_degenerate_observations([_detail_row(7)])
+
+    # A missing discriminator column must raise rather than read as clean.
+    with pytest.raises(ValueError, match="nan_reason"):
+        classify_degenerate_observations([{"camera": "cam0", "h_q_m": 0.42}])
+
+
+def test_classify_separates_camera_model_failure_by_code_not_geometry():
+    """Bucket (b) is separated from bucket (a) by CODE, never by a h_q predicate.
+
+    The two rows carry an IDENTICAL, positive `h_q_m`. A classifier that
+    re-derived the bucket from `h_q_m` would have to put them in the same
+    bucket; the projector already assigned each exactly one cause, and that
+    assignment is the record. This is the test that pins D-04's tripwire:
+    camera-model failure is `NAN_REASON_BEHIND_CAMERA` *with h_q > 0* -- the
+    geometry was fine and the pixel was not.
+    """
+    shared_h_q = 0.37
+    rows = [
+        _detail_row(NAN_REASON_ABOVE_INTERFACE, h_q_m=shared_h_q, corner_id=0),
+        _detail_row(NAN_REASON_BEHIND_CAMERA, h_q_m=shared_h_q, corner_id=1),
+    ]
+    classified = classify_degenerate_observations(rows)
+
+    assert classified["h_q_m"].nunique() == 1
+    assert classified["h_q_m"].iloc[0] > 0
+    assert classified["bucket"].iloc[0] == "above_interface"
+    assert classified["bucket"].iloc[1] == "camera_model_failure"
+    assert classified["bucket"].nunique() == 2
+
+
+def test_classification_table_carries_its_provenance_stamp(tmp_path, caplog):
+    """The table discloses provisional/truncated status from its own body."""
+    stamp = (
+        "PROVISIONAL local probe (D-01/D-03), git_sha=abc1234, "
+        "truncated=true, n_flagged_at_stage=198; not a Phase 29 frozen table "
+        "and no count from it reaches any manuscript-facing number (D-02)."
+    )
+    classified = classify_degenerate_observations(
+        [
+            _detail_row(NAN_REASON_ABOVE_INTERFACE, corner_id=0),
+            _detail_row(NAN_REASON_BEHIND_CAMERA, corner_id=1),
+        ]
+    )
+    path = tmp_path / "degeneracy_classification.csv"
+    write_degeneracy_classification(path, classified, provenance=stamp)
+
+    text = path.read_text()
+    # A leading `#` comment line breaks `pd.read_csv` and every downstream
+    # consumer, which is why the stamp is a free-text COLUMN (FIX-04 precedent).
+    assert text[0] != "#"
+
+    read_back = pd.read_csv(path)
+    assert "provenance" in read_back.columns
+    assert read_back["provenance"].nunique() == 1
+    assert read_back["provenance"].iloc[0] == stamp
+    assert "provisional" in read_back["provenance"].iloc[0].lower()
+    assert "truncated=true" in read_back["provenance"].iloc[0]
+    assert read_back["bucket"].tolist() == ["above_interface", "camera_model_failure"]
+
+    # A bare re-run must not clobber a committed table.
+    before = text
+    with caplog.at_level(logging.WARNING, logger="experiments._degeneracy"):
+        write_degeneracy_classification(path, classified, provenance="another stamp")
+    assert path.read_text() == before
+    assert any("Refusing to overwrite" in r.getMessage() for r in caplog.records)
+
+    write_degeneracy_classification(
+        path, classified, provenance="another stamp", force=True
+    )
+    assert pd.read_csv(path)["provenance"].iloc[0] == "another stamp"

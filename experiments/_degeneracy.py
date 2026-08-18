@@ -318,3 +318,55 @@ def write_degeneracy_breakdown(
     with open(path, "w") as f:
         json.dump(breakdown, f, indent=2, sort_keys=True)
     logger.info("Wrote degeneracy breakdown sidecar to %s", path)
+
+
+def write_degeneracy_classification(
+    path: Path,
+    df: pd.DataFrame,
+    *,
+    provenance: str,
+    force: bool = False,
+) -> None:
+    """Write the per-observation classification table with its in-body stamp.
+
+    The stamp lives in an ordinary `provenance` COLUMN, identical on every row,
+    following the FIX-04 `scope` precedent in `e7_focal_standoff.csv`. It is
+    deliberately not a leading `#` comment line: that breaks `pd.read_csv` in
+    `compare_experiment_csv` and in every downstream consumer, and a separate
+    `*_provenance.json` fails D-10's "a reader of the file alone" requirement.
+
+    Args:
+        path: Destination path, conventionally
+            `<probe_dir>/degeneracy_classification.csv`. Under D-03 the
+            provisional table goes to the probe directory, never to
+            `experiments/results/`.
+        df: The classified frame `classify_degenerate_observations` returned.
+        provenance: The stamp text. The caller is expected to put in it: the
+            **git sha**; the word **`provisional`** when the table came from
+            the D-01/D-03 local probe rather than Phase 29's frozen run; and
+            **`truncated=true|false`** with the TRUE aggregate count -- taken
+            from the row's `n_flagged_at_stage` stamp, which the library
+            computed independently, never from `len(df)`. Reason, plainly: a
+            reader of the file alone can never then mistake a truncated or
+            provisional table for a complete, frozen one. The runtime warning
+            is not enough, because unattended overnight is exactly when nobody
+            reads the log.
+        force: Overwrite an existing table. Defaults to `False`, matching
+            `write_degeneracy_breakdown` and the
+            `write_experiment_csv(..., force=args.force)` convention every
+            sibling artifact follows. Without it a bare re-run silently
+            clobbers a committed table.
+    """
+    path = Path(path)
+    if path.exists() and not force:
+        logger.warning(
+            "Refusing to overwrite existing degeneracy classification table %s "
+            "-- re-run with --force to replace it.",
+            path,
+        )
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stamped = df.copy()
+    stamped[PROVENANCE_COLUMN] = provenance
+    stamped.to_csv(path, index=False)
+    logger.info("Wrote degeneracy classification table to %s", path)
