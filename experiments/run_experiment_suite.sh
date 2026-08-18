@@ -196,6 +196,12 @@ cd "${REPO_ROOT}" || exit 1
 OUT_DIR="experiments/results"
 OUT_DIR_E4_REPEAT="experiments/results_e4_repeat"
 OUT_DIR_E2_BAND="experiments/results_e2_band"
+# E2's timing and memory runs get their OWN output directories so the
+# completeness gate can attribute every `benchmark.json` to the invocation that
+# produced it. Three E2 runs sharing one directory would overwrite each other's
+# benchmark.json and the surviving file would silently be whichever ran last.
+OUT_DIR_E2_TIMING="experiments/results_e2_timing"
+OUT_DIR_E2_MEMORY="experiments/results_e2_memory"
 
 # The frozen sha. Read ONCE, here, and never again -- see D-27 above. Short
 # form only; it names the state file. `--short` is portable across the git
@@ -229,6 +235,10 @@ BAND_SEEDS="42,43,44,45,46,47,48,49,50,51"
 E6_BAND_SEEDS="42,43,44,45,46,47"
 E5_BAND_SEEDS="42,43,44,45,46,47"
 E2_BAND_SEEDS="42,43,44"
+# E1's band is a UNIFORM grid (ruling A1): FOUR seeds x the four levels of
+# NOISE_LEVELS. See run_stage_e1_band for the arithmetic and for why four and
+# not ten.
+E1_BAND_SEEDS="42,43,44,45"
 
 # The three camera counts the prelaunch legality probe and E4's repeat cells
 # both use.
@@ -247,6 +257,24 @@ E4_REPEAT_CELLS=("8x100" "12x100" "16x100")
 # rather than a literal: Phase 27 repoints it for the Linux run machine.
 E2_RELEASE_CONFIG="${SUITE_E2_RELEASE_CONFIG:-C:/Users/tucke/Desktop/Aqua/AquaCal/release_calibration/config.yaml}"
 
+# E2's THREE production invocation configs are GENERATED from the release
+# config at run time (plan 26-06's `--emit-invocation-configs`), never
+# committed: committing them would hard-code the absolute release path three
+# more times and Phase 27 would have to edit every copy. The variants differ
+# only in `internals` keys, which are YAML settings and not CLI flags (D-15,
+# D-16) -- that is why each invocation needs its own config at all.
+E2_INVOCATION_DIR="${SUITE_E2_INVOCATION_DIR:-experiments/results_e2_invocations}"
+E2_PRODUCTION_CONFIG="${E2_INVOCATION_DIR}/config_e2_classification.yaml"
+E2_TIMING_CONFIG="${E2_INVOCATION_DIR}/config_e2_timing.yaml"
+E2_MEMORY_CONFIG="${E2_INVOCATION_DIR}/config_e2_memory.yaml"
+
+# The archived pre-re-run baseline `--check` reads FROM (D-12). Plan 26-01
+# moved the old committed results here as pure renames; without it E2's ~1e-8
+# control and E3's tier diff both compare against the tree the run is
+# simultaneously overwriting, which is not a control at all. Overridable so
+# Phase 27 can repoint it on the run machine.
+BASELINE_DIR="${SUITE_BASELINE_DIR:-experiments/pre_rerun_baseline/results}"
+
 # check_rerun_gates.py imports pandas AND aquacal.datasets.synthetic /
 # experiments.e4_benchmark_grid (its legality_probe), so it needs the AquaCal
 # env, not Git Bash's bare `python` (which is Anaconda base on this box). Same
@@ -261,10 +289,50 @@ if [ ! -x "${GATE_PYTHON}" ] && ! command -v "${GATE_PYTHON}" >/dev/null 2>&1; t
   GATE_PYTHON="python"
 fi
 
-# Stage list. Task 2 of plan 26-07 replaces this with the full suite; it is
-# kept in topological order of suite_expectations.json's depends_on edges,
-# shortest-first within each dependency level.
-STAGES=(prelaunch_probe e3 e1 e7 e5 e2_band e6_repeat1 e4 e6_band e4_repeat e5_band)
+# THE STAGE LIST. Every entry here has a matching entry in
+# `experiments/suite_expectations.json` and a matching `run_stage_<id>`
+# function below; `tests/unit/test_suite_stage_list.py` asserts BOTH directions
+# and proves this array is a topological order of the manifest's `depends_on`
+# edges. If you add a stage, add it in all three places or that test fails --
+# which is the point: F-001 was an invocation that existed in no driver.
+#
+# Order is a topological sort of the dependency edges, SHORTEST-FIRST within
+# each dependency level (D-37), using the est_hours in the manifest:
+#
+#   level 0  preflight(0.02)
+#   level 1  prelaunch_probe(0.01) e3(0.005) fd_jacobian(0.05) e1(0.09)
+#            e7(0.09) e5(0.76) e2_production(0.8-1.45) e6_repeat1(2.78)
+#   level 2  reconstruction_bootstrap(0.06) e2_timing e2_memory e7_band(1-2)
+#            e5_band(2.34) e2_band(2.42) e1_band(2.8) e4(3.57) e6_band(8.9)
+#   level 3  e7_focal_standoff(0.02) e4_repeat(0.99)
+#
+# ONE DELIBERATE INVERSION OF SHORTEST-FIRST: `prelaunch_probe` (0.01 h) is
+# placed before `e3` (0.005 h). The difference is about twenty seconds, and the
+# probe is a HARD-ABORT stage (D-03) while `e3 --force` REWRITES committed tier
+# CSVs. Aborting after mutating tracked artifacts, to save twenty seconds, is a
+# bad trade.
+STAGES=(
+  preflight
+  prelaunch_probe
+  e3
+  fd_jacobian
+  e1
+  e7
+  e5
+  e2_production
+  e6_repeat1
+  reconstruction_bootstrap
+  e2_timing
+  e2_memory
+  e7_band
+  e5_band
+  e2_band
+  e1_band
+  e4
+  e6_band
+  e7_focal_standoff
+  e4_repeat
+)
 START_STAGE="${1:-1}"
 
 log() {
@@ -320,6 +388,38 @@ _dry_run_stub() {
   eval "${RUN_EXPERIMENT_SUITE_DRY_RUN_CMD:-true}"
 }
 
+run_stage_preflight() {
+  # PRE-FLIGHT (D-03, DRIVER-02). A HARD-ABORT stage: it runs before any long
+  # stage, so a refusal here costs minutes and nothing is lost.
+  #
+  # Emits the one-shot suite run manifest. NOTHING HAS EVER CALLED THIS
+  # EMITTER: `experiments/_run_manifest.py` exists (plan 26-02) and no driver
+  # invoked it, which is the same shape of gap as F-001 itself. It records the
+  # git describe, the installed package version and the environment the whole
+  # run is attributable to -- the provenance spine that fractured into six
+  # shas because it was never written once at the top.
+  #
+  # Uses GATE_PYTHON rather than the run's own interpreter: this is tooling, it
+  # imports the same stack the gates do, and pre-flight must not be the place a
+  # bare Anaconda-base interpreter surfaces.
+  #
+  # Plan 26-08 adds the remaining pre-flight refusals here (frameset identity,
+  # disk headroom, non-empty output tree). D-50 binds every one of them: each
+  # must print the exact override flag that bypasses it.
+  if _dry_run_active; then
+    log "preflight: DRY RUN"
+    _dry_run_stub
+    return $?
+  fi
+  # `--force` is passed deliberately. The manifest is written ONCE PER RUN, and
+  # a stage without a completion line is always re-run from scratch, so a
+  # resume after a crash mid-pre-flight must be able to rewrite it. Without
+  # `--force` that resume dies on FileExistsError at the one stage whose
+  # failure aborts the queue.
+  log "preflight: writing the suite run manifest into ${OUT_DIR}"
+  "${GATE_PYTHON}" -m experiments._run_manifest --out "${OUT_DIR}" --force
+}
+
 run_stage_prelaunch_probe() {
   # A HARD-ABORT stage (D-03). A structural geometry check, no calibration
   # solve, seconds not minutes.
@@ -356,7 +456,12 @@ run_stage_e3() {
   if _dry_run_active; then
     _dry_run_stub
   else
-    python -u -m experiments.e3_derived_quantities --check --out "${OUT_DIR}"
+    # `--baseline-dir` (D-12) only goes on `--check`: e3's parser rejects it
+    # with `--force`, because it names the directory --check reads baselines
+    # FROM and --force writes new ones. Without it the "control" is the tree
+    # this very stage is about to overwrite.
+    python -u -m experiments.e3_derived_quantities \
+      --check --baseline-dir "${BASELINE_DIR}" --out "${OUT_DIR}"
   fi
   log "e3: --check exit=$?"
   log "e3: --force SECOND (regenerates the committed tier CSVs/LaTeX fragments)"
@@ -370,6 +475,22 @@ run_stage_e3() {
   return "${force_exit}"
 }
 
+run_stage_fd_jacobian() {
+  # ORPHAN SCRIPT #3 (M6). Never invoked by any driver, which is why its
+  # artifacts were absent from the committed tree while the manuscript's
+  # Jacobian-accuracy statement rested on them.
+  #
+  # No external input, so it depends on nothing but pre-flight, and it takes
+  # seconds. Placed early on purpose: it exercises the queue's whole plumbing
+  # -- state file, dispatch, gate invocation -- at negligible cost, which is
+  # exactly what D-37's shortest-first ordering is for.
+  if _dry_run_active; then
+    _dry_run_stub
+    return $?
+  fi
+  python -u -m experiments.fd_jacobian_accuracy --out "${OUT_DIR}" --force
+}
+
 run_stage_e1() {
   # Single-seed production run. E1's production SCENARIO_NAME is "realistic".
   if _dry_run_active; then
@@ -377,6 +498,37 @@ run_stage_e1() {
     return $?
   fi
   python -u -m experiments.e1_refractive_comparison --force --out "${OUT_DIR}"
+}
+
+run_stage_e1_band() {
+  # E1's NOISE-AXIS BAND (M7). The seventh invocation no driver has ever run,
+  # and the reason E1's noise axis exists only in planning documents.
+  #
+  # RULING A1: a UNIFORM grid, and NO NEW E1 FLAG IS NEEDED OR WANTED.
+  # `_run_band` is already a strict cartesian product of the requested seeds
+  # with NOISE_LEVELS (`e1_refractive_comparison.py:217`, already
+  # [0.25, 0.5, 0.82, 1.2]), so `--seeds` alone produces the whole grid. It
+  # cannot express a RAGGED grid, and two invocations would overwrite each
+  # other rather than compose -- the band writers force.
+  #
+  # THE ARITHMETIC, so a future reader can check the row counts rather than
+  # trust them: 4 seeds x 4 noise levels x 16 rows per cell = 256 rows of
+  # exp1_band.csv, and x 24 rows per cell = 384 rows of
+  # exp1_parameter_band.csv. (At ten seeds with no noise axis the committed
+  # files were 160 and 240 rows, which is what pins 16 and 24 per cell.)
+  #
+  # FOUR seeds and not ten: ten seeds x four levels was sized at about 7 h in
+  # Phase 25; the uniform 4-seed grid is 16 of those 40 cells, about 2.8 h.
+  # 0.5 px IS one of the four levels, and that matters: the headline 97-178x
+  # ratio band and all sixteen ledger numbers backed by exp1_band.csv live at
+  # 0.5 px. A grid that dropped it would regenerate everything except the
+  # numbers actually cited.
+  if _dry_run_active; then
+    _dry_run_stub
+    return $?
+  fi
+  python -u -m experiments.e1_refractive_comparison \
+    --seeds "${E1_BAND_SEEDS}" --out "${OUT_DIR}"
 }
 
 run_stage_e7() {
@@ -399,6 +551,28 @@ run_stage_e7_band() {
   fi
   python -u -m experiments.e7_interface_ablation \
     --seeds "${BAND_SEEDS}" --out "${OUT_DIR}"
+}
+
+run_stage_e7_focal_standoff() {
+  # ORPHAN SCRIPT #1 (M4). Never invoked by any driver.
+  #
+  # ORDERING CONSTRAINT O1, AND IT IS NOT A PREFERENCE. This script reads the
+  # HARDCODED, cwd-relative path
+  # `Path("experiments/results") / "interface_ablation_band.csv"`
+  # (`e7_focal_standoff_analysis.py:389`). Its own docstring says that is
+  # deliberate -- "never the --out directory". So `e7_band` must have landed
+  # first, and the `cd "${REPO_ROOT}"` at the top of this file is what makes
+  # the path resolve at all. Reordering this stage above e7_band produces a
+  # missing-file error, not a wrong number, which is the friendlier of the two
+  # failure modes but still a wasted stage.
+  #
+  # It ignores --smoke entirely, which is why its artifact is expected under
+  # the `full` profile only.
+  if _dry_run_active; then
+    _dry_run_stub
+    return $?
+  fi
+  python -u -m experiments.e7_focal_standoff_analysis --out "${OUT_DIR}"
 }
 
 run_stage_e5() {
@@ -429,14 +603,21 @@ run_stage_e6_repeat1() {
   # generated fragment is not \input anywhere. Turning it on would produce a
   # LaTeX fragment nothing reads and invite a reader to believe it is the
   # source of a table it does not feed.
+  #
+  # THE DRY-RUN CHECK COMES FIRST, BEFORE THE `rm`s, AND THAT ORDER IS A FIX.
+  # rerun_19_3.sh ran the cleanup unconditionally and only then consulted the
+  # dry-run seam, so a control-flow rehearsal DELETED committed artifacts under
+  # experiments/results (a tracked directory). rerun_19_4.sh corrected it; the
+  # correction is preserved here rather than the 19.3 shape.
+  if _dry_run_active; then
+    log "e6_repeat1: DRY RUN -- skipping the destructive pre-run cleanup of ${OUT_DIR}"
+    _dry_run_stub
+    return $?
+  fi
   log "e6_repeat1: clearing any partial E6 state under ${OUT_DIR} before running"
   rm -rf "${OUT_DIR}/e6_configs"
   rm -f "${OUT_DIR}/generalization_sweep.csv" "${OUT_DIR}/e6_provenance.json"
-  if _dry_run_active; then
-    _dry_run_stub
-  else
-    python -u -m experiments.e6_generalization_sweep --force --out "${OUT_DIR}"
-  fi
+  python -u -m experiments.e6_generalization_sweep --force --out "${OUT_DIR}"
 }
 
 # -----------------------------------------------------------------------------
@@ -472,16 +653,140 @@ run_stage_e6_band() {
     _dry_run_stub
     return $?
   fi
+  #
+  # The axis selection below (D-40, plan 26-05) DROPS THE SCALE AXIS,
+  # cutting the band from 17 configurations to 14 and giving 14 x 6 = 84 rows.
+  # The scale axis appears in ZERO rows of the manuscript's numbers. This is
+  # the suite's dominant stage at ~8.9 h and its critical path under any
+  # scheduling, so the cut is where the hours actually are.
+  #
+  # `--include-per-camera-latex` STAYS OFF (D-11) -- see run_stage_e6_repeat1.
   python -u -m experiments.e6_generalization_sweep \
-    --seeds "${E6_BAND_SEEDS}" --out "${OUT_DIR}" --force
+    --seeds "${E6_BAND_SEEDS}" --axes index,layout,cameras \
+    --out "${OUT_DIR}" --force
 }
 
 run_stage_e4() {
+  # ORDERING CONSTRAINT O4, AND THIS ONE IS A SILENT WRONG NUMBER, NOT A CRASH.
+  # `resolve_e2_benchmark_path` (`e4_benchmark_grid.py:298`) looks for E2's
+  # `benchmark.json`; when it is absent, E4 quietly DROPS the real-rig row and
+  # `benchmark_grid.csv` comes back with 9 rows instead of 10. Nothing fails,
+  # nothing warns loudly, and the missing row is the only one tying the
+  # synthetic grid to the real rig. `e4` therefore depends on `e2_production`
+  # -- an edge in suite_expectations.json, not a comment, because a concurrency
+  # pool can honour a dependency and cannot honour a comment.
+  #
+  # `serial_alone` (D-52): E4 is a 200-frame-class stage whose runtime is
+  # itself the reported quantity.
   if _dry_run_active; then
     _dry_run_stub
     return $?
   fi
   python -u -m experiments.e4_benchmark_grid --force --out "${OUT_DIR}"
+}
+
+_emit_e2_invocation_configs() {
+  # Generate the three E2 invocation configs from the release config. Shared by
+  # the production, timing and memory stages so a resume that starts at
+  # e2_timing regenerates them rather than depending on a directory an earlier
+  # stage happened to leave behind.
+  #
+  # The generator REFUSES to write into or under the release config's own
+  # parent directory (T-26-17), so the target is always in-repo.
+  log "e2: emitting invocation configs from ${E2_RELEASE_CONFIG} into ${E2_INVOCATION_DIR}"
+  python -u -m experiments.e2_real_rig \
+    --emit-invocation-configs \
+    --config "${E2_RELEASE_CONFIG}" \
+    --invocation-dir "${E2_INVOCATION_DIR}"
+}
+
+run_stage_e2_production() {
+  # E2's PRODUCTION / CLASSIFICATION RUN (M1). Absent from every existing
+  # driver, and it is the run the largest number of downstream things need:
+  # `benchmark.json` (which e4 silently drops a row without),
+  # `real_rig_metrics.json` and `reconstruction_errors.csv` (which
+  # reconstruction_bootstrap reads by hardcoded path), plus the classification
+  # sidecars.
+  #
+  # It carries `internals.log_all_observation_depths: true`, which is a YAML
+  # key and NOT a CLI flag (D-16) -- that is the whole reason this invocation
+  # needs a generated config rather than an extra argument.
+  if _dry_run_active; then
+    log "e2_production: DRY RUN"
+    _dry_run_stub
+    return $?
+  fi
+  _emit_e2_invocation_configs
+  local emit_exit=$?
+  log "e2_production: emit-invocation-configs exit=${emit_exit}"
+  if [ "${emit_exit}" -ne 0 ]; then
+    return "${emit_exit}"
+  fi
+  python -u -m experiments.e2_real_rig \
+    --config "${E2_PRODUCTION_CONFIG}" --out "${OUT_DIR}" --force
+}
+
+run_stage_e2_timing() {
+  # E2's TIMING RUN (M2). `internals.benchmark_memory: false`, and it carries
+  # NEITHER of the two instrumentation keys -- that is D-15, and it is
+  # non-negotiable: memory instrumentation costs 2.7-5.5% wall clock, so a run
+  # that reports both a timing and a peak-RSS number reports a timing that was
+  # inflated by the measurement of the other.
+  #
+  # `serial_alone` (D-52 / review H4): it produces a TIMING number, so nothing
+  # may share the box with it. This file only DECLARES the constraint (the
+  # manifest carries `concurrency: serial_alone`); plan 26-08's pool enforces
+  # it.
+  #
+  # Its own out dir, so its benchmark.json is attributable to it.
+  if _dry_run_active; then
+    log "e2_timing: DRY RUN"
+    _dry_run_stub
+    return $?
+  fi
+  _emit_e2_invocation_configs
+  local emit_exit=$?
+  if [ "${emit_exit}" -ne 0 ]; then
+    return "${emit_exit}"
+  fi
+  mkdir -p "${OUT_DIR_E2_TIMING}"
+  python -u -m experiments.e2_real_rig \
+    --config "${E2_TIMING_CONFIG}" --out "${OUT_DIR_E2_TIMING}" --force
+}
+
+run_stage_e2_memory() {
+  # E2's MEMORY RUN (M3). `internals.benchmark_memory: true`. Distinct from the
+  # timing run by D-15 -- see run_stage_e2_timing. Also `serial_alone`: a
+  # peak-RSS number measured while another calibration held 3.5 GiB is a
+  # measurement of the queue, not of the algorithm.
+  if _dry_run_active; then
+    log "e2_memory: DRY RUN"
+    _dry_run_stub
+    return $?
+  fi
+  _emit_e2_invocation_configs
+  local emit_exit=$?
+  if [ "${emit_exit}" -ne 0 ]; then
+    return "${emit_exit}"
+  fi
+  mkdir -p "${OUT_DIR_E2_MEMORY}"
+  python -u -m experiments.e2_real_rig \
+    --config "${E2_MEMORY_CONFIG}" --out "${OUT_DIR_E2_MEMORY}" --force
+}
+
+run_stage_reconstruction_bootstrap() {
+  # ORPHAN SCRIPT #2 (M5). Never invoked by any driver.
+  #
+  # ORDERING CONSTRAINT O2: it reads
+  # `experiments/results/reconstruction_errors.csv` and the hardcoded
+  # `REAL_RIG_METRICS_PATH = Path("experiments/results/real_rig_metrics.json")`
+  # (`reconstruction_bootstrap.py:56`), both written by e2_production. The
+  # dependency is an edge in the manifest, not just this comment.
+  if _dry_run_active; then
+    _dry_run_stub
+    return $?
+  fi
+  python -u -m experiments.reconstruction_bootstrap --out "${OUT_DIR}" --force
 }
 
 run_stage_e4_repeat() {
@@ -579,9 +884,14 @@ run_stage_e2_band() {
 
 _gate_dir_for_stage() {
   # The output directory a stage's gate verdict is taken against.
+  # Mirrors the manifest's per-stage `out_dir`. Keep the two in step: a gate
+  # pointed at the wrong directory reports PASS against artifacts a different
+  # stage produced.
   case "$1" in
     e4_repeat) printf '%s\n' "${OUT_DIR_E4_REPEAT}" ;;
     e2_band) printf '%s\n' "${OUT_DIR_E2_BAND}" ;;
+    e2_timing) printf '%s\n' "${OUT_DIR_E2_TIMING}" ;;
+    e2_memory) printf '%s\n' "${OUT_DIR_E2_MEMORY}" ;;
     *) printf '%s\n' "${OUT_DIR}" ;;
   esac
 }
@@ -615,16 +925,23 @@ run_one_stage() {
   state_complete "${name}" "${idx}" "${exit_code}"
   log "<<< STAGE ${idx}/${#STAGES[@]}: ${name} finished exit=${exit_code}"
 
-  if [ "${name}" = "prelaunch_probe" ]; then
-    # D-03 HARD ABORT: an illegal seed means the seed list itself is wrong.
-    # Every other stage's gate is a finding; this one stops the queue, and it
-    # runs before any long stage so nothing is lost.
-    if [ "${exit_code}" -ne 0 ]; then
-      log "FATAL: prelaunch_probe FAILed (exit=${exit_code}) -- ABORTING THE QUEUE. The seed list is illegal at at least one (seed, n_cameras, draw); see the legality_probe output above. Do NOT resume past this point -- fix the seed list and restart from stage 1."
-      exit "${exit_code}"
-    fi
-    return 0
-  fi
+  # D-03 HARD ABORT, and ONLY here. `preflight` and `prelaunch_probe` are the
+  # two pre-flight stages: both run before any long stage, so a refusal costs
+  # minutes and nothing is lost. Every stage after them obeys D-01 -- a failure
+  # is a finding that makes the FINAL exit non-zero and never stops the queue.
+  # Nothing may abort once a real stage has begun (D-50).
+  case "${name}" in
+    preflight|prelaunch_probe)
+      if [ "${exit_code}" -ne 0 ]; then
+        log "FATAL: pre-flight stage ${name} FAILed (exit=${exit_code}) -- ABORTING THE QUEUE before any production stage runs. See the output above. Do NOT resume past this point: fix the cause and restart from stage 1."
+        if [ "${name}" = "prelaunch_probe" ]; then
+          log "FATAL: the seed list itself is illegal at at least one (seed, n_cameras, draw). Fix the seed lists at the top of this file -- resuming would spend hours computing something that cannot be reported."
+        fi
+        exit "${exit_code}"
+      fi
+      return 0
+      ;;
+  esac
 
   run_gate_check "$(_gate_dir_for_stage "${name}")" "${name}"
 }
