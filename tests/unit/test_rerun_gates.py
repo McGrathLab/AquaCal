@@ -11,8 +11,13 @@ from pathlib import Path
 
 import pandas as pd
 
+from experiments._run_manifest import (
+    REQUIRED_MANIFEST_FIELDS,
+    RUN_MANIFEST_FILENAME,
+)
 from experiments.check_rerun_gates import (
     GateResult,
+    _check_run_manifest,
     _guard_count_from_record,
     check_band_csv,
     check_e1,
@@ -1294,3 +1299,166 @@ class TestCheckE4Repeat:
         )
         results = check_e4_repeat(tmp_path)
         assert any(r.verdict == "FAIL" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# D-21: Gate 3 extends over the suite run manifest with ALL-HARD-FAIL semantics.
+#
+# The todo is explicit that a provenance mismatch which only warns is a
+# provenance mismatch that ships, so there is no "N/A" verdict anywhere in this
+# gate -- not even for a missing manifest, which is the loudest case of all.
+# ---------------------------------------------------------------------------
+
+
+def _good_manifest(git_sha: str = "a" * 40, **overrides) -> dict:
+    manifest = {
+        "schema_version": 1,
+        "git_sha": git_sha,
+        "git_describe": "v2.0.1-161-gd0bbe09",
+        "git_dirty": False,
+        "os": "Windows 11",
+        "kernel": "11",
+        "machine": "Zephyrus",
+        "python_version": "3.12.12",
+        "numpy_version": "2.4.2",
+        "scipy_version": "1.17.0",
+        "opencv_version": "4.13.0",
+        "opencv_build": "4.13.0.90",
+        "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+        "cpu_count_logical": 20,
+        "ram_total_bytes": 16_000_000_000,
+        "installed_distribution_version": "2.0.1",
+        "utc_start": "2026-08-18T12:00:00Z",
+    }
+    manifest.update(overrides)
+    return manifest
+
+
+def _write_manifest(out_dir: Path, manifest: dict) -> None:
+    _write_json(out_dir / RUN_MANIFEST_FILENAME, manifest)
+
+
+def _write_sha_bearing_artifact(out_dir: Path, git_sha: str) -> None:
+    """One artifact whose environment.git_sha Gate 3 already collects."""
+    _write_json(
+        out_dir / "e1_benchmark_refractive.json",
+        {
+            "environment": _good_environment(git_sha=git_sha),
+            "solver_config": {"seed": 42, "n_water": 1.333},
+            "problem_shape": {"degenerate_observations_at_solution": 0},
+            "stages": _good_stages(),
+        },
+    )
+
+
+class TestRunManifestGate:
+    def test_manifest_gate_covers_every_required_field(self):
+        """The gate imports the field list; it must not restate it (D-05)."""
+        assert len(REQUIRED_MANIFEST_FIELDS) >= 17
+
+    def test_manifest_gate_fails_hard_when_the_manifest_is_absent(self, tmp_path):
+        results = _check_run_manifest(tmp_path)
+        assert results
+        assert all(r.verdict == "FAIL" for r in results)
+        assert any(RUN_MANIFEST_FILENAME in r.detail for r in results)
+
+    def test_manifest_gate_never_emits_an_na_verdict(self, tmp_path):
+        """Every shape of input -- absent, corrupt, null-bearing, disagreeing,
+        dirty, and clean -- must produce only PASS or FAIL."""
+        cases = [
+            lambda d: None,
+            lambda d: _write_json(d / RUN_MANIFEST_FILENAME, {}),
+            lambda d: _write_manifest(d, _good_manifest(git_dirty=None)),
+            lambda d: _write_manifest(d, _good_manifest(git_dirty=True)),
+            lambda d: _write_manifest(d, _good_manifest()),
+        ]
+        for index, build in enumerate(cases):
+            case_dir = tmp_path / f"case{index}"
+            case_dir.mkdir()
+            build(case_dir)
+            for result in _check_run_manifest(case_dir):
+                assert result.verdict in ("PASS", "FAIL"), result
+
+    def test_manifest_gate_passes_on_a_complete_clean_agreeing_manifest(self, tmp_path):
+        sha = "b" * 40
+        _write_sha_bearing_artifact(tmp_path, sha)
+        _write_manifest(tmp_path, _good_manifest(git_sha=sha))
+        results = _check_run_manifest(tmp_path)
+        assert results
+        assert all(r.verdict == "PASS" for r in results), [r.detail for r in results]
+
+    def test_manifest_gate_fails_and_names_every_null_field(self, tmp_path):
+        _write_manifest(tmp_path, _good_manifest(opencv_build=None, git_describe=None))
+        results = _check_run_manifest(tmp_path)
+        field_results = [r for r in results if r.gate.endswith("fields")]
+        assert len(field_results) == 1
+        assert field_results[0].verdict == "FAIL"
+        assert "opencv_build" in field_results[0].detail
+        assert "git_describe" in field_results[0].detail
+
+    def test_manifest_gate_fails_when_a_required_field_is_missing_entirely(
+        self, tmp_path
+    ):
+        manifest = _good_manifest()
+        del manifest["opencv_build"]
+        _write_manifest(tmp_path, manifest)
+        field_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("fields")
+        ]
+        assert field_results[0].verdict == "FAIL"
+        assert "opencv_build" in field_results[0].detail
+
+    def test_manifest_gate_fails_on_sha_disagreement_naming_both_values(self, tmp_path):
+        artifact_sha = "c" * 40
+        manifest_sha = "d" * 40
+        _write_sha_bearing_artifact(tmp_path, artifact_sha)
+        _write_manifest(tmp_path, _good_manifest(git_sha=manifest_sha))
+        sha_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("git_sha")
+        ]
+        assert len(sha_results) == 1
+        assert sha_results[0].verdict == "FAIL"
+        assert artifact_sha in sha_results[0].detail
+        assert manifest_sha in sha_results[0].detail
+
+    def test_manifest_gate_passes_sha_check_when_no_artifact_carries_one(
+        self, tmp_path
+    ):
+        """An empty artifact sha set cannot disagree. Covering that hole is the
+        completeness gate's job (plan 26-03), not Gate 3's."""
+        _write_manifest(tmp_path, _good_manifest())
+        sha_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("git_sha")
+        ]
+        assert sha_results[0].verdict == "PASS"
+
+    def test_manifest_gate_fails_on_a_dirty_tree(self, tmp_path):
+        _write_manifest(
+            tmp_path,
+            _good_manifest(git_describe="v2.0.1-161-gd0bbe09-dirty", git_dirty=True),
+        )
+        dirty_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("clean_tree")
+        ]
+        assert len(dirty_results) == 1
+        assert dirty_results[0].verdict == "FAIL"
+
+    def test_manifest_gate_fails_on_a_corrupt_manifest(self, tmp_path):
+        (tmp_path / RUN_MANIFEST_FILENAME).write_text("{not json")
+        results = _check_run_manifest(tmp_path)
+        assert any(r.verdict == "FAIL" for r in results)
+        assert all(r.verdict != "PASS" for r in results)
+
+    def test_manifest_gate_is_wired_into_run_all_gates(self, tmp_path):
+        results = run_all_gates(tmp_path)
+        assert any("run_manifest" in r.gate for r in results)
+
+    def test_sha_consistency_gate_is_unchanged_by_the_manifest_gate(self, tmp_path):
+        """The pre-existing check was extended AROUND, never weakened."""
+        _write_sha_bearing_artifact(tmp_path, "e" * 40)
+        _write_manifest(tmp_path, _good_manifest(git_sha="f" * 40))
+        sha_gate = [
+            r for r in run_all_gates(tmp_path) if r.gate == "gate3_git_sha_consistency"
+        ]
+        assert len(sha_gate) == 1
+        assert sha_gate[0].verdict == "PASS"
