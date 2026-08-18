@@ -1613,5 +1613,45 @@
       "concurrent stages sharing experiments/results must produce disjoint filenames -- verified against this manifest by tests/unit/test_expectations.py::TestConcurrencySafety, not by inspection."
     ],
     "runtime_attribution_warning": "NEVER attribute a runtime change to a code change. The ~2x swing measured between the 19.3 and 19.4 state files tracked the machine, not the diff (rerun_19_5.sh:26-29)."
+  },
+  "preflight": {
+    "description": "Everything pre-flight (D-03, DRIVER-02) checks BEFORE stage 1. Pre-flight is the only place in the suite permitted to abort: it runs before any long stage, so a refusal costs minutes and nothing is lost. D-50 binds every entry here -- each refusal must print the exact override flag that bypasses it, so a malformed check costs one minute and one flag, never a night.",
+    "refusals_cut": {
+      "dirty_working_tree": "CUT by D-47. experiments/results/ is TRACKED, so the run dirties its own working tree; a dirty-tree refusal fires on RESUME and would refuse every restart after the first crash. Gate 3 records dirtiness post-hoc (D-21), which can never kill a run. Do not restore it.",
+      "disk_headroom_estimator": "CUT by D-46. A wrong estimate is precisely the malformed-check failure mode the de-scoping targets. Free space is LOGGED and compared against a crude absolute floor instead -- see free_space_floor_gib.",
+      "head_vs_state_file": "CUT by D-48. The sha-derived state-file path already makes a foreign state file structurally unreachable; the separate refusal is the half that can wrongly block a 3 a.m. resume."
+    },
+    "frameset": {
+      "description": "E2's frameset IDENTITY signature (D-17). Pre-flight asserts IDENTITY, not mere presence, and the driver reads these numbers FROM HERE -- never from a literal in the shell script, which is how the retired archive's numbers survived in a code comment (FIX-06).",
+      "usable_frames": 262,
+      "calibration_frames": 200,
+      "validation_frames": 52,
+      "comparisons": 7762,
+      "verified": "2026-08-12, against Zenodo record 21889922 (4.35 GB), 13 x 262 extrinsic frames at frame_step: 1 / max_calibration_frames: 200.",
+      "retired_signature": {
+        "usable_frames": 60,
+        "validation_frames": 12,
+        "comparisons": 1817,
+        "note": "The RETIRED record 18645385's ~4.3x-subsampled extraction. A presence-only check passes cleanly on this archive and hands you a control that reads red for a reason nobody would guess at 3 a.m. It is recorded here so a mismatch report can name what was probably found."
+      },
+      "cheap_check": {
+        "description": "The equivalent file/frame count pre-flight can verify in seconds without running a calibration. The full signature above is only observable AFTER E2 runs (real_rig_metrics.json's n_comparisons), so it is what the end-of-run roll-up judges; these two numbers are what the driver can judge before the run starts.",
+        "n_extrinsic_videos": 13,
+        "n_extrinsic_videos_rationale": "12 main cameras + 1 auxiliary (e3v8250). All 13 extrinsic paths declared in the release config must exist and be non-empty.",
+        "min_total_bytes": 4000000000,
+        "min_total_bytes_rationale": "A crude discriminator, not an estimate. The current frameset is 4.35 GB as published and 10.57 GB as the local raw capture; the retired ~4.3x-subsampled extraction is far below this floor. Its ONLY job is to separate the two archives."
+      }
+    },
+    "free_space_floor_gib": 20,
+    "free_space_floor_rationale": "A CRUDE ABSOLUTE FLOOR (D-46), deliberately not derived from the run's output footprint. The suite's largest writers are E6's checkpoint tree and E2's ~11 MB per-stage h_q sidecars, together a few GB; 20 GiB is comfortably above anything the suite has written and low enough that it does not fire on a box with room. Override: --allow-low-disk.",
+    "overrides": {
+      "frameset_absent": "--skip-e2",
+      "frameset_mismatch": "--allow-frameset-mismatch",
+      "nonempty_out_dir_without_state_file": "--allow-nonempty-out",
+      "free_space_below_floor": "--allow-low-disk",
+      "completeness_gate_not_invokable": "--allow-gate-precheck-failure"
+    },
+    "declared_reduction_marker": "declared_reductions.json",
+    "declared_reduction_rationale": "D-14: when --skip-e2 declares the omission, the driver writes this marker into the run's output directory and the end-of-run roll-up reprints it. A *silent* skip must be impossible, and \"loud\" alone is a log line nobody reads overnight."
   }
 }

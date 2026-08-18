@@ -46,8 +46,11 @@
 #   CSV WAS NEVER PRODUCED AT ALL (F-001). An exit code that cannot lie kills
 #   that class of failure without discarding hours of valid work.
 #
-#   (The sticky flag and the end-of-run roll-up are implemented by plan 26-08.
-#   This file's job is the stage list they schedule.)
+#   The mechanism is `SUITE_FAILED`: a stage that exits non-zero, or whose gate
+#   verdict reports a FAIL, appends a line to the run's FAILURE LOG. `main`
+#   reprints that log as a terminal summary block and exits `${SUITE_FAILED}`.
+#   The failure log is a FILE rather than a shell variable because concurrent
+#   stages run in child processes and a child cannot set its parent's variable.
 #
 # D-03 -- PRE-FLIGHT FAILURE ABORTS.
 #   Pre-flight runs BEFORE stage 1, so nothing is lost, and the entire point is
@@ -60,6 +63,69 @@
 #   IT, AND NOTHING MAY ABORT ONCE STAGE 1 HAS BEGUN. A malformed check then
 #   costs one minute and one flag, never a night. This is what makes the
 #   surviving refusals safe rather than merely fewer.
+#
+# ============================================================================
+# THREE CHECK POINTS (D-02), AND WHY THE LAST ONE IS NOT REDUNDANT.
+# ============================================================================
+#
+#   1. PRE-FLIGHT, before stage 1 -- preconditions. Aborts (D-03).
+#   2. AFTER EACH STAGE -- `run_gate_check` against that stage's out dir. A
+#      FAIL is sticky, never fatal.
+#   3. END-OF-RUN ROLL-UP over the WHOLE tree at the run's profile. A FAIL is
+#      sticky, and it is the check whose ABSENCE produced F-001.
+#
+# The roll-up is not covered by (2), and it is specifically not covered by
+# Gate 3: `_check_git_sha_consistency` (`check_rerun_gates.py:1749-1754`)
+# returns PASS over an EMPTY tree -- "no git_sha values found across any
+# artifact to compare" is a PASS. A cross-artifact consistency gate that
+# succeeds BECAUSE there are no artifacts cannot be evidence of a complete run.
+# Do NOT weaken Gate 3 to cover this; the roll-up is the right owner, because
+# it is the only check that judges what is ABSENT rather than what it finds.
+#
+# ============================================================================
+# CONCURRENCY (D-52). SELECTIVE, NOT GENERAL.
+# ============================================================================
+#
+# Measured 2026-08-18 (`.planning/probes/2026-08-18-solver-concurrency/`): a
+# solve holds a MEDIAN 0.99 cores of 20, mean 1.20, p95 2.01, peak 2.56, stable
+# through Stage 3. So ~30 of the target box's 32 cores idle during every
+# accuracy stage. Running the accuracy stages 4-5 wide takes the serial
+# ~22-26 h estimate to ~15-16 h and requires NO change to any experiment.
+#
+# `SUITE_WORKERS` DEFAULTS TO 4 AND IS BOUNDED TO 4-5. The probe reports
+# `recommended_workers: 16`; DO NOT WIDEN THE POOL ON IT. The probe's own
+# caveat is load-bearing -- E1 is the cheapest and smallest solve in the suite
+# (peak RSS 0.61 GiB) and its peak RSS does not transfer. Peak RSS tracks FRAME
+# COUNT: 30 frames < 1 GiB (E5), 100 frames 2.7-3.5 GiB (E6's band, all 102
+# rows at n_frames=100), 200 frames 9.3-11.3 GiB (E2, E4).
+#
+# THREE HARD CONSTRAINTS, all enforced by the scheduler from the MANIFEST's
+# per-stage attributes rather than a hardcoded stage list:
+#
+#   1. `e6_repeat1` and `e6_band` MUST NEVER OVERLAP. `run_stage_e6_repeat1`
+#      does `rm -rf ${OUT_DIR}/e6_configs` and removes
+#      `generalization_sweep.csv` / `e6_provenance.json` under the SHARED
+#      `OUT_DIR` that `e6_band` also writes. Expressed as `e6_band`'s
+#      `depends_on` edge, because a pool can honour a dependency and cannot
+#      honour a comment. An overlap here is a real `rm -rf` collision, not a
+#      bookkeeping error.
+#   2. AT MOST ONE `frame_class == "200"` STAGE IN FLIGHT. Five 3.5 GiB stages
+#      plus one 200-frame stage is 27.8 of ~31 GiB, too tight.
+#   3. A `concurrency == "serial_alone"` STAGE RUNS ALONE, and nothing starts
+#      until it finishes -- `e4`, `e4_repeat`, `e2_timing`, `e2_memory`. The
+#      constraint protects TIMING INTEGRITY (review H4), which is why it is
+#      about those four stages specifically and not about memory.
+#
+# `SUITE_SERIAL=1` forces the fully serial path -- the escape hatch if the pool
+# ever looks implicated in a result. `SUITE_WORKERS` sets the width.
+#
+# NOT ATTEMPTED, DELIBERATELY: splitting `e6_band` across processes by seed. It
+# attacks the critical path (8.9 h, ~40% of the suite) but needs a merge step
+# and provenance handling INSIDE the experiment; CONTEXT § E declines it.
+#
+# Phase 27's Linux smoke pass confirms the same OpenBLAS build behaves the same
+# way on the target box. That is two minutes there, not a reason to defer the
+# pool here.
 #
 # ============================================================================
 # ORDERING (D-37), AND WHERE ORDERING IS NOT A HEURISTIC BUT A CORRECTNESS
@@ -193,7 +259,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # `experiments/results`.
 cd "${REPO_ROOT}" || exit 1
 
-OUT_DIR="experiments/results"
+# `SUITE_OUT_DIR` exists so the driver's own dry-run tests can sandbox every
+# path they touch under a tmp_path. A production run never sets it.
+OUT_DIR="${SUITE_OUT_DIR:-experiments/results}"
 OUT_DIR_E4_REPEAT="experiments/results_e4_repeat"
 OUT_DIR_E2_BAND="experiments/results_e2_band"
 # E2's timing and memory runs get their OWN output directories so the
@@ -209,12 +277,60 @@ OUT_DIR_E2_MEMORY="experiments/results_e2_memory"
 # needs a tag and would be empty on an untagged commit).
 FROZEN_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "unknownsha")"
 
+# `SUITE_STATE_DIR` is a test-sandbox override, exactly like SUITE_OUT_DIR. It
+# does NOT touch the dry-run/real separation below -- both paths are derived
+# from it, so a test can still assert that a dry run leaves the REAL path
+# absent, which is the property the 19.5 fix exists to guarantee.
+STATE_DIR="${SUITE_STATE_DIR:-experiments}"
+mkdir -p "${STATE_DIR}"
+
 # D-23 as halved by D-48 (sha-derived path) + the 19.5 dry-run separation.
 if [ -n "${RUN_EXPERIMENT_SUITE_DRY_RUN:-}" ]; then
-  STATE_FILE="experiments/run_experiment_suite_state.${FROZEN_SHA}.dryrun.tsv"
+  STATE_FILE="${STATE_DIR}/run_experiment_suite_state.${FROZEN_SHA}.dryrun.tsv"
 else
-  STATE_FILE="experiments/run_experiment_suite_state.${FROZEN_SHA}.tsv"
+  STATE_FILE="${STATE_DIR}/run_experiment_suite_state.${FROZEN_SHA}.tsv"
 fi
+
+# D-01's sticky-failure record. A FILE and not a shell variable: concurrent
+# stages run in child processes, and a child cannot set its parent's variable.
+# Each line is one finding; `main` reprints the whole file as the terminal
+# summary and exits non-zero if it is non-empty.
+#
+# TRUNCATED AT THE START OF EVERY INVOCATION, deliberately. A resume re-runs
+# only the stages that have no completion line, so carrying a previous
+# invocation's findings forward would report failures the current run has
+# already fixed. The durable per-stage record is the state file's exit-code
+# column, which is never truncated.
+SUITE_FAILURE_LOG="${STATE_FILE%.tsv}.failures.txt"
+
+# Per-stage stdout logs. Interleaved stdout from four concurrent stages is
+# unreadable, so each stage also gets its own file; the console still sees
+# everything via `tee`.
+STAGE_LOG_DIR="${STATE_FILE%.tsv}.stagelogs"
+STAGE_DONE_DIR="${STAGE_LOG_DIR}/.done"
+
+# TWO SNAPSHOTS TAKEN HERE AND NOWHERE ELSE, because pre-flight destroys the
+# evidence for both: `run_one_stage` writes the state file's first line before
+# `run_stage_preflight` is even called, and pre-flight's first act is to write
+# `run_manifest.json` INTO the output tree. Evaluating either condition inside
+# pre-flight would therefore always answer "state file exists, output tree
+# non-empty" and the D-24 refusal would be dead code.
+if [ -f "${STATE_FILE}" ]; then
+  STATE_FILE_PREEXISTED=1
+else
+  STATE_FILE_PREEXISTED=0
+fi
+if [ -d "${OUT_DIR}" ] && [ -n "$(ls -A "${OUT_DIR}" 2>/dev/null)" ]; then
+  OUT_DIR_WAS_NONEMPTY=1
+else
+  OUT_DIR_WAS_NONEMPTY=0
+fi
+
+# D-01. Set to 1 by any stage failure, any gate FAIL, or any roll-up FAIL.
+# `main` exits with it. Nothing in this file may abort the queue once stage 1
+# has begun (D-50); this variable is how a failure is carried to the end
+# instead.
+SUITE_FAILED=0
 
 # --- Seed lists -------------------------------------------------------------
 #
@@ -333,7 +449,99 @@ STAGES=(
   e7_focal_standoff
   e4_repeat
 )
-START_STAGE="${1:-1}"
+
+# --- Arguments --------------------------------------------------------------
+#
+# EVERY FLAG BELOW EXCEPT --profile/--remaining-hours/--start-stage IS AN
+# OVERRIDE FOR ONE PRE-FLIGHT REFUSAL (D-50). That is the whole design: a
+# refusal that cannot be bypassed is a check that can cost a night, so every
+# refusal message names its own flag and every flag disables exactly one
+# refusal. They are enumerated in `suite_expectations.json`'s
+# `preflight.overrides` as well, so the manifest and the parser can be diffed
+# against each other.
+SKIP_E2=0
+ALLOW_NONEMPTY_OUT=0
+ALLOW_LOW_DISK=0
+ALLOW_FRAMESET_MISMATCH=0
+ALLOW_GATE_PRECHECK_FAILURE=0
+PROFILE="full"
+REMAINING_HOURS=""
+START_STAGE=1
+
+usage() {
+  cat <<'USAGE'
+Usage: bash experiments/run_experiment_suite.sh [N] [options]
+
+  N, --start-stage N        Start from the 1-indexed stage N (infrastructure
+                            recovery only -- never the recovery path for a src
+                            defect, which is always restart-from-stage-1).
+  --profile {smoke,full}    Expectation profile for the completeness gate.
+                            Default: full.
+  --remaining-hours H       Warn (never abort) if the estimated wall clock
+                            exceeds H hours (D-38).
+
+Pre-flight overrides (D-50 -- each disables exactly one refusal):
+  --skip-e2                 DECLARE that the E2 frameset is absent. The run
+                            becomes synthetic-only, the omission is announced
+                            at launch and reprinted in the end-of-run roll-up,
+                            and E2's artifacts still count as missing.
+  --allow-frameset-mismatch Proceed although the frameset's identity signature
+                            does not match the manifest.
+  --allow-nonempty-out      Proceed although the output tree is non-empty and
+                            no state file exists for this sha.
+  --allow-low-disk          Proceed although free space is below the manifest's
+                            crude absolute floor.
+  --allow-gate-precheck-failure
+                            Proceed although the completeness gate could not be
+                            invoked at pre-flight.
+
+Environment:
+  SUITE_WORKERS=4           Concurrency width (bounded to 4-5; D-52).
+  SUITE_SERIAL=1            Force the fully serial path.
+  SUITE_OUT_DIR             Output tree (test sandboxing only).
+  SUITE_STATE_DIR           State-file directory (test sandboxing only).
+USAGE
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --skip-e2) SKIP_E2=1 ;;
+    --allow-nonempty-out) ALLOW_NONEMPTY_OUT=1 ;;
+    --allow-low-disk) ALLOW_LOW_DISK=1 ;;
+    --allow-frameset-mismatch) ALLOW_FRAMESET_MISMATCH=1 ;;
+    --allow-gate-precheck-failure) ALLOW_GATE_PRECHECK_FAILURE=1 ;;
+    --profile) PROFILE="${2:-}"; shift ;;
+    --profile=*) PROFILE="${1#*=}" ;;
+    --remaining-hours) REMAINING_HOURS="${2:-}"; shift ;;
+    --remaining-hours=*) REMAINING_HOURS="${1#*=}" ;;
+    --start-stage) START_STAGE="${2:-1}"; shift ;;
+    --start-stage=*) START_STAGE="${1#*=}" ;;
+    -h|--help) usage; exit 0 ;;
+    ''|*[!0-9]*)
+      echo "ERROR: unrecognised argument '$1'." >&2
+      usage >&2
+      exit 2
+      ;;
+    *) START_STAGE="$1" ;;
+  esac
+  shift
+done
+
+case "${PROFILE}" in
+  smoke|full) ;;
+  *) echo "ERROR: --profile must be 'smoke' or 'full', got '${PROFILE}'." >&2; exit 2 ;;
+esac
+
+# D-52: bounded to 4-5. NOT the probe's recommended_workers: 16 -- see the
+# concurrency section of the header for why that number does not transfer.
+SUITE_WORKERS="${SUITE_WORKERS:-4}"
+case "${SUITE_WORKERS}" in
+  4|5) ;;
+  *)
+    echo "WARNING: SUITE_WORKERS=${SUITE_WORKERS} is outside the sanctioned 4-5 band (D-52); clamping to 4. Widen this only with a measurement, never on the probe's recommended_workers: 16, which was taken on E1 -- the cheapest and smallest solve in the suite." >&2
+    SUITE_WORKERS=4
+    ;;
+esac
 
 log() {
   printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
@@ -347,25 +555,68 @@ is_stage_complete() {
   awk -F'\t' -v stage="${name}" '$1 == stage && $3 == "complete" { found = 1 } END { exit !found }' "${STATE_FILE}"
 }
 
+# MILLISECOND RESOLUTION, and it is not cosmetic. Under D-52's pool these
+# stamps are the ONLY record of which stages overlapped, and the driver's own
+# dry-run tests assert `e6_band.start > e6_repeat1.complete` from them. At
+# whole-second resolution a dry run -- every stage of which finishes in
+# milliseconds -- produces ties, and a tie cannot distinguish "ordered
+# correctly" from "overlapped". The format stays ISO-8601 and stays parseable
+# by `datetime.fromisoformat` once the trailing Z is handled.
+#
+# `%3N` is a GNU date extension. It is present in Git Bash (MINGW64) and on the
+# Linux run machine; the probe below degrades to whole seconds anywhere else
+# rather than writing the literal string "%3N" into the timing record.
+if date -u +"%Y-%m-%dT%H:%M:%S.%3NZ" 2>/dev/null | grep -q 'N'; then
+  STATE_TIME_FMT="%Y-%m-%dT%H:%M:%SZ"
+else
+  STATE_TIME_FMT="%Y-%m-%dT%H:%M:%S.%3NZ"
+fi
+
 state_start() {
   local name="$1" idx="$2"
-  printf '%s\t%s\tstart\t%s\t\n' "${name}" "${idx}" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >>"${STATE_FILE}"
+  printf '%s\t%s\tstart\t%s\t\n' "${name}" "${idx}" "$(date -u +"${STATE_TIME_FMT}")" >>"${STATE_FILE}"
 }
 
 state_complete() {
   local name="$1" idx="$2" exit_code="$3"
-  printf '%s\t%s\tcomplete\t%s\t%s\n' "${name}" "${idx}" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${exit_code}" >>"${STATE_FILE}"
+  printf '%s\t%s\tcomplete\t%s\t%s\n' "${name}" "${idx}" "$(date -u +"${STATE_TIME_FMT}")" "${exit_code}" >>"${STATE_FILE}"
 }
+
+record_failure() {
+  # D-01. Append one finding to the sticky failure log. Called from the parent
+  # AND from concurrent child processes, which is why it appends to a file:
+  # a child cannot set `SUITE_FAILED` in its parent. A single short `printf`
+  # to an O_APPEND file descriptor is not interleaved by the kernel.
+  printf '%s\n' "$*" >>"${SUITE_FAILURE_LOG}"
+}
+
+# The gate exit code from the LAST `run_gate_check`. D-01 is a change to that
+# function's CALLER, not to the function: `run_gate_check` still always returns
+# 0, so a gate FAIL can never abort the queue, and the caller reads the verdict
+# from here to set the sticky flag.
+LAST_GATE_EXIT=0
 
 run_gate_check() {
   local target_dir="$1" stage_name="$2"
+  # THE DRY-RUN SEAM, inserted ahead of the real body so no line of it moves.
+  # Without this a "dry" run would still invoke check_rerun_gates.py 18 times
+  # against the real results tree -- which is neither dry nor fast, and would
+  # make every dry run report FAILs it did not cause.
+  if _dry_run_active; then
+    echo "----- GATE VERDICT: stage=${stage_name} out_dir=${target_dir} (DRY RUN) -----"
+    _dry_run_stub
+    LAST_GATE_EXIT=$?
+    echo "----- END GATE VERDICT: stage=${stage_name} exit=${LAST_GATE_EXIT} (DRY RUN) -----"
+    return 0
+  fi
   echo "----- GATE VERDICT: stage=${stage_name} out_dir=${target_dir} -----"
   # PINNED INTERPRETER, and it matters: check_rerun_gates.py imports pandas and
   # aquacal, so it is NOT stdlib-only. Never a bare `python` here -- that was a
   # real 19.3 defect, fixed in 19.4/19.5 and asserted by
   # tests/unit/test_suite_stage_list.py.
-  "${GATE_PYTHON}" experiments/check_rerun_gates.py "${target_dir}"
+  "${GATE_PYTHON}" experiments/check_rerun_gates.py "${target_dir}" --profile "${PROFILE}" --stage "${stage_name}"
   local gate_exit=$?
+  LAST_GATE_EXIT="${gate_exit}"
   echo "----- END GATE VERDICT: stage=${stage_name} exit=${gate_exit} -----"
   # D-01: recorded as a finding, never acted on automatically -- this
   # function's own exit is always 0 so a gate FAIL never aborts the queue.
@@ -403,14 +654,36 @@ run_stage_preflight() {
   # imports the same stack the gates do, and pre-flight must not be the place a
   # bare Anaconda-base interpreter surfaces.
   #
-  # Plan 26-08 adds the remaining pre-flight refusals here (frameset identity,
-  # disk headroom, non-empty output tree). D-50 binds every one of them: each
-  # must print the exact override flag that bypasses it.
+  # ------------------------------------------------------------------------
+  # WHAT PRE-FLIGHT DELIBERATELY DOES *NOT* REFUSE. Do not "restore" these.
+  # D-24 asked for four refusals; D-46 and D-47 SUPERSEDE it and cut two, and
+  # D-48 cut a third from D-23. TWO SURVIVE: the frameset identity check and
+  # the state-file/output-tree consistency check.
+  #
+  #   * NO DIRTY-TREE REFUSAL (D-47). `experiments/results/` is TRACKED, so the
+  #     run dirties its own working tree. The refusal would fire on RESUME and
+  #     refuse every restart after the first crash -- a check that kills a run
+  #     which would otherwise have succeeded. Gate 3 records dirtiness
+  #     post-hoc (D-21), which can never kill a run, and the run manifest
+  #     records `git_dirty`.
+  #   * NO DISK-HEADROOM ESTIMATOR (D-46). A wrong estimate is precisely the
+  #     malformed-check failure mode the de-scoping targets. Free space is
+  #     LOGGED and compared against a crude absolute floor instead.
+  #   * NO HEAD-VS-STATE-FILE REFUSAL (D-48). The sha-derived state path
+  #     already makes a foreign state file structurally unreachable; the
+  #     refusal is the half that can wrongly block a 3 a.m. resume.
+  #
+  # D-50 binds every surviving refusal: each prints the exact override flag
+  # that bypasses it, and the flags are enumerated in the manifest's
+  # `preflight.overrides` as well.
+  # ------------------------------------------------------------------------
   if _dry_run_active; then
     log "preflight: DRY RUN"
     _dry_run_stub
     return $?
   fi
+
+  # 1. THE RUN MANIFEST (D-19).
   # `--force` is passed deliberately. The manifest is written ONCE PER RUN, and
   # a stage without a completion line is always re-run from scratch, so a
   # resume after a crash mid-pre-flight must be able to rewrite it. Without
@@ -418,6 +691,276 @@ run_stage_preflight() {
   # failure aborts the queue.
   log "preflight: writing the suite run manifest into ${OUT_DIR}"
   "${GATE_PYTHON}" -m experiments._run_manifest --out "${OUT_DIR}" --force
+  local manifest_exit=$?
+  if [ "${manifest_exit}" -ne 0 ]; then
+    log "PREFLIGHT REFUSAL: the run manifest could not be written (exit=${manifest_exit}). Every artifact's provenance anchors to it, so a run without one is unreportable. There is NO override for this refusal -- fix the emitter or the output directory and restart from stage 1."
+    return "${manifest_exit}"
+  fi
+
+  # 2. E2 FRAMESET IDENTITY, NOT PRESENCE (D-17).
+  #    OVERRIDE: --skip-e2 when it is ABSENT (which DECLARES a synthetic-only
+  #    run), --allow-frameset-mismatch when it is present but not the archive
+  #    the manifest describes. Two mistakes, two flags.
+  _preflight_frameset || return $?
+
+  # 3. NON-EMPTY OUTPUT TREE WITH NO MATCHING STATE FILE FOR THIS SHA (D-24).
+  #    Phrased exactly this way so a GENUINE RESUME still proceeds: if a state
+  #    file for this sha exists, the non-empty tree is this run's own output
+  #    and refusing would brick the recovery path the driver was built around.
+  #    Both conditions were snapshotted at script start -- see the comment
+  #    there for why they cannot be evaluated here.
+  if [ "${OUT_DIR_WAS_NONEMPTY}" -eq 1 ] && [ "${STATE_FILE_PREEXISTED}" -eq 0 ]; then
+    if [ "${ALLOW_NONEMPTY_OUT}" -eq 1 ]; then
+      log "preflight: ${OUT_DIR} was non-empty at launch with no state file for sha ${FROZEN_SHA} -- proceeding because --allow-nonempty-out was passed. Artifacts from a previous run may be mistaken for this one's."
+    else
+      log "PREFLIGHT REFUSAL: ${OUT_DIR} is NOT EMPTY and there is no state file for sha ${FROZEN_SHA} (${STATE_FILE}). This is a FRESH run into a tree that already holds someone else's artifacts, and the completeness gate would report them as this run's. Move them aside (plan 26-09's archive-aside), or OVERRIDE with: --allow-nonempty-out"
+      return 1
+    fi
+  fi
+
+  # 4. FREE SPACE -- LOGGED, and refused only below the manifest's crude
+  #    absolute floor. NO ESTIMATOR (D-46). OVERRIDE: --allow-low-disk.
+  _preflight_free_space || return $?
+
+  # 5. D-02's FIRST CHECK POINT: the completeness gate, at the run's profile,
+  #    with no --stage selector. OVERRIDE: --allow-gate-precheck-failure.
+  _preflight_completeness_gate || return $?
+
+  # 6. D-38: warn, NEVER abort, when the estimated wall clock exceeds the
+  #    window the operator says they have.
+  _preflight_wall_clock_warning
+
+  log "preflight: all checks passed. Profile=${PROFILE}, workers=${SUITE_WORKERS}, serial=${SUITE_SERIAL:-0}, skip_e2=${SKIP_E2}."
+  return 0
+}
+
+_preflight_frameset() {
+  # D-17: IDENTITY, not mere presence. The signature is read FROM THE MANIFEST
+  # and never written as a literal in this script -- not even in a comment.
+  # That is exactly how the RETIRED archive's usable/validation/comparison
+  # counts survived in a code comment on this branch (FIX-06) while the
+  # verified signature said something else; both signatures now live in
+  # `suite_expectations.json`'s `preflight.frameset`, which is the only place
+  # either may be written. A presence-only check passes cleanly on the wrong
+  # archive and hands you a control that reads red for a reason nobody would
+  # guess at 3 a.m.
+  #
+  # Exit codes from the probe below: 0 present and matching, 2 absent, 3
+  # present but mismatched. Absence and mismatch are DIFFERENT refusals with
+  # DIFFERENT overrides, because they are different mistakes.
+  local probe_out probe_exit
+  probe_out="$(SUITE_E2_RELEASE_CONFIG="${E2_RELEASE_CONFIG}" "${GATE_PYTHON}" - <<'PY'
+import json
+import os
+import pathlib
+import sys
+
+manifest = json.loads(
+    pathlib.Path("experiments/suite_expectations.json").read_text(encoding="utf-8")
+)
+frameset = manifest["preflight"]["frameset"]
+cheap = frameset["cheap_check"]
+
+print(
+    "frameset signature required by the manifest: "
+    f"{frameset['usable_frames']} usable -> {frameset['validation_frames']} "
+    f"validation -> {frameset['comparisons']} comparisons "
+    f"({frameset['verified']})"
+)
+
+config_path = pathlib.Path(os.environ["SUITE_E2_RELEASE_CONFIG"])
+if not config_path.is_file():
+    print(f"ABSENT: the E2 release config does not exist at {config_path}")
+    sys.exit(2)
+
+import yaml  # noqa: E402  (only needed once the config is known to exist)
+
+config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+declared = config.get("paths", {}).get("extrinsic_videos", {}) or {}
+paths = [pathlib.Path(p) for p in declared.values()]
+present = [p for p in paths if p.is_file()]
+total_bytes = sum(p.stat().st_size for p in present)
+
+expected_n = cheap["n_extrinsic_videos"]
+min_bytes = cheap["min_total_bytes"]
+print(
+    f"observed: {len(paths)} extrinsic video path(s) declared, {len(present)} "
+    f"present, {total_bytes} total bytes"
+)
+print(f"expected: {expected_n} present, at least {min_bytes} total bytes")
+
+if not present:
+    print("ABSENT: no extrinsic video declared by the release config exists.")
+    sys.exit(2)
+
+problems = []
+if len(present) != expected_n:
+    problems.append(
+        f"expected {expected_n} extrinsic videos, found {len(present)} present "
+        f"of {len(paths)} declared"
+    )
+if total_bytes < min_bytes:
+    retired = frameset["retired_signature"]
+    problems.append(
+        f"total frameset size {total_bytes} B is below the floor {min_bytes} B "
+        f"-- this looks like the RETIRED, ~4.3x-subsampled archive "
+        f"({retired['usable_frames']} usable -> {retired['validation_frames']} "
+        f"validation -> {retired['comparisons']} comparisons), not the "
+        "verified one"
+    )
+if problems:
+    for problem in problems:
+        print(f"MISMATCH: {problem}")
+    sys.exit(3)
+
+print("MATCH: the frameset's cheap identity check agrees with the manifest.")
+sys.exit(0)
+PY
+)"
+  probe_exit=$?
+  printf '%s\n' "${probe_out}"
+
+  case "${probe_exit}" in
+    0)
+      log "preflight: E2 frameset identity check PASSED."
+      return 0
+      ;;
+    2)
+      if [ "${SKIP_E2}" -eq 1 ]; then
+        log "preflight: E2 frameset is ABSENT and the omission was DECLARED via --skip-e2. See the DECLARED REDUCTION banner; this run is SYNTHETIC-ONLY."
+        _write_declared_reduction_marker
+        return 0
+      fi
+      log "PREFLIGHT REFUSAL: the E2 frameset is ABSENT (D-14). E2's production, timing, memory and band stages cannot run, and E4 silently drops its real-rig row without E2's benchmark.json. If you meant to run without it, DECLARE it with: --skip-e2"
+      return 1
+      ;;
+    3)
+      if [ "${ALLOW_FRAMESET_MISMATCH}" -eq 1 ]; then
+        log "preflight: E2 frameset identity MISMATCH, proceeding because --allow-frameset-mismatch was passed. E2's ~1e-8 reproduction control is NOT valid against a different frameset."
+        return 0
+      fi
+      log "PREFLIGHT REFUSAL: the E2 frameset is present but its identity does NOT match the manifest (D-17). E2's ~1e-8 reproduction only means anything if the fresh run reads the SAME frames; this project has already shipped a frameset mix-up. Point SUITE_E2_RELEASE_CONFIG at the right archive, or OVERRIDE with: --allow-frameset-mismatch"
+      return 1
+      ;;
+    *)
+      log "PREFLIGHT REFUSAL: the frameset identity probe itself failed (exit=${probe_exit}) -- the check is broken, not necessarily the frameset. Read its output above. If you have verified the frameset by hand, OVERRIDE with: --allow-frameset-mismatch"
+      if [ "${ALLOW_FRAMESET_MISMATCH}" -eq 1 ]; then
+        log "preflight: proceeding anyway because --allow-frameset-mismatch was passed."
+        return 0
+      fi
+      return 1
+      ;;
+  esac
+}
+
+_write_declared_reduction_marker() {
+  # D-14: a *silent* skip must be impossible. "Loud" alone is a log line and
+  # nobody reads the log overnight, so the declaration is also a FILE that the
+  # end-of-run roll-up reprints -- and E2's artifacts still count as missing,
+  # so the run's exit code is non-zero regardless.
+  local marker
+  marker="${OUT_DIR}/$("${GATE_PYTHON}" -c "
+import json, pathlib
+print(json.loads(pathlib.Path('experiments/suite_expectations.json').read_text(encoding='utf-8'))['preflight']['declared_reduction_marker'])
+" 2>/dev/null || echo declared_reductions.json)"
+  printf '%s\n' "{\"skip_e2\": true, \"declared_at\": \"$(date -u +"${STATE_TIME_FMT}")\", \"frozen_sha\": \"${FROZEN_SHA}\", \"note\": \"--skip-e2 was passed: the E2 frameset was absent and the omission was DECLARED. This run is SYNTHETIC-ONLY. E2's artifacts are still expected by the completeness gate and their absence still makes the final exit non-zero.\"}" >"${marker}"
+  log "preflight: wrote the DECLARED REDUCTION marker to ${marker}"
+}
+
+_preflight_free_space() {
+  # LOGGED, and refused only below a CRUDE ABSOLUTE FLOOR (D-46). There is
+  # deliberately no estimate of the run's output footprint here: a wrong
+  # estimate is the malformed-check failure mode this de-scoping targets.
+  local floor_gib avail_kib avail_gib
+  floor_gib="$("${GATE_PYTHON}" -c "
+import json, pathlib
+print(json.loads(pathlib.Path('experiments/suite_expectations.json').read_text(encoding='utf-8'))['preflight']['free_space_floor_gib'])
+" 2>/dev/null)"
+  if [ -z "${floor_gib}" ]; then
+    log "preflight: WARNING -- could not read preflight.free_space_floor_gib from the manifest; skipping the free-space refusal rather than guessing."
+    return 0
+  fi
+  avail_kib="$(df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')"
+  if [ -z "${avail_kib}" ]; then
+    log "preflight: WARNING -- could not read free space via df; skipping the free-space refusal rather than guessing."
+    return 0
+  fi
+  avail_gib=$((avail_kib / 1024 / 1024))
+  log "preflight: free space on the output filesystem: ${avail_gib} GiB (crude absolute floor: ${floor_gib} GiB)."
+  if [ "${avail_gib}" -lt "${floor_gib}" ]; then
+    if [ "${ALLOW_LOW_DISK}" -eq 1 ]; then
+      log "preflight: free space ${avail_gib} GiB is below the ${floor_gib} GiB floor, proceeding because --allow-low-disk was passed."
+      return 0
+    fi
+    log "PREFLIGHT REFUSAL: free space ${avail_gib} GiB is below the manifest's crude floor of ${floor_gib} GiB. A suite that fills the disk at hour 14 loses every stage after it. Free some space, or OVERRIDE with: --allow-low-disk"
+    return 1
+  fi
+  return 0
+}
+
+_preflight_completeness_gate() {
+  # D-02's FIRST CHECK POINT. Note carefully WHAT IS BEING CHECKED: at
+  # pre-flight the output tree is empty by construction, so the completeness
+  # gate is EXPECTED to report FAILs. Those FAILs are not the signal and never
+  # abort. The signal is whether the gate RAN AT ALL -- a malformed manifest,
+  # a broken import or a missing interpreter discovered at hour 18 is exactly
+  # the class of failure pre-flight exists to convert into a two-minute one.
+  #
+  # The gate exits 1 both on "some artifacts are missing" and on an uncaught
+  # exception, so the exit code cannot distinguish them. Its terminal "TOTAL:"
+  # line can: it is printed only after every gate has produced a verdict.
+  local gate_out
+  gate_out="$("${GATE_PYTHON}" experiments/check_rerun_gates.py "${OUT_DIR}" --profile "${PROFILE}" 2>&1)"
+  printf '%s\n' "${gate_out}" | tail -n 5
+  if printf '%s\n' "${gate_out}" | grep -q '^TOTAL:'; then
+    log "preflight: the completeness gate is invokable at profile '${PROFILE}' and its manifest parses. (FAILs over the pre-run empty tree are EXPECTED and are not a refusal.)"
+    return 0
+  fi
+  if [ "${ALLOW_GATE_PRECHECK_FAILURE}" -eq 1 ]; then
+    log "preflight: the completeness gate could not be invoked, proceeding because --allow-gate-precheck-failure was passed. The end-of-run roll-up will not be able to judge this run."
+    return 0
+  fi
+  printf '%s\n' "${gate_out}"
+  log "PREFLIGHT REFUSAL: the completeness gate could not be invoked (no TOTAL line -- it crashed rather than reporting verdicts). The end-of-run roll-up is what turns a missing artifact into a non-zero exit, so a run whose gate cannot run is a run that can exit 0 while producing nothing. Fix it, or OVERRIDE with: --allow-gate-precheck-failure"
+  return 1
+}
+
+_preflight_wall_clock_warning() {
+  # D-38. A WARNING and never a refusal: an estimate that aborts a run is the
+  # malformed-check failure mode again, and this one is an estimate by
+  # construction.
+  [ -n "${REMAINING_HOURS}" ] || return 0
+  SUITE_REMAINING_HOURS="${REMAINING_HOURS}" SUITE_WORKERS_FOR_EST="${SUITE_SERIAL:-0}" "${GATE_PYTHON}" - <<'PY'
+import json
+import os
+import pathlib
+
+manifest = json.loads(
+    pathlib.Path("experiments/suite_expectations.json").read_text(encoding="utf-8")
+)
+summary = manifest["wall_clock_summary"]
+serial = os.environ.get("SUITE_WORKERS_FOR_EST", "0") not in ("", "0")
+key = "serial_total_hours" if serial else "expected_total_with_concurrency_hours"
+low, high = summary[key]
+remaining = float(os.environ["SUITE_REMAINING_HOURS"])
+mode = "serial" if serial else "pooled"
+if high > remaining:
+    print(
+        f"WARNING (D-38): the {mode} wall-clock estimate is {low}-{high} h and "
+        f"you declared {remaining} h remaining. The estimate is for the "
+        f"Windows planning box ({summary['machine']}); the run machine is "
+        f"{summary['target_machine']}. This is a WARNING and nothing is "
+        "aborted -- but the dominant stage is "
+        f"{summary['dominant_stage']} at {summary['dominant_stage_hours']} h, "
+        "which is where hours are found if they must be."
+    )
+else:
+    print(
+        f"D-38: the {mode} wall-clock estimate is {low}-{high} h, within the "
+        f"{remaining} h you declared remaining."
+    )
+PY
+  return 0
 }
 
 run_stage_prelaunch_probe() {
@@ -452,6 +995,12 @@ run_stage_e3() {
   # header. A resume always re-runs both from scratch; it must never resume
   # into the second alone, which would silently lose the tier-by-tier `--check`
   # output only the first invocation produces.
+  # `invocation` exists so the ORDER of the two invocations is observable from
+  # outside: the dry-run seam reads it, which is what lets the driver's tests
+  # assert this stage's atomicity (--check strictly before --force, both inside
+  # one start/complete window) under the CONCURRENT scheduler rather than only
+  # under the serial one. It changes neither invocation.
+  local invocation="--check"
   log "e3: --check FIRST (tier-by-tier snapshot of the pre-regeneration state)"
   if _dry_run_active; then
     _dry_run_stub
@@ -464,6 +1013,7 @@ run_stage_e3() {
       --check --baseline-dir "${BASELINE_DIR}" --out "${OUT_DIR}"
   fi
   log "e3: --check exit=$?"
+  invocation="--force"
   log "e3: --force SECOND (regenerates the committed tier CSVs/LaTeX fragments)"
   if _dry_run_active; then
     _dry_run_stub
@@ -934,8 +1484,12 @@ run_one_stage() {
     preflight|prelaunch_probe)
       if [ "${exit_code}" -ne 0 ]; then
         log "FATAL: pre-flight stage ${name} FAILed (exit=${exit_code}) -- ABORTING THE QUEUE before any production stage runs. See the output above. Do NOT resume past this point: fix the cause and restart from stage 1."
+        # D-50: a refusal that cannot be bypassed is a check that can cost a
+        # night. The specific refusal above names its own flag; this restates
+        # the full set so an operator at 3 a.m. does not have to find them.
+        log "FATAL: OVERRIDE FLAGS, one per refusal -- --skip-e2 (frameset absent, DECLARES a synthetic-only run), --allow-frameset-mismatch (frameset identity), --allow-nonempty-out (non-empty output tree with no state file for this sha), --allow-low-disk (free space below the crude floor), --allow-gate-precheck-failure (the completeness gate could not be invoked). Run with --help for the full list."
         if [ "${name}" = "prelaunch_probe" ]; then
-          log "FATAL: the seed list itself is illegal at at least one (seed, n_cameras, draw). Fix the seed lists at the top of this file -- resuming would spend hours computing something that cannot be reported."
+          log "FATAL: the seed list itself is illegal at at least one (seed, n_cameras, draw). Fix the seed lists at the top of this file -- resuming would spend hours computing something that cannot be reported. There is deliberately NO override for this one: an illegal seed makes the band unreportable, not merely suspect."
         fi
         exit "${exit_code}"
       fi
@@ -943,7 +1497,297 @@ run_one_stage() {
       ;;
   esac
 
+  # D-01, AND THIS IS THE WHOLE OF IT: the STAGE's own failure is sticky.
+  if [ "${exit_code}" -ne 0 ]; then
+    record_failure "STAGE FAILED: ${name} (stage ${idx}) exited ${exit_code}. Its artifacts are missing or partial; see ${STAGE_LOG_DIR}/${name}.log."
+  fi
+
   run_gate_check "$(_gate_dir_for_stage "${name}")" "${name}"
+  # D-01 is a change to run_gate_check's CALLER, not to run_gate_check: that
+  # function still always returns 0, so a gate FAIL can never abort the queue.
+  # The verdict is read from LAST_GATE_EXIT and carried to the FINAL exit code.
+  if [ "${LAST_GATE_EXIT}" -ne 0 ]; then
+    record_failure "GATE FAIL: ${name} (stage ${idx}) -- check_rerun_gates.py reported at least one FAIL against $(_gate_dir_for_stage "${name}") at profile '${PROFILE}'. The queue continued (D-01); the final exit code is non-zero."
+  fi
+  return 0
+}
+
+# =============================================================================
+# THE SCHEDULER (D-52).
+# =============================================================================
+
+declare -A STAGE_DEPS=()
+declare -A STAGE_CONCURRENCY=()
+declare -A STAGE_FRAME_CLASS=()
+declare -A STAGE_EST_HOURS=()
+declare -A STAGE_INDEX=()
+
+_load_stage_attributes() {
+  # Read `depends_on`, `concurrency`, `frame_class` and `est_hours` FROM THE
+  # MANIFEST. Bash cannot parse JSON reliably, so a one-shot Python call emits
+  # a TSV and this reads that. The scheduler therefore hardcodes NO stage list
+  # and NO stage name: adding a stage to the manifest is enough for the pool to
+  # honour its constraints, which is the difference between a dependency a pool
+  # can enforce and a comment it cannot.
+  local line name deps conc frame est
+  while IFS=$'\t' read -r name deps conc frame est; do
+    [ -n "${name}" ] || continue
+    STAGE_DEPS["${name}"]="${deps}"
+    STAGE_CONCURRENCY["${name}"]="${conc}"
+    STAGE_FRAME_CLASS["${name}"]="${frame}"
+    STAGE_EST_HOURS["${name}"]="${est}"
+  done < <("${GATE_PYTHON}" - <<'PY'
+import json
+import pathlib
+
+manifest = json.loads(
+    pathlib.Path("experiments/suite_expectations.json").read_text(encoding="utf-8")
+)
+for stage in manifest["stages"]:
+    est = stage["est_hours"]["value"]
+    # A range sorts on its LOW bound: shortest-first (D-37) is about surfacing
+    # a systematic failure early, and the low bound is the optimistic case that
+    # ordering is trying to exploit.
+    low = est[0] if isinstance(est, list) else est
+    print(
+        "\t".join(
+            [
+                stage["id"],
+                ",".join(stage["depends_on"]),
+                stage["concurrency"],
+                str(stage["frame_class"]),
+                f"{float(low):012.5f}",
+            ]
+        )
+    )
+PY
+  )
+
+  local i=1
+  for name in "${STAGES[@]}"; do
+    STAGE_INDEX["${name}"]="${i}"
+    i=$((i + 1))
+    if [ -z "${STAGE_CONCURRENCY[${name}]:-}" ]; then
+      log "FATAL: stage '${name}' has no entry in experiments/suite_expectations.json, so the scheduler cannot know whether it may run concurrently. Add it there."
+      exit 1
+    fi
+  done
+}
+
+_stage_worker() {
+  # One concurrent stage, in its own process.
+  #
+  # `tee` writes the per-stage log AND keeps the console stream, so the
+  # detached run's single log still holds everything; the per-stage file is
+  # what makes four interleaved stages readable afterwards. PIPESTATUS[0] is
+  # mandatory: `tee` eats the real exit code, and losing it here would lose the
+  # stage failure that D-01 exists to carry to the final exit.
+  local name="$1" idx="$2" done_file="$3" stage_log="$4"
+  run_one_stage "${name}" "${idx}" 2>&1 | tee -a "${stage_log}"
+  local exit_code="${PIPESTATUS[0]}"
+  # The sentinel is written LAST and is how the parent detects completion. A
+  # sentinel file rather than `wait -n`: `wait -n -p` needs bash >= 5.1, and
+  # this driver must behave identically on the Git Bash planning box and the
+  # Linux run machine (D-35).
+  printf '%s\n' "${exit_code}" >"${done_file}"
+  return "${exit_code}"
+}
+
+_run_serial() {
+  # The fully serial path -- `SUITE_SERIAL=1`, and the escape hatch if the pool
+  # is ever suspected of touching a result. Identical semantics to every
+  # historical driver.
+  local name
+  for name in "$@"; do
+    run_one_stage "${name}" "${STAGE_INDEX[${name}]}"
+  done
+}
+
+_run_pool() {
+  # D-52's pool. Admission is decided ENTIRELY from the manifest's per-stage
+  # attributes:
+  #
+  #   * every `depends_on` must be done -- this is what keeps `e6_band` from
+  #     ever overlapping `e6_repeat1`, whose `rm -rf` under the shared OUT_DIR
+  #     would delete the band's own tree out from under it;
+  #   * a `serial_alone` stage runs with nothing else in flight, and nothing
+  #     starts while it runs (timing integrity: e4, e4_repeat, e2_timing,
+  #     e2_memory);
+  #   * at most one `frame_class == 200` stage in flight (9.3-11.3 GiB each);
+  #   * at most SUITE_WORKERS in flight;
+  #   * ties broken SHORTEST-FIRST within the ready set (D-37).
+  local -a pending=("$@")
+  local -A status=()
+  local -A pid_of=()
+  local -A done_file_of=()
+  local name dep ready_ok launched running_count serial_running frame200_running
+
+  for name in "${STAGES[@]}"; do
+    status["${name}"]="done"
+  done
+  for name in "${pending[@]}"; do
+    status["${name}"]="pending"
+  done
+
+  while true; do
+    # --- reap ---------------------------------------------------------------
+    for name in "${pending[@]}"; do
+      if [ "${status[${name}]}" = "running" ] && [ -f "${done_file_of[${name}]}" ]; then
+        wait "${pid_of[${name}]}" 2>/dev/null
+        status["${name}"]="done"
+        log "<<< POOL: ${name} finished (exit=$(cat "${done_file_of[${name}]}" 2>/dev/null || echo '?'))"
+      fi
+    done
+
+    # --- census -------------------------------------------------------------
+    running_count=0
+    serial_running=0
+    frame200_running=0
+    for name in "${pending[@]}"; do
+      if [ "${status[${name}]}" = "running" ]; then
+        running_count=$((running_count + 1))
+        [ "${STAGE_CONCURRENCY[${name}]}" = "serial_alone" ] && serial_running=1
+        [ "${STAGE_FRAME_CLASS[${name}]}" = "200" ] && frame200_running=1
+      fi
+    done
+
+    # --- done? --------------------------------------------------------------
+    local remaining=0
+    for name in "${pending[@]}"; do
+      [ "${status[${name}]}" != "done" ] && remaining=$((remaining + 1))
+    done
+    if [ "${remaining}" -eq 0 ]; then
+      break
+    fi
+
+    # --- launch -------------------------------------------------------------
+    launched=0
+    if [ "${serial_running}" -eq 0 ]; then
+      # `pending` is already in the driver's shortest-first topological order,
+      # so a single forward scan IS the shortest-first ready set.
+      for name in "${pending[@]}"; do
+        [ "${status[${name}]}" = "pending" ] || continue
+        [ "${running_count}" -lt "${SUITE_WORKERS}" ] || break
+
+        ready_ok=1
+        for dep in ${STAGE_DEPS[${name}]//,/ }; do
+          if [ -n "${status[${dep}]:-}" ] && [ "${status[${dep}]}" != "done" ]; then
+            ready_ok=0
+            break
+          fi
+        done
+        [ "${ready_ok}" -eq 1 ] || continue
+
+        if [ "${STAGE_CONCURRENCY[${name}]}" = "serial_alone" ]; then
+          # Runs alone AND blocks every later launch until it is done.
+          [ "${running_count}" -eq 0 ] || continue
+        fi
+        if [ "${STAGE_FRAME_CLASS[${name}]}" = "200" ] && [ "${frame200_running}" -eq 1 ]; then
+          continue
+        fi
+
+        done_file_of["${name}"]="${STAGE_DONE_DIR}/${name}.done"
+        rm -f "${done_file_of[${name}]}"
+        log ">>> POOL: launching ${name} (concurrency=${STAGE_CONCURRENCY[${name}]}, frame_class=${STAGE_FRAME_CLASS[${name}]}, est=${STAGE_EST_HOURS[${name}]} h, in flight $((running_count + 1))/${SUITE_WORKERS})"
+        _stage_worker "${name}" "${STAGE_INDEX[${name}]}" "${done_file_of[${name}]}" "${STAGE_LOG_DIR}/${name}.log" &
+        pid_of["${name}"]=$!
+        status["${name}"]="running"
+        running_count=$((running_count + 1))
+        launched=1
+        [ "${STAGE_CONCURRENCY[${name}]}" = "serial_alone" ] && break
+        [ "${STAGE_FRAME_CLASS[${name}]}" = "200" ] && frame200_running=1
+      done
+    fi
+
+    if [ "${launched}" -eq 0 ] && [ "${running_count}" -eq 0 ]; then
+      log "FATAL: the scheduler is deadlocked -- stages remain but none is runnable. This means a depends_on cycle in experiments/suite_expectations.json."
+      record_failure "SCHEDULER DEADLOCK: stages remain but none is runnable; suspect a depends_on cycle in the manifest."
+      break
+    fi
+    [ "${launched}" -eq 0 ] && sleep 0.1
+  done
+}
+
+_run_rollup() {
+  # D-02's THIRD CHECK POINT, and the one whose ABSENCE produced F-001: a run
+  # that exited 0 and looked green while a band CSV was never produced at all.
+  # It runs over the WHOLE tree with no --stage selector, so it judges what is
+  # MISSING rather than what it happens to find.
+  #
+  # This is deliberately NOT Gate 3's job. `_check_git_sha_consistency`
+  # (`check_rerun_gates.py:1749-1754`) returns PASS over an EMPTY tree -- "no
+  # git_sha values found across any artifact to compare" is a PASS -- so a
+  # cross-artifact consistency gate succeeds precisely when there is nothing to
+  # be consistent about. Do NOT weaken Gate 3 to cover this class; the roll-up
+  # is the right owner.
+  echo "============================================================"
+  echo "END-OF-RUN COMPLETENESS ROLL-UP (D-02, profile=${PROFILE})"
+  echo "============================================================"
+  if _dry_run_active; then
+    local stage_name="rollup"
+    log "rollup: DRY RUN"
+    _dry_run_stub
+    local stub_exit=$?
+    if [ "${stub_exit}" -ne 0 ]; then
+      record_failure "ROLL-UP FAIL (dry run stub): the end-of-run roll-up reported a failure."
+    fi
+    return 0
+  fi
+  "${GATE_PYTHON}" experiments/check_rerun_gates.py "${OUT_DIR}" --profile "${PROFILE}"
+  local rollup_exit=$?
+  echo "============================================================"
+  if [ "${rollup_exit}" -ne 0 ]; then
+    record_failure "ROLL-UP FAIL: the end-of-run completeness roll-up over ${OUT_DIR} at profile '${PROFILE}' reported at least one FAIL. Read the verdict block above: every 'NOT FOUND' line names an artifact this run was expected to produce and did not."
+  fi
+  return 0
+}
+
+_announce_declared_reductions() {
+  # D-14. Printed at LAUNCH and again in the terminal summary, because "loud"
+  # alone is a log line and nobody reads the log overnight. A silent skip must
+  # be impossible.
+  [ "${SKIP_E2}" -eq 1 ] || return 0
+  echo "############################################################"
+  echo "# DECLARED REDUCTION: --skip-e2"
+  echo "#   The E2 frameset is declared ABSENT. This run is"
+  echo "#   SYNTHETIC-ONLY: E2's production, timing, memory and band"
+  echo "#   stages cannot produce their artifacts, and E4 silently"
+  echo "#   drops its real-rig row without E2's benchmark.json."
+  echo "#   The completeness gate still expects those artifacts, so"
+  echo "#   this run's final exit code will be NON-ZERO by design."
+  echo "############################################################"
+}
+
+_print_terminal_summary() {
+  # D-01's LOUD SUMMARY. Every missing or short artifact, every failed stage,
+  # every gate FAIL, in one block at the end -- the thing an operator reads
+  # first at 7 a.m.
+  _announce_declared_reductions
+  if [ -s "${SUITE_FAILURE_LOG}" ]; then
+    SUITE_FAILED=1
+    echo "############################################################"
+    echo "# SUITE FAILED. $(wc -l <"${SUITE_FAILURE_LOG}" | tr -d ' ') finding(s):"
+    echo "############################################################"
+    local line
+    while IFS= read -r line; do
+      echo "#   ${line}"
+    done <"${SUITE_FAILURE_LOG}"
+    echo "############################################################"
+    echo "# The queue ran to completion regardless (D-01): every stage's"
+    echo "# measurements are still wanted. The non-zero exit code is what"
+    echo "# makes this impossible to mistake for a green run -- F-001 was"
+    echo "# a run that EXITED 0 while a band CSV was never produced."
+    echo "# Full record: ${STATE_FILE}"
+    echo "# Findings:    ${SUITE_FAILURE_LOG}"
+    echo "# Stage logs:  ${STAGE_LOG_DIR}/"
+    echo "############################################################"
+  else
+    echo "############################################################"
+    echo "# SUITE COMPLETE. No stage failure, no gate FAIL, and the"
+    echo "# end-of-run roll-up found every expected artifact at"
+    echo "# profile '${PROFILE}'."
+    echo "############################################################"
+  fi
 }
 
 main() {
@@ -951,14 +1795,39 @@ main() {
   log "Stage order (D-37, shortest-first subject to depends_on): ${STAGES[*]}"
   log "State file: ${STATE_FILE}"
   log "Resuming from stage index ${START_STAGE} (stages already marked complete are skipped regardless)."
+  log "Profile: ${PROFILE}. Concurrency: $([ -n "${SUITE_SERIAL:-}" ] && echo "SERIAL (SUITE_SERIAL is set)" || echo "pooled, ${SUITE_WORKERS} wide (D-52)")."
+  _announce_declared_reductions
 
-  local idx=1
-  for stage in "${STAGES[@]}"; do
-    run_one_stage "${stage}" "${idx}"
-    idx=$((idx + 1))
+  mkdir -p "${STAGE_LOG_DIR}" "${STAGE_DONE_DIR}"
+  rm -f "${STAGE_DONE_DIR}"/*.done
+  : >"${SUITE_FAILURE_LOG}"
+
+  _load_stage_attributes
+
+  # THE TWO PRE-FLIGHT STAGES RUN IN THE PARENT, SERIALLY, AND BEFORE THE POOL
+  # EXISTS. They are the only stages permitted to abort (D-03), and an `exit`
+  # from a pooled child would abort the child and leave the parent scheduling
+  # happily on. Everything else depends on them transitively anyway.
+  local name idx
+  local -a queued=()
+  for name in "${STAGES[@]}"; do
+    case "${name}" in
+      preflight|prelaunch_probe) run_one_stage "${name}" "${STAGE_INDEX[${name}]}" ;;
+      *) queued+=("${name}") ;;
+    esac
   done
 
+  if [ -n "${SUITE_SERIAL:-}" ]; then
+    _run_serial "${queued[@]}"
+  else
+    _run_pool "${queued[@]}"
+  fi
+
+  _run_rollup
+  _print_terminal_summary
+
   log "Suite driver finished all ${#STAGES[@]} stages. See ${STATE_FILE} for the full stage-completion record."
+  exit "${SUITE_FAILED}"
 }
 
 main "$@"
