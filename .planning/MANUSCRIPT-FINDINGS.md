@@ -2307,3 +2307,67 @@ By design (D-19; `25-RESEARCH.md` § What is explicitly NOT testable, item 1). T
 measurement to schedule, no artifact to produce and no criterion to write — the convergence
 question was already answered and must not be re-derived. The evidence for this entry is that it
 exists and cites the two probes.
+
+---
+
+## MF-22 — E1's accuracy ratio is a function of detection noise, so the claim needs a stated domain (BAND-01)
+
+**Status:** **PROVISIONAL on every magnitude; the direction is settled.** The band of record is
+Phase 28's, verified in Phase 29 — **no number in this entry may be published**
+**Found:** 2026-08-18, Phase 25 plan 25-08's two-seed noise probe
+**Source of truth:** `.planning/probes/2026-08-18-e1-noise-axis/FINDINGS.md` and its
+`exp1_band.csv` (128 rows), produced at sha `211214c`
+**Affects:** any sentence quoting E1's refractive-vs-non-refractive ratio, including the
+abstract's headline number
+
+### The finding
+
+E1's headline ratio was measured at **one** detection-noise level — the `realistic` scenario's
+default of **0.5 px**. It is not a constant of the method. Across `{0.25, 0.5, 0.82, 1.2}` px the
+mean ratio moves by a factor of ~5.5:
+
+| `noise_std` (px) | non-refractive `z_rmse_mm` | refractive `z_rmse_mm` | ratio |
+|---|---|---|---|
+| 0.25 | 76.35 | 1.02 | 74.6× |
+| 0.50 | 77.36 | 2.05 | 37.7× |
+| 0.82 | 76.76 | 3.54 | 21.7× |
+| 1.20 | 78.06 | 5.77 | 13.5× |
+
+The mechanism is asymmetric and favourable to the method: **the non-refractive baseline is flat in
+noise** (76.3 → 78.1 mm, ~2% — its error is model misspecification, which swamps detection noise),
+while **the refractive arm scales nearly linearly** with it (1.02 → 5.77 mm). The ratio therefore
+falls roughly as 1/noise. A correctly-specified model *should* be noise-limited; a misspecified one
+*should* be bias-limited. That is exactly what is observed.
+
+### What this means for the manuscript
+
+**A ratio quoted without its noise level is not a well-defined quantity.** The stated domain
+(D-14) now sits in `e1_refractive_comparison.py`'s module header and in the band provenance
+`scope` string: the `realistic` scenario's single 12-camera synthetic geometry, ten seeds, eight
+test depths, detection noise 0.25–1.2 px. Any §3 or abstract sentence quoting the ratio must carry
+the noise level it was measured at.
+
+### What is NOT licensed by this entry
+
+- **No magnitude above is publishable.** Two seeds cannot separate a noise effect from seed
+  variance, and the two disagree by ~50% at the extreme (93.4× vs 60.5× at 0.25 px).
+- **No comparison to the published 97–178× band may be drawn from this table.** Three things
+  differ at once: statistic (mean-of-means here, not the published band's construction), seed
+  count (2 vs 10), and library version (see below). The 97–178× band is not restated, revised or
+  challenged by this entry.
+- Phase 28's four-level ten-seed run at the frozen sha, verified in Phase 29, is the **sole**
+  source for anything that ships.
+
+### A correction that travels with this entry
+
+**D-13's `normal_fixed` isolator cannot be evaluated against the committed band.** D-13 records
+that the 0.5 px row should reproduce the committed band, isolating the noise axis from FIX-02's
+freed normal. It does not, and the confound is version, not noise: the committed band's provenance
+is `git_sha = 3eb1f4a`, **2026-08-13**, which `git merge-base --is-ancestor` confirms **predates
+FIX-01 (`fb33db4`) and FIX-02 (`57ac430`), both 2026-08-17**. At 0.5 px the non-refractive arm
+differs by up to 13.22 mm (158%) while the refractive arm differs by at most 0.39 mm (21%) — a 34×
+asymmetry concentrated in precisely the arm those two fixes targeted. If the isolation is still
+wanted, both arms must be produced at the same sha.
+
+The noise-axis findings above are unaffected: they are measured within a single probe — same
+library, same seeds, same geometry — and are internally controlled.
