@@ -6,15 +6,20 @@ All tests are fast: no calibration, no download, and none are marked slow.
 
 from __future__ import annotations
 
+import argparse
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from experiments._io import (
+    add_baseline_dir_argument,
     build_experiment_arg_parser,
     compare_experiment_csv,
+    compare_experiment_csv_if_present,
     exit_code_for,
+    resolve_baseline_dir,
     validate_args,
     write_direct_call_benchmark,
     write_experiment_csv,
@@ -772,3 +777,118 @@ class TestCommittedRecordUntouchedBySeed:
             pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
         record = json.loads(baseline.read_text())
         assert "seed" not in record["solver_config"]
+
+
+class TestBaselineDir:
+    """Phase 26 / DRIVER-03 (D-12, ruling A4): `--check` must be able to read its
+    baselines from the archive DRIVER-04 moved them into, and a baseline that is
+    absent by policy must report N/A rather than raise.
+    """
+
+    def test_shared_parser_still_exposes_exactly_five_flags(self):
+        """`--baseline-dir` is SCRIPT-LOCAL: the shared five-flag contract (D-21)
+        must not have widened to serve the two scripts that need it.
+        """
+        parser = build_experiment_arg_parser()
+        options = sorted(o for a in parser._actions for o in a.option_strings)
+        assert options == ["--check", "--force", "--out", "--seed", "--smoke"]
+        assert not hasattr(parser.parse_args([]), "baseline_dir")
+
+    def test_add_baseline_dir_argument_adds_one_optional_path_flag(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        returned = add_baseline_dir_argument(parser)
+        assert returned is parser
+
+        args = parser.parse_args([])
+        assert args.baseline_dir is None
+
+        args = parser.parse_args(["--baseline-dir", "experiments/pre_rerun_baseline"])
+        assert isinstance(args.baseline_dir, Path)
+        assert str(args.baseline_dir).replace("\\", "/") == (
+            "experiments/pre_rerun_baseline"
+        )
+
+    def test_add_baseline_dir_argument_rejects_a_duplicate_flag(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        add_baseline_dir_argument(parser)
+        with pytest.raises(argparse.ArgumentError):
+            add_baseline_dir_argument(parser)
+
+    def test_resolve_baseline_dir_falls_back_to_out_dir(self, tmp_path):
+        assert resolve_baseline_dir(None, tmp_path) == Path(tmp_path)
+
+    def test_resolve_baseline_dir_prefers_the_explicit_directory(self, tmp_path):
+        archive = tmp_path / "pre_rerun_baseline" / "results"
+        assert resolve_baseline_dir(archive, tmp_path) == Path(archive)
+
+    def test_resolve_baseline_dir_never_creates_anything(self, tmp_path):
+        archive = tmp_path / "does_not_exist"
+        resolve_baseline_dir(archive, tmp_path)
+        assert not archive.exists()
+
+    def test_if_present_returns_none_for_a_missing_baseline(self, tmp_path):
+        """Ruling A4: E2's reprojection_residuals.csv / reconstruction_errors.csv
+        are gitignored by DATA-01b policy, so neither experiments/results/ nor the
+        archive holds them. N/A beats a FileNotFoundError raised after a 50-87
+        minute calibration.
+        """
+        missing = tmp_path / "reprojection_residuals.csv"
+        report = compare_experiment_csv_if_present(
+            _exp1_frame(),
+            missing,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+        )
+        assert report is None
+
+    def test_if_present_matches_compare_when_the_baseline_exists(self, tmp_path):
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+        fresh = committed.copy()
+
+        direct = compare_experiment_csv(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        guarded = compare_experiment_csv_if_present(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        assert guarded == direct
+        assert guarded is not None
+        assert guarded.passed
+
+    def test_if_present_forwards_exclude_columns(self, tmp_path):
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+        fresh = committed.copy()
+        fresh.loc[0, "reprojection_rms_px"] = 999.0
+
+        unguarded = compare_experiment_csv_if_present(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        assert unguarded is not None and not unguarded.passed
+
+        excluded = compare_experiment_csv_if_present(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("reprojection_rms_px",),
+        )
+        assert excluded is not None and excluded.passed
+
+    def test_compare_experiment_csv_itself_still_raises_on_a_missing_baseline(
+        self, tmp_path
+    ):
+        """The totality contract at `_io.py:348-357` deliberately propagates I/O
+        errors (D-13). Ruling A4 puts the guard in the CALLER; this test exists so
+        a future "helpful" fix inside `compare_experiment_csv` fails loudly.
+        """
+        with pytest.raises(FileNotFoundError):
+            compare_experiment_csv(
+                _exp1_frame(),
+                tmp_path / "absent.csv",
+                key_columns=EXP1_KEY_COLUMNS,
+                rtol=CHECK_RTOL,
+            )
