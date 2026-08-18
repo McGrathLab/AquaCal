@@ -1002,7 +1002,21 @@ is about this repository and is anchored to a path and line.
 
 ---
 
-## Open Questions
+## Open Questions (ALL RESOLVED 2026-08-18)
+
+> **Resolution summary.** All five were put to the author during planning and answered. The
+> rulings are recorded as A1–A5 in the plan-phase directive and implemented across the plans:
+>
+> | Q | Resolution | Where implemented |
+> |---|---|---|
+> | 1 — D-41 ragged E1 grid | **DESCOPED** to a uniform 4 levels x 4 seeds = **256/384** grid; no E1 source change. No gate may assert 640, 960, 352 or 528 (A1). | `26-03-PLAN.md` (`TestForbiddenLiterals`) |
+> | 2 — D-40 / D-15 / D-16 | **Both planned as normal work**, not behind a checkpoint. D-40 buys ~1.9 h for zero ledger cost; D-15/D-16 defends E2's timing number from 2.7-5.5% contamination at 48-87 min/run to redo (A2). | `26-05-PLAN.md` (E6 `--axes`), `26-06-PLAN.md` (E2 config split) |
+> | 3 — fate of `rerun_19_4.sh` / `rerun_19_5.sh` | **Union-and-lift from 19.5, then archive both** after the lift is verified (A3). | `26-07-PLAN.md` (lift), `26-09-PLAN.md` Task 3 (archive) |
+> | 4 — E2 baselines for `--baseline-dir` | Missing baseline reports **N/A rather than raising**, guarded in the **caller**, never inside `compare_experiment_csv` (A4). | `26-04-PLAN.md` (`compare_experiment_csv_if_present`) |
+> | 5 — how `smoke` asserts anything | Distinct out-dir `experiments/results_smoke` plus a per-artifact `profiles: [...]` field; E1/E2 are **not** changed to write on smoke (A5). | `26-03-PLAN.md`, `26-10-PLAN.md` |
+>
+> The original questions are preserved below as written, for the record.
+
 
 1. **How is D-41's ragged E1 noise grid actually produced?** (SP-3)
    - What we know: 352/528 is unreachable with today's code; three implementation options, one of

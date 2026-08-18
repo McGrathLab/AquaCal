@@ -59,8 +59,15 @@ Task IDs are assigned by the planner. Requirement-level map (authoritative until
 | DRIVER-03 | `degenerate_observations.csv` absence is PASS (conditional artifact) | unit | same file | ❌ W0 | ⬜ pending |
 | DRIVER-03 | `--baseline-dir` reads baselines from archive while writing to `--out`; missing baseline → N/A, not raise | unit | `pytest tests/unit/test_experiments_io.py -k baseline -x` | ⚠ extend | ⬜ pending |
 | DRIVER-04 | The four archive-aside breakages stay green after the move | unit | `pytest tests/unit/test_experiments_provenance.py tests/unit/test_experiments_e5.py tests/unit/test_experiments_io.py -x` | ⚠ **existing, will break** | ⬜ pending |
-| D-07 | Experiment column constants agree with the expectation manifest | unit | `pytest tests/unit/test_expectations.py -k columns -x` | ❌ W0 | ⬜ pending |
-| D-08 | Rendered prose expectation sheet is up to date with the manifest | unit | `pytest tests/unit/test_expectations.py -k sheet -x` | ❌ W0 | ⬜ pending |
+| D-07 ⚠ | Experiment column constants agree with the expectation manifest | unit | `pytest tests/unit/test_expectations.py -k columns -x` | ❌ W0 | ⬜ pending |
+| D-08 ⚠ | Rendered prose expectation sheet is up to date with the manifest | unit | `pytest tests/unit/test_expectations.py -k sheet -x` | ❌ W0 | ⬜ pending |
+
+> ⚠ **D-07/D-08 conflict, resolved in favour of keeping both.** CONTEXT.md's amendment § D
+> (D-43/D-44) cut the expectation-sheet renderer and its freshness test. This contract and the
+> planning directive both require them. They are **planned and retained** — see
+> `26-09-PLAN.md` § `<decisions_implemented>`, which carries the conflict and a one-paragraph
+> rollback should the author prefer D-44. D-43's column-coupling test lives in `26-03-PLAN.md`.
+> If the rollback is taken, strike these two rows.
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -104,4 +111,4 @@ manifest unless one reads the other.
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** pending — flip `nyquist_compliant` and `wave_0_complete` to `true` once the Wave 0 test files (26-02, 26-03, 26-07, 26-08) have landed and are green.
