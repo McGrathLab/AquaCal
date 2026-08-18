@@ -149,6 +149,35 @@ CHECK_RTOL = 1e-6
 # (verified against its stored output, 19.1-RESEARCH.md's cell-by-cell trace).
 SCENARIO_NAME = "realistic"
 TEST_DEPTHS = [1.10, 1.20, 1.30, 1.40, 1.50, 1.70, 2.00, 2.50]
+
+# BAND-01/D-11: the detection-noise axis the seed band sweeps, in pixels. Band
+# mode ONLY (D-12) -- `_run_smoke`, `_run_check` and the single-seed run keep
+# today's behaviour at the scenario preset's own default.
+#
+# 0.5 px IS the preset default and therefore the level that reproduces the
+# committed 160/240-row baseline and E1's `--check` bar. It MUST stay in this
+# list: drop it and the band no longer contains the rows the reproduction gate
+# compares against, and the clean `normal_fixed` isolator (D-13) disappears
+# with it. 0.82 px is the PRODUCTION RIG's measured detection noise and is the
+# level that makes the claim transferable; nothing justified 0.5 px physically.
+# 0.25 px brackets a well-behaved detector and 1.2 px a deliberately
+# pessimistic one -- the P1 probe ran 0.5/0.82/1.2 px on seed 42 and the top
+# level neither destabilized the solve nor produced a degenerate observation,
+# so the set is kept as locked.
+#
+# The `n_cameras` GEOMETRY AXIS (`n_cameras in {8, 12, 16}`, considered
+# alongside this one) IS EXPLICITLY SKIPPED, NOT FORGOTTEN -- the 2026-08-15
+# decision in
+# `.planning/todos/pending/2026-08-14-decide-whether-e1-may-carry-absolute-accuracy-claims.md`
+# skips it deliberately. E1's `SCENARIO_NAME = "realistic"` resolves to
+# `generate_real_rig_array()`, whose 12-camera layout IS the manuscript's
+# synthetic rig; varying the camera count would move the geometry the claim is
+# quoted over rather than widen its domain. The stated domain in this module's
+# docstring is therefore written over ONE geometry and a RANGE of noise, which
+# is what the accuracy claim actually needs (D-14). A reader looking for the
+# geometry axis should meet this note, not an unexplained omission.
+NOISE_LEVELS = [0.25, 0.5, 0.82, 1.2]
+
 N_GRID = 7
 XY_EXTENT = 0.5
 XY_CENTER = (-0.34, 0.55)
@@ -247,13 +276,34 @@ SPATIAL_KEY_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m"]
 # D-19.4-14: the band CSV carries every seed's rows, so `seed` joins the key
 # columns -- (test_depth_m, model) alone is no longer unique once multiple
 # seeds are concatenated (mirrors E7's BAND_KEY_COLUMNS convention).
-BAND_KEY_COLUMNS = ["seed", "test_depth_m", "model"]
+#
+# BAND-01: `noise_std` joins them for exactly the same reason. The band now
+# sweeps NOISE_LEVELS inside each seed, so (seed, test_depth_m, model) names
+# FOUR rows, not one. `write_experiment_csv` validates only that the key
+# columns EXIST -- it sorts by them and never checks uniqueness -- so omitting
+# `noise_std` here does not fail loudly: it writes a 640-row file in which
+# every key appears four times, and `compare_experiment_csv` is then reporting
+# on rows it cannot align.
+BAND_KEY_COLUMNS = ["seed", "noise_std", "test_depth_m", "model"]
 # A SECOND band key shape, not an extension of BAND_KEY_COLUMNS. EXP1's rows
 # are keyed by (camera, model) and have NO depth axis at all, so its columns
 # cannot be merged into exp1_band.csv without reindexing them onto a depth
 # they do not vary over -- that would fabricate a depth dependence the
 # parameter errors do not have. Hence a separate `exp1_parameter_band.csv`.
-PARAMETER_BAND_KEY_COLUMNS = ["seed", "camera", "model"]
+#
+# BAND-01, and a DOCUMENTED DEPARTURE from D-12's literal text, which says
+# "only exp1_band.csv gains the column". D-12's rationale is protecting the
+# three FIXED-CONTRACT CSVs (exp1_parameter_errors.csv,
+# exp2_depth_generalization.csv, exp3_xy_vs_z_anisotropy.csv) that the
+# external figures repository reads byte-for-byte -- and those are untouched.
+# `exp1_parameter_band.csv` is not one of them: it is a band artifact from the
+# same D-19.4-14 precedent, written unconditionally from the same accumulator
+# as exp1_band.csv, so the noise axis lands in it whether or not the key list
+# admits it. Leaving it out is strictly worse here than on exp1_band.csv,
+# because this file has NO depth column to disambiguate the four rows with --
+# 960 rows collapse onto 240 distinct keys. The column therefore goes in both
+# lists; the tension is settled here rather than rediscovered.
+PARAMETER_BAND_KEY_COLUMNS = ["seed", "noise_std", "camera", "model"]
 
 # Pinned column order -- byte-identical to the committed baselines (D-19).
 EXP1_COLUMNS = [
@@ -956,8 +1006,18 @@ def _run_check(args: argparse.Namespace) -> int:
 
 
 def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
-    """`--seeds`: run E1's depth-generalization path once per seed, emit the
-    band CSV and per-model provenance (D-19.4-14, SC-5a, D-260807-dcv).
+    """`--seeds`: run E1's depth-generalization path once per seed and per
+    noise level, emit the band CSV and per-model provenance (D-19.4-14, SC-5a,
+    D-260807-dcv, BAND-01).
+
+    BAND-01/D-11/D-12: each seed is run once per level of `NOISE_LEVELS`, with
+    `scenario.noise_std` overridden before the solve, and every emitted row is
+    stamped with the effective level in a `noise_std` column. The axis is band
+    mode's ALONE -- `_run_smoke`, `_run_check` and the single-seed run are
+    untouched -- and it collapses to one level under `--smoke`. At production
+    scale this takes `exp1_band.csv` from 160 to 640 rows (10 seeds x 4 levels
+    x 8 depths x 2 models) and `exp1_parameter_band.csv` from 240 to 960 (10
+    seeds x 4 levels x 12 cameras x 2 models).
 
     Writes `exp1_band.csv` (force implied -- see the module docstring's
     "--seeds band mode" section), now carrying `BAND_MERGED_COLUMNS` --
@@ -985,6 +1045,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     """
     scenario_name = "ideal" if smoke else SCENARIO_NAME
     depths = [1.30] if smoke else None
+    # BAND-01: the noise axis collapses under --smoke exactly as the depth
+    # sweep does on the line above. `None` means "leave scenario.noise_std at
+    # the preset default", which is the pre-BAND-01 behaviour. Without this
+    # collapse every smoke-scale band test (and there are eight of them in
+    # tests/unit/test_e1_band_mode.py) would run FOUR times the solves.
+    noise_levels = [None] if smoke else NOISE_LEVELS
 
     # Captured ONCE before the seed loop -- capture_environment() shells out to
     # `git rev-parse` per call, and a per-cell call is what split an artifact's
@@ -1011,35 +1077,63 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         nonlocal last_discard_stats_by_model, last_scenario
         nonlocal last_water_z_pin_by_model
 
-        scenario = create_scenario(scenario_name, seed=seed)
-        results: dict = {}
-        timings_by_model: dict = {}
-        diagnostics_by_model: dict = {}
-        discard_stats_by_model: dict = {}
-        water_z_pin_by_model: dict = {}
-        for label, n_water in MODELS:
-            result, detections, timings, diagnostics, discard_stats, water_z_pin = (
-                _run_one_model(scenario, n_water, seed)
+        # BAND-01/D-11: the noise loop is nested INSIDE the runner, wrapping
+        # the two-model loop -- not outside around `run_seed_band`. Outside,
+        # the `last_*` accumulators and the benchmark payload ("taken from the
+        # LAST seed") would be ambiguous across four calls of the whole band.
+        noise_frames: list[pd.DataFrame] = []
+        for noise in noise_levels:
+            scenario = create_scenario(scenario_name, seed=seed)
+            # D-11: override the scenario's own noise level rather than
+            # changing `create_scenario`'s signature (a public-API change two
+            # phases before a freeze is what forced v2.0.0 last time). This
+            # ONE line is the whole of the axis: `_run_one_model` generates
+            # the calibration detections from `scenario.noise_std`, and
+            # `_build_dataframes` generates the evaluation set's detections
+            # from the same attribute -- so calibration noise and evaluation
+            # noise track together for free, which is what a rig-level claim
+            # needs.
+            if noise is not None:
+                scenario.noise_std = noise
+            # Never null: when `noise is None` (smoke) the effective level is
+            # whatever the preset chose.
+            effective_noise = float(scenario.noise_std)
+
+            results: dict = {}
+            timings_by_model: dict = {}
+            diagnostics_by_model: dict = {}
+            discard_stats_by_model: dict = {}
+            water_z_pin_by_model: dict = {}
+            for label, n_water in MODELS:
+                result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+                    _run_one_model(scenario, n_water, seed)
+                )
+                results[label] = (result, detections)
+                timings_by_model[label] = timings
+                diagnostics_by_model[label] = diagnostics
+                discard_stats_by_model[label] = discard_stats
+                water_z_pin_by_model[label] = water_z_pin
+
+            df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
+                scenario, results, seed, test_depths=depths
             )
-            results[label] = (result, detections)
-            timings_by_model[label] = timings
-            diagnostics_by_model[label] = diagnostics
-            discard_stats_by_model[label] = discard_stats
-            water_z_pin_by_model[label] = water_z_pin
+            # Stamped here, mirroring the existing `.assign(seed=seed)` idiom.
+            # `run_seed_band` deliberately does NOT learn about noise: its
+            # "call runner once per seed, stamp `seed`, concatenate" contract
+            # is shared with E7.
+            exp1_frames.append(df_exp1.assign(seed=seed, noise_std=effective_noise))
+            noise_frames.append(
+                merge_band_columns(df_exp2, df_exp3).assign(noise_std=effective_noise)
+            )
 
-        df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
-            scenario, results, seed, test_depths=depths
-        )
-        exp1_frames.append(df_exp1.assign(seed=seed))
+            last_results = results
+            last_timings_by_model = timings_by_model
+            last_diagnostics_by_model = diagnostics_by_model
+            last_discard_stats_by_model = discard_stats_by_model
+            last_water_z_pin_by_model = water_z_pin_by_model
+            last_scenario = scenario
 
-        last_results = results
-        last_timings_by_model = timings_by_model
-        last_diagnostics_by_model = diagnostics_by_model
-        last_discard_stats_by_model = discard_stats_by_model
-        last_water_z_pin_by_model = water_z_pin_by_model
-        last_scenario = scenario
-
-        return merge_band_columns(df_exp2, df_exp3)
+        return pd.concat(noise_frames, ignore_index=True)
 
     band_df = run_seed_band(_runner, seeds)
     elapsed_seconds = time.monotonic() - start
@@ -1052,13 +1146,14 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         force=True,
     )
 
-    # The parameter-level band. `seed` leads, then all of EXP1_COLUMNS --
+    # The parameter-level band. `seed` and `noise_std` lead (BAND-01: both are
+    # key columns -- see PARAMETER_BAND_KEY_COLUMNS), then all of EXP1_COLUMNS --
     # emitting the full set rather than only the two columns the manuscript
     # needs costs nothing and keeps the per-camera position errors available.
     # EXP1_COLUMNS itself and the single-seed exp1_parameter_errors.csv are
     # untouched: those stay byte-identical to their committed baselines (D-19).
     parameter_band_df = pd.concat(exp1_frames, ignore_index=True)[
-        ["seed", *EXP1_COLUMNS]
+        ["seed", "noise_std", *EXP1_COLUMNS]
     ]
     write_experiment_csv(
         parameter_band_df,
