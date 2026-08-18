@@ -1651,6 +1651,8 @@ def run_calibration_from_config(
         timings=timings_payload,
         frame_rejection=frame_rejection_info,
         discard_stats=dict(discard_stats),
+        degeneracy_details=degeneracy_details,
+        observation_depths=observation_depths,
     )
     print(f"  Saved diagnostics to {config.output_dir}")
 
