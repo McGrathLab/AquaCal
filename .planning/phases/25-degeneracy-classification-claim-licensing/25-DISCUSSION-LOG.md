@@ -207,3 +207,23 @@
   the measurement shows.
 - WR-02, Phase 24's open reviewer warning (zero-denominator edge case) — tracked in its own todo.
 - The distinct-vs-summed count question — recoverable only from the frozen table in Phase 29.
+
+---
+
+## Post-discussion: D-19 resolved before planning (2026-08-17)
+
+The user asked whether the Huber-knee check should go into the plan or be run immediately as a
+one-off. Run-now was chosen on the grounds that the outcome changes the plan's shape rather than
+sitting inside it: a null result collapses D-19 to a recorded sentence, a material result would be
+a scope change to BAND-01 and the DEGEN-05 verdict. Planning first would have meant hedging both
+branches.
+
+**Ran it. Null result.** ~1% on the headline ratio against a ~±30% seed band. Full method,
+self-checks and numbers in `.planning/probes/2026-08-17-huber-knee/FINDINGS.md`. D-19 in
+CONTEXT.md was rewritten from "run a measurement" to "closed by measurement, record one sentence",
+and the deferred-ideas entry updated accordingly.
+
+Two data points folded into CONTEXT.md for the planner while this was open: the measured E1
+single-seed cost (400 s of solver time), and the per-pass `loss_scale` seam — the interface and
+intrinsic passes want different `f_scale` values but `PipelineConfig.loss_scale` is one field
+feeding both.

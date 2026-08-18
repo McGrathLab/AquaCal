@@ -136,20 +136,40 @@ prose. The manuscript tree `Spinoffs/papers/aquacal/` is **read-only from this r
   `23-VALIDATION.md:72-74`, `23-RESEARCH.md:76`, `23-01-PLAN.md:103`, `23-01-SUMMARY.md:153`. This
   is the pattern already chosen for `19.1-E2-FRAMESET-PROVENANCE.md`: a supersession header, not an
   edit, so the phase record stays honest about what was believed when.
-- **D-19:** The **Huber knee** gets a **cheap single-seed measurement now** — one baseline solve at
-  `f_scale = 3 x median|r|`, seed 42, compared on **accuracy, not cost** (changing `f_scale`
-  changes the objective, so costs are not comparable across runs). Same shape as the P1 probe that
-  settled the noise levels.
+- **D-19:** The **Huber knee objection is CLOSED by measurement** — the check was run during this
+  discussion, not deferred into the plan. See
+  `.planning/probes/2026-08-17-huber-knee/FINDINGS.md`.
 
-  *Why it is not already closed:* Finding 4 settled convergence **under the current `f_scale`**;
-  Finding 6 opened a separate, explicitly-open estimator question and predicted nothing about
-  magnitude. Its "reproduces the status quo almost exactly" refers to the **refractive** arm
-  (3 × 0.3357 = 1.007 vs the current 1.0), which is what makes the rule non-disruptive — not a
-  claim about the baseline, which would move to ~2.8 / ~1.9. Direction of risk: a knee set too
-  tight for the baseline pushes 29–48% of its residuals into the linear regime where they are
-  down-weighted, so the current setting, if it biases anything, **flatters E1's ratio**. If accuracy
-  barely moves, the objection closes cheaply and the verdict states it as measured rather than
-  argued.
+  **Measured at `054d753`:** re-tuning the baseline arm to Finding 6's symmetric rule
+  (`f_scale = 3 x median|r|` → 2.8332 interface, 1.8522 intrinsic) moves E1's z_rmse ratio by
+  **−1.09% at the deepest test point (123.87× → 122.52×)**, and by at most 6.83% anywhere. E1's
+  committed seed band is 97–178×, a ~±30% spread, so the effect is an order of magnitude inside
+  the noise floor. The risk direction was right — the baseline does fit slightly better when fairly
+  tuned (mean z_rmse −2.12%) — and the magnitude is negligible. The untouched refractive arm
+  reproduced the control **bit-for-bit** (`max|abs change|` = 0.000e+00), which is what validates
+  the attribution. One pass lands within 5% of the rule's fixed point, so no second iteration is
+  needed.
+
+  **Consequence for planning: this is no longer a plan task.** There is no measurement to schedule,
+  no artifact to produce, and no verification criterion. What remains is **one recorded sentence in
+  the DEGEN-05 verdict**, stating the objection was measured and closed with the sign and
+  magnitude, citing the probe. Combined with the optimality probe's Finding 4, both fairness
+  objections against E1's comparison are now answered in E1's favour — one on convergence, one on
+  loss tuning.
+
+  **Do not** change the library's `f_scale`. Nothing measured says the symmetric rule is better,
+  only that the choice does not matter at the scale of E1's claim. Re-tuning stays post-submission.
+
+  *Implementation seam, recorded for whoever picks the re-tuning up later:* the two passes want
+  different values (2.83 vs 1.85), but `PipelineConfig.loss_scale` (`schema.py:335`) is a **single
+  field feeding both**, reaching `interface_estimation.py:543` and `refinement.py:356` via
+  `pipeline.py:1025,1274`. `optimize_interface` and `joint_refinement` take `loss_scale`
+  separately, so a direct caller can differentiate the passes; the config path cannot. E1 hardcodes
+  `1.0` at `e1_refractive_comparison.py:755, 881, 1124`.
+
+  *Cost datum for the planner:* a full E1 single-seed run is **400 s of solver time** (refractive
+  88.6 + 60.1 s; non-refractive 158.0 + 93.3 s). Useful for sizing any further E1 work; it is the
+  cheapest solve in the suite.
 
 ### Claude's Discretion
 
@@ -200,7 +220,10 @@ prose. The manuscript tree `Spinoffs/papers/aquacal/` is **read-only from this r
 
 - `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md` — **the settled position.**
   Findings 1–9 plus "Net position across all three probes". Criterion 4 says this question is
-  answered and must **not** be re-derived. Finding 6 is the one item still open (the Huber knee).
+  answered and must **not** be re-derived.
+- `.planning/probes/2026-08-17-huber-knee/FINDINGS.md` — **closes Finding 6's open item**, the last
+  outstanding fairness objection to E1's comparison. Measured, null: ~1% on the headline ratio
+  against a ~±30% seed band. Cite it in the DEGEN-05 verdict; do not re-run it.
 - `.planning/phases/23-experiment-correctness-fixes/23-01-SUMMARY.md` § Evidence — where DEGEN-05
   originated (the unexplained 92.78 vs 0.0247 gap).
 
@@ -326,9 +349,10 @@ prose. The manuscript tree `Spinoffs/papers/aquacal/` is **read-only from this r
 <deferred>
 ## Deferred Ideas
 
-- **The `f_scale` re-tuning itself.** D-19 authorizes a single-seed *measurement* to close or size
-  the objection. Actually changing the library's robust-loss knee is an estimator-design change
-  and is post-submission regardless of what the measurement shows.
+- **The `f_scale` re-tuning itself.** D-19's measurement ran and closed the objection (~1% on the
+  ratio). Actually changing the library's robust-loss knee remains an estimator-design change and
+  is post-submission — and now with no evidence it would help. The per-pass `loss_scale` seam
+  noted in D-19 is the implementation constraint if it is ever picked up.
 - **WR-02**, Phase 24's open reviewer warning (zero-denominator / all-zero-cause edge case renders
   a misleading quiet warning and a spurious "dominant cause"). Tracked in
   `.planning/todos/pending/2026-08-17-close-open-phase-24-review-warnings.md`; not this phase.
