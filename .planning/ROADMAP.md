@@ -103,6 +103,7 @@ its own §3. What stays in Phase 30 is the reconciliation *around* that archive,
 - [x] **Phase 23: Experiment Correctness Fixes** - Six independent single-file fixes that change what E1, E6, E7, E4, E2, and the synthetic generator measure or are licensed to claim (completed 2026-08-17)
 - [x] **Phase 24: Degeneracy Instrumentation** - The degeneracy counter reaches the benchmark record, is persisted by E5 and the band runs, split by kind and stage, and its warning is narrowed
  (completed 2026-08-17)
+
 - [ ] **Phase 25: Degeneracy Classification & Claim Licensing** - The 198 unprojectable production-rig observations are classified, and E1's seed band gains the noise_std axis it needs to license an accuracy claim
 - [ ] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
@@ -113,31 +114,38 @@ its own §3. What stays in Phase 30 is the reconciliation *around* that archive,
 ## Phase Details
 
 ### Phase 23: Experiment Correctness Fixes
+
 **Goal**: The suite's E1, E6, E7, E4, E2, and synthetic-generator outputs are numerically and
 textually correct, so downstream phases build the driver and run against a fixed, trustworthy
 suite rather than a moving target.
 **Depends on**: Nothing (first phase of the milestone)
 **Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06
 **Success Criteria** (what must be TRUE):
+
   1. E1's non-refractive arm pins `water_z` — verified by the arm's **recovered `water_z` reading
      ground truth 1.031 m**, with the guard count's drop to 0 (from 14,949) reported as
      corroboration — while the refractive arm is left unpinned. The guard count alone is not the
      test: FIX-02 alone zeroes it at a `water_z` of 0.0120 m (measured 2026-08-17), so a
      criterion phrased on the count passes whether or not the pin exists.
+
   2. E1 and E7 solve with the interface normal free, matching the production pipeline's DOF
      count instead of the library's `normal_fixed` signature default. **FIX-01 lands before
      FIX-02 in the non-refractive arm**, and the combined pinned-`water_z`/free-normal
      configuration — which is what the re-run executes, and which no probe could reach before the
      pin existed — has its `water_z` and guard count emitted and checked here.
+
   3. E6's report shows signed, gauge-corrected Z error together with the per-camera
      decomposition, both behind the existing collinear caveat.
+
   4. E7's `fixed` rows are labelled vacuous-by-construction rather than presented as a measured
      `no_signature` verdict.
+
   5. E4's aggregator resolves E2's benchmark row correctly under a custom `--out` directory —
      at **both** call sites, including `_run_check` (`e4_benchmark_grid.py:1876`) — and the
      **four** stale provenance sites in `e2_real_rig.py`/`synthetic.py` describe what is actually
      true, with `19.1-E2-FRAMESET-PROVENANCE.md` carrying a supersession header rather than an
      edit.
+
   6. FIX-05 is verified by something other than `--check`, or by a `--check` whose contract
      excludes `exit_code` and `status_reason`. Today those two columns can never match (33 of 35
      already reproduce to 1e-6), so `--check` reads red before and after the fix and would hide a
@@ -153,44 +161,56 @@ trees. The phase boundary is unchanged — the plan decomposition inside it is n
 **Plans** (4, grouped by coupling per D-13; all wave 1 — `files_modified` verified pairwise disjoint):
 
 **Wave 1** *(no inter-plan dependencies)*
+
 - `23-01` — FIX-01 + FIX-02: pin `water_z` in E1's non-refractive arm via a bounds freeze threaded to
   **both** `build_bounds` sites, then free the interface normal in E1 and E7. Two commits, FIX-01
   first. `autonomous: false` (the E1 verification run is the user's).
+
 - `23-02` — FIX-05: resolve E2's real-rig row relative to `--out` at both call sites (`_run_check`
   `:1876`, `_run_full` `:1954`), plus the named `--check` exclusion contract (`exit_code`,
   `status_reason`) shared with Phase 26's DRIVER-03.
+
 - `23-03` — FIX-03 + FIX-04: E6 signed/gauge-corrected Z error plus the per-camera decomposition;
   E7's `fixed` rows labelled vacuous-by-construction in the existing `scope` column. Two commits.
+
 - `23-04` — FIX-06: four stale provenance strings in `e2_real_rig.py`/`synthetic.py` plus a
   supersession header on `19.1-E2-FRAMESET-PROVENANCE.md`. Touches no logic, isolated so it can never
   be blamed for a number moving.
 
 Cross-cutting constraints (appear in 2+ plans):
+
 - D-11: cheap-tier verification only — no E4 nine-cell grid, no E1 10-seed band, no full suite. Those
   are Phase 28 at the frozen sha.
+
 - D-12 (as amended 2026-08-17): in-phase runs write to git-ignored `experiments/verify_23/`; evidence
   is transcribed as values into each plan's own `SUMMARY.md`. **No plan writes
   `.planning/MANUSCRIPT-FINDINGS.md`** — see `23-CONTEXT.md` § Amendment 2026-08-17.
+
 - D-14: one commit per requirement (a floor, not a ceiling).
 - Scope fence: `Spinoffs/papers/aquacal/` is read-only from this repo; `docs/guide/troubleshooting.md`
   is not edited (it describes a live limitation, D-05).
 
 ### Phase 24: Degeneracy Instrumentation
+
 **Goal**: The degeneracy counter is observable end to end — it reaches the artifacts a reader
 would actually check, split finely enough to answer the degeneracy question without re-running
 anything, and its warning stops over-firing.
 **Depends on**: Nothing (independent of Phase 23's fixes; touches different files)
 **Requirements**: DEGEN-01, DEGEN-02, DEGEN-03, DEGEN-05
 **Success Criteria** (what must be TRUE):
+
   1. `degenerate_observations_at_solution` appears in the production `benchmark.json` record
      instead of being dropped before it is written.
+
   2. E5 and the band runs persist the counter in their own output artifacts. (Narrowed
      2026-08-17: **E6's band already does** — the column is present on all 102 rows. The real gap
      is E5, E1 and E7; E1's 14,949 lives only in `e1_benchmark_nonrefractive.json →
      problem_shape` and reaches no CSV.)
+
   3. The persisted counter is split by failure kind and by stage.
   4. The degenerate-observation warning fires only for the cases it actually applies to, with a
      corrected cause list.
+
   5. (Added 2026-08-17, DEGEN-05) Each stage's reported `optimality` is accompanied by a
      per-parameter-block decomposition, computed in `_optim_common.py` from the layout
      `build_structural_column_groups` already owns and recorded beside `stages.*.optimality` in
@@ -204,6 +224,7 @@ anything, and its warning stops over-firing.
 spatially non-disjoint, so 24-02 waits on 24-01's key names):
 
 **Wave 1**
+
 - `24-01` — Library core: the NaN-reason array plumbed out of `refractive_project_batch`, the
   cause/fate counter split with its per-stage denominator and zero-init, the `discard_stage`
   kwarg, the narrowed warning, and the `SolverDiagnostics` per-block optimality decomposition plus
@@ -211,11 +232,13 @@ spatially non-disjoint, so 24-02 waits on 24-01's key names):
   (D-20).
 
 **Wave 2** *(depends on 24-01)*
+
 - `24-02` — Artifacts: `pipeline.py`'s `problem_shape` mirror and the whole `discard_stats` block
   into `benchmark.json`, E1/E5/E7 columns plus the `e{N}_degeneracy_breakdown.json` sidecar,
   `check_rerun_gates.py`, and the Phase 26 (DRIVER-01) hand-off note. DEGEN-01, DEGEN-05.
 
 ### Phase 25: Degeneracy Classification & Claim Licensing
+
 **Goal**: Two open questions blocking manuscript language — what the 198 unprojectable
 production-rig observations are, and what domain E1's accuracy claim may state — are answered
 and recorded before the frozen run, so neither becomes a mid-run discovery.
@@ -225,12 +248,16 @@ only the DEGEN-05 verdict needs Phase 24's decomposition to exist first. If Phas
 criteria 1-3 and carry criterion 4 rather than blocking the phase.
 **Requirements**: DEGEN-04, BAND-01, DEGEN-05 (verdict only — instrumentation is Phase 24's)
 **Success Criteria** (what must be TRUE):
+
   1. The production rig's 198 unprojectable observations are classified into named categories,
      with the finding recorded so the manuscript can disclose the count and say what it is.
+
   2. The finding also unblocks (or explicitly leaves blocked) the deferred degeneracy-gate
      scope decision for real-rig runs.
+
   3. E1's seed band gains a `noise_std` axis, with the `n_cameras` geometry axis explicitly
      marked skipped, so promoted absolute-accuracy numbers carry a stated domain.
+
   4. (Added 2026-08-17, rewritten same day once the probes reported) The convergence question
      behind E1's ratio is **already answered** and must not be re-derived here — see
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`. Measured: restarting each
@@ -244,16 +271,31 @@ criteria 1-3 and carry criterion 4 rather than blocking the phase.
 **Plans**: 8 plans in 5 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 25-01-PLAN.md — per-observation degeneracy detail sinks in compute_residuals and both post-solve call sites (DEGEN-04)
-- [ ] 25-02-PLAN.md — the log_all_observation_depths config flag and the degenerate_observations.csv user sidecar (DEGEN-04)
-- [ ] 25-03-PLAN.md — the offline bucket classifier and its provisional-stamped table writer in experiments/_degeneracy.py (DEGEN-04)
 - [ ] 25-04-PLAN.md — E1's noise_std band axis, both key-column lists, and the stated claim domain (BAND-01)
 - [ ] 25-05-PLAN.md — the optimality caveat where the number ships, MF-21, and the carried-forward DEGEN-05 verdict (DEGEN-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 25-02-PLAN.md — the log_all_observation_depths config flag and the degenerate_observations.csv user sidecar (DEGEN-04)
+- [ ] 25-03-PLAN.md — the offline bucket classifier and its provisional-stamped table writer in experiments/_degeneracy.py (DEGEN-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 25-06-PLAN.md — ORCHESTRATOR: the provisional instrumented E2 run and the classification finding (DEGEN-04)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 25-07-PLAN.md — the degeneracy-gate scope decision, its rationale at three code sites, and its tripwire (DEGEN-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 25-08-PLAN.md — ORCHESTRATOR: the ~7 h four-level E1 band run, driver registration, and MF-22 (BAND-01)
 
 ### Phase 26: Full-Suite Driver & Handoff Readiness
+
 **Goal**: A single driver invocation covers the entire suite — nothing left for the Linux machine
 to discover is missing — with one truthful run manifest, a decided `--check` contract, and a
 clean output tree to run into.
@@ -265,61 +307,78 @@ do not get a multi-megabyte sidecar per calibration. Build the driver against 23
 it gets built, then amended at the freeze.)
 **Requirements**: DRIVER-01, DRIVER-02, DRIVER-03, DRIVER-04
 **Success Criteria** (what must be TRUE):
+
   1. `rerun_19_3.sh` invokes every experiment in the suite, including the band runs and E2 — the
      exact invocations where the six-sha provenance spine previously fractured.
+
   2. A single suite run emits one run manifest recording `aquacal_version` and the OpenCV build
      truthfully, alongside the rest of the execution environment.
+
   3. `--check`'s meaning across a deliberate baseline re-base is documented, with written
      expectations replacing bit-identity reproduction wherever schemas changed.
+
   4. Every pre-existing output tree is moved aside (not deleted) before a driver invocation, so a
      fresh run cannot be confused with a stale one.
 **Plans**: TBD
 
 ### Phase 27: Frozen Single-Sha Handoff Package
+
 **Goal**: Everything the Linux machine needs — code, driver, gates, and environment
 requirements — is frozen at one sha and verified runnable before it leaves this machine.
 **Depends on**: Phase 23, Phase 24, Phase 25, Phase 26 (every fix, instrumentation change,
 classification finding, and driver capability must be in before the freeze)
 **Requirements**: RUN-01
 **Success Criteria** (what must be TRUE):
+
   1. One git sha is designated and recorded as the frozen version for the re-run.
   2. The driver and `check_rerun_gates.py` run successfully against a clean checkout of that sha.
   3. Environment requirements (Python version, OpenCV build, dependencies) are written down for
      the receiving machine.
+
   4. The handoff package requires no further code edits once transferred — anything discovered
      missing sends the freeze back to this phase, not forward into the run.
+
   5. Every §3-facing number has a generating emitter in the frozen code. A number that is
      hand-asserted with no artifact behind it cannot be made traceable after the freeze — the fix
      is an emitter, and Phase 29 is too late to add one. (The ledger classification that
      identifies which rows those are is manuscript-side and the author's; it must land before
      this freeze. Named here as a dependency, not imported as a task.)
+
   6. Phase 25's outputs are registered with the driver — the per-observation classification table
      and the E2 `h_q` logging flag — since Phase 26 built the driver before that work was
      necessarily complete.
 **Plans**: TBD
 
 ### Phase 28: Suite Execution on Linux Machine
+
 **Goal**: The full experiment suite runs once, end to end, at the frozen sha, on hardware sized
 for the 13-camera rig's 48-87 minute / 10.26 GiB calibrations.
 **Depends on**: Phase 27
 **Requirements**: RUN-02
 **Success Criteria** (what must be TRUE, verifiable from the returned artifacts — this phase
 executes off-repo):
+
   1. Returned artifacts include a result file (e.g. `benchmark.json`) for every experiment —
      E1 through E7, the band runs, and E2 — with none missing.
+
   2. The returned run manifest records exactly one `aquacal_version`/git sha across all
      artifacts.
+
   3. The set of returned invocations matches the driver's coverage from Phase 26 one for one.
+
 **Plans**: TBD
 
 ### Phase 29: Gate Verification & Results Commit
+
 **Goal**: The returned run is graded and becomes the repo's committed evidence base, with every
 manuscript-facing number traceable to it.
 **Depends on**: Phase 28
 **Requirements**: RUN-03, RUN-04, RUN-05
 **Success Criteria** (what must be TRUE):
+
   1. `check_rerun_gates.py` passes over the complete returned run, including Gate 3's
      single-sha assertion, now that the band runs and E2 are inside its coverage.
+
   2. **E2 reproduces its pre-run numbers to ~1e-8.** E2 and E3 are the only experiments whose
      schemas do not change, and nothing in Phases 23-26 touches E2's solve inputs (FIX-06 is
      strings; E2 already runs `normal_fixed=False` via the config layer). F-001 measured the
@@ -334,15 +393,19 @@ manuscript-facing number traceable to it.
      band on the same quantity spans 0.761→0.910 px. So compare seed 42 against seed 42 and
      nothing else; run the control across seeds and a healthy run looks catastrophically broken.
      State the seed in the gate's own output so the comparison cannot be misread later.
+
   3. **E7's ablation conclusion is compared before and after, explicitly.** FIX-02 gives E7 two
      extra free parameters per interface, which is exactly the kind of change that could soften
      the fixed-intrinsics arm's published 10-of-10 sign test (p = 0.00098, supplement §14). If
      it moved, the new number is the honest one — but it is reported here, not discovered during
      manuscript re-verification.
+
   4. The returned results are committed to the repository with provenance (sha, manifest)
      intact.
+
   5. Every §3-facing number in the manuscript can be traced to a specific committed artifact
      from this run.
+
   6. **The Zenodo results package is published before the 2026-08-21 submission** (RUN-05), so
      the archive the paper cites agrees with the §3 it supports. The 4.35 GB input-package
      re-upload that makes this possible is staged during Phase 28's run window, from the Windows
@@ -362,6 +425,7 @@ manuscript-facing number traceable to it.
 **Plans**: TBD
 
 ### Phase 30: Post-Submission Reconciliation
+
 **Goal**: After the 2026-08-21 SoftwareX submission, the manuscript's evidence base and the
 public data artifacts are brought into agreement with the single-version run, and the finding
 that motivated this milestone is closed out.
@@ -371,10 +435,13 @@ phase does not start before the submission ships)
   *(POST-02, the Zenodo split, was re-timed to **RUN-05** in Phase 29 on 2026-08-15 — it has to
   land before submission, not after it.)*
 **Success Criteria** (what must be TRUE):
+
   1. §3, the Zenodo archive's `reference_outputs/`, and the tutorial's expected-value table are
      re-cut as a matched set against the new E2 numbers.
+
   2. Stale output trees are purged from the library, so the shipped package carries only the
      data the paper cites.
+
   3. MF-19 is marked closed in `MANUSCRIPT-FINDINGS.md`, with any finding the re-run
      contradicts or newly raises appended alongside it.
 **Plans**: TBD
