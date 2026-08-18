@@ -86,8 +86,24 @@ def test_e5_row_schema():
 
 
 def test_scale_bias_matches_e1_committed_column():
-    """compute_scale_bias reproduces at least 3 committed exp2_depth_generalization.csv rows."""
-    df = pd.read_csv("experiments/results/exp2_depth_generalization.csv")
+    """compute_scale_bias reproduces at least 3 committed exp2_depth_generalization.csv rows.
+
+    Reads the COMMITTED baseline, which Phase 26 / DRIVER-04 (D-28) moved to
+    experiments/pre_rerun_baseline/ so the frozen sha ships with an empty
+    experiments/results/. Anchored to the repo root rather than cwd (WR-06) and
+    guarded, so a fresh clone -- which has neither tree -- skips rather than
+    erroring, matching how this module's discovery helpers already degrade.
+    """
+    baseline = (
+        Path(__file__).resolve().parents[2]
+        / "experiments"
+        / "pre_rerun_baseline"
+        / "results"
+        / "exp2_depth_generalization.csv"
+    )
+    if not baseline.exists():
+        pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
+    df = pd.read_csv(baseline)
     sample = df.head(3)
     for _, row in sample.iterrows():
         signed_mean_m = row["signed_mean_mm"] / 1000.0
@@ -299,13 +315,30 @@ class TestDefaultMetricsPathAnchoring:
         self, tmp_path, monkeypatch
     ):
         """Invoked from a directory OTHER than the repository root (a fresh
-        tmp_path), the resolved path must still be absolute and exist."""
+        tmp_path), the resolved path must still be absolute and must point at a
+        committed baseline that actually exists.
+
+        ⚠ Phase 26 / DRIVER-04 (D-28) emptied experiments/results/, so the
+        second half of that invariant now holds via the archive. The subject of
+        this test is WR-06 (cwd-independence), which is unchanged; the existence
+        leg is kept REAL rather than deleted, by accepting either location. It
+        re-tightens on its own once Phase 28's run repopulates
+        experiments/results/.
+
+        The production constant `_default_metrics_path` still names
+        experiments/results/, which is out of plan 26-01's scope -- repointing
+        it is D-12's `--baseline-dir` work. See 26-01-SUMMARY.md
+        § Findings for plan 26-03.
+        """
         from experiments.e5_index_sensitivity import _default_metrics_path
 
         monkeypatch.chdir(tmp_path)
         resolved = _default_metrics_path()
         assert resolved.is_absolute()
-        assert resolved.exists(), resolved
+        archived = (
+            resolved.parents[1] / "pre_rerun_baseline" / "results" / resolved.name
+        )
+        assert resolved.exists() or archived.exists(), (resolved, archived)
 
 
 class TestCheckGuardsMissingBaseline:

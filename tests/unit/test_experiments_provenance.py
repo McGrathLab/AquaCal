@@ -31,7 +31,18 @@ import pytest
 # vanish from a run silently just because pytest was invoked from elsewhere
 # (WR-06). tests/unit/test_experiments_provenance.py -> parents[2] == repo root.
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-RESULTS_DIR = REPO_ROOT / "experiments" / "results"
+
+# Phase 26 / DRIVER-04 (D-28): the committed baselines this whole module asserts
+# about MOVED to experiments/pre_rerun_baseline/ so the frozen sha ships with an
+# empty experiments/results/ for the v2.1 re-run to write into. This module's
+# subject is the COMMITTED BASELINE SET, not whatever a fresh run happens to
+# have produced, so the archive is its correct target -- pointing it at the
+# now-empty experiments/results/ would make every assertion here vacuous.
+#
+# ⚠ Phase 30 / POST-03 PURGES the archive. At that point this constant needs a
+# DELIBERATE decision -- repoint at the re-baselined experiments/results/, or
+# retire the module's exhaustiveness gates with it -- not a silent edit.
+RESULTS_DIR = REPO_ROOT / "experiments" / "pre_rerun_baseline" / "results"
 
 # The subset of capture_environment()'s live key names (src/aquacal/io/
 # benchmark.py) covering library version, git SHA, and the Python/NumPy/SciPy

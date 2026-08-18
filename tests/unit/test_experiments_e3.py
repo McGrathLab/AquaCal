@@ -271,8 +271,21 @@ class TestPerCameraModeGrowsPWithoutGrowingGroups:
 
 # --- E3 tier 1 / tier 3 / sidecar behaviors (Task 3) -----------------------------------
 
+# The COMMITTED E2 record tier 3's shared-interface 13/200 row copies from. Phase 26 /
+# DRIVER-04 (D-28) moved the committed baselines to experiments/pre_rerun_baseline/ so the
+# frozen sha ships with an empty experiments/results/ for the v2.1 re-run to write into.
+# This is a checked-in artifact, not a fresh run's output, so the archive is its subject.
+#
+# ⚠ The PRODUCTION constant this mirrors -- `_E2_BENCHMARK_JSON_PATH` at
+# experiments/e3_derived_quantities.py:170 -- still points at experiments/results/ and is
+# NOT repointed here (that module is out of plan 26-01's scope). D-12's `--baseline-dir`
+# work owns it; see 26-01-SUMMARY.md § Findings for plan 26-03.
 BENCHMARK_JSON_PATH = (
-    Path(__file__).resolve().parents[2] / "experiments" / "results" / "benchmark.json"
+    Path(__file__).resolve().parents[2]
+    / "experiments"
+    / "pre_rerun_baseline"
+    / "results"
+    / "benchmark.json"
 )
 
 # The six published `tab:cpr` configurations (19.2-SOURCE-BRIEF.md Sec E3 Tier 3), as
