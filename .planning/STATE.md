@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: ready_to_plan
-stopped_at: Phase 24 complete (2/2) — ready to discuss Phase 25
-last_updated: 2026-08-18T00:54:41.632Z
-last_activity: 2026-08-17 -- Phase 24 execution started
+status: planning
+stopped_at: Phase 25 context gathered
+last_updated: "2026-08-18T01:14:12.484Z"
+last_activity: 2026-08-18
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 141
-  percent: 13
+  completed_plans: 6
+  percent: 25
 ---
 
 # Project State
@@ -177,10 +177,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-Last session: 2026-08-17T16:52:42.664Z
+Last session: 2026-08-18T01:14:12.473Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 24 context gathered
+Stopped at: Phase 25 context gathered
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
