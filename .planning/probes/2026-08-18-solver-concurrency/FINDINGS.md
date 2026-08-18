@@ -103,7 +103,9 @@ D-42 `e6_repeat2` off):
 window contained other activity. If E7's single-seed run (4 arms) is ~6–10 min, its 10-seed band
 (40 arms) should be ~1–2 h. **Nothing measures this** — no band artifact records its own runtime,
 in any CSV or in the `e{N}_seed_band_provenance.json` sidecars. One E7 single-seed run (~10 min)
-would settle it.
+would settle it — **offered and declined by the author on 2026-08-18; the soft estimate stands.**
+The range is carried forward as an acknowledged uncertainty in Phase 28's budget, not as a gap
+to close.
 
 **`e6_band` is now ~40% of the whole suite and is the critical path under any scheduling.** It is
 the highest-value remaining target if more time must be found.

@@ -689,7 +689,7 @@ phase that fixed the grid-family clearance floor, and during that run those two 
 against still-marginal geometry. **Use 19.3 or the probe for `e1`/`e7`; 19.4 remains sound for
 `e5`, `e6`, `e4`.** § A's `e7_band` upper bound of 8.8 h is likewise a loose mtime bracket; the
 stage is probably 1–2 h and **nothing measures it** — one E7 single-seed run (~10 min) would settle
-it, and D-38's budget should either take that measurement or state the uncertainty.
+it — **offered and DECLINED by the author on 2026-08-18: the soft estimate is sufficient.** D-38's budget therefore **states the uncertainty rather than closing it**; `e7_band` carries a range and a note that it is unmeasured. Do not schedule a probe for it.
 
 - **D-51: the corrected serial estimate is ≈ 22–26 h at Windows-box speed** with D-40/41/42
   applied, dominated by `e6_band` at **8.9 h — roughly 40% of the whole suite**, and the critical
