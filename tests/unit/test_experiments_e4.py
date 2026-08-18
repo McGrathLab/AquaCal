@@ -1656,3 +1656,67 @@ def test_run_check_passes_exclude_columns_and_prints_the_skipped_set():
     source = inspect.getsource(e4_grid_module._run_check)
     assert "exclude_columns=CHECK_EXCLUDED_COLUMNS" in source
     assert "print(" in source
+
+
+def test_degenerate_gate_predicate_is_still_count_greater_than_zero(full_grid_dir):
+    """D-05: the gate is exactly `count > 0 -> degenerate`, exercised
+    BEHAVIOURALLY at the boundary rather than read off source text.
+
+    A softening into a threshold ("real rigs tolerate a few") would keep every
+    existing assertion passing at count 3 while silently letting count 1
+    through, so the boundary case is the one that pins it. Phase 25's D-04
+    settled the scope question by removing real-rig runs from the gate's reach,
+    NOT by loosening the synthetic predicate -- this test is what makes that
+    distinction enforceable.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    boundary_cell = DECLARED_CELLS[0]
+    cell_dir = (
+        out_dir / "e4_cells" / f"cameras_{boundary_cell[0]}_frames_{boundary_cell[1]}"
+    )
+    cell_key = f"cameras_{boundary_cell[0]}_frames_{boundary_cell[1]}"
+
+    # Exactly one degenerate observation -- the smallest nonzero count.
+    _write_fake_cell(
+        cell_dir,
+        boundary_cell[0],
+        boundary_cell[1],
+        degenerate_observations_at_solution=1,
+    )
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    row = df[df["cell_key"] == cell_key].iloc[0]
+    assert row["status"] == "degenerate"
+    assert row["degenerate_observations_at_solution"] == 1
+
+    # Zero on the same cell -- ok, with the column present and zero.
+    _write_fake_cell(
+        cell_dir,
+        boundary_cell[0],
+        boundary_cell[1],
+        degenerate_observations_at_solution=0,
+    )
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    row = df[df["cell_key"] == cell_key].iloc[0]
+    assert row["status"] == "ok"
+    assert row["degenerate_observations_at_solution"] == 0
+
+
+def test_smoke_path_is_never_gated_at_any_count(full_grid_dir):
+    """The smoke carve-out, behaviourally: a SMOKE_CELLS cell carrying a
+    nonzero count produces no gated row at all, because build_grid_dataframe --
+    the sole gating site -- never iterates it."""
+    from experiments.e4_benchmark_grid import SMOKE_CELLS
+
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    smoke_cell = SMOKE_CELLS[0]
+    smoke_key = f"cameras_{smoke_cell[0]}_frames_{smoke_cell[1]}"
+    _write_fake_cell(
+        out_dir / "e4_cells" / smoke_key,
+        smoke_cell[0],
+        smoke_cell[1],
+        degenerate_observations_at_solution=7,
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    assert smoke_key not in set(df["cell_key"])
+    assert (df["status"] == "ok").all()
