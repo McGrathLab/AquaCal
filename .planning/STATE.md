@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-08-17T19:38:54.553Z"
+status: ready_to_plan
+stopped_at: Phase 24 complete (2/2) — ready to discuss Phase 25
+last_updated: 2026-08-18T00:54:41.632Z
 last_activity: 2026-08-17 -- Phase 24 execution started
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 141
   percent: 13
 ---
 
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 24 — degeneracy-instrumentation
+**Current focus:** Phase 25 — degeneracy classification claim licensing
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -32,10 +32,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 24 (degeneracy-instrumentation) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 24
-Last activity: 2026-08-17 -- Phase 24 execution started
+Phase: 25
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-18
 FIX-03+04, FIX-06), one commit per requirement
 
 ## Roadmap Summary (v2.1)
