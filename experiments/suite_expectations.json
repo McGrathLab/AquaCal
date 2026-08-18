@@ -1,0 +1,1617 @@
+{
+  "schema_version": 1,
+  "description": "The single expectation manifest for the v2.1 full-suite re-run (D-05). Every stage, artifact, profile, row count and wall-clock estimate the suite driver, the completeness gate and the hand-verification sheet use is written down here and nowhere else.",
+  "profiles": [
+    "smoke",
+    "full"
+  ],
+  "profile_semantics": {
+    "smoke": "artifact EXISTENCE only (D-49). A present-but-short artifact PASSES. No E1 or E2 artifact is expected at all: both scripts ALWAYS write to a TemporaryDirectory under --smoke (e1_refractive_comparison.py:893, e2_real_rig.py:428-431). The --seeds band path IS checked BEFORE the smoke branch (:1367 vs :1370), so band CSVs from E1/E5/E6/E7 do land under --smoke --seeds at collapsed scale and are expected here.",
+    "full": "row counts as well as existence. This is the frozen Phase 28 run."
+  },
+  "stages": [
+    {
+      "id": "preflight",
+      "description": "Pre-flight checks plus the one-shot suite run manifest (DRIVER-02, D-03). The only stage permitted to abort the run. Marked concurrent because serial_alone is reserved for the four stages whose TIMING must be protected (D-52 / review H4); pre-flight is de facto alone anyway, since every other stage depends on it transitively.",
+      "invocation": "\"${GATE_PYTHON}\" -m experiments._run_manifest --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.02,
+        "source": "estimated from code shape: a git describe, an importlib.metadata lookup and one JSON write. Never measured because no driver has ever run it."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "run_manifest.json"
+      ]
+    },
+    {
+      "id": "prelaunch_probe",
+      "description": "legality_probe over the queue's seed list and n_cameras values before any long stage runs (D-19.5-04).",
+      "invocation": "inline heredoc calling experiments.check_rerun_gates.legality_probe",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.01,
+        "source": "rerun_19_5_state.tsv ISO stamps: prelaunch_probe start 16:24:40Z, complete 16:24:41Z (1 s)."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": []
+    },
+    {
+      "id": "e3",
+      "description": "E3 derived quantities. ONE stage running --check then --force back to back (ordering constraint O5) -- the --check leg must see its inputs before anything regenerates them, and the --force leg must follow immediately. Do not split this into two stage ids.",
+      "invocation": "python -u -m experiments.e3_derived_quantities --check --out \"${OUT_DIR}\" && python -u -m experiments.e3_derived_quantities --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.005,
+        "source": "rerun_19_3_state.tsv ISO stamps: 12 s (16:46:44Z to 16:46:56Z); rerun_19_4_state.tsv ISO stamps agrees at 16 s."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "code_constants.csv",
+        "newton_iterations.csv",
+        "cpr_grouping.csv",
+        "structural_scaling.csv",
+        "e3_provenance.json",
+        "cpr_grouping.tex",
+        "cpr_derived_values.tex"
+      ]
+    },
+    {
+      "id": "fd_jacobian",
+      "description": "Finite-difference Jacobian accuracy sweep. Ordering constraint O3: no external input, so no dependencies beyond pre-flight.",
+      "invocation": "python -u -m experiments.fd_jacobian_accuracy --out \"${OUT_DIR}\" --force",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.05,
+        "source": "estimated from code shape (a small FD sweep over an in-memory problem); no driver has ever invoked it, so nothing measures it."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "fd_jacobian_accuracy.csv",
+        "fd_jacobian_accuracy.json"
+      ]
+    },
+    {
+      "id": "e1",
+      "description": "E1 refractive-vs-nonrefractive comparison, single seed.",
+      "invocation": "python -u -m experiments.e1_refractive_comparison --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": 0.09,
+        "source": "2026-08-18 solver-concurrency probe: 318.4 s, exit 0 (.planning/probes/2026-08-18-solver-concurrency/summary.json). rerun_19_3_state.tsv ISO stamps agrees at 5.7 min. The 19.4 e1 row is anomalous by ~27x and is deliberately NOT used."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "exp1_parameter_errors.csv",
+        "exp2_depth_generalization.csv",
+        "exp3_xy_vs_z_anisotropy.csv",
+        "exp2_spatial_errors.csv",
+        "e1_benchmark_refractive.json",
+        "e1_benchmark_nonrefractive.json",
+        "e1_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e7",
+      "description": "E7 interface ablation, single seed (four arms).",
+      "invocation": "python -u -m experiments.e7_interface_ablation --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": 0.09,
+        "source": "rerun_19_3_state.tsv ISO stamps: 5.6 min (16:46:56Z to 16:52:34Z). The 19.4 e7 row is anomalous by ~27x and is deliberately NOT used (26-CONTEXT section E)."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "interface_ablation.csv",
+        "interface_ablation_conditioning.json",
+        "e7_benchmark_shared_fixed.json",
+        "e7_benchmark_shared_refined.json",
+        "e7_benchmark_percamera_fixed.json",
+        "e7_benchmark_percamera_refined.json",
+        "e7_trace_shared_fixed.csv",
+        "e7_trace_shared_refined.csv",
+        "e7_trace_percamera_fixed.csv",
+        "e7_trace_percamera_refined.csv",
+        "e7_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e7_focal_standoff",
+      "description": "E7 focal/standoff re-analysis. Ordering constraint O1: reads Path('experiments/results')/interface_ablation_band.csv at e7_focal_standoff_analysis.py:389 -- a hardcoded, cwd-relative path that deliberately ignores --out, so E7's band must have landed first. Ignores --smoke entirely, which is why its artifact is full-profile only.",
+      "invocation": "python -u -m experiments.e7_focal_standoff_analysis --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e7_band"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.02,
+        "source": "estimated from code shape: a pandas re-analysis of a 480-row CSV. No driver has ever invoked it, so nothing measures it."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "e7_focal_standoff.csv"
+      ]
+    },
+    {
+      "id": "reconstruction_bootstrap",
+      "description": "Bootstrap resampling of E2's reconstruction errors. Ordering constraint O2: reads experiments/results/reconstruction_errors.csv and the hard REAL_RIG_METRICS_PATH = Path('experiments/results/real_rig_metrics.json') (reconstruction_bootstrap.py:56), so E2's production run must precede it.",
+      "invocation": "python -u -m experiments.reconstruction_bootstrap --out \"${OUT_DIR}\" --force",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e2_production"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "none",
+      "est_hours": {
+        "value": 0.06,
+        "source": "estimated from code shape: 10 000 resamples of an in-memory CSV. No driver has ever invoked it, so nothing measures it."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "reconstruction_bootstrap.json"
+      ]
+    },
+    {
+      "id": "e5",
+      "description": "E5 refractive-index sensitivity, single seed.",
+      "invocation": "python -u -m experiments.e5_index_sensitivity --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": 0.76,
+        "source": "rerun_19_4_state.tsv ISO stamps: 45.4 min (20:57:45Z to 21:43:10Z). 19.4 is sound for e5, e6 and e4; rerun_19_3_state.tsv ISO stamps gives 22.1 min on the slower-configured run and the 1.6-2.0x machine swing between them is the known one."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "index_sensitivity.csv",
+        "e5_provenance.json",
+        "e5_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e4_repeat",
+      "description": "E4 repeat cells (2 repeats x 3 cells) spliced back into the main grid. Serial and alone: it produces a timing number (D-52).",
+      "invocation": "for repeat in 1 2; for cell in 8x100 12x100 16x100: python -u -m experiments.e4_benchmark_grid --cell \"$cell\" --out \"${OUT_DIR_E4_REPEAT}\" --force; then python -u -m experiments.e4_benchmark_grid --splice-repeat \"${OUT_DIR_E4_REPEAT}\" --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results_e4_repeat",
+      "depends_on": [
+        "e4"
+      ],
+      "concurrency": "serial_alone",
+      "frame_class": "200",
+      "est_hours": {
+        "value": 0.99,
+        "source": "rerun_19_5_state.tsv ISO stamps: 59.1 min (03:10:25Z to 04:09:33Z)."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "benchmark_grid_repeat.csv"
+      ]
+    },
+    {
+      "id": "e2_production",
+      "description": "E2 real-rig production / classification run. Requires internals.log_all_observation_depths: true, which is a YAML key and not a CLI flag (D-16), so it needs its own committed config. Absent from every existing driver (M1).",
+      "invocation": "python -u -m experiments.e2_real_rig --config \"${E2_PRODUCTION_CONFIG}\" --out \"${OUT_DIR}\" --force",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "200",
+      "est_hours": {
+        "value": [
+          0.8,
+          1.45
+        ],
+        "source": "estimated: CLAUDE.md records 48-87 min for a calibration on the 13-camera rig. Never measured as a driver stage because no driver has ever run it."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "benchmark.json",
+        "camera_parameters.csv",
+        "real_rig_metrics.json",
+        "reconstruction_errors.csv",
+        "reprojection_residuals.csv",
+        "degenerate_observations.csv",
+        "all_observation_depths.csv"
+      ]
+    },
+    {
+      "id": "e2_timing",
+      "description": "E2 timing run, internals.benchmark_memory: false. Serial and alone: it produces a timing number (D-52, review H4). Distinct from the memory run by D-15, non-negotiable. Absent from every existing driver (M2).",
+      "invocation": "python -u -m experiments.e2_real_rig --config \"${E2_TIMING_CONFIG}\" --out \"${OUT_DIR_E2_TIMING}\" --force",
+      "out_dir": "experiments/results_e2_timing",
+      "depends_on": [
+        "e2_production"
+      ],
+      "concurrency": "serial_alone",
+      "frame_class": "200",
+      "est_hours": {
+        "value": [
+          0.8,
+          1.45
+        ],
+        "source": "estimated: CLAUDE.md records 48-87 min for a calibration on the 13-camera rig. Nothing measures E2's timing and memory runs individually."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "benchmark.json"
+      ]
+    },
+    {
+      "id": "e2_memory",
+      "description": "E2 memory run, internals.benchmark_memory: true. Serial and alone: it produces a peak-RSS number (D-52, review H4).  Absent from every existing driver (M3).",
+      "invocation": "python -u -m experiments.e2_real_rig --config \"${E2_MEMORY_CONFIG}\" --out \"${OUT_DIR_E2_MEMORY}\" --force",
+      "out_dir": "experiments/results_e2_memory",
+      "depends_on": [
+        "e2_production"
+      ],
+      "concurrency": "serial_alone",
+      "frame_class": "200",
+      "est_hours": {
+        "value": [
+          0.8,
+          1.45
+        ],
+        "source": "estimated: CLAUDE.md records 48-87 min for a calibration on the 13-camera rig. Nothing measures E2's timing and memory runs individually."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "benchmark.json"
+      ]
+    },
+    {
+      "id": "e7_band",
+      "description": "E7 interface-ablation seed band.",
+      "invocation": "python -u -m experiments.e7_interface_ablation --seeds \"${BAND_SEEDS}\" --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e7"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": [
+          1.0,
+          2.0
+        ],
+        "source": "unmeasured; probe offered and DECLINED by the author 2026-08-18 (26-CONTEXT section E). D-38 states the uncertainty rather than closing it. Section A's 8.8 h upper bound was a loose mtime bracket, not a measurement."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "interface_ablation_band.csv",
+        "e7_seed_band_provenance.json",
+        "e7_seed_band_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e5_band",
+      "description": "E5 refractive-index sensitivity seed band.",
+      "invocation": "python -u -m experiments.e5_index_sensitivity --seeds \"${E5_BAND_SEEDS}\" --out \"${OUT_DIR}\" --force",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e5"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": 2.34,
+        "source": "rerun_19_5_state.tsv ISO stamps: 2 h 20.5 min (06:34:55Z to 08:55:27Z)."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "index_sensitivity_seed_band.csv",
+        "e5_seed_band_provenance.json",
+        "e5_seed_band_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e2_band",
+      "description": "E2 real-rig seed band: emit three per-seed configs, then run each into its own isolated sub-tree. Lives in the SIBLING directory results_e2_band/ because emit_seed_variant_configs refuses to write into the release tree, and because check_e2_band resolves it as out_dir.parent / 'results_e2_band'. Keep it a sibling.",
+      "invocation": "python -u -m experiments.e2_real_rig --emit-band-configs --config \"${E2_RELEASE_CONFIG}\" --band-seeds \"${E2_BAND_SEEDS}\" --band-dir \"${OUT_DIR_E2_BAND}\"; then per seed: --config \"${OUT_DIR_E2_BAND}/config_seed${seed}.yaml\" --out \"${OUT_DIR_E2_BAND}/seed_${seed}_e2_out\" --force",
+      "out_dir": "experiments/results_e2_band",
+      "depends_on": [
+        "e2_production"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "200",
+      "est_hours": {
+        "value": 2.42,
+        "source": "rerun_19_5_state.tsv ISO stamps: 2 h 25.4 min (04:09:33Z to 06:34:54Z)."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "e2_band_scope.json"
+      ]
+    },
+    {
+      "id": "e6_repeat1",
+      "description": "E6 generalization sweep, single run. Clears ${OUT_DIR}/e6_configs and deletes generalization_sweep.csv / e6_provenance.json under the SHARED OUT_DIR before running, which is why e6_band depends on it (D-52 constraint 1): a depends_on edge is the only expression of 'never overlap' the concurrency pool can honour.",
+      "invocation": "rm -rf \"${OUT_DIR}/e6_configs\"; rm -f \"${OUT_DIR}/generalization_sweep.csv\" \"${OUT_DIR}/e6_provenance.json\"; then python -u -m experiments.e6_generalization_sweep --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "preflight"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "100",
+      "est_hours": {
+        "value": 2.78,
+        "source": "rerun_19_4_state.tsv ISO stamps: 2 h 46.9 min (04:27:15Z to 07:14:11Z). 19.4 is sound for e6."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "generalization_sweep.csv",
+        "generalization_sweep_per_camera.csv",
+        "e6_provenance.json"
+      ]
+    },
+    {
+      "id": "e1_band",
+      "description": "E1 noise/seed band. Ruling A1: a UNIFORM grid of 4 seeds x the 4 levels of NOISE_LEVELS. _run_band is a strict cartesian seeds x NOISE_LEVELS (e1_refractive_comparison.py:1091, :1120) and cannot express a ragged grid; two invocations would overwrite each other (force=True at :1177, :1202).",
+      "invocation": "python -u -m experiments.e1_refractive_comparison --seeds \"${E1_BAND_SEEDS}\" --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e1"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "30",
+      "est_hours": {
+        "value": 2.8,
+        "source": "derived: Phase 25 sized the ten-seed four-level band at about 7 h; the uniform 4-seed grid is 16 of those 40 cells, giving about 2.8 h. Scaled from a stated sizing, never attributed to a code change."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "exp1_band.csv",
+        "exp1_parameter_band.csv",
+        "e1_seed_band_provenance.json",
+        "e1_seed_band_degeneracy_breakdown.json"
+      ]
+    },
+    {
+      "id": "e4",
+      "description": "E4 benchmark grid. Ordering constraint O4: resolve_e2_benchmark_path (e4_benchmark_grid.py:298) looks for out_dir/benchmark.json and branch 3 returns None, SILENTLY dropping the real-rig row and giving a 9-row benchmark_grid.csv instead of 10. After plan 26-01's archive-aside that file does not exist until E2 writes it. This depends_on FIGHTS D-37's shortest-first ordering -- E2's production run is longer than several stages that would otherwise precede it -- and depends_on wins. Serial and alone: it produces a timing number (D-52).",
+      "invocation": "python -u -m experiments.e4_benchmark_grid --force --out \"${OUT_DIR}\"",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e2_production"
+      ],
+      "concurrency": "serial_alone",
+      "frame_class": "200",
+      "est_hours": {
+        "value": 3.57,
+        "source": "rerun_19_4_state.tsv ISO stamps: 3 h 34.4 min (07:14:11Z to 10:48:34Z). 19.4 is sound for e4."
+      },
+      "profiles": [
+        "full"
+      ],
+      "produces": [
+        "benchmark_grid.csv",
+        "benchmark_grid.tex"
+      ]
+    },
+    {
+      "id": "e6_band",
+      "description": "E6 generalization-sweep seed band at the D-40 axis selection (index, layout, cameras -- scale dropped). The suite's dominant stage.",
+      "invocation": "python -u -m experiments.e6_generalization_sweep --seeds \"${E6_BAND_SEEDS}\" --axes index,layout,cameras --out \"${OUT_DIR}\" --force",
+      "out_dir": "experiments/results",
+      "depends_on": [
+        "e6_repeat1"
+      ],
+      "concurrency": "concurrent",
+      "frame_class": "100",
+      "est_hours": {
+        "value": 8.9,
+        "source": "rerun_19_5_state.tsv ISO stamps: 10 h 45.7 min (16:24:41Z to 03:10:24Z) for the full 17-configuration band, scaled by the D-40 axis cut (14 of 17 configurations survive)."
+      },
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "produces": [
+        "generalization_sweep_band.csv",
+        "generalization_sweep_per_camera_band.csv",
+        "e6_seed_band_provenance.json"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "run_manifest.json",
+      "dir": "experiments/results",
+      "stage": "preflight",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "JSON sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "Field list pinned by experiments._run_manifest.REQUIRED_MANIFEST_FIELDS."
+    },
+    {
+      "name": "exp1_parameter_errors.csv",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 24
+      },
+      "rows_rationale": "committed baseline shape, unchanged: 2 models x 12 cameras. Values move on normal_fixed=False but the shape does not.",
+      "columns_constant": "experiments.e1_refractive_comparison:EXP1_COLUMNS",
+      "columns": 12,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": true,
+      "shape_only_columns": []
+    },
+    {
+      "name": "exp2_depth_generalization.csv",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 16
+      },
+      "rows_rationale": "committed baseline shape, unchanged: 2 models x 8 test depths.",
+      "columns_constant": "experiments.e1_refractive_comparison:EXP2_COLUMNS",
+      "columns": 7,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": true,
+      "shape_only_columns": []
+    },
+    {
+      "name": "exp3_xy_vs_z_anisotropy.csv",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 16
+      },
+      "rows_rationale": "committed baseline shape, unchanged: 2 models x 8 test depths.",
+      "columns_constant": "experiments.e1_refractive_comparison:EXP3_COLUMNS",
+      "columns": 6,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": true,
+      "shape_only_columns": []
+    },
+    {
+      "name": "exp2_spatial_errors.csv",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-point frame whose length is a property of the draw, not of the design; existence only. Gitignored, so it is never committed.",
+      "columns_constant": "experiments.e1_refractive_comparison:SPATIAL_COLUMNS",
+      "columns": 12,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "Header widened 6 -> 12 in Phase 24 (the six degeneracy columns landed here, not on the three fixed-contract CSVs)."
+    },
+    {
+      "name": "e1_benchmark_refractive.json",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "JSON benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e1_benchmark_nonrefractive.json",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "JSON benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e1_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 sidecar: the raw discard_stats dict keyed by model label.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "exp1_band.csv",
+      "dir": "experiments/results",
+      "stage": "e1_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 256
+      },
+      "rows_rationale": "ruling A1's UNIFORM E1 noise grid: 4 seeds x 4 NOISE_LEVELS x the 16 rows the band emits per seed-level cell (160 rows at 10 seeds with no noise axis => 16 per seed). 0.5 px is one of the four levels, so the headline 97-178x band and all 16 ledger numbers backed by this file are untouched. The ragged shape of D-41 is unreachable: _run_band is a strict cartesian product.",
+      "columns_constant": "experiments.e1_refractive_comparison:BAND_MERGED_COLUMNS",
+      "columns": 11,
+      "extra_columns": [
+        "seed",
+        "noise_std"
+      ],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "The noise axis is a full-profile band property of this file and exp1_parameter_band.csv only. No artifact in experiments/results REQUIRES a noise_std column (Phase 25 D-21)."
+    },
+    {
+      "name": "exp1_parameter_band.csv",
+      "dir": "experiments/results",
+      "stage": "e1_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 384
+      },
+      "rows_rationale": "ruling A1's UNIFORM E1 noise grid: 4 seeds x 4 NOISE_LEVELS x the 24 rows the parameter band emits per seed-level cell (240 rows at 10 seeds with no noise axis => 24 per seed).",
+      "columns_constant": "experiments.e1_refractive_comparison:EXP1_COLUMNS",
+      "columns": 12,
+      "extra_columns": [
+        "seed",
+        "noise_std"
+      ],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e1_seed_band_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e1_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "band provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e1_seed_band_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e1_band",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 band-owned sidecar keyed by seed.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "code_constants.csv",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 9
+      },
+      "rows_rationale": "committed baseline shape, unchanged; E3's schema did not move in Phases 23-25.",
+      "columns_constant": "experiments.e3_derived_quantities:CODE_CONSTANTS_COLUMNS",
+      "columns": 7,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "newton_iterations.csv",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 26
+      },
+      "rows_rationale": "committed baseline shape. Tier-2 and geometry-dependent, so the VALUES are expected to move even though the row count does not.",
+      "columns_constant": "experiments.e3_derived_quantities:NEWTON_COLUMNS",
+      "columns": 10,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [
+        "mean_iterations",
+        "max_iterations"
+      ],
+      "notes": "newton_iterations.csv measures a Newton loop that is not the one the manuscript's MF-01 discussion is about; treat its values as shape-only for completeness purposes."
+    },
+    {
+      "name": "cpr_grouping.csv",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 12
+      },
+      "rows_rationale": "committed baseline shape, unchanged.",
+      "columns_constant": "experiments.e3_derived_quantities:CPR_COLUMNS",
+      "columns": 10,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "structural_scaling.csv",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 84
+      },
+      "rows_rationale": "committed baseline shape, unchanged.",
+      "columns_constant": "experiments.e3_derived_quantities:SCALING_COLUMNS",
+      "columns": 13,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e3_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "cpr_grouping.tex",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "generated LaTeX fragment. D-39 records that it is never \\input and tab:cpr is hand-transcribed; existence is still the completeness signal.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "cpr_derived_values.tex",
+      "dir": "experiments/results",
+      "stage": "e3",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "generated LaTeX fragment.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "index_sensitivity.csv",
+      "dir": "experiments/results",
+      "stage": "e5",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 11
+      },
+      "rows_rationale": "committed baseline shape. The header widens 17 -> 23 with Phase 24's six degeneracy columns; the row count is unchanged.",
+      "columns_constant": "experiments.e5_index_sensitivity:E5_COLUMNS",
+      "columns": 23,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e5_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e5",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e5_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e5",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 sidecar keyed 'band'.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "index_sensitivity_seed_band.csv",
+      "dir": "experiments/results",
+      "stage": "e5_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 66
+      },
+      "rows_rationale": "committed baseline shape: 11 index configurations x 6 band seeds. E5's band seed count is unchanged by any Phase 26 cut.",
+      "columns_constant": "experiments.e5_index_sensitivity:E5_COLUMNS",
+      "columns": 23,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e5_seed_band_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e5_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "band provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e5_seed_band_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e5_band",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 band-owned sidecar keyed by seed.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "generalization_sweep.csv",
+      "dir": "experiments/results",
+      "stage": "e6_repeat1",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 14
+      },
+      "rows_rationale": "committed baseline shape: the 14 single-run configurations. The header widens 31 -> 33 with Phase 23-03's signed and gauge-corrected columns; the row count is unchanged. e6_repeat1 keeps the UNRESTRICTED axis call, so D-40's --axes cut does not touch it.",
+      "columns_constant": "experiments.e6_generalization_sweep:E6_COLUMNS",
+      "columns": 33,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [
+        "z_position_error_mm_gauge_corrected_mean",
+        "water_z_error_mm_signed_mean"
+      ],
+      "notes": "A gauge-corrected column populated with uncorrected values passes every completeness check; only its presence is judged here."
+    },
+    {
+      "name": "generalization_sweep_per_camera.csv",
+      "dir": "experiments/results",
+      "stage": "e6_repeat1",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "new in Phase 23-03 and absent from the committed tree, so no baseline row count exists to assert; existence only until Phase 28 measures it.",
+      "columns_constant": "experiments.e6_generalization_sweep:E6_PER_CAMERA_COLUMNS",
+      "columns": 10,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [
+        "z_position_error_mm_gauge_corrected",
+        "water_z_error_mm_signed",
+        "h_c_error_mm_signed"
+      ]
+    },
+    {
+      "name": "e6_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e6_repeat1",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "generalization_sweep_band.csv",
+      "dir": "experiments/results",
+      "stage": "e6_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 84
+      },
+      "rows_rationale": "14 configurations x 6 seeds. D-40 drops the scale axis, cutting E6's band composition from 17 configurations (index 8, cameras 3, layout 3, scale 3) to 14. The scale axis appears in ZERO rows of the manuscript's numbers-ledger.tsv, so the cut costs no cited number. The committed baseline is 102 rows at the pre-cut composition; plan 26-05 shipped the --axes selector that makes 84 reachable.",
+      "columns_constant": "experiments.e6_generalization_sweep:E6_COLUMNS",
+      "columns": 33,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [
+        "z_position_error_mm_gauge_corrected_mean",
+        "water_z_error_mm_signed_mean"
+      ]
+    },
+    {
+      "name": "generalization_sweep_per_camera_band.csv",
+      "dir": "experiments/results",
+      "stage": "e6_band",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "new in Phase 23-03 and absent from the committed tree; existence only. Its length is a per-camera expansion of the band, which varies with the cameras axis, so no design arithmetic pins it before Phase 28.",
+      "columns_constant": "experiments.e6_generalization_sweep:E6_PER_CAMERA_COLUMNS",
+      "columns": 10,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e6_seed_band_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e6_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "band provenance sidecar. Plan 26-05 added an `axes` field and a scope string derived from the resolved axes, so a band cannot claim coverage it did not have.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "interface_ablation.csv",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 48
+      },
+      "rows_rationale": "committed baseline shape: 4 arms x 12 cameras. The header widens 17 -> 23 with Phase 24's six degeneracy columns; the row count is unchanged.",
+      "columns_constant": "experiments.e7_interface_ablation:ABLATION_COLUMNS",
+      "columns": 23,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "interface_ablation_conditioning.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "conditioning sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_benchmark_shared_fixed.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-arm benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_benchmark_shared_refined.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-arm benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_benchmark_percamera_fixed.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-arm benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_benchmark_percamera_refined.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-arm benchmark record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_trace_shared_fixed.csv",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "solver iteration trace; its length is the solver's iteration count, which no design arithmetic pins. Existence only.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_trace_shared_refined.csv",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "solver iteration trace; length is the solver's iteration count.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_trace_percamera_fixed.csv",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "solver iteration trace; length is the solver's iteration count.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_trace_percamera_refined.csv",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "solver iteration trace; length is the solver's iteration count.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e7",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 sidecar keyed by arm name.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "interface_ablation_band.csv",
+      "dir": "experiments/results",
+      "stage": "e7_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 480
+      },
+      "rows_rationale": "committed baseline shape: 4 arms x 12 cameras x 10 band seeds. E7's band seed count was offered as a cut and REJECTED -- seed spread is itself the cited quantity in four response-letter rows.",
+      "columns_constant": "experiments.e7_interface_ablation:ABLATION_COLUMNS",
+      "columns": 23,
+      "extra_columns": [
+        "seed"
+      ],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_seed_band_provenance.json",
+      "dir": "experiments/results",
+      "stage": "e7_band",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "band provenance sidecar, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_seed_band_degeneracy_breakdown.json",
+      "dir": "experiments/results",
+      "stage": "e7_band",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "Phase 24 band-owned sidecar keyed by seed, then arm.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e7_focal_standoff.csv",
+      "dir": "experiments/results",
+      "stage": "e7_focal_standoff",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 4
+      },
+      "rows_rationale": "committed baseline shape: one row per E7 arm. Full profile only -- the script ignores --smoke entirely and reads a band CSV a smoke pass does not produce at full scale.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "no column constant pins this artifact's header. Phase 23-03 changed the verdict STRINGS for the two fixed rows."
+    },
+    {
+      "name": "benchmark_grid.csv",
+      "dir": "experiments/results",
+      "stage": "e4",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 10
+      },
+      "rows_rationale": "9 synthetic cells + 1 real-rig row. The real-rig row is present ONLY if E2's production run wrote experiments/results/benchmark.json first (ordering constraint O4) -- otherwise this file is 9 rows and the loss is silent. E4's nine cells were offered as a cut and REJECTED: supplement.tex:605 is a nine-cell table.",
+      "columns_constant": "experiments.e4_benchmark_grid:GRID_COLUMNS",
+      "columns": 36,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [
+        "exit_code",
+        "status_reason"
+      ],
+      "notes": "exit_code and status_reason are E4's CHECK_EXCLUDED_COLUMNS (e4_benchmark_grid.py:215) -- excluded from cell-level comparison, never from the header comparison."
+    },
+    {
+      "name": "benchmark_grid.tex",
+      "dir": "experiments/results",
+      "stage": "e4",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "generated LaTeX fragment; Phase 25 added the D-17 optimality caveat as a %% comment block. The CSV schema did not move.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "benchmark_grid_repeat.csv",
+      "dir": "experiments/results",
+      "stage": "e4_repeat",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 6
+      },
+      "rows_rationale": "committed baseline shape: 2 repeats x 3 cells (8x100, 12x100, 16x100), spliced back into experiments/results by --splice-repeat.",
+      "columns_constant": "experiments.e4_benchmark_grid:GRID_COLUMNS",
+      "columns": 36,
+      "extra_columns": [
+        "repeat_index",
+        "wall_clock_s_repeat",
+        "peak_rss_gib_repeat",
+        "repeat_source"
+      ],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "On-disk width is 40: GRID_COLUMNS plus the four repeat-specific columns the splice adds."
+    },
+    {
+      "name": "benchmark.json",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "the pipeline's own benchmark record. Also E4's real-rig input (ordering constraint O4) and E3 tier 3's copy source.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "camera_parameters.csv",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {
+        "full": 13
+      },
+      "rows_rationale": "one row per camera on the 13-camera rig (12 main + 1 auxiliary).",
+      "columns_constant": "experiments.e2_real_rig:CAMERA_PARAMS_COLUMNS",
+      "columns": 11,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "real_rig_metrics.json",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "the metrics record check_e2_band compares each band seed against at rtol 1e-6. Also reconstruction_bootstrap's hard REAL_RIG_METRICS_PATH.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "reconstruction_errors.csv",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-point frame whose length is a property of the dataset; existence only. Gitignored by DATA-01b, so it exists on disk after a run but is never committed -- and E2's --check raises FileNotFoundError on a clean checkout because of it.",
+      "columns_constant": "experiments.e2_real_rig:RECONSTRUCTION_COLUMNS",
+      "columns": 5,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "reprojection_residuals.csv",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "per-observation frame; existence only. Gitignored by DATA-01b.",
+      "columns_constant": "experiments.e2_real_rig:RESIDUALS_COLUMNS",
+      "columns": 4,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "degenerate_observations.csv",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "written ONLY when at least one flagged row exists, so a clean run legitimately produces no file and its absence is PASS, not FAIL (Phase 25 D-08). A stage-agnostic len() double-counts observations flagged in both stage-3 passes -- group by `stage` first.",
+      "columns_constant": "aquacal.validation.diagnostics:DEGENERATE_OBSERVATION_COLUMNS",
+      "columns": 12,
+      "extra_columns": [],
+      "conditional": true,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "all_observation_depths.csv",
+      "dir": "experiments/results",
+      "stage": "e2_production",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "written ONLY when internals.log_all_observation_depths is true, which rides E2's classification run and nothing else. Absence is PASS. Expect about 11 MB on the 13-camera rig.",
+      "columns_constant": "aquacal.validation.diagnostics:OBSERVATION_DEPTH_COLUMNS",
+      "columns": 8,
+      "extra_columns": [],
+      "conditional": true,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "e2_band_scope.json",
+      "dir": "experiments/results_e2_band",
+      "stage": "e2_band",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "band scope sidecar. Lives in the SIBLING results_e2_band/ tree, which check_e2_band resolves as out_dir.parent / 'results_e2_band'. The completeness gate resolves any non-out_dir artifact the same way.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "benchmark.json",
+      "dir": "experiments/results_e2_timing",
+      "stage": "e2_timing",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "the timing run's own benchmark record, in its own tree so it can never overwrite the production run's.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "benchmark.json",
+      "dir": "experiments/results_e2_memory",
+      "stage": "e2_memory",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "the memory run's own benchmark record, in its own tree. D-15 makes the timing and memory runs two distinct runs, non-negotiable.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "reconstruction_bootstrap.json",
+      "dir": "experiments/results",
+      "stage": "reconstruction_bootstrap",
+      "profiles": [
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "bootstrap summary record. Full profile only: its inputs are E2's, and E2 writes nothing to --out under --smoke.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "fd_jacobian_accuracy.csv",
+      "dir": "experiments/results",
+      "stage": "fd_jacobian",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {
+        "full": 8
+      },
+      "rows_rationale": "committed baseline shape, unchanged.",
+      "columns_constant": "experiments.fd_jacobian_accuracy:FD_ACCURACY_COLUMNS",
+      "columns": 8,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    },
+    {
+      "name": "fd_jacobian_accuracy.json",
+      "dir": "experiments/results",
+      "stage": "fd_jacobian",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "companion record, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": []
+    }
+  ],
+  "wall_clock_summary": {
+    "machine": "Windows box, 20 logical cores / 15.7 GiB RAM -- the machine every state-file timing and the 2026-08-18 concurrency probe were measured on",
+    "target_machine": "Linux box, 32 cores / 31 GiB RAM. NO estimate in this manifest was measured there. A budget that silently mixes the two machines is worthless, so every figure below refers to the Windows box unless it says otherwise.",
+    "serial_total_hours": [
+      28.3,
+      31.3
+    ],
+    "serial_total_derivation": "the sum of every stage's est_hours low and high bounds, on the Windows box. D-51 states about 22-26 h; that figure covers only the stages the three existing drivers already run and excludes the seven invocations no driver has ever carried -- E2's production, timing and memory runs (about 2.4-4.4 h together) plus the three orphan scripts and pre-flight (about 0.15 h). Restricted to the already-driven stages this manifest sums to about 26 h, at the top of D-51's band.",
+    "d51_stated_range_hours": [
+      22,
+      26
+    ],
+    "dominant_stage": "e6_band",
+    "dominant_stage_hours": 8.9,
+    "dominant_stage_share": "about 30% of the serial total and the critical path under any scheduling. The highest-value target if more time must be found.",
+    "expected_total_with_concurrency_hours": [
+      15,
+      17
+    ],
+    "concurrency_derivation": "D-52's selective concurrency at 4-5 wide. The four serial_alone stages (e4, e4_repeat, e2_timing, e2_memory) sum to about 6.4-7.5 h and cannot overlap. The remaining concurrent work is about 21-24 h but is bounded below by its longest single stage, e6_band at 8.9 h, which dominates 4-5 wide. About 6.9 + 8.9 = about 15.8 h. On the Windows box; the Linux target is faster, so this is an upper bound there.",
+    "concurrency_constraints": [
+      "e6_repeat1 and e6_band must never overlap -- expressed as e6_band's depends_on edge, because a concurrency pool can honour a dependency and cannot honour a comment.",
+      "at most one 200-frame-class stage at a time: peak RSS tracks frame count (30 frames under 1 GiB, 100 frames 2.7-3.5 GiB, 200 frames 9.3-11.3 GiB), so five 3.5 GiB stages plus one 200-frame stage is 27.8 of about 31 GiB and too tight.",
+      "concurrent stages sharing experiments/results must produce disjoint filenames -- verified against this manifest by tests/unit/test_expectations.py::TestConcurrencySafety, not by inspection."
+    ],
+    "runtime_attribution_warning": "NEVER attribute a runtime change to a code change. The ~2x swing measured between the 19.3 and 19.4 state files tracked the machine, not the diff (rerun_19_5.sh:26-29)."
+  }
+}
