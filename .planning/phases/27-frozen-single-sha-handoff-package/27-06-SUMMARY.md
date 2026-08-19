@@ -24,12 +24,13 @@ decisions:
   - "NO EMITTER count is 0 — criterion 5 closes without adding an emitter"
   - "M-L281-19mm and M-L281-135x are lockstep restatements of M-L68-* (artifact exp1_band.csv); emitter exists, none added"
   - "RL-determinism is unregenerable by construction (P26-D-42); handed to 27-07 rather than given an invented emitter"
-  - "RL-guard-frac is a FOURTH row of the same class, unnamed by D-17 — 27-07's note should carry four rows"
-  - "linux32gb_scope.json graded EMITTER-BACKED/NOT REGENERATED rather than NO EMITTER; flagged as the one judgement call"
-  - "diagnostics.json is emitted but NOT registered in suite_expectations.json — no completeness gate covers it"
+  - "RL-guard-frac is a FOURTH row of the same class, unnamed by D-17 — CONFIRMED by the author; 27-07's note carries four rows"
+  - "linux32gb_scope.json graded EMITTER-BACKED/NOT REGENERATED rather than NO EMITTER; grade UPHELD by the author as the one judgement call"
+  - "linux32gb_scope.json's top-level git_sha disagrees with e2_cv413/benchmark.json (d27bda7 vs 1af0650) — cv413 rows attributed per artifact, matching 27-07"
+  - "diagnostics.json is emitted but NOT registered in suite_expectations.json — recorded as a deliberately-deferred coverage hole; NOT fixed in the freeze window"
 metrics:
   duration: ~35 min
-  tasks_completed: 2 of 3 (Task 3 is a blocking human-verify checkpoint)
+  tasks_completed: 3 of 3 (human-verify gate reached, presented, approved)
   completed: 2026-08-19
 ---
 
@@ -132,15 +133,61 @@ gate. No experiment was run: this plan locates emitters, it does not re-derive v
 ## Commits
 
 - `c1f3af2` — `docs(27-06): walk all 27 ledger artifacts to their emitters` (Tasks 1 + 2)
+- `9270ea8` — `docs(27-06): record the emitter-coverage walk and its checkpoint` (SUMMARY, pre-gate)
+- `20db9ac` — `docs(27-06): apply the author's three rulings and 27-07's sha finding` (Task 3)
+
+## Task 3 — the human-verify gate: reached, presented, APPROVED
+
+The gate was **not self-approved**. Execution stopped at Task 3, the report was presented to the
+author with the NO EMITTER count stated up front, and the author returned a verdict plus three
+rulings.
+
+**Verdict: approved. NO EMITTER count 0. Criterion 5 is CLOSED and the freeze proceeds** — no
+emitter added, no tag re-cut, no return to this phase.
+
+| # | question | ruling | applied as |
+|---|---|---|---|
+| 1 | Does `linux32gb_scope.json`'s grade stand, or is it NO EMITTER? | **Grade STANDS** (EMITTER-BACKED, NOT REGENERATED). Make the reasoning explicit rather than implicit. | §3 note § rewritten: its numbers are traceable *through* the neighbouring emitter-backed artifacts it quotes, **not** through code that writes the file itself; the tree is deliberately never re-run. §1 and §8 updated to match. |
+| 2 | Fix `diagnostics.json`'s gate coverage now? | **No — record only, change nothing.** No copy-out added to `experiments/e2_real_rig.py`; the freeze window is for defects that would cost the run. | §3 note ‡ rewritten as a known, deliberately-deferred coverage hole, naming the emitter, the reason it never reaches `experiments/results/`, and that closing it is later-phase work. |
+| 3 | Is `RL-guard-frac` a fourth unregenerable-by-construction row? | **Confirmed.** Note it; do not edit `experiments/FROZEN-ROWS.md` (27-07 owns it, running concurrently). | §4 retitled "A CONFIRMED fourth row…" with a four-row handoff table and an explicit statement that `FROZEN-ROWS.md` is 27-07's file and was not touched. |
+
+### Post-ruling input from plan 27-07, verified here and folded in
+
+27-07 walked the same trees and found that **`linux32gb_scope.json`'s top-level `git_sha` is wrong
+for at least one subtree.** Verified independently rather than taken on report:
+
+| file | recorded `git_sha` |
+|---|---|
+| `linux32gb_scope.json` (claims the whole tree) | `d27bda76fe7c765b3c975b2052ca1f8f7b286068` |
+| `results_linux32gb/e2_timing/benchmark.json` | `d27bda76…` — agrees |
+| `results_linux32gb/e2_memory/benchmark.json` | `d27bda76…` — agrees |
+| `results_linux32gb/e2_cv413/benchmark.json` | **`1af06508db120daacce8618b8387c7a7213b1fbe`** — disagrees |
+
+Two further facts established here, both by direct check: `1af0650` is **exactly one commit** after
+`d27bda7` (`chore(experiments): commit the 32 GB Linux re-run of E4 and E2`), so the OpenCV 4.13
+control ran *after* its sibling artifacts were committed; and **`git diff d27bda7 1af0650 -- src/`
+is empty**, so no library code moved between them.
+
+**Consequence: provenance moves, no number does.** A reader trusting the scope file's single
+top-level sha would attribute `RL-repro-rig` to the wrong commit. This is the F-001
+provenance-fracture shape in miniature. It does **not** overturn the author's ruling — the grade
+stays EMITTER-BACKED, NOT REGENERATED — but it supplies a second reason, independent of the
+missing emitter, why that row is the judgement call.
+
+**Agreed treatment, shared with 27-07:** attribute the two cv413-sourced ledger rows **per
+artifact**, from `e2_cv413/benchmark.json`'s own `git_sha`, never through the scope file's
+top-level claim. Both documents state this, so they agree where they are read together.
 
 ## Status
 
-**Tasks 1–2 complete. Task 3 is a blocking `checkpoint:human-verify` gate and is NOT
-self-approved.** The author must state the NO EMITTER count and whether the freeze proceeds, and
-rule on the two flagged verdicts plus the 27-07 four-row recommendation.
+**Plan 27-06 COMPLETE — 3 of 3 tasks.** Criterion 5 is closed. `experiments/FROZEN-ROWS.md`,
+`STATE.md`, `ROADMAP.md` and `numbers-ledger.tsv` were not touched by this plan.
 
 ## Self-Check: PASSED
 
 - `experiments/EMITTER-COVERAGE.md` — FOUND
 - `.planning/phases/27-frozen-single-sha-handoff-package/27-06-SUMMARY.md` — FOUND
-- commit `c1f3af2` — FOUND in `git log`
+- commits `c1f3af2`, `9270ea8`, `20db9ac` — all FOUND in `git log`
+- main table still 27 rows after the ruling edits; 0 occurrences of "TBD"
+- `numbers-ledger.tsv` mtime unchanged (`Aug 14 11:37`, 33539 bytes)
+- `experiments/FROZEN-ROWS.md`, `STATE.md`, `ROADMAP.md` — absent from this plan's diff
