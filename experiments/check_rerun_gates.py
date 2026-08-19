@@ -567,6 +567,28 @@ def _check_json_artifact(
     return results
 
 
+def _validate_profile(profile: str | None, *, caller: str) -> None:
+    """Reject an unknown profile name, naming the offender (P27-D-20).
+
+    Mirrors `_expectations.check_completeness`'s validation exactly -- the only
+    profile-aware checker that predates this one. `None` means "no profile
+    selected" and every checker must then keep its pre-existing, strictest
+    behaviour, so it is always legal.
+
+    Args:
+        profile: The caller's `profile` argument.
+        caller: The checker's name, for the error message.
+
+    Raises:
+        ValueError: If `profile` is neither `None` nor a member of `PROFILES`.
+    """
+    if profile is None or profile in PROFILES:
+        return
+    raise ValueError(
+        f"{caller}: unknown profile '{profile}'; valid profiles: {', '.join(PROFILES)}"
+    )
+
+
 def _check_guard_column(
     experiment: str, label: str, df: pd.DataFrame | None, column: str = _GUARD_COLUMN
 ) -> GateResult:
@@ -689,9 +711,23 @@ def check_e3(out_dir: Path) -> list[GateResult]:
     return results
 
 
-def check_e4(out_dir: Path) -> list[GateResult]:
+def check_e4(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E4 -- cameras x frames synthetic benchmark grid. Nine per-cell
-    direct-call benchmark records plus the aggregated `benchmark_grid.csv`."""
+    direct-call benchmark records plus the aggregated `benchmark_grid.csv`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` relaxes the two `benchmark_grid.csv` column gates
+            from FAIL to `N/A` when the file is ABSENT -- E4's `--smoke` path
+            writes no grid, and the manifest already tags that artifact
+            `full`-only (P27-D-20). A grid that is PRESENT but malformed still
+            FAILs at every profile. `None` (the default) and `"full"` keep the
+            pre-existing behaviour exactly.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e4")
     results: list[GateResult] = []
     cells_dir = out_dir / "e4_cells"
     cell_paths = (
@@ -715,26 +751,66 @@ def check_e4(out_dir: Path) -> list[GateResult]:
             check_optimality=True,
             require_water_index=True,
         )
-    df = _load_csv(out_dir / "benchmark_grid.csv")
+    grid_path = out_dir / "benchmark_grid.csv"
+    if profile == "smoke" and not grid_path.exists():
+        # The gate stays VISIBLE, it just cannot judge: E4's --smoke path never
+        # writes the grid, so its absence carries no information about the run.
+        detail = (
+            "benchmark_grid.csv not written by E4's collapsed smoke path "
+            "(the manifest tags it full-only); nothing to judge at this profile"
+        )
+        results.append(
+            GateResult("E4", "gate1_guard_count:benchmark_grid.csv", "N/A", detail)
+        )
+        results.append(
+            GateResult("E4", "gate2_status:benchmark_grid.csv", "N/A", detail)
+        )
+        return results
+    df = _load_csv(grid_path)
     results.append(_check_guard_column("E4", "benchmark_grid.csv", df))
     results.append(_check_status_column("E4", "benchmark_grid.csv", df))
     return results
 
 
-def check_e5(out_dir: Path) -> list[GateResult]:
+def check_e5(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E5 -- refractive-index sensitivity band. One environment-only
     provenance sidecar summing the guard count across the whole band; no
-    per-row status or optimality is recorded for this experiment."""
-    record = _load_json(out_dir / "e5_provenance.json")
-    results = _check_json_artifact(
-        "E5",
-        "e5_provenance.json",
-        record,
-        check_guard=True,
-        check_optimality=False,
-        require_water_index=True,
-        water_index_keys=("n_true", "n_water"),
-    )
+    per-row status or optimality is recorded for this experiment.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` relaxes `gate1_guard_count` and `gate3_provenance`
+            from FAIL to `N/A` when `e5_provenance.json` is ABSENT --
+            `e5_index_sensitivity.py:871-889` (`_run_smoke_at`) returns before
+            the sidecar write, and the manifest tags it `full`-only
+            (P27-D-20). A sidecar that is PRESENT but bad still FAILs at every
+            profile. `None` and `"full"` keep the pre-existing behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e5")
+    sidecar_path = out_dir / "e5_provenance.json"
+    if profile == "smoke" and not sidecar_path.exists():
+        detail = (
+            "e5_provenance.json not written by E5's collapsed smoke path "
+            "(the manifest tags it full-only); nothing to judge at this profile"
+        )
+        results = [
+            GateResult("E5", "gate1_guard_count:e5_provenance.json", "N/A", detail),
+            GateResult("E5", "gate3_provenance:e5_provenance.json", "N/A", detail),
+        ]
+    else:
+        record = _load_json(sidecar_path)
+        results = _check_json_artifact(
+            "E5",
+            "e5_provenance.json",
+            record,
+            check_guard=True,
+            check_optimality=False,
+            require_water_index=True,
+            water_index_keys=("n_true", "n_water"),
+        )
     results.append(
         GateResult(
             "E5",
@@ -755,9 +831,24 @@ def check_e5(out_dir: Path) -> list[GateResult]:
     return results
 
 
-def check_e6(out_dir: Path) -> list[GateResult]:
+def check_e6(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E6 -- index/layout/scale generalization sweep. Twelve per-configuration
-    checkpoints plus the aggregated `generalization_sweep.csv`."""
+    checkpoints plus the aggregated `generalization_sweep.csv`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` suppresses gate 4 over `e6_configs/*.json`: a
+            collapsed smoke solve records no meaningful first-order
+            optimality (P27-D-20). The gate is still EMITTED, as `N/A` naming
+            that reason -- a suppressed gate must stay visible in the verdict
+            block, never vanish. Gates 1 and 3 over the same record are
+            unaffected. `None` and `"full"` keep the pre-existing behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e6")
+    check_optimality = profile != "smoke"
     results: list[GateResult] = []
     configs_dir = out_dir / "e6_configs"
     config_paths = sorted(configs_dir.glob("*.json")) if configs_dir.exists() else []
@@ -779,9 +870,21 @@ def check_e6(out_dir: Path) -> list[GateResult]:
             label,
             record,
             check_guard=True,
-            check_optimality=True,
+            check_optimality=check_optimality,
             require_water_index=True,
         )
+        if not check_optimality:
+            results.append(
+                GateResult(
+                    "E6",
+                    f"gate4_optimality:{label}",
+                    "N/A",
+                    f"{label}: a collapsed smoke solve records no meaningful "
+                    "first-order optimality, so this gate cannot judge at the "
+                    "smoke profile (it is suppressed, not deleted -- it FAILs "
+                    "on the same record under full)",
+                )
+            )
     df = _load_csv(out_dir / "generalization_sweep.csv")
     results.append(_check_guard_column("E6", "generalization_sweep.csv", df))
     results.append(_check_status_column("E6", "generalization_sweep.csv", df))
@@ -985,7 +1088,9 @@ _E6_EXPECTED_SEED_COUNT = 6
 _E6_EXPECTED_CAMERA_VALUES = (8, 12, 16)
 
 
-def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
+def check_e6_seed_band(
+    out_dir: Path, *, profile: str | None = None
+) -> list[GateResult]:
     """COV-03/COV-04's E6 seed band: `generalization_sweep_band.csv` against
     `e6_seed_band_provenance.json`.
 
@@ -995,7 +1100,22 @@ def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
     naming the offending seed -- E6 exits 0 even when every configuration
     failed, MF-07), the sidecar's `solver_config["seeds"]` matches the CSV's
     distinct seeds, and the sidecar carries a `git_sha`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` makes the `cameras`-axis EXPECTATION
+            profile-dependent -- a collapsed smoke band carries one camera
+            count, so a short axis is `N/A` rather than FAIL (P27-D-20).
+            `_E6_EXPECTED_CAMERA_VALUES` itself is NOT changed: that constant
+            records that the axis survives P26-D-40, and it still governs at
+            `full`. An absent `axis`/`axis_value` column pair stays FAIL at
+            every profile. `None` and `"full"` keep the pre-existing
+            behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
     """
+    _validate_profile(profile, caller="check_e6_seed_band")
     csv_path = out_dir / _E6_BAND_CSV
     if not csv_path.exists():
         return [
@@ -1080,7 +1200,20 @@ def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
         cameras_rows = band[band["axis"] == "cameras"]
         cameras_values = sorted({int(v) for v in cameras_rows["axis_value"].tolist()})
         missing = [v for v in _E6_EXPECTED_CAMERA_VALUES if v not in cameras_values]
-        if missing:
+        if missing and profile == "smoke":
+            # The axis EXPECTATION is profile-dependent; the constant is not.
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:cameras_axis",
+                    "N/A",
+                    f"cameras axis present at {cameras_values}; the collapsed "
+                    f"smoke band does not run {missing}, so the production "
+                    "axis cannot be asserted at this profile (it still FAILs "
+                    "on the same CSV under full)",
+                )
+            )
+        elif missing:
             results.append(
                 GateResult(
                     "E6",
@@ -1984,10 +2117,13 @@ def run_all_gates(
         out_dir: Root output directory (e.g. `experiments/results/`).
         stage: Restrict the completeness gate to one stage's expected
             artifacts. Ignored when `profile` is not supplied.
-        profile: Run the completeness gate under this expectation profile
-            (`"smoke"` or `"full"`). `None` -- the default, and what every
-            pre-existing call site passes -- skips it entirely, so no existing
-            invocation changes behaviour.
+        profile: The expectation profile (`"smoke"` or `"full"`). It selects
+            the completeness gate -- `None`, the default, skips that gate
+            entirely -- and, since P27-D-20, is also threaded into `check_e4`,
+            `check_e5`, `check_e6` and `check_e6_seed_band`, where `"smoke"`
+            turns four assertions a collapsed smoke run cannot satisfy from
+            FAIL into a VISIBLE `N/A`. Nothing is suppressed at `"full"` or at
+            `None`, so no pre-existing invocation changes behaviour.
 
     Returns:
         The full list of `GateResult`s across all six experiments plus the
@@ -1996,9 +2132,9 @@ def run_all_gates(
     results: list[GateResult] = []
     results += check_e1(out_dir)
     results += check_e3(out_dir)
-    results += check_e4(out_dir)
-    results += check_e5(out_dir)
-    results += check_e6(out_dir)
+    results += check_e4(out_dir, profile=profile)
+    results += check_e5(out_dir, profile=profile)
+    results += check_e6(out_dir, profile=profile)
     results += check_e7(out_dir)
     # D-19.4-14's band artifacts. Only E7 and E1 have bands this phase -- E4 and
     # E6 bands cost ~39 h together and neither carries an accuracy claim, so
@@ -2036,7 +2172,7 @@ def run_all_gates(
     # this queue keeps the band in-repo but out of out_dir's own tree so a
     # `--check`/gate run against out_dir never confuses band output with the
     # single production run's own artifacts.
-    results += check_e6_seed_band(out_dir)
+    results += check_e6_seed_band(out_dir, profile=profile)
     results += check_e5_seed_band(out_dir)
     results += check_e4_repeat(out_dir)
     results += check_e2_band(

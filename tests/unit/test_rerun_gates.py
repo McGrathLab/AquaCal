@@ -1525,13 +1525,27 @@ class TestCheckE4Profile:
         for gate in self._GRID_GATES:
             assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
 
-    def test_present_but_malformed_grid_still_fails_at_smoke(self, tmp_path):
+    def test_present_but_malformed_grid_is_judged_identically_at_every_profile(
+        self, tmp_path
+    ):
+        """The relaxation is keyed on ABSENCE only.
+
+        A grid that exists is judged by the pre-existing rules whatever the
+        profile: a missing guard column FAILs, and a missing `status` column
+        is the pre-existing record-only `N/A` (plan 19.3-07's harness-gating
+        split), not something this plan introduced.
+        """
         pd.DataFrame({"unrelated": [1]}).to_csv(
             tmp_path / "benchmark_grid.csv", index=False
         )
-        results = check_e4(tmp_path, profile="smoke")
-        for gate in self._GRID_GATES:
-            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+        for gate, expected in zip(self._GRID_GATES, ("FAIL", "N/A"), strict=True):
+            for profile in (None, "smoke", "full"):
+                verdicts = _verdicts(
+                    check_e4(tmp_path, profile=profile),
+                    experiment="E4",
+                    gate_prefix=gate,
+                )
+                assert verdicts == [expected], (gate, profile, verdicts)
 
     def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
         try:
@@ -1643,14 +1657,24 @@ class TestCheckE6Profile:
         )[0]
         assert result.verdict == "FAIL"
 
-    def test_good_optimality_still_passes_at_smoke(self, tmp_path):
+    def test_gate4_is_suppressed_at_smoke_even_on_a_good_record(self, tmp_path):
+        """Suppression is unconditional at smoke, and PASS-preserving at full.
+
+        Gate 4 asks whether the recorded optimality is meaningful, and at
+        smoke scale it is not -- whatever number the collapsed solve happened
+        to write. So the verdict is `N/A` even here, while the SAME record
+        still PASSes under `full`. This is the one case where `N/A` replaces
+        a PASS rather than a FAIL, and it is deliberate: reading a collapsed
+        solve's optimality as evidence would be the weaker gate.
+        """
         _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(1e-3))
-        result = _find(
-            check_e6(tmp_path, profile="smoke"),
-            experiment="E6",
-            gate_prefix="gate4_optimality:e6_configs/baseline.json",
-        )[0]
-        assert result.verdict == "PASS"
+        gate = "gate4_optimality:e6_configs/baseline.json"
+        assert _verdicts(
+            check_e6(tmp_path, profile="smoke"), experiment="E6", gate_prefix=gate
+        ) == ["N/A"]
+        assert _verdicts(
+            check_e6(tmp_path, profile="full"), experiment="E6", gate_prefix=gate
+        ) == ["PASS"]
 
     def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
         try:
