@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: Phase 26 closed 2026-08-19
+status: executing
 stopped_at: Phase 27 context gathered
-last_updated: "2026-08-19T13:16:27.652Z"
+last_updated: "2026-08-19T13:16:56.756Z"
 last_activity: 2026-08-19 -- 26-12/13/14 landed, 26-10's smoke acceptance pass recorded
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 28
+  total_plans: 38
   completed_plans: 28
-  percent: 50
+  percent: 74
 ---
 
 # Project State
@@ -32,10 +32,17 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans)
-Next phase: 27 (frozen-single-sha-handoff-package)
-Status: Phase 26 closed 2026-08-19
-Last activity: 2026-08-19 -- 26-12/13/14 landed, 26-10's smoke acceptance pass recorded
+Phase: 27 (frozen-single-sha-handoff-package) — context gathered, not yet planned
+Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
+Status: executing
+Last activity: 2026-08-19 -- Phase 27 context gathered; next is /gsd:plan-phase 27
+
+Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
+`_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
+force `--skip-e2` (synthetic-only). Also in scope now: `is_stage_complete` ignoring the exit-code
+column on resume, and `reconstruction_bootstrap.py:56`'s hardcoded output path. Smoke is being made
+truthful so it can exit 0, because on-target smoke is the chosen verification venue. See
+`.planning/phases/27-frozen-single-sha-handoff-package/27-CONTEXT.md`.
 
 Phase 26 closed at sha `88512b7`. Plans 26-01..26-09 delivered the driver, manifest, gates and
 archive-aside; 26-11 added the reduced-scale path; 26-10 recorded the D-33 form-1 acceptance pass.
