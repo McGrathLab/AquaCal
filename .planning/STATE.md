@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 27 -- waves 1 and 2 merged, post-merge gate running
+stopped_at: Phase 27 -- FROZEN at 3ab9c13, tagged rerun-freeze-01; on-target work (27-12, 27-13) remains
 last_updated: "2026-08-19T15:03:43.269Z"
 last_activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 41
-  completed_plans: 37
-  percent: 62
+  completed_plans: 39
+  percent: 68
 ---
 
 # Project State
@@ -33,10 +33,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 ## Current Position
 
 Phase: 27 (frozen-single-sha-handoff-package) — EXECUTING
-Plan: 9 of 13 (waves 1 and 2 complete; wave 3 = plan 27-10 next)
+Plan: 11 of 13 (waves 1-4 complete; 27-12 and 27-13 are ON-TARGET, Linux machine)
 Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
-Status: Executing Phase 27 -- waves 1-2 merged, post-merge suite gate in flight
-Last activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
+Status: Executing Phase 27 -- FREEZE CUT. Blocked on Linux-machine access for 27-12/27-13.
+Last activity: 2026-08-19 -- freeze cut at 3ab9c13, tagged rerun-freeze-01, pushed to origin
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
