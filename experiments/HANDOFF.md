@@ -131,7 +131,7 @@ exist.
 
 That confirmation is recorded in the on-target verification plan's own record, **not by editing
 this file** — because this file lives inside the frozen sha, and editing anything inside it would
-require cutting a new tag. **Tags are never moved.** See §2.6.
+require cutting a new tag. **Tags are never moved.** See §2.7.
 
 ### 1.5 Resources
 
@@ -222,13 +222,13 @@ would refuse every restart after the first crash — a check that kills a run wh
 have succeeded. Dirtiness is still *recorded* post-hoc by the gates, which can never kill a run.
 **Do not add a dirty-tree refusal back.**
 
-> Note: the default value of `E2_RELEASE_CONFIG` and the frozen driver's gate-interpreter
-> resolution are being repointed for this machine in the same freeze as this note. The intended end
-> state: the E2 release config defaults to an **in-repo Linux config committed inside the frozen
-> sha**, with any off-repo path reachable only via `SUITE_E2_RELEASE_CONFIG`; and the gate
-> interpreter comes from `PRELAUNCH_GATE_PYTHON`, failing **loudly and naming that variable** rather
-> than falling through to a bare `python` that does not exist on this machine. If the driver and
-> this paragraph disagree, the driver is authoritative.
+> **Done, as of plan 27-08 (in this frozen sha).** `E2_RELEASE_CONFIG` now defaults to
+> `experiments/configs/e2_release_linux.yaml`, committed inside the frozen sha, with any off-repo
+> path reachable only via `SUITE_E2_RELEASE_CONFIG`. The gate interpreter comes from
+> `PRELAUNCH_GATE_PYTHON` and fails **loudly, naming that variable**, rather than falling through
+> to a bare `python` that does not exist on this machine — and the conda-env-by-name discovery
+> rung was **deleted** rather than case-fixed (D-29), because auto-discovery by name was the
+> defect. If the driver and this paragraph ever disagree, the driver is authoritative.
 
 ### 2.2 Useful environment variables
 
@@ -277,6 +277,18 @@ Each flag disables **exactly one** refusal:
 | `--allow-nonempty-out` | proceed although the output tree is non-empty and no state file exists for this sha. |
 | `--allow-low-disk` | proceed although free space is below the manifest's crude absolute floor. |
 | `--allow-gate-precheck-failure` | proceed although the completeness gate could not be invoked at pre-flight. |
+
+**`--allow-nonempty-out` is the one flag that can silently cost you the verdict, and it is also
+the refusal you are most likely to meet first.** It fired twice during the 2026-08-19 local
+acceptance pass. The refusal means the output tree holds artifacts from a run at a *different*
+sha, and the completeness gate cannot tell those from this run's — so overriding it makes the
+roll-up report another run's artifacts as yours, which is the F-001 shape the roll-up exists to
+prevent. **Move the old tree aside instead** (`mv experiments/results_smoke ../aside-<sha>/`);
+the flag is for the case where you have already established the leftovers are irrelevant.
+
+The same refusal governs stage sequencing: if you run a single stage into a scratch directory
+first (plan 27-13 does this with `fd_jacobian`), that scratch directory must **not** be
+`experiments/results_smoke`, or the smoke pass that follows will refuse to start.
 
 Two refusals have **no** override and are not in that table: a run manifest that cannot be written
 (every artifact's provenance anchors to it, so a run without one is unreportable), and pre-flight's
@@ -414,9 +426,11 @@ awk '/END-OF-RUN COMPLETENESS ROLL-UP/,0' suite_run_<tag>.log | grep -E '^\[FAIL
   zero exit code in `experiments/run_experiment_suite_state.<sha>.tsv`.
 - A `STAGE FAILED` line in the sticky failures file is real and always matters — that is a stage
   that ran and failed, and it is distinct from a `GATE FAIL` line.
-- `gate3_run_manifest_clean_tree` FAILing means the working tree was dirty at launch. That one is
-  real: the recorded `git_sha` then does not fully describe the code that ran. Commit or stash
-  before launching.
+- `gate3_run_manifest_clean_tree` FAILing means the working tree was dirty **at launch**. That one
+  is real: the recorded `git_sha` then does not fully describe the code that ran. Commit or stash
+  before launching. **This is not the same as the run dirtying the tree as it writes results**
+  (§2.1) — the manifest is written by pre-flight, before stage 1, so it captures the state at
+  launch only. Dirty-at-launch is a defect; dirty-by-writing-results is expected.
 
 This reading was ruled by the author on 2026-08-19 and is recorded in
 `.planning/phases/27-frozen-single-sha-handoff-package/27-PREPUSH-AUDIT.md`. The alternative —
