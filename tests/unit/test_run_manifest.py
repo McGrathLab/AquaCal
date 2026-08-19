@@ -20,6 +20,7 @@ from pathlib import Path
 
 import cv2
 import pytest
+
 from experiments._run_manifest import (
     MANIFEST_SCHEMA_VERSION,
     REQUIRED_MANIFEST_FIELDS,
@@ -163,3 +164,93 @@ class TestMainCli:
     def test_main_force_rewrites_and_returns_zero(self, tmp_path):
         main(["--out", str(tmp_path)])
         assert main(["--out", str(tmp_path), "--force"]) == 0
+
+
+class TestThreadRegimeRecord:
+    """D-14: BOTH regimes are recorded, or the numbers are uninterpretable.
+
+    The cap applies to the stages the pool runs 4-5 wide; the four
+    `serial_alone` timing stages are left at the library default because every
+    historical measurement was taken unpinned.
+    """
+
+    def test_cap_is_present_and_none_when_the_variable_is_unset(self, monkeypatch):
+        """Present, never absent -- `_run_manifest`'s stated rule."""
+        monkeypatch.delenv("SUITE_THREAD_CAP", raising=False)
+        manifest = build_run_manifest()
+        assert "blas_thread_cap" in manifest
+        assert manifest["blas_thread_cap"] is None
+
+    def test_cap_is_read_from_the_driver_contract_variable(self, monkeypatch):
+        monkeypatch.setenv("SUITE_THREAD_CAP", "2")
+        assert build_run_manifest()["blas_thread_cap"] == 2
+
+    def test_a_non_integer_cap_is_recorded_verbatim_rather_than_dropped(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("SUITE_THREAD_CAP", "not-a-number")
+        assert build_run_manifest()["blas_thread_cap"] == "not-a-number"
+
+    def test_the_unpinned_list_is_exactly_the_four_timing_stages(self):
+        manifest = build_run_manifest()
+        assert sorted(manifest["blas_thread_unpinned_stages"]) == sorted(
+            ["e4", "e4_repeat", "e2_timing", "e2_memory"]
+        )
+
+    def test_the_pinned_list_is_the_concurrent_stages_from_the_expectations(self):
+        expectations = json.loads(
+            (_REPO_ROOT / "experiments" / "suite_expectations.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected = [
+            stage["id"]
+            for stage in expectations["stages"]
+            if stage.get("concurrency") == "concurrent"
+        ]
+        manifest = build_run_manifest()
+        assert sorted(manifest["blas_thread_cap_stages"]) == sorted(expected)
+
+    def test_the_two_lists_are_disjoint_and_cover_every_stage(self):
+        manifest = build_run_manifest()
+        pinned = set(manifest["blas_thread_cap_stages"])
+        unpinned = set(manifest["blas_thread_unpinned_stages"])
+        assert pinned & unpinned == set()
+        expectations = json.loads(
+            (_REPO_ROOT / "experiments" / "suite_expectations.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert pinned | unpinned == {s["id"] for s in expectations["stages"]}
+
+    def test_a_missing_expectations_manifest_degrades_to_none_not_a_raise(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(
+            "experiments._run_manifest._SUITE_EXPECTATIONS_PATH",
+            tmp_path / "absent.json",
+        )
+        manifest = build_run_manifest()
+        assert manifest["blas_thread_cap_stages"] is None
+        assert manifest["blas_thread_unpinned_stages"] is None
+        assert manifest["git_sha"] is not None  # one dead source is not fatal
+
+    def test_an_unparseable_expectations_manifest_degrades_to_none(
+        self, monkeypatch, tmp_path
+    ):
+        broken = tmp_path / "broken.json"
+        broken.write_text("{not json", encoding="utf-8")
+        monkeypatch.setattr(
+            "experiments._run_manifest._SUITE_EXPECTATIONS_PATH", broken
+        )
+        manifest = build_run_manifest()
+        assert manifest["blas_thread_cap_stages"] is None
+        assert manifest["blas_thread_unpinned_stages"] is None
+
+    def test_the_new_keys_are_not_required_fields(self):
+        """Gate 3 turns a None in that tuple into a FAIL, and an unset cap on a
+        serial local run is legitimate, not a defect."""
+        assert "blas_thread_cap" not in REQUIRED_MANIFEST_FIELDS
+        assert "blas_thread_cap_stages" not in REQUIRED_MANIFEST_FIELDS
+        assert "blas_thread_unpinned_stages" not in REQUIRED_MANIFEST_FIELDS
+        assert len(REQUIRED_MANIFEST_FIELDS) == 17
