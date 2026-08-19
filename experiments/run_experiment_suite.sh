@@ -368,10 +368,33 @@ E4_REPEAT_CELLS=("8x100" "12x100" "16x100")
 
 # E2's production release config -- the source `emit_seed_variant_configs` and
 # `emit_invocation_configs` read from and refuse to write into or under
-# (release-tree write refusal, T-19.5-07-01 / T-26-17). This path resolves on
-# the WINDOWS PLANNING BOX ONLY, which is why it is an overridable variable
-# rather than a literal: Phase 27 repoints it for the Linux run machine.
-E2_RELEASE_CONFIG="${SUITE_E2_RELEASE_CONFIG:-C:/Users/tucke/Desktop/Aqua/AquaCal/release_calibration/config.yaml}"
+# (release-tree write refusal, T-19.5-07-01 / T-26-17).
+#
+# D-11/D-12: the default is now IN-REPO. It used to be an absolute path on the
+# Windows planning box, which meant the exact inputs of the run that produces
+# the manuscript's Section 3 numbers lived outside the artifact describing them
+# -- the F-001 shape. `experiments/configs/e2_release_linux.yaml` is that config
+# committed inside the frozen sha, carrying the Linux run machine's absolute
+# image-set paths. See its header for why the paths are absolute and why it
+# lives in `configs/` rather than in `experiments/` directly.
+#
+# THE CONSEQUENCE, WHICH IS LOAD-BEARING FOR A LOCAL RUN: on the Windows
+# development box the new default's target paths do not resolve, so
+# `_preflight_frameset` reports ABSENT. That is not a defect and there is NO new
+# refusal here -- it is the ordinary ABSENT branch, and it has two documented
+# ways out:
+#
+#   SUITE_E2_RELEASE_CONFIG=/path/to/your/config.yaml   (run E2 locally against
+#       your own frameset -- e.g. the retired Windows release config that used
+#       to be this default)
+#   --skip-e2                                           (DECLARES a
+#       synthetic-only run; the declaration is written to a marker file and
+#       reprinted in the roll-up)
+#
+# Keeping that escape hatch is exactly D-12's point: the Git Bash box is where
+# defects get diagnosed, and it must keep working unchanged. No sixth override
+# flag is added for this.
+E2_RELEASE_CONFIG="${SUITE_E2_RELEASE_CONFIG:-experiments/configs/e2_release_linux.yaml}"
 
 # E2's THREE production invocation configs are GENERATED from the release
 # config at run time (plan 26-06's `--emit-invocation-configs`), never
@@ -391,19 +414,99 @@ E2_MEMORY_CONFIG="${E2_INVOCATION_DIR}/config_e2_memory.yaml"
 # Phase 27 can repoint it on the run machine.
 BASELINE_DIR="${SUITE_BASELINE_DIR:-experiments/pre_rerun_baseline/results}"
 
+# THE GATE INTERPRETER (D-12, SUPERSEDED ON ITS MIDDLE RUNG BY D-29).
+#
 # check_rerun_gates.py imports pandas AND aquacal.datasets.synthetic /
-# experiments.e4_benchmark_grid (its legality_probe), so it needs the AquaCal
-# env, not Git Bash's bare `python` (which is Anaconda base on this box). Same
-# pin and override variable as prelaunch_gate.sh. Falls back to bare `python`
-# only if the pinned interpreter is absent, so a missing env degrades the GATE
-# to a logged finding rather than aborting a production stage -- EXCEPT
-# pre-flight, whose own failure (including an absent interpreter) is a hard
-# abort per D-03.
-GATE_PYTHON="${PRELAUNCH_GATE_PYTHON:-$HOME/anaconda3/envs/AquaCal/python.exe}"
-if [ ! -x "${GATE_PYTHON}" ] && ! command -v "${GATE_PYTHON}" >/dev/null 2>&1; then
-  echo "WARNING: pinned gate interpreter not found at ${GATE_PYTHON}; falling back to bare 'python'. Gate verdicts may fail to import pandas." >&2
-  GATE_PYTHON="python"
+# experiments.e4_benchmark_grid (its legality_probe), so it needs a real
+# AquaCal environment, not Git Bash's bare `python` (which is Anaconda base on
+# this box). Same override variable as prelaunch_gate.sh. A missing interpreter
+# degrades the GATE to a logged finding rather than aborting a production stage
+# -- EXCEPT pre-flight, whose own failure is a hard abort per D-03. This
+# resolution adds NO new refusal (D-12; Phase 26 § D cut three and P26-D-50
+# binds every survivor).
+#
+# WHAT WAS DELETED HERE, AND WHY IT WAS NOT MERELY CASE-FIXED (D-29)
+# ------------------------------------------------------------------
+# The old middle rung hardcoded `$HOME/anaconda3/envs/AquaCal/python.exe`, i.e.
+# it DISCOVERED A CONDA ENV BY NAME. Plan 27-01 measured the Linux run machine
+# and found that rung wrong twice over: the env there is lowercase `aquacal`
+# (Linux is case-sensitive), and repairing the case would be WORSE than leaving
+# it broken -- `~/anaconda3/envs/aquacal/bin/python` is exactly the environment
+# D-26 excludes, because it carries OpenCV **4.14.0**, the version
+# `pyproject.toml` pins AGAINST for a measured reason (1.95% fewer corners,
+# +7.8% reconstruction RMSE). Auto-discovery by name is the defect; the case
+# was incidental. So the rung is GONE, not repaired: nothing here may guess at
+# an environment by name again.
+#
+# Plan 27-12 builds a fresh `opencv-python==4.13.*` env for the frozen run and
+# sets PRELAUNCH_GATE_PYTHON to its absolute interpreter path -- absolute
+# because conda is initialised in `~/.bashrc`, which non-interactive SSH never
+# sources (D-28), so `conda activate` is not available there.
+#
+# The chain is now TWO rungs plus a loud failure:
+#   1. PRELAUNCH_GATE_PYTHON, the explicit override. The only rung that should
+#      ever fire on the run machine.
+#   2. `python` then `python3` on PATH -- a PATH lookup, not an environment
+#      guess. Degrading here is LOUD and names the override, because on the
+#      target there is no `python` on PATH at all and the old silent fallback
+#      died with "command not found", which reads as a broken driver rather
+#      than an unresolved interpreter.
+#   3. Nothing resolvable: print an ERROR naming PRELAUNCH_GATE_PYTHON and
+#      carry on with the unresolved value, so the eventual failure is
+#      attributable to the interpreter and not to the stage that hit it.
+#
+# The resolution is printed ON SUCCESS TOO, not only on failure: a run against
+# the wrong interpreter must be visible in the log rather than inferred from a
+# failure three hours later.
+GATE_PYTHON_RUNG="unresolved"
+if [ -n "${PRELAUNCH_GATE_PYTHON:-}" ]; then
+  GATE_PYTHON="${PRELAUNCH_GATE_PYTHON}"
+  GATE_PYTHON_RUNG="PRELAUNCH_GATE_PYTHON override"
+  if [ ! -x "${GATE_PYTHON}" ] && ! command -v "${GATE_PYTHON}" >/dev/null 2>&1; then
+    echo "WARNING: PRELAUNCH_GATE_PYTHON is set to '${GATE_PYTHON}' but nothing executable is there. Gate verdicts may fail to import pandas. Fix the override or unset it to fall back to PATH." >&2
+    GATE_PYTHON_RUNG="PRELAUNCH_GATE_PYTHON override (NOT EXECUTABLE)"
+  fi
+else
+  GATE_PYTHON=""
+  for _gate_candidate in python python3; do
+    if command -v "${_gate_candidate}" >/dev/null 2>&1; then
+      GATE_PYTHON="${_gate_candidate}"
+      GATE_PYTHON_RUNG="PATH fallback (${_gate_candidate})"
+      break
+    fi
+  done
+  unset _gate_candidate
+  if [ -n "${GATE_PYTHON}" ]; then
+    echo "WARNING: PRELAUNCH_GATE_PYTHON is not set, so the gate interpreter fell back to '${GATE_PYTHON}' on PATH. Gate verdicts may fail to import pandas, and this is NOT the frozen run's environment. Set PRELAUNCH_GATE_PYTHON to the absolute interpreter path of the run's environment (D-28: no bare 'conda activate' over non-interactive SSH)." >&2
+  else
+    echo "ERROR: no gate interpreter could be resolved -- PRELAUNCH_GATE_PYTHON is unset and neither 'python' nor 'python3' is on PATH. SET PRELAUNCH_GATE_PYTHON to the absolute interpreter path of the run's environment. Proceeding so the failure lands where it belongs rather than as a bare 'command not found'." >&2
+    GATE_PYTHON="python"
+    GATE_PYTHON_RUNG="UNRESOLVED (nothing on PATH)"
+  fi
 fi
+
+# THE STAGE INTERPRETER (D-30). Every stage below runs `python -u -m
+# experiments.<mod>` -- bare, from PATH, ~25 call sites. GATE_PYTHON is
+# deliberately NOT that interpreter (see above), so the run manifest, which is
+# written UNDER GATE_PYTHON, can record versions describing an interpreter that
+# computed nothing. This variable names the stage interpreter so the manifest
+# can record BOTH and an explicit equality verdict between them. A mismatch is
+# RECORDED, NOT REFUSED -- it is legitimate on the Windows dev box by design.
+#
+# It is a literal `python` because that is what the stage call sites literally
+# say; `tests/unit/test_run_experiment_suite_dryrun.py` asserts the two agree,
+# so this cannot drift into describing an interpreter no stage uses.
+STAGE_PYTHON="python"
+export SUITE_STAGE_PYTHON="${STAGE_PYTHON}"
+
+_log_interpreter_resolution() {
+  # Printed on SUCCESS as well as failure (D-29), and printed through `echo`
+  # rather than `log` because it runs before the log file is opened.
+  local resolved
+  resolved="$(command -v "${GATE_PYTHON}" 2>/dev/null || printf '%s' "${GATE_PYTHON}")"
+  echo "INTERPRETERS: gate=${resolved} (rung: ${GATE_PYTHON_RUNG}); stage=${STAGE_PYTHON} (every 'python -u -m experiments.<mod>' call site). Override the gate with PRELAUNCH_GATE_PYTHON."
+}
+_log_interpreter_resolution
 
 # THE STAGE LIST. Every entry here has a matching entry in
 # `experiments/suite_expectations.json` and a matching `run_stage_<id>`
@@ -665,6 +768,36 @@ case "${SUITE_WORKERS}" in
     ;;
 esac
 
+# THE BLAS THREAD CAP, AND IT IS DELIBERATELY A TWO-REGIME PIN (D-14).
+#
+# REGIME 1 -- the CONCURRENT stages get `OMP_NUM_THREADS`, `MKL_NUM_THREADS`
+# and `OPENBLAS_NUM_THREADS` set to this value. The derivation, not a
+# preference: `.planning/probes/2026-08-18-solver-concurrency/FINDINGS.md`
+# measured one solve holding a MEDIAN 0.99 cores of 20 (mean 1.20, p95 2.01,
+# peak 2.56). A solve that uses one core on the median is not being helped by
+# an unbounded thread pool, so a cap of 2 leaves the p95 case untouched while
+# removing the oversubscription that 4-5 competing processes would otherwise
+# produce. It costs nothing where it applies, which is the only reason it is
+# safe to apply at all.
+#
+# REGIME 2 -- the four `serial_alone` stages (e4, e4_repeat, e2_timing,
+# e2_memory) see NO cap variable AT ALL. Every historical timing measurement
+# was taken unpinned, so pinning them would silently change what is being
+# timed. `run_one_stage` therefore UNSETS the three variables for them rather
+# than exporting an empty string: an exported empty string is not the same as
+# unset to OpenBLAS, and that distinction is the whole point.
+#
+# The split is READ FROM `STAGE_CONCURRENCY`, which `_load_stage_attributes`
+# populates from `suite_expectations.json`. There is deliberately no second
+# stage list here -- that duplication is exactly the drift the manifest exists
+# to prevent.
+#
+# Exported so `experiments/_run_manifest.py` records the cap ACTUALLY in force
+# (D-14, `blas_thread_cap`): the value recorded and the value enforced come
+# from this one place. Overridable for a machine with different arithmetic.
+SUITE_THREAD_CAP="${SUITE_THREAD_CAP:-2}"
+export SUITE_THREAD_CAP
+
 log() {
   printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
 }
@@ -884,6 +1017,31 @@ run_stage_preflight() {
   if [ "${manifest_exit}" -ne 0 ]; then
     log "PREFLIGHT REFUSAL: the run manifest could not be written (exit=${manifest_exit}). Every artifact's provenance anchors to it, so a run without one is unreportable. There is NO override for this refusal -- fix the emitter or the output directory and restart from stage 1."
     return "${manifest_exit}"
+  fi
+
+  # 1b. THE ENVIRONMENT LOCKFILE (D-13). Written BESIDE the run manifest, and
+  # deliberately NOT in the manifest's refusal class.
+  #
+  # The manifest already carries every version that moves a number
+  # (python/numpy/scipy/opencv, the OpenCV build, the installed distribution
+  # version, the CPU and RAM). What the lock adds is the TRANSITIVE set, which
+  # is worth recording and is not worth a commit inside the freeze window --
+  # capturing it at run time also means it describes the environment that
+  # actually ran, which a pre-freeze commit could not.
+  #
+  # A NON-ZERO EXIT IS LOGGED AND THE RUN CONTINUES. `_env_lock` already
+  # degrades a failed `pip freeze` into a recorded reason and still returns 0,
+  # so a non-zero here means the WRITE failed -- supplementary detail missing
+  # on top of a manifest that carries the load-bearing versions. Phase 26 § D
+  # cut three pre-flight refusals and P26-D-50 binds every survivor to print an
+  # override flag; adding a fourth refusal for a supplementary artifact is
+  # exactly what D-12 forbids. `--force` for the same reason the manifest gets
+  # it: a resume after a crash mid-pre-flight must be able to rewrite it.
+  log "preflight: writing the environment lockfile into ${OUT_DIR}"
+  "${GATE_PYTHON}" -m experiments._env_lock --out "${OUT_DIR}" --force
+  local lock_exit=$?
+  if [ "${lock_exit}" -ne 0 ]; then
+    log "preflight: the environment lockfile could not be written (exit=${lock_exit}). This is a LOGGED FINDING, NOT A REFUSAL (D-13) -- the run manifest already carries every version that moves a number, and the lock is transitive detail on top of it. The run continues; the completeness gate will report environment_lock.txt as missing."
   fi
 
   # 2. E2 FRAMESET IDENTITY, NOT PRESENCE (D-17).
@@ -1861,6 +2019,29 @@ run_one_stage() {
   state_start "${name}" "${idx}"
   log ">>> STAGE ${idx}/${#STAGES[@]}: ${name} starting"
 
+  # D-14's TWO-REGIME BLAS PIN, applied at the ONE place both the serial path
+  # and the pool path pass through. See the SUITE_THREAD_CAP block near the top
+  # for the derivation.
+  #
+  # The `else` branch UNSETS rather than assigning an empty string, and that is
+  # load-bearing: an exported `OMP_NUM_THREADS=` is NOT the same as an unset
+  # one to OpenBLAS, and the four `serial_alone` timing stages must run exactly
+  # as every historical measurement of them was taken -- at the library
+  # default. It also strips any cap the operator's own shell exported, for the
+  # same reason.
+  #
+  # No restore afterwards is needed or wanted: every dispatch sets or unsets
+  # the three variables for itself, so the value in force is always the current
+  # stage's regime rather than a leftover of the previous one. Under the pool
+  # each `run_one_stage` is already inside its own subshell.
+  if [ "${STAGE_CONCURRENCY[${name}]:-}" = "concurrent" ]; then
+    export OMP_NUM_THREADS="${SUITE_THREAD_CAP}"
+    export MKL_NUM_THREADS="${SUITE_THREAD_CAP}"
+    export OPENBLAS_NUM_THREADS="${SUITE_THREAD_CAP}"
+  else
+    unset OMP_NUM_THREADS MKL_NUM_THREADS OPENBLAS_NUM_THREADS
+  fi
+
   "run_stage_${name}"
   local exit_code=$?
 
@@ -1921,8 +2102,19 @@ _load_stage_attributes() {
   # and NO stage name: adding a stage to the manifest is enough for the pool to
   # honour its constraints, which is the difference between a dependency a pool
   # can enforce and a comment it cannot.
+  # THE DELIMITER IS `|`, NOT A TAB, AND THAT IS A BUG FIX (plan 27-08).
+  # Tab is an IFS WHITESPACE character, so `IFS=$'\t' read` collapses runs of
+  # tabs into a single delimiter and an EMPTY FIELD SHIFTS EVERY COLUMN AFTER
+  # IT. `preflight` is the one stage with an empty `depends_on`, so its row
+  # silently loaded as deps="concurrent", concurrency="none", frame_class the
+  # est_hours and est_hours empty -- i.e. the scheduler believed pre-flight's
+  # concurrency was the literal string "none". It went unnoticed because the
+  # two pre-flight stages are dispatched in the parent and never queued in the
+  # pool, so nothing consulted the wrong value until D-14's thread pin did.
+  # `|` is not IFS whitespace, so empty fields survive; `depends_on` is already
+  # comma-joined, so the character cannot occur inside a field.
   local line name deps conc frame est
-  while IFS=$'\t' read -r name deps conc frame est; do
+  while IFS='|' read -r name deps conc frame est; do
     [ -n "${name}" ] || continue
     STAGE_DEPS["${name}"]="${deps}"
     STAGE_CONCURRENCY["${name}"]="${conc}"
@@ -1941,8 +2133,11 @@ for stage in manifest["stages"]:
     # a systematic failure early, and the low bound is the optimistic case that
     # ordering is trying to exploit.
     low = est[0] if isinstance(est, list) else est
+    # `|` rather than a tab: see the delimiter note above the reader. A tab is
+    # IFS whitespace, so an empty `depends_on` would collapse and shift every
+    # field after it.
     print(
-        "\t".join(
+        "|".join(
             [
                 stage["id"],
                 ",".join(stage["depends_on"]),
@@ -2232,6 +2427,12 @@ main() {
   log "Resuming from stage index ${START_STAGE} (stages already marked complete are skipped regardless)."
   log "Profile: ${PROFILE}. Concurrency: $([ -n "${SUITE_SERIAL:-}" ] && echo "SERIAL (SUITE_SERIAL is set)" || echo "pooled, ${SUITE_WORKERS} wide (D-52)")."
   log "Scale: $([ "${SUITE_SMOKE}" -eq 1 ] && echo "REDUCED (--smoke) -- NOT EVIDENCE, invocation-line verification only" || echo "FULL (production)"). Output tree: ${OUT_DIR}."
+  # D-12/D-29: BOTH portable resolutions are logged, on success as well as on
+  # failure, and into the LOG FILE rather than only onto the terminal. A run
+  # against the wrong interpreter or the wrong frameset config must be readable
+  # from the overnight log, not inferred from a failure three hours later.
+  log "E2 release config: ${E2_RELEASE_CONFIG} ($([ -n "${SUITE_E2_RELEASE_CONFIG:-}" ] && echo "SUITE_E2_RELEASE_CONFIG override" || echo "in-repo default"))."
+  log "$(_log_interpreter_resolution)"
   _announce_declared_reductions
 
   mkdir -p "${STAGE_LOG_DIR}" "${STAGE_DONE_DIR}"

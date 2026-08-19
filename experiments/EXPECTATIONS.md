@@ -134,7 +134,7 @@ Stated so nobody over-reads it:
 
 ### Shape of the run
 
-- **20 stages**, **62 declared artifacts** (62 expected under the `full` profile, of which 20 pin a row count).
+- **20 stages**, **63 declared artifacts** (63 expected under the `full` profile, of which 20 pin a row count).
 - **2 conditional** artifact(s): legitimately absent when the condition did not hold, and their absence is not evidence of an incomplete run.
 - **3 immutable** artifact(s): the re-run must not change them.
 - **5 artifact(s) carry shape-only columns** — present and correctly counted proves nothing about their values. Those are the cells a hand-verifier actually has to read.
@@ -172,6 +172,7 @@ Stated so nobody over-reads it:
 | Artifact | Stage | Directory | Rows (`full`) | Conditional | Immutable | Shape-only columns |
 |---|---|---|---|---|---|---|
 | `run_manifest.json` | `preflight` | `experiments/results` | not pinned | no | no | — |
+| `environment_lock.txt` | `preflight` | `experiments/results` | not pinned | no | no | — |
 | `exp1_parameter_errors.csv` | `e1` | `experiments/results` | 24 | no | yes | — |
 | `exp2_depth_generalization.csv` | `e1` | `experiments/results` | 16 | no | yes | — |
 | `exp3_xy_vs_z_anisotropy.csv` | `e1` | `experiments/results` | 16 | no | yes | — |
