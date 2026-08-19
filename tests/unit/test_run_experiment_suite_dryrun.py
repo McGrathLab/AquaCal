@@ -478,6 +478,30 @@ class TestNoExperimentEverRuns:
         )
 
 
+def _was_skipped_as_complete(run: DriverRun, stage_id: str) -> bool:
+    """Did the driver skip `stage_id` because it already had a completion line?
+
+    Matched BY NAME, never by queue index. The index in `SKIP stage N (name)`
+    is the position in the driver's own shortest-first execution order, which is
+    NOT the manifest's listing order -- e5 is 9th in the manifest and 6th in the
+    queue. A resume test's sharpest assertion is the NEGATIVE one ("it was not
+    skipped"), and a negative assertion carrying the wrong number passes against
+    every driver ever written. That vacuous-gate shape is one this project has
+    already been bitten by, so the index is kept out of the predicate entirely.
+    """
+    needle = f"({stage_id}): already has a recorded completion line"
+    return any(needle in line for line in run.stdout.splitlines())
+
+
+def _write_state(sandbox: Path, lines: str) -> Path:
+    """Plant a hand-crafted state file at the sha-derived dry-run path."""
+    state_dir = sandbox / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_file = state_dir / f"run_experiment_suite_state.{_frozen_sha()}.dryrun.tsv"
+    state_file.write_text(lines, encoding="utf-8")
+    return state_file
+
+
 class TestResume:
     """The two resume semantics, which are not interchangeable."""
 
@@ -507,13 +531,7 @@ class TestResume:
         treating it as complete is how a partial result set spanning two trees
         gets assembled, which the abort protocol exists to forbid.
         """
-        state_dir = tmp_path / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        sha = _frozen_sha()
-        state_file = state_dir / f"run_experiment_suite_state.{sha}.dryrun.tsv"
-        state_file.write_text(
-            "e5\t7\tstart\t2026-08-18T00:00:00.000Z\t\n", encoding="utf-8"
-        )
+        _write_state(tmp_path, "e5\t6\tstart\t2026-08-18T00:00:00.000Z\t\n")
 
         run = run_driver(tmp_path)
         assert run.returncode == 0
@@ -521,10 +539,61 @@ class TestResume:
             "e5 carried a start line with no completion line, so it must be "
             "re-run from scratch; it was not invoked at all"
         )
-        assert "SKIP stage 7 (e5)" not in run.stdout, (
+        assert not _was_skipped_as_complete(run, "e5"), (
             "e5 was SKIPPED although its state line was a start with no "
             "matching completion -- a died stage was treated as done"
         )
+
+    def test_a_stage_that_completed_with_a_nonzero_exit_is_rerun(
+        self, bash_available, tmp_path
+    ):
+        """D-22: a completion line is not enough -- the exit code decides.
+
+        `state_complete` always writes the stage's exit code as column 5, and
+        the frozen run's own state file already carries the proof line
+        `reconstruction_bootstrap\t10\tcomplete\t...\t1`: a stage that RAN
+        AND FAILED. Matching only on "complete" made the resume silently drop
+        it. On a single-shot 15-16 h run that is the failure most likely to cost
+        the whole night -- the end-of-run roll-up does catch the missing
+        artifact, but only after everything else has finished.
+        """
+        _write_state(
+            tmp_path,
+            "e5\t6\tstart\t2026-08-18T00:00:00.000Z\t\n"
+            "e5\t6\tcomplete\t2026-08-18T00:00:01.000Z\t1\n",
+        )
+
+        run = run_driver(tmp_path)
+        assert run.returncode == 0
+        assert "e5" in run.stage_invocations(), (
+            "e5's completion line carried exit code 1 -- it ran and FAILED -- "
+            "so it must be re-run; it was not invoked at all"
+        )
+        assert not _was_skipped_as_complete(run, "e5"), (
+            "a stage that completed NON-ZERO was SKIPPED on resume. That is "
+            "D-22: the resume dropped a stage that produced nothing"
+        )
+
+    def test_a_stage_that_completed_with_exit_zero_is_still_skipped(
+        self, bash_available, tmp_path
+    ):
+        """The other half: reading column 5 must not make resume useless.
+
+        Without this, `$5 == 0` could be "satisfied" by re-running everything.
+        """
+        _write_state(
+            tmp_path,
+            "e5\t6\tstart\t2026-08-18T00:00:00.000Z\t\n"
+            "e5\t6\tcomplete\t2026-08-18T00:00:01.000Z\t0\n",
+        )
+
+        run = run_driver(tmp_path)
+        assert run.returncode == 0
+        assert _was_skipped_as_complete(run, "e5"), (
+            "a cleanly completed stage was re-run; the resume path is the "
+            f"recovery the driver is built around.\n{run.stdout[-3000:]}"
+        )
+        assert "e5" not in run.stage_invocations()
 
 
 class TestStickyExit:
