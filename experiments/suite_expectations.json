@@ -56,7 +56,7 @@
       "invocation": "python -u -m experiments.e3_derived_quantities --check --out \"${OUT_DIR}\" && python -u -m experiments.e3_derived_quantities --force --out \"${OUT_DIR}\"",
       "out_dir": "experiments/results",
       "depends_on": [
-        "preflight"
+        "e2_production"
       ],
       "concurrency": "concurrent",
       "frame_class": "none",

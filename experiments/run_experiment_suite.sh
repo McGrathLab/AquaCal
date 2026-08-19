@@ -416,27 +416,35 @@ fi
 # each dependency level (D-37), using the est_hours in the manifest:
 #
 #   level 0  preflight(0.02)
-#   level 1  prelaunch_probe(0.01) e3(0.005) fd_jacobian(0.05) e1(0.09)
+#   level 1  prelaunch_probe(0.01) fd_jacobian(0.05) e1(0.09)
 #            e7(0.09) e5(0.76) e2_production(0.8-1.45) e6_repeat1(2.78)
-#   level 2  reconstruction_bootstrap(0.06) e2_timing e2_memory e7_band(1-2)
-#            e5_band(2.34) e2_band(2.42) e1_band(2.8) e4(3.57) e6_band(8.9)
+#   level 2  e3(0.005) reconstruction_bootstrap(0.06) e2_timing e2_memory
+#            e7_band(1-2) e5_band(2.34) e2_band(2.42) e1_band(2.8) e4(3.57)
+#            e6_band(8.9)
 #   level 3  e7_focal_standoff(0.02) e4_repeat(0.99)
 #
-# ONE DELIBERATE INVERSION OF SHORTEST-FIRST: `prelaunch_probe` (0.01 h) is
-# placed before `e3` (0.005 h). The difference is about twenty seconds, and the
-# probe is a HARD-ABORT stage (D-03) while `e3 --force` REWRITES committed tier
-# CSVs. Aborting after mutating tracked artifacts, to save twenty seconds, is a
-# bad trade.
+# `e3` IS IN LEVEL 2, NOT LEVEL 1, and its edge is on `e2_production` rather
+# than `preflight`. It reads E2's `benchmark.json` through a HARDCODED,
+# cwd-relative path (`e3_derived_quantities.py:173`) that `--out` does not
+# redirect, so scheduling it earlier means reading a file that does not exist
+# yet. That was invisible for as long as `experiments/results` still held a
+# previous run's copy; 26-09's archive-aside emptied the tree and the 26-10
+# smoke pass then died on `int(NaN)` twice in a row. Plan 26-12.
+#
+# The old note here recorded a DELIBERATE INVERSION -- `prelaunch_probe`
+# (0.01 h) placed before `e3` (0.005 h) so a hard abort could never land after
+# `e3 --force` rewrote committed tier CSVs. The dependency edge now enforces
+# that ordering on its own, so the inversion is gone rather than resolved.
 STAGES=(
   preflight
   prelaunch_probe
-  e3
   fd_jacobian
   e1
   e7
   e5
   e2_production
   e6_repeat1
+  e3
   reconstruction_bootstrap
   e2_timing
   e2_memory
