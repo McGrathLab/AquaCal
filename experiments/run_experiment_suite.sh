@@ -671,10 +671,23 @@ log() {
 
 is_stage_complete() {
   # A stage counts as complete only if the state file carries a "complete"
-  # event line for it -- a start-only line (started, then died) never matches.
+  # event line for it AND that line's exit code (column 5, always written by
+  # `state_complete`) is 0. Two ways to be incomplete, and BOTH must re-run:
+  #
+  #   * a start-only line -- started, then died. Never matched a "complete".
+  #   * a completion line carrying a NON-ZERO exit -- the stage ran AND FAILED,
+  #     so it produced nothing the roll-up can use. Reading only column 3 made
+  #     the resume SKIP it, silently. On a single-shot 15-16 h run that is the
+  #     failure most likely to cost the whole night: the end-of-run roll-up does
+  #     report the missing artifact, but only after everything else finished.
+  #     The frozen run's own state file already carries the proof -- a
+  #     `reconstruction_bootstrap` completion line with exit code 1.
+  #
+  # This makes resume STRICTER, never looser: no stage that would have re-run
+  # before is skipped now.
   local name="$1"
   [ -f "${STATE_FILE}" ] || return 1
-  awk -F'\t' -v stage="${name}" '$1 == stage && $3 == "complete" { found = 1 } END { exit !found }' "${STATE_FILE}"
+  awk -F'\t' -v stage="${name}" '$1 == stage && $3 == "complete" && $5 == 0 { found = 1 } END { exit !found }' "${STATE_FILE}"
 }
 
 # MILLISECOND RESOLUTION, and it is not cosmetic. Under D-52's pool these
@@ -924,6 +937,16 @@ _preflight_frameset() {
   # Exit codes from the probe below: 0 present and matching, 2 absent, 3
   # present but mismatched. Absence and mismatch are DIFFERENT refusals with
   # DIFFERENT overrides, because they are different mistakes.
+  #
+  # D-10: the check is PATH-KIND AGNOSTIC. A declared extrinsic path may be a
+  # video FILE or a DIRECTORY of frames, and the frozen run's target holds an
+  # IMAGE SET -- 13 directories. `io/detection.py:134` already auto-selects
+  # `ImageSet` for a directory, so the library reads either shape happily; it
+  # was only this probe that did not. A regular-file test here made `present`
+  # empty on the real target, exited 2 = ABSENT, and told the operator to pass
+  # `--skip-e2` -- which would have turned the whole re-run SYNTHETIC-ONLY.
+  # Presence is therefore `p.exists()`, and a directory is sized by walking it
+  # (a directory's own `st_size` is meaningless and must never be summed).
   local probe_out probe_exit
   probe_out="$(SUITE_E2_RELEASE_CONFIG="${E2_RELEASE_CONFIG}" "${GATE_PYTHON}" - <<'PY'
 import json
@@ -954,8 +977,18 @@ import yaml  # noqa: E402  (only needed once the config is known to exist)
 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 declared = config.get("paths", {}).get("extrinsic_videos", {}) or {}
 paths = [pathlib.Path(p) for p in declared.values()]
-present = [p for p in paths if p.is_file()]
-total_bytes = sum(p.stat().st_size for p in present)
+
+
+def _path_bytes(path):
+    # PATH-KIND AGNOSTIC (D-10). A directory's own st_size is meaningless, so
+    # an image set is sized by walking it; a video file is sized directly.
+    if path.is_dir():
+        return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+    return path.stat().st_size
+
+
+present = [p for p in paths if p.exists()]
+total_bytes = sum(_path_bytes(p) for p in present)
 
 expected_n = cheap["n_extrinsic_videos"]
 min_bytes = cheap["min_total_bytes"]
