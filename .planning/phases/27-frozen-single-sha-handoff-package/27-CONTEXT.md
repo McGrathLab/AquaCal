@@ -57,7 +57,7 @@ repo**.
 ### Where the freeze is verified
 
 - **D-05: Verification happens ON THE LINUX TARGET.** Clone the tag, build the environment, run the
-  dry-run harness (`RERUN_19_3_DRY_RUN`) end-to-end, then one **short real stage** and the gate
+  dry-run harness (`RUN_EXPERIMENT_SUITE_DRY_RUN`) end-to-end, then one **short real stage** and the gate
   roll-up. **The short stage must be `fd_jacobian`** — `suite_expectations.json` gives it
   `depends_on: ["preflight"]` and `est_hours 0.05`. It is the ONLY dependency-free short stage:
   `e3` looks cheap at 0.005 h but carries `depends_on: ["e2_production"]` from 26-12's edge, and
@@ -342,8 +342,8 @@ repo**.
 
 ### Reusable Assets
 
-- **The dry-run harness** (`_dry_run_active` / `_dry_run_stub`, `RERUN_19_3_DRY_RUN`,
-  `RERUN_19_3_DRY_RUN_CMD`) — every stage routes through it. This is D-05's primary on-target
+- **The dry-run harness** (`_dry_run_active` / `_dry_run_stub`, `RUN_EXPERIMENT_SUITE_DRY_RUN`,
+  `RUN_EXPERIMENT_SUITE_DRY_RUN_CMD`) — every stage routes through it. This is D-05's primary on-target
   instrument: it exercises the full stage list and scheduler in seconds.
 - **The scheduler is already Linux-safe by construction.** `_stage_worker` uses a sentinel file
   rather than `wait -n -p` *specifically* so the driver behaves identically on Git Bash and the
