@@ -255,6 +255,46 @@ class TestProfiles:
             "that produces them writes nothing to --out under --smoke"
         )
 
+    def test_smoke_unwritable_artifacts_are_full_only(self):
+        """P27-D-20 class 1: three artifacts no smoke code path can write.
+
+        Each is produced only by a full-run branch, so tagging it `smoke` made
+        the completeness gate assert something no code emits:
+
+        - `structural_scaling.csv` -- `e3_derived_quantities.py:1106-1126`, the
+          `--smoke` branch, writes tiers 1-3 and returns without calling
+          `_write_tier4` (this file's only writer).
+        - `e5_provenance.json` -- `e5_index_sensitivity.py:871-889`
+          (`_run_smoke_at`) writes `index_sensitivity.csv` and returns before
+          the sidecar write.
+        - `fd_jacobian_accuracy.json` -- `fd_jacobian_accuracy.py:652-666`
+          (`_run_smoke`) writes the CSV and returns before the sidecar write.
+
+        This guards the retag against a silent revert.
+        """
+        smoke_unwritable = {
+            "structural_scaling.csv",
+            "e5_provenance.json",
+            "fd_jacobian_accuracy.json",
+        }
+        by_name = {artifact["name"]: artifact for artifact in ARTIFACTS}
+        for name in smoke_unwritable:
+            artifact = by_name[name]
+            assert artifact["profiles"] == ["full"], (
+                f"{name} is tagged {artifact['profiles']}, but no --smoke code "
+                "path writes it (P27-D-20 class 1)"
+            )
+            assert artifact["rows_rationale"], name
+            assert "full-only" in artifact["rows_rationale"], (
+                f"{name}'s retag must carry its reason -- a changed tag with an "
+                "unchanged rationale is the FIX-06 shape"
+            )
+
+    def test_fd_jacobian_csv_stays_smoke_writable(self):
+        """Only the `.json` sidecar moved; `_run_smoke` does write the CSV."""
+        by_name = {artifact["name"]: artifact for artifact in ARTIFACTS}
+        assert by_name["fd_jacobian_accuracy.csv"]["profiles"] == ["smoke", "full"]
+
     def test_declared_profiles_are_the_known_ones(self):
         assert MANIFEST["profiles"] == list(PROFILES)
         for artifact in ARTIFACTS:
