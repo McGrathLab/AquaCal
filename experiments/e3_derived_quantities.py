@@ -857,9 +857,18 @@ def build_derived_values_latex_content(cpr_df: pd.DataFrame) -> str:
     shared-interface rows -- no dependency on E4's grid, no `\\TODO` placeholder.
     """
     row_13_200 = _find_cpr_row(cpr_df, 13, 200, True)
-    pose_params = 6 * int(row_13_200["n_frames"])
-    total_params = int(row_13_200["n_params"])
-    params_aside = f"{pose_params} of {total_params} parameters"
+    n_params = row_13_200["n_params"]
+    if pd.isna(n_params):
+        # E2's benchmark.json was absent, so the CPR path already recorded this row
+        # with null metrics and record_source=missing_e2_benchmark. Render a
+        # DELIBERATELY NON-NUMERIC marker rather than crashing the stage (which cost
+        # structural_scaling.csv in the 26-10 smoke pass) and rather than emitting a
+        # zero or a stale count, either of which the manuscript could read as a
+        # measurement. Plan 26-12.
+        params_aside = "N/A (benchmark record absent)"
+    else:
+        pose_params = 6 * int(row_13_200["n_frames"])
+        params_aside = f"{pose_params} of {int(n_params)} parameters"
 
     row_8 = _find_cpr_row(cpr_df, 8, 100, True)
     row_12 = _find_cpr_row(cpr_df, 12, 100, True)

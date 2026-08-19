@@ -646,3 +646,94 @@ class TestStructuralScalingDf:
         assert "_build_copied_cpr_row" not in source
         assert "_E2_BENCHMARK_JSON_PATH" not in source
         assert "write_experiment_csv" not in source
+
+
+def _cpr_df_for_derived_values(n_params_13_200):
+    """The three shared-interface rows `build_derived_values_latex_content` looks up.
+
+    `n_params` for the 13-camera/200-frame row is the one field sourced from E2's
+    `benchmark.json`; pass `float("nan")` to model a run where that record was absent
+    (`record_source=missing_e2_benchmark`).
+    """
+    return pd.DataFrame(
+        [
+            {
+                "config_key": "13cam_200frame_tilt_intrinsics_shared",
+                "n_cameras": 13,
+                "n_frames": 200,
+                "refine_intrinsics": True,
+                "shared_interface": True,
+                "n_params": n_params_13_200,
+                "n_groups": 213.0,
+                "fd_reduction": 20.5,
+                "record_source": (
+                    "missing_e2_benchmark"
+                    if pd.isna(n_params_13_200)
+                    else "e2_benchmark"
+                ),
+            },
+            {
+                "config_key": "8cam_100frame_tilt_intrinsics_shared",
+                "n_cameras": 8,
+                "n_frames": 100,
+                "refine_intrinsics": True,
+                "shared_interface": True,
+                "n_params": 656.0,
+                "n_groups": 108.0,
+                "fd_reduction": 6.1,
+                "record_source": "computed",
+            },
+            {
+                "config_key": "12cam_100frame_tilt_intrinsics_shared",
+                "n_cameras": 12,
+                "n_frames": 100,
+                "refine_intrinsics": True,
+                "shared_interface": True,
+                "n_params": 700.0,
+                "n_groups": 112.0,
+                "fd_reduction": 6.3,
+                "record_source": "computed",
+            },
+        ]
+    )
+
+
+class TestDerivedValuesSurviveAnAbsentE2Record:
+    """Plan 26-12 Task 2.
+
+    `e3` already degrades the CPR metrics to nulls with
+    `record_source=missing_e2_benchmark` when E2's `benchmark.json` is absent; only the
+    `int()` cast in the LaTeX writer was unguarded, and it crashed the whole stage --
+    twice in the 26-10 smoke pass, losing `structural_scaling.csv` as collateral.
+    """
+
+    def test_absent_record_renders_a_non_numeric_marker(self):
+        from experiments.e3_derived_quantities import (
+            build_derived_values_latex_content,
+        )
+
+        content = build_derived_values_latex_content(
+            _cpr_df_for_derived_values(float("nan"))
+        )
+
+        aside = content.split(r"\CPRParamsAside}{")[1].split("}\n")[0]
+        assert not any(ch.isdigit() for ch in aside), (
+            f"the parameter-count aside must be visibly non-numeric when E2's record "
+            f"is absent, so a placeholder can never be read as a measurement; got {aside!r}"
+        )
+        assert "N/A" in aside
+        # The reduction aside is computed without E2 and must still carry its numbers.
+        assert "6.1x to 6.3x" in content
+
+    def test_present_record_is_unchanged(self):
+        from experiments.e3_derived_quantities import (
+            build_derived_values_latex_content,
+        )
+
+        content = build_derived_values_latex_content(_cpr_df_for_derived_values(3456.0))
+
+        assert r"\newcommand{\CPRParamsAside}{1200 of 3456 parameters}" in content
+        assert (
+            r"\newcommand{\CPRReductionAside}{6.1x to 6.3x from eight to twelve cameras}"
+            in content
+        )
