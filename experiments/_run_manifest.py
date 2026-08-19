@@ -57,6 +57,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -120,6 +121,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 #: that exports it lives in `run_experiment_suite.sh`. Unset is legitimate --
 #: see the note beside the manifest keys below.
 THREAD_CAP_ENV_VAR = "SUITE_THREAD_CAP"
+
+#: The environment variable the driver exports to declare the interpreter its
+#: STAGES run under (D-30). Same contract shape as the thread cap: this module
+#: defines it, `run_experiment_suite.sh` exports it, and unset is legitimate --
+#: it simply means the manifest was written outside the driver.
+STAGE_PYTHON_ENV_VAR = "SUITE_STAGE_PYTHON"
 
 #: The single source for which stages the cap applies to. Read, never
 #: duplicated: a second hardcoded stage list is exactly the drift
@@ -230,6 +237,62 @@ def _resolve_thread_cap() -> int | str | None:
         return raw
 
 
+def _resolve_interpreters() -> dict[str, object]:
+    """The GATE interpreter, the STAGE interpreter, and whether they agree (D-30).
+
+    Why this exists, and why a mismatch is RECORDED rather than REFUSED
+    ------------------------------------------------------------------
+    This manifest is written under `GATE_PYTHON`, which is deliberately NOT the
+    interpreter the suite computes with: every stage runs bare
+    `python -u -m experiments.<mod>` from PATH (~25 call sites). So
+    `python_version`, `numpy_version`, `scipy_version`, `opencv_version` and
+    `installed_distribution_version` all describe the TOOLING interpreter, and
+    until D-30 nothing asserted the two were the same one.
+
+    That is the D-27 / F-001 fracture in a new form -- artifacts claiming
+    provenance they do not have -- and it is invisible to Gate 3, which checks
+    that the git shas agree. On the run machine the risk is concrete: D-26
+    records a pre-existing environment carrying the EXCLUDED OpenCV 4.14.0, so
+    a gate interpreter resolved there would stamp 4.14.0 onto a manifest whose
+    stages ran 4.13.
+
+    A mismatch is legitimate on the Windows development box by design (bare
+    `python` there is Anaconda base, which is exactly why pre-flight does not
+    use it), so this is a provenance RECORD, never a fourth pre-flight refusal.
+
+    Never raises: an unresolvable stage interpreter degrades to `None` and an
+    undecidable verdict to `None`, in `_run_git`'s shape.
+
+    Returns:
+        `{"gate_interpreter", "stage_interpreter_declared",
+        "stage_interpreter", "interpreters_agree"}`.
+    """
+    gate = sys.executable or None
+    declared = os.environ.get(STAGE_PYTHON_ENV_VAR) or None
+
+    resolved: str | None = None
+    if declared is not None:
+        try:
+            found = shutil.which(declared)
+            resolved = str(Path(found).resolve()) if found else None
+        except OSError:
+            logger.debug("Could not resolve the stage interpreter %r.", declared)
+
+    agree: bool | None = None
+    if gate is not None and resolved is not None:
+        try:
+            agree = Path(gate).resolve() == Path(resolved)
+        except OSError:
+            agree = None
+
+    return {
+        "gate_interpreter": gate,
+        "stage_interpreter_declared": declared,
+        "stage_interpreter": resolved,
+        "interpreters_agree": agree,
+    }
+
+
 def _resolve_stage_ids_by_concurrency() -> tuple[list[str] | None, list[str] | None]:
     """Split the suite's stage ids by their `concurrency` attribute (D-14).
 
@@ -322,6 +385,14 @@ def build_run_manifest() -> dict:
         # being timed. Recording BOTH regimes is what keeps the numbers
         # interpretable; a manifest naming only the cap would not.
         "blas_thread_unpinned_stages": unpinned_stages,
+        # D-30: BOTH interpreters, plus an explicit equality verdict. The
+        # version fields above describe `gate_interpreter`; the numbers were
+        # computed by `stage_interpreter`. `interpreters_agree` is the only
+        # field that says whether those are the same thing. A `False` here is
+        # RECORDED, NOT REFUSED -- it is legitimate on the Windows dev box by
+        # design. `None` means the verdict was undecidable, usually because the
+        # manifest was written outside the driver.
+        **_resolve_interpreters(),
         "utc_start": _utc_now_iso_z(),
     }
     return manifest

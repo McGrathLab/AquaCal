@@ -15,6 +15,7 @@ import importlib.metadata
 import json
 import re
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -254,3 +255,72 @@ class TestThreadRegimeRecord:
         assert "blas_thread_cap_stages" not in REQUIRED_MANIFEST_FIELDS
         assert "blas_thread_unpinned_stages" not in REQUIRED_MANIFEST_FIELDS
         assert len(REQUIRED_MANIFEST_FIELDS) == 17
+
+
+class TestBothInterpretersAreRecorded:
+    """D-30: the manifest's versions may describe an interpreter that computed
+    nothing, and until now nothing said so.
+
+    This manifest is written under `GATE_PYTHON`; every stage runs bare
+    `python -u -m experiments.<mod>`. On the run machine that gap is concrete:
+    D-26 records a pre-existing environment carrying the EXCLUDED OpenCV
+    4.14.0, so a gate interpreter resolved there would stamp 4.14.0 onto a
+    manifest whose stages ran 4.13 -- with the git shas agreeing, so Gate 3
+    stays green. A mismatch is RECORDED, NEVER REFUSED: it is legitimate on the
+    Windows development box by design.
+    """
+
+    def test_the_gate_interpreter_is_the_one_writing_the_manifest(self):
+        assert build_run_manifest()["gate_interpreter"] == sys.executable
+
+    def test_the_stage_interpreter_comes_from_the_driver_contract_variable(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("SUITE_STAGE_PYTHON", "python")
+        manifest = build_run_manifest()
+        assert manifest["stage_interpreter_declared"] == "python"
+        assert manifest["stage_interpreter"] is not None
+
+    def test_the_keys_are_present_even_when_the_driver_did_not_declare_one(
+        self, monkeypatch
+    ):
+        """Present, never absent -- the same rule the thread cap follows.
+
+        An unset variable means the manifest was written outside the driver,
+        which is a legitimate state and not a defect.
+        """
+        monkeypatch.delenv("SUITE_STAGE_PYTHON", raising=False)
+        manifest = build_run_manifest()
+        assert manifest["stage_interpreter_declared"] is None
+        assert manifest["stage_interpreter"] is None
+        assert manifest["interpreters_agree"] is None
+
+    def test_an_unresolvable_stage_interpreter_degrades_rather_than_raising(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("SUITE_STAGE_PYTHON", "definitely-not-an-interpreter")
+        manifest = build_run_manifest()
+        assert manifest["stage_interpreter"] is None
+        assert manifest["interpreters_agree"] is None
+
+    def test_a_disagreement_is_recorded_as_false_and_never_raises(
+        self, monkeypatch, tmp_path
+    ):
+        """The whole point: a mismatch must be VISIBLE, not fatal."""
+        monkeypatch.setattr(
+            "experiments._run_manifest.shutil.which",
+            lambda _name: str(tmp_path / "some_other_python"),
+        )
+        monkeypatch.setenv("SUITE_STAGE_PYTHON", "python")
+        manifest = build_run_manifest()
+        assert manifest["interpreters_agree"] is False
+
+    def test_the_interpreter_keys_are_not_required_fields(self):
+        """A None verdict must not become a Gate 3 FAIL."""
+        for key in (
+            "gate_interpreter",
+            "stage_interpreter",
+            "stage_interpreter_declared",
+            "interpreters_agree",
+        ):
+            assert key not in REQUIRED_MANIFEST_FIELDS
