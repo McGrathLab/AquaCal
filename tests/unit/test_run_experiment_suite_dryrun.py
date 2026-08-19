@@ -30,9 +30,11 @@ mid-band, not a bookkeeping error.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -558,6 +560,119 @@ class TestStickyExit:
         assert "SUITE FAILED" in run.stdout
 
 
+#: The line that opens the frameset probe's heredoc inside
+#: `_preflight_frameset`. The probe is a Python program embedded in the driver,
+#: and the WHOLE pre-flight stage is substituted under the dry-run seam
+#: (`run_one_stage preflight` hits `_dry_run_stub` and returns before
+#: `_preflight_frameset` is ever called), so `run_driver` structurally cannot
+#: reach it. The tests below therefore lift the probe OUT of the driver source
+#: and run it directly. The program under test is still exactly the one the
+#: driver ships -- it is SLICED from the file on every call, never copied into
+#: this one -- so it cannot drift from what an operator runs at 3 a.m.
+_PROBE_HEREDOC_OPEN = 'SUITE_E2_RELEASE_CONFIG="${E2_RELEASE_CONFIG}"'
+
+
+def _frameset_probe_source() -> str:
+    """The frameset probe's Python body, sliced out of the driver."""
+    lines = DRIVER_PATH.read_text(encoding="utf-8").splitlines()
+    opens = [
+        i
+        for i, line in enumerate(lines)
+        if _PROBE_HEREDOC_OPEN in line and line.rstrip().endswith("<<'PY'")
+    ]
+    assert len(opens) == 1, (
+        "expected exactly one frameset-probe heredoc in the driver, found "
+        f"{len(opens)}; the slice below would run the wrong program"
+    )
+    start = opens[0] + 1
+    end = next(i for i in range(start, len(lines)) if lines[i] == "PY")
+    return "\n".join(lines[start:end]) + "\n"
+
+
+def run_frameset_probe(
+    sandbox: Path,
+    *,
+    n_declared: int = 13,
+    n_present: int = 13,
+    kind: str = "dir",
+    bytes_each: int = 400,
+    floor: int = 1000,
+) -> subprocess.CompletedProcess:
+    """Run the driver's frameset probe against a synthetic frameset.
+
+    The sandbox gets its own copy of `experiments/suite_expectations.json` with
+    ONLY `preflight.frameset.cheap_check.min_total_bytes` lowered, and the probe
+    runs with the sandbox as cwd so it reads that copy. The floor is moved in
+    the MANIFEST, never in the probe: a test that needed the number written into
+    the script would be testing a different program than the one that ships
+    (FIX-06 is exactly that failure).
+
+    Args:
+        sandbox: A `tmp_path` to build the frameset and manifest copy in.
+        n_declared: How many extrinsic paths the release config declares.
+        n_present: How many of those actually exist on disk.
+        kind: `"dir"` for an IMAGE set (D-08's real shape) or `"file"` for the
+            video set the check was originally written against.
+        bytes_each: Bytes held by each present path.
+        floor: The `min_total_bytes` written into the sandbox manifest copy.
+
+    Returns:
+        The finished probe process; `returncode` is the driver's 0/2/3 contract.
+    """
+    sandbox.mkdir(parents=True, exist_ok=True)
+    frames = sandbox / "frames"
+    frames.mkdir(exist_ok=True)
+
+    declared: dict[str, str] = {}
+    for i in range(n_declared):
+        name = f"cam{i:02d}"
+        if kind == "dir":
+            target = frames / name
+            if i < n_present:
+                target.mkdir()
+                half = bytes_each // 2
+                # TWO files per directory, so a byte sum that merely stat()ed
+                # the directory itself could not accidentally agree.
+                (target / "000000.png").write_bytes(b"\0" * half)
+                (target / "000001.png").write_bytes(b"\0" * (bytes_each - half))
+        else:
+            target = frames / f"{name}.avi"
+            if i < n_present:
+                target.write_bytes(b"\0" * bytes_each)
+        declared[name] = target.as_posix()
+
+    config = sandbox / "release_config.yaml"
+    config_lines = ["paths:", "  extrinsic_videos:"]
+    config_lines += [f'    {k}: "{v}"' for k, v in declared.items()]
+    config.write_text("\n".join(config_lines) + "\n", encoding="utf-8")
+
+    manifest_dir = sandbox / "experiments"
+    manifest_dir.mkdir(exist_ok=True)
+    data = json.loads(
+        (REPO_ROOT / "experiments" / "suite_expectations.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    data["preflight"]["frameset"]["cheap_check"]["min_total_bytes"] = floor
+    (manifest_dir / "suite_expectations.json").write_text(
+        json.dumps(data), encoding="utf-8"
+    )
+
+    probe = sandbox / "_frameset_probe.py"
+    probe.write_text(_frameset_probe_source(), encoding="utf-8")
+
+    env = dict(os.environ)
+    env["SUITE_E2_RELEASE_CONFIG"] = config.as_posix()
+    return subprocess.run(
+        [sys.executable, probe.as_posix()],
+        cwd=sandbox,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=DRIVER_TIMEOUT_S,
+    )
+
+
 @pytest.fixture(scope="module")
 def preflight_abort_run(bash_available, tmp_path_factory) -> DriverRun:
     """One run whose pre-flight stage fails, shared by the two D-03/D-50 tests."""
@@ -614,6 +729,106 @@ class TestPreflight:
         )
         completed = set(run.completions())
         assert completed == {stage["id"] for stage in manifest["stages"]}
+
+
+class TestFramesetPreflightIsPathKindAgnostic:
+    """D-10: the pre-flight check must see an IMAGE set, not only videos.
+
+    D-09: the probe built `present` with `p.is_file()`. The frozen run's target
+    holds an image set (13 DIRECTORIES of frames), for which that predicate is
+    False on every path -- so `present` came back empty, the probe exited 2 =
+    ABSENT, and the driver refused with "use --skip-e2". Taking that advice
+    would have made the whole 15-16 h re-run SYNTHETIC-ONLY. `detection.py`
+    already auto-selects `ImageSet` for a directory, which is why this was a
+    driver defect and not a library one.
+    """
+
+    def test_a_directory_frameset_passes(self, tmp_path):
+        """The case D-09 broke: 13 image DIRECTORIES over the floor."""
+        run = run_frameset_probe(tmp_path, kind="dir")
+        assert run.returncode == 0, (
+            "a 13-directory image set was not accepted by pre-flight; this is "
+            f"D-09, and it costs E2 outright.\n{run.stdout}\n{run.stderr}"
+        )
+        assert "MATCH:" in run.stdout
+        assert "13 present" in run.stdout
+
+    def test_a_video_file_frameset_still_passes(self, tmp_path):
+        """The original case must not regress: 13 video FILES over the floor."""
+        run = run_frameset_probe(tmp_path, kind="file")
+        assert run.returncode == 0, (
+            f"the video-set case regressed.\n{run.stdout}\n{run.stderr}"
+        )
+        assert "MATCH:" in run.stdout
+
+    @pytest.mark.parametrize("kind", ["dir", "file"])
+    def test_an_entirely_missing_frameset_is_still_absent(self, tmp_path, kind):
+        """ABSENT stays exit 2, for both path kinds. Its override is --skip-e2."""
+        run = run_frameset_probe(tmp_path, n_present=0, kind=kind)
+        assert run.returncode == 2, (
+            "absence must stay exit 2; the driver's `case` maps 2 to the "
+            f"--skip-e2 refusal.\n{run.stdout}\n{run.stderr}"
+        )
+        assert "ABSENT:" in run.stdout
+
+    @pytest.mark.parametrize("kind", ["dir", "file"])
+    def test_a_frameset_under_the_floor_is_still_a_mismatch(self, tmp_path, kind):
+        """MISMATCH stays exit 3 -- a different mistake with a different flag."""
+        run = run_frameset_probe(tmp_path, kind=kind, bytes_each=400, floor=10**7)
+        assert run.returncode == 3, (
+            "a frameset below the manifest's byte floor must stay exit 3, which "
+            "is the branch that names --allow-frameset-mismatch.\n"
+            f"{run.stdout}\n{run.stderr}"
+        )
+        assert "MISMATCH:" in run.stdout
+        assert "RETIRED" in run.stdout, (
+            "the mismatch report must still name what was probably found"
+        )
+
+    @pytest.mark.parametrize("kind", ["dir", "file"])
+    def test_a_partially_present_frameset_is_a_mismatch(self, tmp_path, kind):
+        """11 of 13 present is a MISMATCH (exit 3), not an ABSENCE.
+
+        Exit 2 means NOTHING declared exists; a partial frameset is a wrong
+        archive, and the two get different overrides on purpose.
+        """
+        run = run_frameset_probe(tmp_path, n_present=11, kind=kind)
+        assert run.returncode == 3, f"{run.stdout}\n{run.stderr}"
+        assert "found 11 present of 13 declared" in run.stdout
+
+    def test_the_byte_floor_is_never_a_literal_in_the_driver(self):
+        """FIX-06's rule: the expected numbers live in the manifest only."""
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        manifest = load_expectations()
+        floor = manifest["preflight"]["frameset"]["cheap_check"]["min_total_bytes"]
+        assert str(floor) not in source, (
+            "the frameset byte floor was written into the shell script. That is "
+            "exactly how the RETIRED archive's counts survived in a code "
+            "comment while the manifest said something else (FIX-06)"
+        )
+        assert 'cheap["min_total_bytes"]' in source, (
+            "the probe no longer reads the floor from the manifest by key"
+        )
+
+    def test_each_probe_exit_still_carries_its_own_override_flag(self):
+        """P26-D-50: two mistakes, two flags -- asserted on the driver source.
+
+        The Bash `case` branches on the probe's exit codes, so the numbers above
+        are only meaningful if each branch still prints its own way out.
+        """
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        absent = [
+            line for line in source.splitlines() if "the E2 frameset is ABSENT" in line
+        ]
+        mismatch = [
+            line
+            for line in source.splitlines()
+            if "does NOT match the manifest" in line
+        ]
+        assert absent and all("--skip-e2" in line for line in absent)
+        assert mismatch and all(
+            "--allow-frameset-mismatch" in line for line in mismatch
+        )
 
 
 class TestConcurrencyConstraints:
