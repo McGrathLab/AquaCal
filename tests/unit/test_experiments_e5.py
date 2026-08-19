@@ -41,6 +41,7 @@ from experiments.e5_index_sensitivity import (
     run_band,
     run_index_point,
 )
+from tests.unit._baseline_paths import baseline_file, resolve_results_dir
 from tests.unit.test_experiments_provenance import (
     REQUIRED_ENVIRONMENT_KEYS,
     _record_seed,
@@ -94,13 +95,10 @@ def test_scale_bias_matches_e1_committed_column():
     guarded, so a fresh clone -- which has neither tree -- skips rather than
     erroring, matching how this module's discovery helpers already degrade.
     """
-    baseline = (
-        Path(__file__).resolve().parents[2]
-        / "experiments"
-        / "pre_rerun_baseline"
-        / "results"
-        / "exp2_depth_generalization.csv"
-    )
+    # Plan 26-14: resolved per file. compute_scale_bias must reproduce whichever committed
+    # CSV is current -- checking it against the frozen run's own output after Phase 28 is
+    # strictly stronger than checking it against the archive forever.
+    baseline = baseline_file("exp2_depth_generalization.csv")
     if not baseline.exists():
         pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
     df = pd.read_csv(baseline)
@@ -335,10 +333,19 @@ class TestDefaultMetricsPathAnchoring:
         monkeypatch.chdir(tmp_path)
         resolved = _default_metrics_path()
         assert resolved.is_absolute()
-        archived = (
-            resolved.parents[1] / "pre_rerun_baseline" / "results" / resolved.name
-        )
-        assert resolved.exists() or archived.exists(), (resolved, archived)
+        # Plan 26-14. 26-01 wrote that this "re-tightens on its own once Phase 28's run
+        # repopulates experiments/results/" -- it did not: the disjunction below would
+        # have stayed permissive forever, so a broken production path could be rescued by
+        # the archive indefinitely. Now the fallback is allowed ONLY while the live tree
+        # is unpopulated, and the existence leg becomes exact the moment it is.
+        _, which = resolve_results_dir()
+        if which == "live":
+            assert resolved.exists(), resolved
+        else:
+            archived = (
+                resolved.parents[1] / "pre_rerun_baseline" / "results" / resolved.name
+            )
+            assert resolved.exists() or archived.exists(), (resolved, archived)
 
 
 class TestCheckGuardsMissingBaseline:

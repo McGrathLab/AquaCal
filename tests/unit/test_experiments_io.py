@@ -764,15 +764,13 @@ class TestCommittedRecordUntouchedBySeed:
         cwd (WR-06) and guarded, so a fresh clone -- which has neither tree --
         skips rather than erroring.
         """
-        import pathlib
+        from tests.unit._baseline_paths import archive_results_dir
 
-        baseline = (
-            pathlib.Path(__file__).resolve().parents[2]
-            / "experiments"
-            / "pre_rerun_baseline"
-            / "results"
-            / "e1_benchmark_refractive.json"
-        )
+        # archive_results_dir(), deliberately NOT the plan-26-14 resolver: this asserts a
+        # property of the ARCHIVED Phase-19.1 record. Plan 26-13 made E1's call sites pass
+        # seed=, so the LIVE e1_benchmark_refractive.json now carries one and following the
+        # live tree would invert this test. Sibling of SEEDLESS_LEGACY_RECORDS.
+        baseline = archive_results_dir() / "e1_benchmark_refractive.json"
         if not baseline.exists():
             pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
         record = json.loads(baseline.read_text())

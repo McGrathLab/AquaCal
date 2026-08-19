@@ -9,7 +9,6 @@ from `tests/unit/test_optim_common.py` so this file stands alone.
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -29,6 +28,7 @@ from aquacal.config.schema import (
     DetectionResult,
     FrameDetections,
 )
+from tests.unit._baseline_paths import baseline_file
 
 
 def _make_detections(n_cams, n_frames, visibility, corners_per_view=4, seed=0):
@@ -280,13 +280,10 @@ class TestPerCameraModeGrowsPWithoutGrowingGroups:
 # experiments/e3_derived_quantities.py:170 -- still points at experiments/results/ and is
 # NOT repointed here (that module is out of plan 26-01's scope). D-12's `--baseline-dir`
 # work owns it; see 26-01-SUMMARY.md § Findings for plan 26-03.
-BENCHMARK_JSON_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "experiments"
-    / "pre_rerun_baseline"
-    / "results"
-    / "benchmark.json"
-)
+# Plan 26-14: resolved per file rather than pinned to the archive. This record is INPUT to
+# build_cpr_grouping_df, not the subject of an assertion, so once Phase 28 writes a live
+# benchmark.json the builder should be exercised against that one.
+BENCHMARK_JSON_PATH = baseline_file("benchmark.json")
 
 # The six published `tab:cpr` configurations (19.2-SOURCE-BRIEF.md Sec E3 Tier 3), as
 # (n_cameras, n_frames, normal_fixed, refine_intrinsics) tuples. Every row is

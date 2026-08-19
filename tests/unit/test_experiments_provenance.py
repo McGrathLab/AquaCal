@@ -26,6 +26,8 @@ import subprocess
 import pandas as pd
 import pytest
 
+from tests.unit._baseline_paths import archive_results_dir, resolve_results_dir
+
 # Anchored to the repository root via this file's own location, not the
 # process working directory -- a gate that resolves relative to cwd can
 # vanish from a run silently just because pytest was invoked from elsewhere
@@ -42,7 +44,12 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 # ⚠ Phase 30 / POST-03 PURGES the archive. At that point this constant needs a
 # DELIBERATE decision -- repoint at the re-baselined experiments/results/, or
 # retire the module's exhaustiveness gates with it -- not a silent edit.
-RESULTS_DIR = REPO_ROOT / "experiments" / "pre_rerun_baseline" / "results"
+# Plan 26-14: resolved, not hardcoded. While `experiments/results/` is empty this IS the
+# archive, so today's subject is unchanged; the moment Phase 28 repopulates the live tree,
+# every rail below re-aims at the frozen run's own output instead of passing green against
+# history. `RESULTS_TREE` is "archive" or "live" and appears in skip reasons so a skip can
+# never be ambiguous about what it was checking.
+RESULTS_DIR, RESULTS_TREE = resolve_results_dir()
 
 # The subset of capture_environment()'s live key names (src/aquacal/io/
 # benchmark.py) covering library version, git SHA, and the Python/NumPy/SciPy
@@ -390,8 +397,8 @@ _E4_CELL_FILES = sorted(RESULTS_DIR.glob("e4_cells/*/benchmark.json"))
 
 pytestmark = pytest.mark.skipif(
     not RESULTS_DIR.exists() or not any(RESULTS_DIR.iterdir()),
-    reason="experiments/results/ is absent or empty (fresh clone without committed "
-    "artifacts) -- nothing to check provenance against.",
+    reason=f"the resolved results tree ({RESULTS_TREE}: {RESULTS_DIR}) is absent or empty "
+    "(fresh clone without committed artifacts) -- nothing to check provenance against.",
 )
 
 
@@ -463,8 +470,10 @@ class TestSeedProvenance:
         """Every schema_version-carrying record carries a seed, except the six
         named Phase-19.1 legacy records (review H5: a carve-out earned by an
         explicit, commented, exactly-verified set -- not by omission)."""
-        if path.name in SEEDLESS_LEGACY_RECORDS:
+        if RESULTS_TREE == "archive" and path.name in SEEDLESS_LEGACY_RECORDS:
             pytest.skip(f"{path.name} is an exempted Phase-19.1 legacy record")
+        # Against a LIVE tree there are no exemptions: plan 26-13 made every one of these
+        # six carry a seed at write time, so a seedless record there is a real defect.
         record = _load_json(path)
         seed = _record_seed(record)
         assert seed is not None, (
@@ -480,7 +489,11 @@ class TestSeedProvenance:
         WITH a seed, or renamed, this test fails and forces the set to be
         updated deliberately."""
         for name in SEEDLESS_LEGACY_RECORDS:
-            path = RESULTS_DIR / name
+            # archive_results_dir(), NOT RESULTS_DIR: this is a statement about six
+            # ARCHIVED files. The same six filenames written by today's code DO carry a
+            # seed (26-13), so following a live tree would invert this into a false
+            # failure. Plan 26-14.
+            path = archive_results_dir() / name
             assert path.exists(), f"SEEDLESS_LEGACY_RECORDS names {name}, not on disk"
             record = _load_json(path)
             seed = _record_seed(record)
@@ -935,3 +948,56 @@ class TestE1AndE7BenchmarkRecordsCarryASeed:
                     f"{module}:{call.lineno} calls write_direct_call_benchmark "
                     f"without seed= -- gate3_provenance will FAIL on its output"
                 )
+
+
+class TestResolvedTreeIsObservable:
+    """Plan 26-14.
+
+    These rails were repointed at the archive by 26-01 because DRIVER-04 emptied
+    `experiments/results/`. Nothing repointed them back, so after Phase 28 they would have
+    passed green while validating history rather than the frozen run's output.
+    """
+
+    def test_the_resolved_tree_is_named(self):
+        """`RESULTS_TREE` reports which tree the module is actually checking.
+
+        It is "archive" today and FLIPS TO "live" once Phase 28 repopulates
+        `experiments/results/` -- that flip is the point of plan 26-14, so this asserts the
+        marker is honest about the directory it names, never that the archive is permanent.
+        """
+        assert RESULTS_TREE in {"archive", "live"}
+        if RESULTS_TREE == "archive":
+            assert RESULTS_DIR == archive_results_dir()
+        else:
+            assert RESULTS_DIR != archive_results_dir()
+            assert RESULTS_DIR.name == "results"
+
+    def test_a_populated_live_tree_would_disable_the_carve_out(self, tmp_path):
+        """Simulates the Phase 28 state: with a live tree present, no record is exempt.
+
+        Copies two real archived records into a sandbox live tree, resolves against it, and
+        asserts the exemption predicate that `test_every_benchmark_record_carries_a_seed`
+        applies is False there -- so the six legacy names stop being skipped the moment the
+        frozen run writes its own.
+        """
+        live = tmp_path / "experiments" / "results"
+        live.mkdir(parents=True)
+        copied = 0
+        for name in sorted(SEEDLESS_LEGACY_RECORDS)[:2]:
+            source = archive_results_dir() / name
+            if source.exists():
+                (live / name).write_text(source.read_text(), encoding="utf-8")
+                copied += 1
+        if copied < 2:
+            pytest.skip("archived legacy records absent (fresh clone)")
+
+        resolved, which = resolve_results_dir(tmp_path)
+
+        assert which == "live"
+        assert resolved == live
+        for name in SEEDLESS_LEGACY_RECORDS:
+            exempt = which == "archive" and name in SEEDLESS_LEGACY_RECORDS
+            assert not exempt, (
+                f"{name} would still be exempt against a live tree -- the carve-out must "
+                "not survive Phase 28"
+            )
