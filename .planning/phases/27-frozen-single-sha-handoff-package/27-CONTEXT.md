@@ -352,9 +352,18 @@ repo**.
   `concurrency`, `frame_class` and `est_hours` from `suite_expectations.json` via a one-shot Python
   call emitting TSV, and **fatals** on a stage missing from the manifest. Manifest edits therefore
   propagate to the pool automatically.
-- **`experiments/pre_rerun_baseline/` is 76 MB and TRACKED** — `--baseline-dir` travels with the
-  clone for free. No separate transfer, and E2's ~1e-8 control and E3's tier diff keep working on
-  the target.
+- **`experiments/pre_rerun_baseline/` travels with the clone** — `--baseline-dir` needs no
+  separate transfer, and E2's control and E3's tier diff keep working on the target.
+  **CORRECTED 2026-08-19 (clone rehearsal):** the tracked content is **226 files, ~1.7 MB**, not
+  76 MB. The 76 MB is the Windows working copy, which also holds 159 *gitignored* bulk artifacts
+  (four 11 MB `exp2_spatial_errors.csv`, `interface_ablation_conditioning.npz`, the
+  `results_e2_band` calibrations) excluded by explicit `.gitignore` entries. The functional claim
+  still holds, verified by cloning the tag: E3's `--check` matched `code_constants.csv` and
+  `newton_iterations.csv` from the clone, and E2's reproduction signal is `check_e2_band`'s
+  numeric `real_rig_metrics.json` comparison — which is present. E2's `--check` itself compares
+  only `camera_parameters.csv` (also present); `reprojection_residuals.csv` and
+  `reconstruction_errors.csv` are DATA-01b-gitignored everywhere and ship only in Zenodo, which
+  `e2_real_rig.py:538-552` already states.
 - **The preflight override vocabulary already exists** — `--skip-e2`, `--allow-frameset-mismatch`,
   `--allow-nonempty-out`, `--allow-low-disk`, `--allow-gate-precheck-failure`, mirrored in the
   manifest's `preflight.overrides`. D-10 reuses these; it must not invent a new one.
