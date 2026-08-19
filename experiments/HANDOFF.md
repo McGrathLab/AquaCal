@@ -240,6 +240,27 @@ have succeeded. Dirtiness is still *recorded* post-hoc by the gates, which can n
 | `SUITE_OUT_DIR`, `SUITE_STATE_DIR` | Test sandboxing only — not for a production run. |
 | `PRELAUNCH_GATE_PYTHON` | Absolute path to the gate/pre-flight interpreter. |
 | `SUITE_E2_RELEASE_CONFIG` | Override the E2 release config path. |
+| `SUITE_THREAD_CAP=2` | BLAS threads for the CONCURRENT stages (default 2). The four `serial_alone` timing stages are never capped -- every historical measurement was taken unpinned, so capping them would silently change what is being timed. |
+| `RUN_EXPERIMENT_SUITE_DRY_RUN=1` | Dry run -- see 2.2.1. Any non-empty value. **Not a `--flag`, and not in `--help`.** |
+
+`SUITE_STAGE_PYTHON` is exported *by* the driver to name the stage interpreter for the run
+manifest (D-30). Do not set it yourself; setting it makes the manifest describe an interpreter
+the stages did not use.
+
+#### 2.2.1 The dry run
+
+    RUN_EXPERIMENT_SUITE_DRY_RUN=1 bash experiments/run_experiment_suite.sh
+
+Walks all 20 stages, substituting every stage command, so it proves the queue's **wiring** --
+stage order, `depends_on` edges, dispatch, state-file handling -- in seconds. It computes
+nothing. It writes to a **separate** state file
+(`run_experiment_suite_state.<sha>.dryrun.tsv`), so it can never make a real run's stage look
+complete; that separation exists because a dry run once did exactly that (2026-08-06).
+
+**A dry run exits 0. A real `--smoke` pass exits NON-ZERO even when healthy (2.8).** Do not read
+the dry run's clean exit as evidence that the smoke pass will match it -- they are different
+checks with different exit semantics. Verified locally on 2026-08-19: dry run exit 0, 20/20
+stages, "SUITE COMPLETE".
 
 ### 2.3 Pre-flight, and its five overrides
 

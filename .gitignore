@@ -264,6 +264,12 @@ experiments/rerun_19_5_state.dryrun.tsv
 # one lives makes the NEXT real launch a silent no-op (every stage skipped,
 # exit 0, no artifacts).
 experiments/run_experiment_suite_state.*.dryrun.tsv
+# Same rehearsal, its other two outputs -- the sticky failures file and the
+# per-stage logs. Untracked files do not make `git describe --dirty` report
+# dirty, so these never threatened gate3_run_manifest_clean_tree; they are
+# ignored so a `git status` on the run machine stays legible.
+experiments/run_experiment_suite_state.*.dryrun.failures.txt
+experiments/run_experiment_suite_state.*.dryrun.stagelogs/
 
 # Pre-launch gate log (phase 19.5) -- rerunnable, not an artifact
 experiments/prelaunch_gate_19_5.log
