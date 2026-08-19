@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-status: executing
-stopped_at: Phase 26 COMPLETE -- 14/14 plans, smoke acceptance pass recorded; next is Phase 27 (freeze)
-last_updated: "2026-08-19T03:40:00.000Z"
-last_activity: 2026-08-19 -- Phase 26 closed; gap-closure plans 26-12/13/14 landed and the D-33 smoke pass ran clean
+status: Phase 26 closed 2026-08-19
+stopped_at: Phase 27 context gathered
+last_updated: "2026-08-19T13:16:27.652Z"
+last_activity: 2026-08-19 -- 26-12/13/14 landed, 26-10's smoke acceptance pass recorded
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 38
+  total_plans: 28
   completed_plans: 28
-  percent: 74
+  percent: 50
 ---
 
 # Project State
@@ -43,8 +43,10 @@ Three gap-closure plans came out of that pass and are the reason the phase ran t
 
 - **26-12** — `e3` was scheduled five stages before `e2_production` wrote the record it reads, and
   crashed stage 3 on `int(NaN)`. Dependency edge + a non-numeric marker for the absent-record case.
+
 - **26-13** — E1's and E7's benchmark records carried no seed, so `gate3_provenance` failed on six
   artifacts unconditionally, which would have made Phase 29's RUN-03 unsatisfiable.
+
 - **26-14** — the committed-baseline test rails were pinned to the archive by 26-01 and would have
   passed green against history once Phase 28 repopulated `experiments/results/`.
 
@@ -55,9 +57,11 @@ Full suite green at close: **2190 passed, 25 skipped, 0 failed** (1:08:55).
 1. The `smoke` profile expects three artifacts the smoke code paths never write
    (`structural_scaling.csv`, `e5_provenance.json`, `fd_jacobian_accuracy.json`), so a smoke pass
    can never exit 0. Diagnosed in 26-10-SUMMARY; not a driver defect.
+
 2. Automatic resume skips a stage that ran AND FAILED — `is_stage_complete`
    (`run_experiment_suite.sh:669`) matches a completion line and ignores the exit-code column. The
    end-of-run roll-up still catches the missing artifact. User deferred this 2026-08-18.
+
 3. `reconstruction_bootstrap.py:56` hardcodes `experiments/results/real_rig_metrics.json` instead
    of `--out`; smoke-only, correct in production.
 
@@ -200,10 +204,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-Last session: 2026-08-18T18:27:33.384Z
+Last session: 2026-08-19T13:16:27.645Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 26 context gathered
+Stopped at: Phase 27 context gathered
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
