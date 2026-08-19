@@ -1029,8 +1029,13 @@ def _write_e6_band_csv(
     *,
     status_by_row: str | None = None,
     non_ok_seed: int | None = None,
+    camera_values: tuple[int, ...] = (8, 12, 16),
 ) -> None:
-    """One baseline row + one 'cameras' row per camera value, per seed."""
+    """One baseline row + one 'cameras' row per camera value, per seed.
+
+    `camera_values` defaults to the production axis; pass a shorter tuple to
+    model a collapsed `--smoke` band.
+    """
     rows: dict[str, list] = {"seed": [], "axis": [], "axis_value": [], "status": []}
     for seed in seeds:
         rows["seed"].append(seed)
@@ -1040,7 +1045,7 @@ def _write_e6_band_csv(
         if non_ok_seed is not None and seed == non_ok_seed:
             status = "failed"
         rows["status"].append(status_by_row or status)
-        for cameras in (8, 12, 16):
+        for cameras in camera_values:
             rows["seed"].append(seed)
             rows["axis"].append("cameras")
             rows["axis_value"].append(cameras)
@@ -1465,3 +1470,286 @@ class TestRunManifestGate:
         ]
         assert len(sha_gate) == 1
         assert sha_gate[0].verdict == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Profile-aware per-experiment checkers (plan 27-03 Task 2, P27-D-20).
+#
+# A gate that cannot pass is worse than no gate, so nothing here weakens a
+# `full` verdict: a suppressed gate becomes a VISIBLE `N/A`, never absent, and
+# every case below is paired with its `profile="full"` / `profile=None`
+# regression.
+# ---------------------------------------------------------------------------
+
+
+def _e6_config_record(optimality: float | None) -> dict:
+    return {
+        "environment": _good_environment(),
+        "solver_config": {"seed": 42},
+        "config": {"n_water": 1.333},
+        "degenerate_observations_at_solution": 0,
+        "metrics": {"optimality_stage3_interface_optimization": optimality},
+    }
+
+
+class TestCheckE4Profile:
+    """`benchmark_grid.csv` is `full`-only in the manifest; E4's smoke path
+    writes no grid, so its absence at smoke is N/A, not FAIL."""
+
+    _GRID_GATES = (
+        "gate1_guard_count:benchmark_grid.csv",
+        "gate2_status:benchmark_grid.csv",
+    )
+
+    def test_absent_grid_is_na_at_smoke(self, tmp_path):
+        results = check_e4(tmp_path, profile="smoke")
+        for gate in self._GRID_GATES:
+            verdicts = _verdicts(results, experiment="E4", gate_prefix=gate)
+            assert verdicts == ["N/A"], (gate, verdicts)
+
+    def test_absent_grid_na_detail_names_the_smoke_path(self, tmp_path):
+        result = _find(
+            check_e4(tmp_path, profile="smoke"),
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        )[0]
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_absent_grid_still_fails_at_full(self, tmp_path):
+        results = check_e4(tmp_path, profile="full")
+        for gate in self._GRID_GATES:
+            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+
+    def test_absent_grid_still_fails_without_a_profile(self, tmp_path):
+        results = check_e4(tmp_path)
+        for gate in self._GRID_GATES:
+            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+
+    def test_present_but_malformed_grid_still_fails_at_smoke(self, tmp_path):
+        pd.DataFrame({"unrelated": [1]}).to_csv(
+            tmp_path / "benchmark_grid.csv", index=False
+        )
+        results = check_e4(tmp_path, profile="smoke")
+        for gate in self._GRID_GATES:
+            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e4(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover - the assertion is the point
+            raise AssertionError("check_e4 accepted an unknown profile")
+
+
+class TestCheckE5Profile:
+    """`e5_provenance.json` is `full`-only; `_run_smoke_at` never writes it."""
+
+    _SIDECAR_GATES = (
+        "gate1_guard_count:e5_provenance.json",
+        "gate3_provenance:e5_provenance.json",
+    )
+
+    def test_absent_sidecar_is_na_at_smoke(self, tmp_path):
+        results = check_e5(tmp_path, profile="smoke")
+        for gate in self._SIDECAR_GATES:
+            verdicts = _verdicts(results, experiment="E5", gate_prefix=gate)
+            assert verdicts == ["N/A"], (gate, verdicts)
+
+    def test_absent_sidecar_still_fails_at_full(self, tmp_path):
+        results = check_e5(tmp_path, profile="full")
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_absent_sidecar_still_fails_without_a_profile(self, tmp_path):
+        results = check_e5(tmp_path)
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_present_but_bad_sidecar_still_fails_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e5_provenance.json", {"solver_config": {}})
+        results = check_e5(tmp_path, profile="smoke")
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_pre_existing_na_gates_survive(self, tmp_path):
+        """E5's two record-only N/A gates are unaffected by the profile."""
+        results = check_e5(tmp_path, profile="smoke")
+        assert _verdicts(results, experiment="E5", gate_prefix="gate4_optimality") == [
+            "N/A"
+        ]
+        assert _verdicts(results, experiment="E5", gate_prefix="gate2_status") == [
+            "N/A"
+        ]
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e5(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e5 accepted an unknown profile")
+
+
+class TestCheckE6Profile:
+    """A collapsed smoke solve records no meaningful optimality."""
+
+    def test_null_optimality_is_na_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "N/A"
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_suppressed_optimality_gate_is_still_emitted(self, tmp_path):
+        """A suppressed gate stays VISIBLE in the verdict block (T-27-03-01)."""
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        smoke_gates = {r.gate for r in check_e6(tmp_path, profile="smoke")}
+        full_gates = {r.gate for r in check_e6(tmp_path, profile="full")}
+        assert smoke_gates == full_gates
+
+    def test_guard_and_provenance_gates_still_run_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        results = check_e6(tmp_path, profile="smoke")
+        assert _verdicts(
+            results,
+            experiment="E6",
+            gate_prefix="gate1_guard_count:e6_configs/baseline.json",
+        ) == ["PASS"]
+        assert _verdicts(
+            results,
+            experiment="E6",
+            gate_prefix="gate3_provenance:e6_configs/baseline.json",
+        ) == ["PASS"]
+
+    def test_null_optimality_still_fails_at_full(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path, profile="full"),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_null_optimality_still_fails_without_a_profile(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_good_optimality_still_passes_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(1e-3))
+        result = _find(
+            check_e6(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "PASS"
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e6(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e6 accepted an unknown profile")
+
+
+class TestCheckE6SeedBandProfile:
+    """The `cameras` axis collapses under `--smoke`; the CONSTANT does not."""
+
+    _SEEDS = [42, 43, 44, 45, 46, 47]
+
+    def _write_collapsed(self, tmp_path):
+        _write_e6_band_csv(
+            tmp_path / "generalization_sweep_band.csv",
+            self._SEEDS,
+            camera_values=(8,),
+        )
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+
+    def test_collapsed_axis_is_not_a_fail_at_smoke(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict in ("PASS", "N/A"), result.detail
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_collapsed_axis_still_fails_at_full(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="full"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "FAIL"
+        assert "12" in result.detail and "16" in result.detail
+
+    def test_collapsed_axis_still_fails_without_a_profile(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_missing_axis_columns_fails_at_every_profile(self, tmp_path):
+        pd.DataFrame({"seed": self._SEEDS, "status": ["ok"] * len(self._SEEDS)}).to_csv(
+            tmp_path / "generalization_sweep_band.csv", index=False
+        )
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+        for profile in (None, "smoke", "full"):
+            result = _find(
+                check_e6_seed_band(tmp_path, profile=profile),
+                experiment="E6",
+                gate_prefix="gate_e6_seed_band:cameras_axis",
+            )[0]
+            assert result.verdict == "FAIL", profile
+
+    def test_full_axis_still_passes_at_smoke(self, tmp_path):
+        _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", self._SEEDS)
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "PASS"
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e6_seed_band(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e6_seed_band accepted an unknown profile")
+
+
+class TestRunAllGatesThreadsProfile:
+    """`run_all_gates` already accepted `profile`; it now threads it."""
+
+    def test_smoke_profile_reaches_the_e4_grid_gates(self, tmp_path):
+        results = run_all_gates(tmp_path, profile="smoke")
+        assert _verdicts(
+            results,
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        ) == ["N/A"]
+
+    def test_full_profile_leaves_the_e4_grid_gates_failing(self, tmp_path):
+        results = run_all_gates(tmp_path, profile="full")
+        assert _verdicts(
+            results,
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        ) == ["FAIL"]
