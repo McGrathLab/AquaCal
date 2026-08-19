@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 27 context gathered
-last_updated: "2026-08-19T13:16:56.756Z"
-last_activity: 2026-08-19 -- 26-12/13/14 landed, 26-10's smoke acceptance pass recorded
+stopped_at: Phase 27 planned -- 13 plans in 6 waves, ready to execute
+last_updated: "2026-08-19T14:25:14.711Z"
+last_activity: 2026-08-19 -- Phase 27 planning complete
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 38
+  total_plans: 41
   completed_plans: 28
-  percent: 74
+  percent: 50
 ---
 
 # Project State
@@ -34,8 +34,8 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 27 (frozen-single-sha-handoff-package) — context gathered, not yet planned
 Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
-Status: executing
-Last activity: 2026-08-19 -- Phase 27 context gathered; next is /gsd:plan-phase 27
+Status: Ready to execute
+Last activity: 2026-08-19 -- Phase 27 planning complete
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would

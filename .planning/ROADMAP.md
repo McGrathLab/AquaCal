@@ -105,7 +105,7 @@ its own §3. What stays in Phase 30 is the reconciliation *around* that archive,
  (completed 2026-08-17)
 
 - [x] **Phase 25: Degeneracy Classification & Claim Licensing** - The 198 unprojectable production-rig observations are classified, and E1's seed band gains the noise_std axis it needs to license an accuracy claim (completed 2026-08-18)
-- [ ] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
+- [x] **Phase 26: Full-Suite Driver & Handoff Readiness** - One driver covers every invocation including the band runs and E2, emits one run manifest, has a decided `--check` contract, and stale outputs are moved aside
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
 - [ ] **Phase 28: Suite Execution on Linux Machine** - The full experiment suite — E1 through E7, the band runs, and E2 — executes once end to end at the frozen sha
 - [ ] **Phase 29: Gate Verification & Results Commit** - The returned run passes `check_rerun_gates.py`, clears the E2 sanity control and the E7 before/after comparison, its results are committed with provenance intact, and the Zenodo results package is published before submission
@@ -555,8 +555,8 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 23. Experiment Correctness Fixes | v2.1 | 4/4 | Complete    | 2026-08-17 |
 | 24. Degeneracy Instrumentation | v2.1 | 2/2 | Complete    | 2026-08-18 |
 | 25. Degeneracy Classification & Claim Licensing | v2.1 | 8/8 | Complete   | 2026-08-18 |
-| 26. Full-Suite Driver & Handoff Readiness | v2.1 | 9/10 | In Progress|  |
-| 27. Frozen Single-Sha Handoff Package | v2.1 | 0/TBD | Not started | - |
+| 26. Full-Suite Driver & Handoff Readiness | v2.1 | 14/14 | Complete    | 2026-08-19 |
+| 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 0/TBD | Not started | - |
 | 29. Gate Verification & Results Commit | v2.1 | 0/TBD | Not started | - |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |
