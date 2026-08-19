@@ -11,8 +11,9 @@ is frozen at **one sha**, and that sha is **proven runnable on the target itself
 starts. RUN-01, and the six success criteria in `.planning/ROADMAP.md` § Phase 27.
 
 The phase closes when: one tag names the frozen sha; a clean clone of it runs the driver's dry-run
-and a short real stage plus the gate roll-up **on the Linux target**; the environment is captured as
-a committed lockfile; every §3-facing number is either emitter-backed or explicitly classified as
+and a short real stage plus the gate roll-up **on the Linux target**; the environment is captured
+by the run manifest plus a lockfile artifact; every §3-facing number is either emitter-backed or
+explicitly classified as
 deliberately-frozen; and `--smoke` exits 0 so a Linux-specific failure is visible.
 
 **Not in this phase:** the suite run itself (Phase 28), the post-run `--check` re-baselining and
@@ -33,7 +34,7 @@ repo**.
   of `origin/main`** — nothing about this work is on GitHub, so this push is a prerequisite, not a
   detail. A real clone is what makes "clean checkout" (criterion 2) meaningful and keeps `.git`
   present, which the driver needs: `FROZEN_SHA` derivation, the sha-derived state-file path,
-  `git describe --tags --long --dirty` in the run manifest (D-45), and Gate 3's cross-artifact sha
+  `git describe --tags --long --dirty` in the run manifest (P26-D-45), and Gate 3's cross-artifact sha
   assertion all read git.
 
 - **D-02: The tag MUST NOT match `v*`.** Verified against the workflows, and this is the entire CI
@@ -48,25 +49,30 @@ repo**.
   attempt — the same shape as audit finding **F-002** (two commits sharing "1.8.0"), which this
   milestone exists to stop repeating.
 
-- **D-04: At least two tags are expected by construction, not as a failure.** D-13's lockfile can
-  only be captured *after* the target environment is built, and it must live *inside* the frozen
-  sha. Plans must not treat a second tag as a defect signal.
+- **D-04: A second tag is a normal outcome, not a failure signal — but nothing forces one.** The
+  original reason it was mandatory (a lockfile committed inside the sha but capturable only after
+  the env is built) was removed by D-13's revision. A second tag now happens only if verification
+  actually finds a defect, which is exactly when it should.
 
 ### Where the freeze is verified
 
 - **D-05: Verification happens ON THE LINUX TARGET.** Clone the tag, build the environment, run the
-  dry-run harness (`RERUN_19_3_DRY_RUN`) end-to-end, then one **short real stage** (`e3` or
-  `fd_jacobian`, minutes) and the gate roll-up. This is the only venue that can catch a Linux-only
+  dry-run harness (`RERUN_19_3_DRY_RUN`) end-to-end, then one **short real stage** and the gate
+  roll-up. **The short stage must be `fd_jacobian`** — `suite_expectations.json` gives it
+  `depends_on: ["preflight"]` and `est_hours 0.05`. It is the ONLY dependency-free short stage:
+  `e3` looks cheap at 0.005 h but carries `depends_on: ["e2_production"]` from 26-12's edge, and
+  `e2_production` is 0.8–1.45 h, so scheduling `e3` drags E2 in behind it. This is the only venue that can catch a Linux-only
   failure, and it is where § E's OpenBLAS confirmation has to happen anyway. This closes Phase 26's
-  **D-35**, which deferred Linux-side portability verification to exactly here.
+  **P26-D-35**, which deferred Linux-side portability verification to exactly here.
 
 - **D-06: SSH to the target is available and plans may drive it directly** from this machine —
   `ssh`/`scp` in plan steps is in scope, so a defect is found and fixed in one loop rather than a
   paste-back cycle. **The connection details (host/alias, user, key) are not yet recorded here and
   must be obtained from the author before the first on-target step.**
 
-- **D-07: `CLAUDE.md`'s never-background-a-long-run policy binds every on-target step.** Each SSH
-  invocation must finish inside the tool ceiling. The dry run and the short stage are chosen for
+- **D-07: No on-target step may be one an executor has to background.** `CLAUDE.md`'s policy is
+  written about subagents — an executor whose Bash call passes the 600 s ceiling is auto-backgrounded
+  and never returns — so every SSH invocation in a plan must finish inside that ceiling. The dry run and the short stage are chosen for
   exactly this reason; nothing in Phase 27 launches anything of the 15–26 h class.
 
 ### The E2 data path — and a defect found during this discussion
@@ -77,16 +83,21 @@ repo**.
 - **D-09: DEFECT — the pre-flight frameset check cannot pass against an image set.**
   `experiments/run_experiment_suite.sh:955-957` builds `present` with `p.is_file()` and sums
   `p.stat().st_size`. Against directory paths every `is_file()` is False, `present` is empty, and
-  the probe exits **2 = ABSENT**, so the driver refuses with *"the E2 frameset is ABSENT (D-14) ...
+  the probe exits **2 = ABSENT**, so the driver refuses with *"the E2 frameset is ABSENT (P26-D-14) ...
   use `--skip-e2`"* — which would make the entire re-run **synthetic-only**. The library is not
   affected: `src/aquacal/io/detection.py:134` auto-selects `ImageSet` when the path is a directory.
   **This is a driver-only defect and it is exactly the criterion-4 class: found before the freeze,
   fixed inside it.**
 
-- **D-10: Make the pre-flight path-kind agnostic** — accept a file OR a directory, summing
-  directory bytes recursively and counting frames per camera. The **frame count is the stronger
-  assertion**; `min_total_bytes: 4000000000` was calibrated against the 4.35 GB published archive
-  and how a directory tree sums must be **measured on the target, not assumed**. Preserve the
+- **D-10: Make the pre-flight path-kind agnostic — and change NOTHING else about the check.**
+  Accept a file OR a directory: `p.exists()` in place of `p.is_file()`, and a recursive byte sum in
+  place of `p.stat().st_size`. Keep the two existing assertions exactly as they are — 13 paths
+  present, `min_total_bytes: 4000000000` cleared. **Do NOT add a per-camera frame-count
+  expectation:** that would mean inventing an expected number nobody has measured, and
+  `usable_frames: 262` cannot serve as one (it is post-detection and does not decompose into
+  `calibration_frames: 200` + `validation_frames: 52`). How a directory tree sums against the byte
+  floor must still be **measured on the target, not assumed** — if 4.35 GB of frames does not clear
+  4 GB, that is a manifest number to re-derive from measurement, not a check to weaken. Preserve the
   existing distinction between ABSENT (exit 2 -> `--skip-e2`) and MISMATCH (exit 3 ->
   `--allow-frameset-mismatch`), and keep reading the expected numbers from
   `experiments/suite_expectations.json` — never from a shell literal (that is how FIX-06's stale
@@ -110,22 +121,34 @@ repo**.
 
 ### Environment specification
 
-- **D-13: Capture an exact lockfile from the verified target environment and commit it inside the
-  frozen sha** (e.g. `experiments/run-environment.lock`), plus a prose note naming the Python
-  version and the OpenBLAS build. The environment then carries the same provenance as the code.
+- **D-13: Capture the lockfile as a RUN ARTIFACT beside the run manifest, not as a pre-freeze
+  commit.** `pip freeze` from the verified target environment, written next to
+  `_run_manifest.py`'s output at run time, plus a prose note naming the Python version and the
+  OpenBLAS build. Rationale for the shape: `experiments/_run_manifest.py` **already** emits
+  `python_version`, `numpy_version`, `scipy_version`, `opencv_version`, `opencv_build`,
+  `installed_distribution_version`, `cpu_model`, `cpu_count_logical`, `ram_total_bytes`, `os`,
+  `kernel`, `machine`, `git_sha`, `git_describe` and `git_dirty` — every version that moves a
+  number is already captured. The lock adds only the transitive set (matplotlib, pandas, tqdm),
+  which is worth recording but not worth a freeze-window commit and a forced second tag.
   **Do NOT tighten `pyproject.toml`'s pins** — that file is the shipped package's contract, and
   pinning NumPy exactly there degrades AquaCal for every pip user to serve one internal run.
   Today only `opencv-python==4.13.*` is hard-pinned (for a measured reason: 4.14.0 detected 1.95%
   fewer corners and moved reconstruction RMSE +7.8%); `numpy` is unpinned and `scipy>=1.16`.
 
-- **D-14: Pin BLAS thread counts in the driver and record the value in the run manifest.** Export a
-  fixed per-stage cap (`OMP_NUM_THREADS` / `MKL_NUM_THREADS` / `OPENBLAS_NUM_THREADS`). No thread
-  limit is set anywhere in `src/` or `experiments/` today. The probe measured a solve holding a
-  **median 0.99 cores of 20** (mean 1.20, p95 2.01, peak 2.56), so a small cap costs nothing and
-  removes the risk of five concurrent stages each grabbing 32 threads on the target. It also makes
-  the timing stages' numbers a property of a **stated** configuration.
+- **D-14: Pin BLAS threads for the CONCURRENT stages ONLY; leave the serial timing stages at the
+  library default.** Export a per-stage cap (`OMP_NUM_THREADS` / `MKL_NUM_THREADS` /
+  `OPENBLAS_NUM_THREADS`) for stages the pool runs 4–5 wide; export nothing for `e4`, `e4_repeat`,
+  `e2_timing`, `e2_memory`. The pin is justified where 4–5 processes compete: no thread limit is set
+  anywhere in `src/` or `experiments/` today, and the probe measured a solve holding a **median
+  0.99 cores of 20** (mean 1.20, p95 2.01, peak 2.56), so a small cap costs nothing there.
+  **It is NOT justified on the timing stages:** every historical measurement was taken unpinned,
+  including `results_linux32gb/e2_timing/` and `results_linux32gb/e4/benchmark_grid.csv` (3 ledger
+  rows) and the nine-cell grid `main.tex:285` names. Pinning them would silently change what is
+  being timed. **The run manifest must record BOTH regimes explicitly** — the cap value and the
+  stage list it applies to — or the numbers become uninterpretable. The stage list already carries
+  a `concurrency` attribute, so the split is read from the manifest, not hardcoded in the shell.
 
-- **D-15: `SUITE_WORKERS` stays at D-52's 4–5. Confirm RSS on the target; do not re-tune.** The
+- **D-15: `SUITE_WORKERS` stays at P26-D-52's 4–5. Confirm RSS on the target; do not re-tune.** The
   4–5 figure came from measured RSS classes (30 frames < 1 GiB; 100 frames 2.7–3.5 GiB — E6's
   band, all 102 rows at `n_frames=100`; 200 frames 9.3–11.3 GiB) against ~31 GiB, with
   at-most-one-200-frame-stage already enforced by the scheduler. § C's warning stands: a short
@@ -137,6 +160,9 @@ repo**.
   gate.** For every named artifact, confirm the frozen code has an emitter that writes it. A gate
   is explicitly rejected: its input (`numbers-ledger.tsv`) lives outside the repo and is the
   author's to edit, which is the "gate that cannot pass" shape plan 23-02 warned about.
+  **Start from D-17's result, not from scratch** — the row-level triage below was already done
+  during this discussion, so the remaining work is confirming an emitter for the 27 named artifacts
+  and resolving three candidate rows, not re-classifying 131 rows.
 
 - **D-17: The walk is already partly done and its shape is known.** `numbers-ledger.tsv` holds
   **131 rows / 27 distinct artifacts** — 78 `KEEP-VERIFIED`, 46 `EDIT` (all `applied`), 7
@@ -157,7 +183,7 @@ repo**.
 - **D-19: Write an in-repo note classifying every ledger row this run will NOT regenerate,
   with the sha and machine each was measured at.** Three rows cite `archive/e6-2026-08-02-...` and
   `archive/e2-2026-07-30-...` pre-fix trees; six cite `results_linux32gb/...` from the earlier
-  machine; and `RL-determinism` is unregenerable by construction because **D-42 turned `e6_repeat2`
+  machine; and `RL-determinism` is unregenerable by construction because **P26-D-42 turned `e6_repeat2`
   off**. This turns "stale reference" into "stated provenance" before Phase 30 purges the trees, and
   hands Phase 30 its dangling-reference list for free.
 
@@ -177,7 +203,7 @@ repo**.
      stop asserting optimality at smoke scale.**
   3. **2 failures** — E4's smoke path writes no `benchmark_grid.csv`. **Make that artifact
      `full`-only.**
-  Plus the roll-up FAIL, which is their aggregate and clears with them. D-49 already says smoke
+  Plus the roll-up FAIL, which is their aggregate and clears with them. P26-D-49 already says smoke
   asserts **existence only** — this makes the manifest match that rule rather than inventing a new
   one.
 
@@ -202,15 +228,27 @@ repo**.
   wrong under `--smoke`. Now matters more because D-20 makes the smoke tree the target's
   verification signal, and it removes a hardcode of the same class as `e7_focal_standoff`'s.
 
+### Criterion 6 — Phase 25's outputs registered with the driver
+
+- **D-24: VERIFY, do not build.** ROADMAP criterion 6 asks that Phase 25's outputs — the
+  per-observation classification table and E2's `h_q` logging flag — be registered with the driver,
+  because Phase 26 built the driver before that work was necessarily complete. **It appears already
+  satisfied:** `experiments/suite_expectations.json` lists `degenerate_observations.csv` and
+  `all_observation_depths.csv` among its 62 artifacts, alongside the six
+  `e{1,5,7}[_seed_band]_degeneracy_breakdown.json` sidecars. The task is therefore a short
+  confirmation — every Phase 25 artifact appears in the manifest, with the right profile tags and
+  the conditional-emission rules from Phase 25's D-08/D-09/D-10 honoured — and a stated finding if
+  one is missing. Do not re-derive or re-register what is already there.
+
 ### Standing constraints carried in from Phase 26 — do NOT re-litigate
 
-- Grid cuts **D-40** (E6 `scale` axis dropped), **D-41** (E1 noise axis = 352 rows, **not** the
-  640/960 in Phase 25's D-21 — any gate asserting 640 is wrong) and **D-42** (`e6_repeat2` OFF).
-- **D-52** selective concurrency, with its three hard constraints: `e6_repeat1` and `e6_band` never
+- Grid cuts **P26-D-40** (E6 `scale` axis dropped), **P26-D-41** (E1 noise axis = 352 rows, **not** the
+  640/960 in Phase 25's D-21 — any gate asserting 640 is wrong) and **P26-D-42** (`e6_repeat2` OFF).
+- **P26-D-52** selective concurrency, with its three hard constraints: `e6_repeat1` and `e6_band` never
   overlap; at most one 200-frame-class stage in flight; concurrent stages share
   `experiments/results/` so artifact filenames must be disjoint.
-- **D-50** — every pre-flight refusal prints its exact override flag; nothing aborts once stage 1
-  has begun. **D-01/D-03 of Phase 26** — gates record, pre-flight aborts.
+- **P26-D-50** — every pre-flight refusal prints its exact override flag; nothing aborts once stage 1
+  has begun. **P26-D-01/P26-D-03** — gates record, pre-flight aborts.
 - `e7_band` stays an **unmeasured range**. A settling probe was offered and **DECLINED** on
   2026-08-18. Do not schedule one.
 - The corrected serial estimate is **~22–26 h** at Windows-box speed (~15–16 h pooled), dominated
@@ -220,10 +258,11 @@ repo**.
 ### Claude's Discretion
 
 - The exact tag naming scheme beyond `rerun-freeze-NN`, and the lockfile's filename and location.
-- The precise thread-cap value in D-14 (bounded by the probe: a solve holds ~1 core, p95 2.01).
+- The precise thread-cap value for the concurrent stages in D-14 (bounded by the probe: a solve
+  holds ~1 core, p95 2.01).
 - How the emitter cross-check report is formatted, and where the D-19 classification note lives.
-- Whether the D-10 frame-count check replaces or supplements the byte floor — decide from what is
-  measured on the target.
+- Whether the byte floor itself needs re-deriving once directory sums are measured on the target
+  (D-10) — the check's shape is fixed, the number may not be.
 
 </decisions>
 
@@ -245,10 +284,10 @@ repo**.
 ### Phase 26's decisions, which bind this phase
 
 - `.planning/phases/26-full-suite-driver-handoff-readiness/26-CONTEXT.md` — the whole file, but
-  **§ D (de-scoping, D-43..D-50) and § E (the runtime correction and D-51/D-52 concurrency) are
+  **§ D (de-scoping, P26-D-43..P26-D-50) and § E (the runtime correction and P26-D-51/P26-D-52 concurrency) are
   mandatory**. Where § D/E conflict with earlier decisions in that file, the amendment wins.
-  D-35 is the explicit hand-off of Linux-side verification to this phase.
-- `.planning/phases/26-full-suite-driver-handoff-readiness/26-10-SUMMARY.md` — the D-33 acceptance
+  P26-D-35 is the explicit hand-off of Linux-side verification to this phase.
+- `.planning/phases/26-full-suite-driver-handoff-readiness/26-10-SUMMARY.md` — the P26-D-33 acceptance
   pass, the precise location of all 12 pre-existing smoke failures (D-20's inventory), and what the
   smoke pass does **not** prove (26-12's dependency edge cannot be demonstrated under `--smoke`).
 - `.planning/probes/2026-08-18-solver-concurrency/FINDINGS.md`, `summary.json`, `samples.csv` —
@@ -308,7 +347,7 @@ repo**.
   instrument: it exercises the full stage list and scheduler in seconds.
 - **The scheduler is already Linux-safe by construction.** `_stage_worker` uses a sentinel file
   rather than `wait -n -p` *specifically* so the driver behaves identically on Git Bash and the
-  Linux box (the code cites D-35). Do not "improve" it back to `wait -n`.
+  Linux box (the code cites P26-D-35). Do not "improve" it back to `wait -n`.
 - **The scheduler hardcodes no stage list.** `_load_stage_attributes` reads `depends_on`,
   `concurrency`, `frame_class` and `est_hours` from `suite_expectations.json` via a one-shot Python
   call emitting TSV, and **fatals** on a stage missing from the manifest. Manifest edits therefore
@@ -328,10 +367,10 @@ repo**.
   numbers survived precisely because they were a code comment. D-10 must keep reading `cheap_check`
   from the manifest.
 - **Pre-flight is the only place permitted to abort**, and every refusal prints its override flag
-  (D-50). Gates record; the sticky `SUITE_FAILED` file carries verdicts to the final exit code —
+  (P26-D-50). Gates record; the sticky `SUITE_FAILED` file carries verdicts to the final exit code —
   a *file*, not a shell variable, because concurrent stages are child processes.
 - **`experiments/results/` is TRACKED**, so the run dirties its own working tree. This is why
-  Phase 26 cut the dirty-tree refusal (D-47) and it must not be reintroduced when the clone is
+  Phase 26 cut the dirty-tree refusal (P26-D-47) and it must not be reintroduced when the clone is
   made on the target.
 - **One commit per requirement**, held through Phases 23–26.
 
@@ -341,10 +380,10 @@ repo**.
   E2's four invocations -> E4's real-rig row (which silently drops without E2's `benchmark.json`).
 - Manifest `profiles` retags (D-20) -> per-stage gate calls -> end-of-run roll-up -> smoke exit 0
   -> the on-target verification signal (D-05).
-- Tag (D-01/D-03) -> `FROZEN_SHA` -> sha-derived state path -> run manifest's `git describe` (D-45)
+- Tag (D-01/D-03) -> `FROZEN_SHA` -> sha-derived state path -> run manifest's `git describe` (P26-D-45)
   -> Gate 3's single-sha assertion in Phase 29 (RUN-03).
-- Lockfile (D-13) + thread pin (D-14) -> run manifest -> Phase 29's provenance answer for "what
-  produced this number".
+- Lockfile artifact (D-13) + the two-regime thread record (D-14) -> run manifest -> Phase 29's
+  provenance answer for "what produced this number".
 - Emitter report (D-16) + frozen-row note (D-19) -> Phase 29's RUN-04 traceability -> Phase 30's
   dangling-reference audit.
 
@@ -355,10 +394,14 @@ repo**.
 
 - **A green smoke is the point of fixing smoke.** D-20 is not tidiness: it is what makes D-05's
   on-target pass a usable signal. Twelve known reds and one new Linux red look identical at 3 a.m.
-- **The frame count is a better identity assertion than the byte floor.** `min_total_bytes` exists
-  only to separate the current archive from the retired 4.3x-subsampled one (record 18645385,
-  60 usable -> 12 validation -> 1817 comparisons). Against directories, counting 13 x 262 frames
-  says more than summing bytes.
+- **A frame count MIGHT be a better identity assertion than the byte floor — but the number is not
+  known yet.** `min_total_bytes` exists only to separate the current archive from the retired
+  4.3x-subsampled one (record 18645385, 60 usable -> 12 validation -> 1817 comparisons). A frame
+  count would be sharper, but `usable_frames: 262` is a POST-DETECTION number and does not decompose
+  into `calibration_frames: 200` + `validation_frames: 52` (that is 252), so it is not safe to read
+  as a raw per-directory file count, and the manifest has no field for one. Adding a frame-count
+  expectation means inventing a new expected number — do it only if the target measurement supports
+  it, and never as a guess.
 - **Existence and row count are still not correctness** (inherited from Phase 26). A green
   completeness gate on the target proves the wiring, never the numbers.
 - **`--smoke` cannot catch a wrong `--config` path or a bad production YAML** — pre-flight's
@@ -377,7 +420,7 @@ repo**.
 
 - **Adding `--smoke` branches to `e7_focal_standoff` and `e4_repeat`** — D-21 leaves them skipped;
   post-submission if ever.
-- **Rewriting the driver in Python** — Phase 26's D-26, explicitly post-submission.
+- **Rewriting the driver in Python** — Phase 26's P26-D-26, explicitly post-submission.
 - **Splitting `e6_band` across processes by seed** — attacks the ~8.9 h critical path directly but
   needs a merge step and provenance handling inside the experiment. Phase 26 declined it
   deliberately; still declined.
