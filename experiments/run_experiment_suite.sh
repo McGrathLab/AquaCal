@@ -671,10 +671,23 @@ log() {
 
 is_stage_complete() {
   # A stage counts as complete only if the state file carries a "complete"
-  # event line for it -- a start-only line (started, then died) never matches.
+  # event line for it AND that line's exit code (column 5, always written by
+  # `state_complete`) is 0. Two ways to be incomplete, and BOTH must re-run:
+  #
+  #   * a start-only line -- started, then died. Never matched a "complete".
+  #   * a completion line carrying a NON-ZERO exit -- the stage ran AND FAILED,
+  #     so it produced nothing the roll-up can use. Reading only column 3 made
+  #     the resume SKIP it, silently. On a single-shot 15-16 h run that is the
+  #     failure most likely to cost the whole night: the end-of-run roll-up does
+  #     report the missing artifact, but only after everything else finished.
+  #     The frozen run's own state file already carries the proof -- a
+  #     `reconstruction_bootstrap` completion line with exit code 1.
+  #
+  # This makes resume STRICTER, never looser: no stage that would have re-run
+  # before is skipped now.
   local name="$1"
   [ -f "${STATE_FILE}" ] || return 1
-  awk -F'\t' -v stage="${name}" '$1 == stage && $3 == "complete" { found = 1 } END { exit !found }' "${STATE_FILE}"
+  awk -F'\t' -v stage="${name}" '$1 == stage && $3 == "complete" && $5 == 0 { found = 1 } END { exit !found }' "${STATE_FILE}"
 }
 
 # MILLISECOND RESOLUTION, and it is not cosmetic. Under D-52's pool these
