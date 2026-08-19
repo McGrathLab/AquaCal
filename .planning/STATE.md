@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 27 planned -- 13 plans in 6 waves, ready to execute
-last_updated: "2026-08-19T14:25:14.711Z"
-last_activity: 2026-08-19 -- Phase 27 planning complete
+stopped_at: Phase 27 -- waves 1 and 2 merged, post-merge gate running
+last_updated: "2026-08-19T15:03:43.269Z"
+last_activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 41
-  completed_plans: 28
-  percent: 50
+  completed_plans: 37
+  percent: 62
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 26 — full-suite-driver-handoff-readiness
+**Current focus:** Phase 27 — frozen-single-sha-handoff-package
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -32,10 +32,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 27 (frozen-single-sha-handoff-package) — context gathered, not yet planned
+Phase: 27 (frozen-single-sha-handoff-package) — EXECUTING
+Plan: 9 of 13 (waves 1 and 2 complete; wave 3 = plan 27-10 next)
 Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
-Status: Ready to execute
-Last activity: 2026-08-19 -- Phase 27 planning complete
+Status: Executing Phase 27 -- waves 1-2 merged, post-merge suite gate in flight
+Last activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
