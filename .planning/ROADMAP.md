@@ -406,7 +406,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 27-10-PLAN.md — ORCHESTRATOR: the local `--smoke` acceptance pass (must exit 0) and the pre-push public-exposure audit of 218 commits
+- [ ] 27-10-PLAN.md — ORCHESTRATOR: the local `--smoke` acceptance pass (roll-up `0 FAIL`; the driver's own exit code is non-zero on a healthy run — see 27-PREPUSH-AUDIT.md) and the pre-push public-exposure audit
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -418,7 +418,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 27-13-PLAN.md — ORCHESTRATOR: `fd_jacobian` at full scale on target, the gate roll-up, `--smoke` exit 0, and the close-or-refreeze loop (D-03/D-04, criteria 2 and 4)
+- [ ] 27-13-PLAN.md — ORCHESTRATOR: `fd_jacobian` at full scale on target, the gate roll-up, `--smoke` roll-up `0 FAIL` (NOT exit 0 — see HANDOFF.md §2.8), and the close-or-refreeze loop (D-03/D-04, criteria 2 and 4)
 
 ### Phase 28: Suite Execution on Linux Machine
 

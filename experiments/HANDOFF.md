@@ -200,6 +200,10 @@ nohup bash experiments/run_experiment_suite.sh \
 disown
 ```
 
+**Before you read the exit code:** a completed, healthy run exits **non-zero**. The verdict
+that judges the run is the end-of-run roll-up, not `$?`. See **§2.8** before concluding
+anything from the exit status.
+
 Three things about that command are deliberate:
 
 - **`nohup ... & disown`.** The run is ~15-16 h. It must survive the SSH session ending. A
@@ -330,6 +334,8 @@ failure is in the invocation line and not in `src/`.
   proves the *recorded* shas agree. The editable-install hazard in §1.2 produces agreeing shas and
   wrong code. The `import aquacal` assertion is the only thing that covers it.
 - **`--smoke` says nothing at all about the two stages in §2.5**, by construction.
+- **A non-zero exit code is not a failed run.** The per-stage gates are structurally red;
+  only the end-of-run roll-up judges the run. See §2.8.
 
 ### 2.7 If something is missing after the package is transferred
 
@@ -349,3 +355,50 @@ not a failure signal.
 Do **not** patch the running clone in place and continue. A stage that ran at a different commit
 than the rest makes the whole run unreportable, and the sha gate catching it is the system working
 — do not weaken it to accommodate the patch.
+
+### 2.8 Reading the exit code: the ROLL-UP is authoritative, not `$?`
+
+**A completed, healthy run exits NON-ZERO. This is expected. Do not treat it as a failed run,
+and do not re-run to chase a zero.**
+
+The driver runs `check_rerun_gates.py` at three points (§ the header's "three check points"). The
+one that judges the run is the **end-of-run completeness roll-up** over the whole tree. The
+per-stage invocations after each stage are *early warnings*, and they are structurally red for two
+reasons that have nothing to do with the run's health:
+
+1. **The per-stage gate judges the whole tree, not just its stage.** `--stage` scopes only the
+   *completeness* checks; gates 1-4 (guard count, status, provenance, optimality) run the full
+   E1/E4/E6/E7 battery over whatever the tree holds at that moment. So `fd_jacobian` at stage 3
+   FAILs on E1 and E7 benchmarks that stages 4-18 have not written **yet**. Watch the totals climb
+   as the tree fills — on the 2026-08-19 local pass they went 19 PASS at the first gate to 71 PASS
+   at the roll-up, with the same artifacts.
+
+2. **The auxiliary trees get the whole battery too.** `e2_band`, `e2_timing`, `e2_memory` and
+   `e4_repeat` each write their own output tree holding one stage's output and no run manifest, so
+   the E1/E4/E6/E7 gates and `gate3_run_manifest_present` FAIL there by construction. Locally each
+   scored `1 PASS / 18 N/A / 28 FAIL`.
+
+Every one of those is recorded as a sticky finding, and any finding forces a non-zero exit. That
+is D-01 working as designed (the queue continues; the exit code makes it impossible to mistake for
+green) — it is simply not a per-run health signal.
+
+**So, to judge the run:**
+
+```bash
+# The verdict that counts -- the LAST verdict block in the log:
+awk '/END-OF-RUN COMPLETENESS ROLL-UP/,0' suite_run_<tag>.log | grep -E '^\[FAIL\]|TOTAL:'
+```
+
+- **The acceptance condition is `0 FAIL` in that roll-up block**, plus all 20 stages carrying a
+  zero exit code in `experiments/run_experiment_suite_state.<sha>.tsv`.
+- A `STAGE FAILED` line in the sticky failures file is real and always matters — that is a stage
+  that ran and failed, and it is distinct from a `GATE FAIL` line.
+- `gate3_run_manifest_clean_tree` FAILing means the working tree was dirty at launch. That one is
+  real: the recorded `git_sha` then does not fully describe the code that ran. Commit or stash
+  before launching.
+
+This reading was ruled by the author on 2026-08-19 and is recorded in
+`.planning/phases/27-frozen-single-sha-handoff-package/27-PREPUSH-AUDIT.md`. The alternative —
+scoping gates 1-4 per stage — is a change to the script that judges every artifact, and was
+declined inside the freeze window as risk spent on cosmetics rather than on evidence. It is a
+reasonable post-submission cleanup.
