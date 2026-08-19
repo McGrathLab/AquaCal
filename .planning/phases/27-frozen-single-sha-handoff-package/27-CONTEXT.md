@@ -519,3 +519,67 @@ frozen run's env by absolute path. If it falls through to bare `python`, it land
 import rather than at a clear version check.
 
 *Amended: 2026-08-19*
+
+---
+
+## Amendment 2026-08-19 (second) — D-12 is superseded on its middle rung
+
+Written during wave 1 execution, after plan 27-01's measurements landed. **This supersedes D-12's
+`GATE_PYTHON` half.** D-12's `E2_RELEASE_CONFIG` half is unchanged.
+
+### D-29: the conda-env-by-name rung is DELETED, not case-fixed
+
+D-12 specified `GATE_PYTHON` as: env override -> a conda env named `AquaCal` on either platform ->
+bare `python`. Plan 27-01 measured the target and the middle rung is wrong twice over:
+
+1. The env there is lowercase **`aquacal`**, and Linux is case-sensitive.
+2. **Case-fixing it is worse than leaving it broken.** `~/anaconda3/envs/aquacal` is exactly the env
+   D-26 excludes — it carries **OpenCV 4.14.0**, the version `pyproject.toml` pins *against* for a
+   measured reason (1.95% fewer corners, +7.8% reconstruction RMSE). A rung that auto-discovers a
+   conda env by name is a rung that can silently select the contaminated env.
+
+**Auto-discovery by name is the defect; the case is incidental.** Plan 27-12 builds a fresh
+`opencv-python==4.13.*` env for the frozen run, so rung 1 (`PRELAUNCH_GATE_PYTHON`, already present
+at `run_experiment_suite.sh:402`) is the only rung that should ever fire on the target.
+
+Binding on 27-08:
+
+- **Delete** the conda-env-by-name discovery rung. Do not repair its case.
+- Keep the `PRELAUNCH_GATE_PYTHON` override as the primary path; 27-12 sets it to the scratch env's
+  absolute interpreter path (D-28: no bare `conda activate` over non-interactive SSH).
+- The final fallback must **fail loudly, naming the override**, rather than falling through to bare
+  `python`. On the target there is no `python` on PATH at all, so the current fallback dies with
+  *command not found* — which reads as a broken driver rather than an unresolved interpreter.
+- Per D-12's still-binding clause: this adds **no new pre-flight refusal**. The Git Bash box must
+  keep working unchanged.
+
+### D-30: the manifest must record BOTH interpreters, with an equality verdict
+
+Found while resolving D-29. `GATE_PYTHON` is deliberately not the run interpreter — the comment at
+`run_experiment_suite.sh:842` says so, because on the Windows dev box bare `python` is Anaconda base
+and pre-flight must not be where that surfaces. But:
+
+- every stage runs bare `python -u -m experiments.<mod>` (~25 call sites, `:1224`–`:1812`);
+- the run manifest is written under `GATE_PYTHON` (`:882`).
+
+So `python_version`, `numpy_version`, `scipy_version`, `opencv_version` and
+`installed_distribution_version` describe **the tooling interpreter, not the one that computed the
+numbers**, and nothing asserts the two agree.
+
+Today they coincide on the target by accident: the `.exe` default fails, the chain falls back to bare
+`python`, and in an activated shell that IS the run env. Repair the middle rung naively and they stop
+coinciding — **the manifest would record 4.14.0 while the stages ran 4.13**.
+
+That is the D-27 / F-001 fracture in a new form: artifacts claiming provenance they do not have,
+with the git shas agreeing so Gate 3 stays green. It is in scope for this phase precisely because the
+freeze window is where it is still cheap.
+
+Binding on 27-05's manifest emitter and 27-08's driver work:
+
+- Record `sys.executable` for **both** the gate interpreter and the stage interpreter.
+- Record an explicit **equality verdict** between them, so a mismatch is visible in the manifest
+  rather than silent.
+- A mismatch is **recorded, not refused** — it is legitimate on the Windows dev box by design. This
+  is a provenance record, not a fourth pre-flight refusal.
+
+*Author's ruling, 2026-08-19. Amended: 2026-08-19.*
