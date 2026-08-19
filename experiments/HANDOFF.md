@@ -173,3 +173,179 @@ declined. Budget for the upper end.
 Runtime is not a number this run is trying to reproduce, with one exception: the E2 timing and
 memory stages, which run **serially and BLAS-unpinned** precisely so that what they measure matches
 every historical measurement. Do not "optimise" them.
+
+---
+
+## 2. Running the suite
+
+### 2.1 The invocation
+
+From a shell on the Linux run machine **with the frozen run's environment activated** (§1.1 — bare
+`python` must resolve to that environment, because ~25 stage invocation lines use it), in the
+frozen clone:
+
+```bash
+cd "$HOME/aquacal-frozen-<tag>"
+
+# Confirm the environment before committing 15-16 h to it:
+python -c "import aquacal, sys; print(aquacal.__file__); print(sys.executable)"
+python -c "import cv2; print(cv2.__version__)"   # must print 4.13.x
+
+# The gate interpreter, by ABSOLUTE path (conda is not on the PATH for
+# non-interactive SSH; see 1.1):
+export PRELAUNCH_GATE_PYTHON="<conda-root>/envs/<frozen-env>/bin/python"
+
+nohup bash experiments/run_experiment_suite.sh \
+  > "$HOME/suite_run_<tag>.log" 2>&1 &
+disown
+```
+
+Three things about that command are deliberate:
+
+- **`nohup ... & disown`.** The run is ~15-16 h. It must survive the SSH session ending. A
+  foreground run over SSH is a run that dies with the connection.
+- **The log lands OUTSIDE the output tree and outside the clone.** Pre-flight refuses to start a
+  fresh run into a non-empty output tree that has no state file for this sha, so writing the log
+  into `experiments/results/` before launch would trip the driver's own check against you.
+- **Unbuffered output is already handled** — every stage invocation line inside the driver is
+  `python -u -m experiments.<module>`. Python block-buffers stdout when it is a pipe, and a
+  buffered log is indistinguishable between "working normally" and "hung on the first stage".
+
+**The run dirties its own working tree, and that is expected.** `experiments/results/` is a
+**tracked** path, so `git status` inside the clone goes dirty as soon as stage 1 writes anything.
+There is deliberately **no dirty-tree refusal** in the driver: such a check fires on *resume* and
+would refuse every restart after the first crash — a check that kills a run which would otherwise
+have succeeded. Dirtiness is still *recorded* post-hoc by the gates, which can never kill a run.
+**Do not add a dirty-tree refusal back.**
+
+> Note: the default value of `E2_RELEASE_CONFIG` and the frozen driver's gate-interpreter
+> resolution are being repointed for this machine in the same freeze as this note. The intended end
+> state: the E2 release config defaults to an **in-repo Linux config committed inside the frozen
+> sha**, with any off-repo path reachable only via `SUITE_E2_RELEASE_CONFIG`; and the gate
+> interpreter comes from `PRELAUNCH_GATE_PYTHON`, failing **loudly and naming that variable** rather
+> than falling through to a bare `python` that does not exist on this machine. If the driver and
+> this paragraph disagree, the driver is authoritative.
+
+### 2.2 Useful environment variables
+
+| Variable | Effect |
+|---|---|
+| `SUITE_WORKERS=4` | Concurrency width, bounded to 4-5. Anything else is clamped to 4 with a warning. |
+| `SUITE_SERIAL=1` | Force the fully serial path (~22-26 h). |
+| `SUITE_SMOKE=1` | Equivalent to `--smoke`. |
+| `SUITE_OUT_DIR`, `SUITE_STATE_DIR` | Test sandboxing only — not for a production run. |
+| `PRELAUNCH_GATE_PYTHON` | Absolute path to the gate/pre-flight interpreter. |
+| `SUITE_E2_RELEASE_CONFIG` | Override the E2 release config path. |
+
+### 2.3 Pre-flight, and its five overrides
+
+**Pre-flight is the only place permitted to abort. Nothing aborts once stage 1 has begun** — from
+there on, gates *record* and the end-of-run roll-up reports. Every surviving refusal prints the
+exact flag that bypasses it, so a malformed check costs one minute and one flag, never a night.
+
+Each flag disables **exactly one** refusal:
+
+| Flag | Declares |
+|---|---|
+| `--skip-e2` | that the E2 frameset is absent. The run becomes **synthetic-only**, the omission is announced at launch and reprinted in the roll-up, and E2's artifacts still count as missing. |
+| `--allow-frameset-mismatch` | proceed although the frameset's identity signature does not match the manifest. |
+| `--allow-nonempty-out` | proceed although the output tree is non-empty and no state file exists for this sha. |
+| `--allow-low-disk` | proceed although free space is below the manifest's crude absolute floor. |
+| `--allow-gate-precheck-failure` | proceed although the completeness gate could not be invoked at pre-flight. |
+
+Two refusals have **no** override and are not in that table: a run manifest that cannot be written
+(every artifact's provenance anchors to it, so a run without one is unreportable), and pre-flight's
+own hard failures. Fix the cause and restart from stage 1.
+
+The other options, from the driver's own `--help`:
+
+| Option | Meaning |
+|---|---|
+| `N`, `--start-stage N` | start from the 1-indexed stage N. **Infrastructure recovery only** — never the recovery path for a `src/` defect, which is always restart-from-stage-1. |
+| `--profile {smoke,full}` | expectation profile for the completeness gate. Default `full`. |
+| `--remaining-hours H` | **warn**, never abort, if the estimated wall clock exceeds H hours. |
+| `--smoke` | the reduced-scale pass. See §2.5. |
+
+### 2.4 Resume
+
+The driver keeps a **state file whose path is derived from the frozen sha**
+(`experiments/run_experiment_suite_state.<sha>.tsv`; a dry run writes a separate `.dryrun.tsv`
+path). That derivation is what structurally makes another run's state file unreachable — there is
+no separate HEAD-vs-state refusal, because that half is what wrongly blocks a 3 a.m. resume.
+
+Re-launch the same command to resume. A stage is skipped only if the state file carries a
+`complete` event for it **and that event's exit code is 0**. There are two ways to be incomplete
+and **both re-run**:
+
+- a start-only line — the stage started, then died, and never reached a completion line;
+- a completion line carrying a **non-zero exit** — the stage **ran and failed**, so it produced
+  nothing the roll-up can use.
+
+That second case is the one that matters here: an earlier version matched the completion line and
+ignored the exit column, so a crashed-then-resumed run silently dropped the failed stage. On a
+single-shot 15-16 h run that is the failure most likely to cost the whole night. The fix makes
+resume **stricter, never looser** — no stage that would have re-run before is skipped now.
+
+### 2.5 Declared reductions, and the two never-rehearsed invocation lines
+
+`--smoke` runs every supporting stage at reduced scale in one pass, into its own output tree
+(`experiments/results_smoke`), so that a flag typo or an import error in a stage's invocation line
+surfaces in minutes rather than hours into the frozen run. **It is not evidence.** It says nothing
+about geometry, convergence, accuracy, runtime or any published number. Every acceptance and
+production run is at full scale, never substituted.
+
+**Two stages are SKIPPED under `--smoke`, not reduced.** Both are announced at launch and reprinted
+in the terminal summary as DECLARED REDUCTIONs:
+
+| Stage | Why it cannot be reduced |
+|---|---|
+| `e7_focal_standoff` | It has **no `--smoke` branch**. It ignores the flag and reads a **hardcoded, cwd-relative** production path (`experiments/results/interface_ablation_band.csv`) rather than `--out`, so a reduced-scale pass would re-analyse the *production* tree's band. |
+| `e4_repeat` | **Both** of its invocation shapes refuse the flag — `e4_benchmark_grid` rejects `--cell` and `--splice-repeat` when `--smoke` is present. There is no reduced-scale form of this stage. |
+
+> ⚠ **The consequence, stated plainly: these two invocation lines are never exercised by any
+> rehearsal — including the on-target verification pass. A failure in either of them will first
+> appear during the production run.**
+
+That is a deliberate trade: adding `--smoke` branches to them would be freeze-window code changes
+for diagnostic-only benefit, which is a worse risk than the one being accepted. **Naming them here
+IS the mitigation** — an untested path that nobody wrote down is the exact failure class this
+freeze exists to close. If the production run dies, look at these two first.
+
+When one of them fails, it fails *late* (both sit deep in the stage order) and the roll-up will
+report their artifacts as missing. That is recoverable: fix, then `--start-stage N` at the failed
+stage — this is precisely the infrastructure-recovery case `--start-stage` exists for, provided the
+failure is in the invocation line and not in `src/`.
+
+### 2.6 What a green verification does NOT prove
+
+- **Existence and row count are not correctness.** The completeness gate asserts that a file exists
+  and, at the `full` profile, that it has the right number of rows. A gauge-corrected column
+  populated with uncorrected values passes every one of those checks. Judge the numbers against
+  `experiments/EXPECTATIONS.md`; that is what it is for.
+- **`--smoke` cannot catch a wrong `--config` path or a bad production YAML.** The reduced-scale
+  pass never touches the production config. Pre-flight's **frameset identity check** is the only
+  thing covering that blind spot — which is why that check being able to *pass* against the actual
+  input set matters so much, and why it was fixed inside this freeze rather than after it.
+- **A green cross-artifact sha gate does not prove the code that ran was the frozen code.** It
+  proves the *recorded* shas agree. The editable-install hazard in §1.2 produces agreeing shas and
+  wrong code. The `import aquacal` assertion is the only thing that covers it.
+- **`--smoke` says nothing at all about the two stages in §2.5**, by construction.
+
+### 2.7 If something is missing after the package is transferred
+
+The package is supposed to require **no further code edits once transferred**. If it turns out to
+need one, that finding sends the freeze **back**, not forward into the run:
+
+1. Fix it here, in the branch.
+2. Commit it.
+3. Cut the **next** `rerun-freeze-NN` tag at the new sha.
+4. Re-verify on the target against that tag.
+
+**Tags are never moved.** A new tag per freeze attempt, each at a distinct sha; abandoned tags stay
+as the audit trail. A force-moved tag destroys the record of the failed attempt, which is exactly
+the provenance fracture this milestone exists to stop repeating. A second tag is a normal outcome,
+not a failure signal.
+
+Do **not** patch the running clone in place and continue. A stage that ran at a different commit
+than the rest makes the whole run unreportable, and the sha gate catching it is the system working
+— do not weaken it to accommodate the patch.
