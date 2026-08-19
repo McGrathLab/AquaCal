@@ -22,10 +22,12 @@ tree and is read-only from this repo. Rows are cited by `id` for exactly that re
 | `machine` | Machine **class**, per the two classes defined below. Hostnames and user paths are deliberately omitted — this file becomes public. |
 | `why this run will not regenerate it` | The cause, specific to the row. |
 
-**No data cell in any table below carries the `not recorded` marker.** All 22 rows' sha and machine
-were recovered from an artifact's own provenance block; the marker is defined above only so that a
-future row which genuinely cannot be recovered has somewhere honest to go. **An invented sha is
-worse than an absent one** — it is precisely the F-001 shape this milestone exists to close.
+**Exactly one data cell below carries the `not recorded` marker: `RL-guard-frac` in §4.** The other
+22 rows' sha and machine were recovered from an artifact's own provenance block. `RL-guard-frac`
+has no artifact and no provenance block anywhere — the ledger's own `artifact` and `derivation`
+cells are empty and its note reads *"no committed artifact -- pre-fix state"* — so its sha and
+machine are marked `not recorded` rather than inferred from the campaign around it. **An invented
+sha is worse than an absent one** — it is precisely the F-001 shape this milestone exists to close.
 
 **Two machine classes are referenced throughout:**
 
@@ -181,11 +183,15 @@ be checked without the archive.
 
 ## 4. Unregenerable by construction
 
-One row.
+Two rows. They reach the same category by different routes: one is unregenerable because the
+**schedule** cannot produce it, the other because the **code** cannot.
 
 | ledger id | artifact | recorded sha | machine | why this run will not regenerate it |
 |---|---|---|---|---|
 | `RL-determinism` | *(empty in the ledger)* | `2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395` | W16 | **P26-D-42 turned `e6_repeat2` OFF, under both profiles.** The quantity is a *paired-repeat* statistic — 16 differing cells of 308 between two independent E6 runs at one sha — so it needs both arms. The frozen manifest schedules `e6_repeat1` and never a second arm, so no run at this freeze can produce it. |
+| `RL-guard-frac` | *(empty in the ledger)* | `not recorded` | `not recorded` | **The fixed code cannot produce the state being measured.** The quantity is the fraction of board corners sitting **at or above the water interface** in the pre-fix baseline scenario — 61 of 8800, 0.69%, worst protrusion 66.1 mm. Phase 19.3's depth-clearance fix removed that state: post-fix, **zero corners sit at or above the interface in any scenario**. The frozen sha is post-fix, so any run at it returns 0.00% by construction — not a reproduction of 0.69%, and not a refutation of it either. |
+
+### `RL-determinism` — the schedule cannot produce it
 
 **Both arms are provenanced, which is why this row is frozen rather than lost.** The post-fix pair
 is `experiments/pre_rerun_baseline/results/e6_provenance.json` and
@@ -207,11 +213,46 @@ unregenerability is intentional and enforced, which is exactly what makes statin
 comparison, not a file. Its note also records that MF-09's "8 of 308 / index 1.48" is **stale**,
 superseded when Phase 19.4's interface fix requeued both repeats.
 
+### `RL-guard-frac` — the code cannot produce it
+
+Added on the author's ruling after plan 27-06's coverage walk surfaced it; D-19 did not name it.
+Its ledger note reads *"no committed artifact -- pre-fix state"*, and both its `artifact` and
+`derivation` cells are empty.
+
+**What it measures, stated from the ledger rather than from memory.** The `quantity` cell reads
+*"corner fraction at or above the interface, pre-fix baseline scenario"*, the `locator` is *"a small
+fraction of target corners"*, and `current_text` is **0.69%**. It is a *scenario-geometry* fraction —
+how much of the synthetic board protruded through the modelled water surface — **not** a
+solver-guard rejection rate. The distinction matters for Phase 30: a reader who files it as a guard
+statistic will look for it in the wrong emitter and conclude the row is merely uncited.
+
+**Why the frozen sha cannot produce it.** Phase 19.3's depth-clearance fix derives a depth floor and
+re-centres board poses on the board centre rather than a corner. Measured after that fix, **zero
+corners sit at or above the interface in any scenario**, checked directly against each scenario's
+own corner cloud (MF-08). So the frozen, post-fix code returns 0.00% — a *different, correct*
+measurement of a scenario that no longer has the defect, not a failed reproduction of 0.69%. This is
+the same category as `RL-determinism` reached from the other direction: there the schedule omits an
+arm, here the code has removed the state.
+
+**Why sha and machine are `not recorded`.** The figure came from an ad-hoc probe during Phase 19.2
+plan 28 / the 19.3 seed work, which wrote no artifact and therefore no `environment` block. The
+closest contemporaneous anchor is §1's `archive/e6-2026-08-02-pre-depth-fix/` tree at `74e75a7b` on
+W16, measured on the same baseline scenario (12 cameras, 100 frames, seed 42) — **but that is
+campaign context, not this measurement's own record, and it is not written into the table as
+though it were.**
+
+**One of the ledger note's three cross-references does not hold at this sha.** The note says the
+figure is *"recorded identically in 19.3-SEED.md, REQUIREMENTS.md and MF-07/MF-08"*. Two check out:
+`.planning/phases/19.3-scenario-geometry-and-convergence/19.3-SEED.md:53` (61 / 8800, 0.69%, worst
+protrusion 66.1 mm, with the full clearance derivation) and `.planning/MANUSCRIPT-FINDINGS.md:640`
+(MF-07) and `:686` (MF-08). `.planning/REQUIREMENTS.md` exists but contains neither the figure nor
+the protrusion language. **The 0.69% is well-sourced twice over; the third pointer is stale.**
+
 ---
 
 ## 5. What Phase 30 inherits
 
-**This table IS the dangling-reference list.** POST-03's archive purge must, for each of the 22
+**This table IS the dangling-reference list.** POST-03's archive purge must, for each of the 23
 rows above, either preserve the cited bytes or re-point the citation. The four groups need four
 different decisions, and conflating them is the failure mode:
 
@@ -220,9 +261,9 @@ different decisions, and conflating them is the failure mode:
 | §1 pre-fix archives | 5 | `experiments/archive/e6-2026-08-02-pre-depth-fix/` and `.../e2-2026-07-30-pre-pnp-guard/`. **Plus** the four uncopied E2 bulk artifacts reachable only as `git show 35d76a6:experiments/results/...` — a directory purge leaves them; a history rewrite does not. `experiments/archive/README.md` states the standing rule: do not delete a generation until the manuscript's numbers are reconciled against the corresponding re-run (MF-08). |
 | §2 earlier campaign | 9 | `experiments/pre_rerun_baseline/results_linux32gb/`, **including `linux32gb_scope.json` itself** — three rows cite the scope file directly, and it is the only record of the `e2_cv413` control. Two of those three carry sha `1af0650`, not the tree-level `d27bda7`. |
 | §3 OpenCV-pinned | 7 | `experiments/pre_rerun_baseline/results/real_rig_metrics.json` **and** its sibling `benchmark.json` (the only place the sha and machine are recorded). `M-L302-signed` additionally depends on Zenodo record 21889922's `reconstruction_errors.csv`, which is not in the repo at all. |
-| §4 by construction | 1 | `experiments/pre_rerun_baseline/results/e6_provenance.json` **and** `results_e6_repeat2/e6_provenance.json` — both arms, or the paired statistic loses its provenance. Also `.planning/phases/19.3-.../determinism_probe.py`. |
+| §4 by construction | 2 | `RL-determinism`: `experiments/pre_rerun_baseline/results/e6_provenance.json` **and** `results_e6_repeat2/e6_provenance.json` — both arms, or the paired statistic loses its provenance. Also `.planning/phases/19.3-.../determinism_probe.py`. `RL-guard-frac`: **planning documents are its only source** — `19.3-SEED.md:53` and `.planning/MANUSCRIPT-FINDINGS.md` MF-07/MF-08. There is no artifact to purge and nothing to re-point; the exposure is that `.planning/` is treated as disposable. |
 
-Two rows need a decision the purge cannot make mechanically:
+Three items need a decision the purge cannot make mechanically:
 
 1. **`M-L302-signed`** — its ledger `artifact` cell names a file that does not contain the
    quantity. Re-point it at `reconstruction_errors.csv` (archive-only) or accept that it is
@@ -232,6 +273,11 @@ Two rows need a decision the purge cannot make mechanically:
    a **manuscript decision with a measurement consequence**, not a path edit: the frozen run is at
    OpenCV 4.13 and a different sha, and per D-14 the timing stages stay BLAS-unpinned precisely so
    the comparison remains meaningful. Re-point deliberately or not at all.
+3. **`RL-guard-frac`'s third cross-reference is stale.** Its ledger note names `REQUIREMENTS.md`
+   as one of three places the 0.69% is "recorded identically"; that file exists at this sha and
+   contains neither the figure nor the protrusion language. Drop the pointer or restore the text —
+   **but note the figure itself is not at risk**: `19.3-SEED.md:53` and MF-07/MF-08 both carry it
+   with the full derivation. This is a bad pointer, not a missing number.
 
 ### How this note joins to `EMITTER-COVERAGE.md`
 
@@ -244,8 +290,14 @@ The two reports **partition the ledger** between them, and the join is by ledger
 - §3's seven rows are the sharp case: they are **NOT REGENERATED** *and* emitter-backed. An emitter
   existing does not make a number current, and a rewritten file is not a re-sourced number. That
   distinction is the entire reason both reports exist instead of one.
-- §1, §2 and §4's fifteen rows have no emitter at this freeze — pre-fix snapshots, a retired output
-  directory, an absent control arm, and a paired statistic with only one arm scheduled.
+- §2 is graded **EMITTER-BACKED / NOT REGENERATED** too, `linux32gb_scope.json` included — that
+  grading is 27-06's and the author has accepted it. Nothing here disputes it: an emitter for the
+  *class* of artifact does not put anything back into `results_linux32gb/`, which is the path these
+  rows cite. Where the two documents both attribute a sha, the agreed treatment in each is
+  **per-artifact** — hence `1af0650` for the two cv413-sourced rows.
+- §1 and §4's seven rows have no emitter at this freeze — pre-fix snapshots, an absent control arm,
+  a paired statistic with only one arm scheduled, and one quantity whose underlying *state* the
+  fixed code no longer produces.
 
 A ledger `id` appearing in neither report, or as regenerated in one and frozen in the other, is a
 defect in the partition — not a judgement about the number.
@@ -274,6 +326,6 @@ Stated so nobody over-reads it.
 ---
 
 *Written for Phase 27 (D-19), before the Phase 28 run and before Phase 30's purge.*
-*22 rows: 5 pre-fix archive, 9 earlier campaign, 7 OpenCV-pinned, 1 by construction.*
+*23 rows: 5 pre-fix archive, 9 earlier campaign, 7 OpenCV-pinned, 2 by construction.*
 *Companion: `experiments/EMITTER-COVERAGE.md` (D-16) covers the ledger rows this note does not —
 between them the two reports partition the ledger.*
