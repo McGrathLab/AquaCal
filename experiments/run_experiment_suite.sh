@@ -768,6 +768,36 @@ case "${SUITE_WORKERS}" in
     ;;
 esac
 
+# THE BLAS THREAD CAP, AND IT IS DELIBERATELY A TWO-REGIME PIN (D-14).
+#
+# REGIME 1 -- the CONCURRENT stages get `OMP_NUM_THREADS`, `MKL_NUM_THREADS`
+# and `OPENBLAS_NUM_THREADS` set to this value. The derivation, not a
+# preference: `.planning/probes/2026-08-18-solver-concurrency/FINDINGS.md`
+# measured one solve holding a MEDIAN 0.99 cores of 20 (mean 1.20, p95 2.01,
+# peak 2.56). A solve that uses one core on the median is not being helped by
+# an unbounded thread pool, so a cap of 2 leaves the p95 case untouched while
+# removing the oversubscription that 4-5 competing processes would otherwise
+# produce. It costs nothing where it applies, which is the only reason it is
+# safe to apply at all.
+#
+# REGIME 2 -- the four `serial_alone` stages (e4, e4_repeat, e2_timing,
+# e2_memory) see NO cap variable AT ALL. Every historical timing measurement
+# was taken unpinned, so pinning them would silently change what is being
+# timed. `run_one_stage` therefore UNSETS the three variables for them rather
+# than exporting an empty string: an exported empty string is not the same as
+# unset to OpenBLAS, and that distinction is the whole point.
+#
+# The split is READ FROM `STAGE_CONCURRENCY`, which `_load_stage_attributes`
+# populates from `suite_expectations.json`. There is deliberately no second
+# stage list here -- that duplication is exactly the drift the manifest exists
+# to prevent.
+#
+# Exported so `experiments/_run_manifest.py` records the cap ACTUALLY in force
+# (D-14, `blas_thread_cap`): the value recorded and the value enforced come
+# from this one place. Overridable for a machine with different arithmetic.
+SUITE_THREAD_CAP="${SUITE_THREAD_CAP:-2}"
+export SUITE_THREAD_CAP
+
 log() {
   printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
 }
@@ -987,6 +1017,31 @@ run_stage_preflight() {
   if [ "${manifest_exit}" -ne 0 ]; then
     log "PREFLIGHT REFUSAL: the run manifest could not be written (exit=${manifest_exit}). Every artifact's provenance anchors to it, so a run without one is unreportable. There is NO override for this refusal -- fix the emitter or the output directory and restart from stage 1."
     return "${manifest_exit}"
+  fi
+
+  # 1b. THE ENVIRONMENT LOCKFILE (D-13). Written BESIDE the run manifest, and
+  # deliberately NOT in the manifest's refusal class.
+  #
+  # The manifest already carries every version that moves a number
+  # (python/numpy/scipy/opencv, the OpenCV build, the installed distribution
+  # version, the CPU and RAM). What the lock adds is the TRANSITIVE set, which
+  # is worth recording and is not worth a commit inside the freeze window --
+  # capturing it at run time also means it describes the environment that
+  # actually ran, which a pre-freeze commit could not.
+  #
+  # A NON-ZERO EXIT IS LOGGED AND THE RUN CONTINUES. `_env_lock` already
+  # degrades a failed `pip freeze` into a recorded reason and still returns 0,
+  # so a non-zero here means the WRITE failed -- supplementary detail missing
+  # on top of a manifest that carries the load-bearing versions. Phase 26 § D
+  # cut three pre-flight refusals and P26-D-50 binds every survivor to print an
+  # override flag; adding a fourth refusal for a supplementary artifact is
+  # exactly what D-12 forbids. `--force` for the same reason the manifest gets
+  # it: a resume after a crash mid-pre-flight must be able to rewrite it.
+  log "preflight: writing the environment lockfile into ${OUT_DIR}"
+  "${GATE_PYTHON}" -m experiments._env_lock --out "${OUT_DIR}" --force
+  local lock_exit=$?
+  if [ "${lock_exit}" -ne 0 ]; then
+    log "preflight: the environment lockfile could not be written (exit=${lock_exit}). This is a LOGGED FINDING, NOT A REFUSAL (D-13) -- the run manifest already carries every version that moves a number, and the lock is transitive detail on top of it. The run continues; the completeness gate will report environment_lock.txt as missing."
   fi
 
   # 2. E2 FRAMESET IDENTITY, NOT PRESENCE (D-17).
@@ -1964,6 +2019,29 @@ run_one_stage() {
   state_start "${name}" "${idx}"
   log ">>> STAGE ${idx}/${#STAGES[@]}: ${name} starting"
 
+  # D-14's TWO-REGIME BLAS PIN, applied at the ONE place both the serial path
+  # and the pool path pass through. See the SUITE_THREAD_CAP block near the top
+  # for the derivation.
+  #
+  # The `else` branch UNSETS rather than assigning an empty string, and that is
+  # load-bearing: an exported `OMP_NUM_THREADS=` is NOT the same as an unset
+  # one to OpenBLAS, and the four `serial_alone` timing stages must run exactly
+  # as every historical measurement of them was taken -- at the library
+  # default. It also strips any cap the operator's own shell exported, for the
+  # same reason.
+  #
+  # No restore afterwards is needed or wanted: every dispatch sets or unsets
+  # the three variables for itself, so the value in force is always the current
+  # stage's regime rather than a leftover of the previous one. Under the pool
+  # each `run_one_stage` is already inside its own subshell.
+  if [ "${STAGE_CONCURRENCY[${name}]:-}" = "concurrent" ]; then
+    export OMP_NUM_THREADS="${SUITE_THREAD_CAP}"
+    export MKL_NUM_THREADS="${SUITE_THREAD_CAP}"
+    export OPENBLAS_NUM_THREADS="${SUITE_THREAD_CAP}"
+  else
+    unset OMP_NUM_THREADS MKL_NUM_THREADS OPENBLAS_NUM_THREADS
+  fi
+
   "run_stage_${name}"
   local exit_code=$?
 
@@ -2024,8 +2102,19 @@ _load_stage_attributes() {
   # and NO stage name: adding a stage to the manifest is enough for the pool to
   # honour its constraints, which is the difference between a dependency a pool
   # can enforce and a comment it cannot.
+  # THE DELIMITER IS `|`, NOT A TAB, AND THAT IS A BUG FIX (plan 27-08).
+  # Tab is an IFS WHITESPACE character, so `IFS=$'\t' read` collapses runs of
+  # tabs into a single delimiter and an EMPTY FIELD SHIFTS EVERY COLUMN AFTER
+  # IT. `preflight` is the one stage with an empty `depends_on`, so its row
+  # silently loaded as deps="concurrent", concurrency="none", frame_class the
+  # est_hours and est_hours empty -- i.e. the scheduler believed pre-flight's
+  # concurrency was the literal string "none". It went unnoticed because the
+  # two pre-flight stages are dispatched in the parent and never queued in the
+  # pool, so nothing consulted the wrong value until D-14's thread pin did.
+  # `|` is not IFS whitespace, so empty fields survive; `depends_on` is already
+  # comma-joined, so the character cannot occur inside a field.
   local line name deps conc frame est
-  while IFS=$'\t' read -r name deps conc frame est; do
+  while IFS='|' read -r name deps conc frame est; do
     [ -n "${name}" ] || continue
     STAGE_DEPS["${name}"]="${deps}"
     STAGE_CONCURRENCY["${name}"]="${conc}"
@@ -2044,8 +2133,11 @@ for stage in manifest["stages"]:
     # a systematic failure early, and the low bound is the optimistic case that
     # ordering is trying to exploit.
     low = est[0] if isinstance(est, list) else est
+    # `|` rather than a tab: see the delimiter note above the reader. A tab is
+    # IFS whitespace, so an empty `depends_on` would collapse and shift every
+    # field after it.
     print(
-        "\t".join(
+        "|".join(
             [
                 stage["id"],
                 ",".join(stage["depends_on"]),

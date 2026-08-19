@@ -27,7 +27,8 @@
         "full"
       ],
       "produces": [
-        "run_manifest.json"
+        "run_manifest.json",
+        "environment_lock.txt"
       ]
     },
     {
@@ -512,6 +513,24 @@
       "immutable": false,
       "shape_only_columns": [],
       "notes": "Field list pinned by experiments._run_manifest.REQUIRED_MANIFEST_FIELDS."
+    },
+    {
+      "name": "environment_lock.txt",
+      "dir": "experiments/results",
+      "stage": "preflight",
+      "profiles": [
+        "smoke",
+        "full"
+      ],
+      "rows": {},
+      "rows_rationale": "A pip-freeze text lockfile, not a table.",
+      "columns_constant": null,
+      "columns": null,
+      "extra_columns": [],
+      "conditional": false,
+      "immutable": false,
+      "shape_only_columns": [],
+      "notes": "D-13. Emitted by experiments._env_lock beside run_manifest.json at pre-flight. The manifest already carries every version that MOVES a number (python/numpy/scipy/opencv, the OpenCV build, the installed distribution version, the CPU and RAM); this adds the TRANSITIVE set plus the BLAS build read from numpy.show_config, which pip freeze structurally cannot supply. Captured at RUN TIME rather than committed, so it describes the environment that actually ran -- a pre-freeze commit could not, and would have forced a second tag inside the freeze window (D-04). Its opencv line is the single most important row in it (D-26: the run machine's pre-existing env carries the EXCLUDED 4.14.0). A failed emission is a LOGGED FINDING, never a pre-flight refusal -- Phase 26 section D cut three refusals and D-12 forbids a fourth."
     },
     {
       "name": "exp1_parameter_errors.csv",
@@ -1635,8 +1654,8 @@
         "description": "The equivalent file/frame count pre-flight can verify in seconds without running a calibration. The full signature above is only observable AFTER E2 runs (real_rig_metrics.json's n_comparisons), so it is what the end-of-run roll-up judges; these two numbers are what the driver can judge before the run starts.",
         "n_extrinsic_videos": 13,
         "n_extrinsic_videos_rationale": "12 main cameras + 1 auxiliary (e3v8250). All 13 extrinsic paths declared in the release config must exist and be non-empty.",
-        "min_total_bytes": 4000000000,
-        "min_total_bytes_rationale": "A crude discriminator, not an estimate. The current frameset is 4.35 GB as published and 10.57 GB as the local raw capture; the retired ~4.3x-subsampled extraction is far below this floor. Its ONLY job is to separate the two archives."
+        "min_total_bytes": 3000000000,
+        "min_total_bytes_rationale": "A crude discriminator, not an estimate. Its ONLY job is to separate the verified archive from the retired ~4.3x-subsampled one. RE-DERIVED 2026-08-19 (plan 27-08) from a DIRECT MEASUREMENT of the run machine recorded in 27-TARGET-FACTS.md: `du -sb` over the 13 declared extrinsic directories totals 3,799,096,889 B. The previous floor of 4,000,000,000 came from '4.35 GB as published' -- the Zenodo record's PACKAGED size -- while this check sums the EXPANDED PNG tree, which is 3.80 GB decimal. That representation mismatch, not a shortfall in the data, is why a verified-correct frameset (13 directories, exactly 262 files in each, all thirteen cameras present) came in 5.02% under the floor: the frameset was right and the number was wrong. 3,000,000,000 sits 21% below the measured total and roughly 3.3x above the retired archive's ~0.9 GB expanded size, so it discriminates exactly as well -- which is the only property this floor has ever had. THE CHECK'S SHAPE IS UNCHANGED (D-10): path-kind agnostic, summed recursively, both assertions kept, ABSENT (2) and MISMATCH (3) still distinct, and the numbers still read from here rather than written into the driver."
       }
     },
     "free_space_floor_gib": 20,

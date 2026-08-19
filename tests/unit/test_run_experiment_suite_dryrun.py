@@ -1607,3 +1607,237 @@ class TestTheE2ReleaseConfigDefaultIsInRepo:
         """
         overrides = manifest["preflight"]["overrides"]
         assert len(overrides) == 5, sorted(overrides)
+
+
+#: A stub that records, per stage body, whether the three BLAS cap variables
+#: reached it -- and DISTINGUISHES UNSET FROM EMPTY, which is the entire point
+#: of D-14's second regime. `${VAR-UNSET}` (no colon) expands to `UNSET` only
+#: when the variable is unset; an exported empty string expands to the empty
+#: string, and OpenBLAS treats those two differently.
+_THREAD_STUB = (
+    "printf 'thread\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \"${name:-}\" "
+    '"${stage_name:-}" "${OMP_NUM_THREADS-UNSET}" "${MKL_NUM_THREADS-UNSET}" '
+    '"${OPENBLAS_NUM_THREADS-UNSET}" >>"${SUITE_MARKER}"'
+)
+
+
+def _thread_rows(run: DriverRun) -> dict[str, tuple[str, str, str]]:
+    """`{stage: (omp, mkl, openblas)}` for every STAGE BODY that ran."""
+    rows: dict[str, tuple[str, str, str]] = {}
+    if not run.marker_file.exists():
+        return rows
+    for line in run.marker_file.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("thread\t"):
+            continue
+        parts = line.split("\t")
+        parts += [""] * (6 - len(parts))
+        _, name, stage_name, omp, mkl, openblas = parts[:6]
+        if stage_name:  # a gate call, not a stage body
+            continue
+        rows[name] = (omp, mkl, openblas)
+    return rows
+
+
+class TestTheTwoRegimeThreadPin:
+    """D-14: the cap reaches CONCURRENT stages only.
+
+    The four `serial_alone` stages (`e4`, `e4_repeat`, `e2_timing`,
+    `e2_memory`) report runtimes, and every historical measurement of them was
+    taken UNPINNED. Pinning them would silently change what is being timed --
+    which is a tampering finding (T-27-08-02), not a tuning preference.
+    """
+
+    @pytest.fixture(scope="class")
+    def thread_run(self, bash_available, tmp_path_factory) -> DriverRun:
+        return run_driver(
+            tmp_path_factory.mktemp("threads"),
+            stub=_THREAD_STUB,
+            extra_env={"SUITE_THREAD_CAP": "2"},
+        )
+
+    def test_the_probe_observed_both_regimes_at_all(self, thread_run, manifest):
+        """Guard: an empty marker file would make every assertion below vacuous."""
+        rows = _thread_rows(thread_run)
+        assert rows, (
+            f"no stage body recorded a thread row.\n{thread_run.stdout[-2000:]}"
+        )
+        by_concurrency = {
+            stage["id"]: stage["concurrency"] for stage in manifest["stages"]
+        }
+        observed = {by_concurrency[name] for name in rows if name in by_concurrency}
+        assert observed == {"concurrent", "serial_alone"}, (
+            f"this run exercised only {sorted(observed)}, so one regime is untested"
+        )
+
+    def test_every_concurrent_stage_sees_the_cap(self, thread_run, manifest):
+        rows = _thread_rows(thread_run)
+        concurrent = [
+            stage["id"]
+            for stage in manifest["stages"]
+            if stage["concurrency"] == "concurrent" and stage["id"] in rows
+        ]
+        offenders = {
+            name: rows[name] for name in concurrent if rows[name] != ("2",) * 3
+        }
+        assert not offenders, (
+            "a concurrent stage did not receive the BLAS cap on all three "
+            f"variables: {offenders}"
+        )
+
+    def test_every_serial_alone_stage_sees_the_variables_UNSET(
+        self, thread_run, manifest
+    ):
+        """ABSENT, not empty. An exported `OMP_NUM_THREADS=` is not unset."""
+        rows = _thread_rows(thread_run)
+        serial_alone = [
+            stage["id"]
+            for stage in manifest["stages"]
+            if stage["concurrency"] == "serial_alone" and stage["id"] in rows
+        ]
+        assert serial_alone, "no serial_alone stage ran, so this proves nothing"
+        offenders = {
+            name: rows[name] for name in serial_alone if rows[name] != ("UNSET",) * 3
+        }
+        assert not offenders, (
+            "a serial_alone TIMING stage saw a BLAS cap variable. Every "
+            "historical measurement of these four was taken unpinned, so this "
+            f"silently changes what is being timed: {offenders}"
+        )
+
+    def test_an_operators_own_cap_is_stripped_from_the_timing_stages(
+        self, bash_available, tmp_path_factory, manifest
+    ):
+        """The `else` branch must UNSET, not merely decline to set.
+
+        A cap exported by the operator's shell would otherwise ride into the
+        four timing stages and nothing would say so.
+        """
+        run = run_driver(
+            tmp_path_factory.mktemp("threads_inherited"),
+            stub=_THREAD_STUB,
+            extra_env={"SUITE_THREAD_CAP": "2", "OMP_NUM_THREADS": "16"},
+        )
+        rows = _thread_rows(run)
+        serial_alone = [
+            stage["id"]
+            for stage in manifest["stages"]
+            if stage["concurrency"] == "serial_alone" and stage["id"] in rows
+        ]
+        assert serial_alone
+        offenders = {
+            name: rows[name][0] for name in serial_alone if rows[name][0] != "UNSET"
+        }
+        assert not offenders, (
+            f"an inherited OMP_NUM_THREADS reached a timing stage: {offenders}"
+        )
+
+    def test_the_cap_is_declared_in_one_place_and_exported(self):
+        """The value recorded and the value enforced must be the same one.
+
+        `experiments/_run_manifest.py` reads `SUITE_THREAD_CAP` to record
+        `blas_thread_cap`; the driver exports it. A manifest recording a cap
+        the driver did not apply is a provenance record of nothing.
+        """
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        assert 'SUITE_THREAD_CAP="${SUITE_THREAD_CAP:-2}"' in source
+        assert "export SUITE_THREAD_CAP" in source
+
+    def test_preflight_is_recognised_as_concurrent_despite_empty_depends_on(
+        self, thread_run, manifest
+    ):
+        """The bug D-14's pin exposed, pinned so it cannot come back.
+
+        `_load_stage_attributes` read its manifest TSV with `IFS=$'\\t' read`.
+        A tab is IFS WHITESPACE, so runs of tabs collapse and an EMPTY FIELD
+        SHIFTS EVERY COLUMN AFTER IT. `preflight` is the one stage with an
+        empty `depends_on`, so it loaded as concurrency="none" -- the value of
+        its `frame_class`. Nothing consulted it until the thread pin did,
+        because the two pre-flight stages are dispatched in the parent and
+        never queued in the pool.
+        """
+        assert (
+            next(s for s in manifest["stages"] if s["id"] == "preflight")["depends_on"]
+            == []
+        ), "preflight gained a dependency; this test no longer covers the case"
+        rows = _thread_rows(thread_run)
+        assert rows.get("preflight") == ("2", "2", "2"), (
+            "preflight's manifest row did not load correctly, so its "
+            f"concurrency attribute is not what the manifest says: {rows.get('preflight')}"
+        )
+
+    def test_the_split_is_read_from_the_manifest_not_hardcoded(self):
+        """No second stage list. `STAGE_CONCURRENCY` is the single source."""
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        code = [
+            line
+            for line in source.splitlines()
+            if "OMP_NUM_THREADS" in line and not line.lstrip().startswith("#")
+        ]
+        assert code, "the cap is not applied at all"
+        pin_block = "\n".join(code)
+        assert "STAGE_CONCURRENCY" in source
+        for stage_id in ("e2_timing", "e2_memory", "e4_repeat"):
+            assert stage_id not in pin_block, (
+                f"the thread pin hardcodes the stage name {stage_id!r} instead "
+                "of reading STAGE_CONCURRENCY, which is the drift the "
+                "expectation manifest exists to prevent"
+            )
+
+
+class TestTheEnvironmentLockCallSite:
+    """D-13's driver half: an artifact that can never refuse a run.
+
+    The whole pre-flight stage is substituted under the dry-run seam, so
+    `run_driver` structurally cannot reach this call site (the same reason the
+    frameset probe is sliced out and run directly above). These assertions are
+    therefore on the driver SOURCE plus the emitter's own behaviour.
+    """
+
+    def test_the_call_site_exists_beside_the_run_manifest_write(self):
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        assert "-m experiments._env_lock" in source
+        manifest_at = source.index("-m experiments._run_manifest")
+        lock_at = source.index("-m experiments._env_lock")
+        assert 0 < lock_at - manifest_at < 2000, (
+            "the lockfile is no longer emitted beside the run manifest; D-13 "
+            "puts it there so one pre-flight writes the whole provenance set"
+        )
+
+    def test_a_failed_lock_is_logged_and_never_returns_from_preflight(self):
+        """The one place this plan's template diverges from its analog.
+
+        `run_stage_preflight`'s run-manifest call site turns a non-zero exit
+        into a refusal with NO override. Copying that half would have added a
+        FOURTH pre-flight refusal after Phase 26 § D cut three (P26-D-50,
+        D-12).
+        """
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        start = source.index("-m experiments._env_lock")
+        window = source[start : start + 1200]
+        assert "NOT A REFUSAL" in window
+        assert "return" not in window.split("_preflight_frameset")[0], (
+            "the environment-lock call site can return from pre-flight, which "
+            "makes it a fourth refusal"
+        )
+
+    def test_the_emitter_writes_the_registered_artifact_name(self, tmp_path):
+        """The manifest registers `environment_lock.txt`; the emitter must agree."""
+        completed = subprocess.run(
+            [sys.executable, "-m", "experiments._env_lock", "--out", str(tmp_path)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=DRIVER_TIMEOUT_S,
+        )
+        assert completed.returncode == 0, completed.stderr
+        assert (tmp_path / "environment_lock.txt").is_file()
+
+    def test_the_lockfile_is_a_registered_preflight_artifact(self, manifest):
+        preflight = next(s for s in manifest["stages"] if s["id"] == "preflight")
+        assert "environment_lock.txt" in preflight["produces"]
+        entry = next(
+            a for a in manifest["artifacts"] if a["name"] == "environment_lock.txt"
+        )
+        assert entry["stage"] == "preflight"
+        assert sorted(entry["profiles"]) == ["full", "smoke"]
+        assert "D-13" in entry["notes"]
