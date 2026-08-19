@@ -248,3 +248,30 @@ plus the roll-up aggregate.
 Recorded in `27-CONTEXT.md` § Deferred Ideas. Nothing raised during this discussion was scope creep;
 the one addition the author made (the smoke profile) was an existing Phase 26 open item that
 directly gates this phase's chosen verification venue.
+
+---
+
+## Post-discussion review (2026-08-19)
+
+The author asked for a consistency and overengineering pass over CONTEXT.md. Four mechanical
+defects were fixed without a decision:
+
+- **D-number collision** — Phase 27's `D-01..D-23` shared a namespace with Phase 26's `D-01..D-52`,
+  cited 19 times in the same file, including a verbatim quote of the driver's `(D-14)` refusal
+  while Phase 27's own D-14 was thread pinning. All Phase 26 references are now `P26-D-nn`.
+- **`e3` named as a short verification stage** — it carries `depends_on: ["e2_production"]`
+  (0.8-1.45 h). Only `fd_jacobian` is dependency-free and short.
+- **ROADMAP criterion 6 was never addressed.** Added as D-24, scoped to *verify, don't build* — the
+  manifest already registers the Phase 25 artifacts.
+- **The frame-count claim in `<specifics>` contradicted D-10's own hedge** and rested on
+  `usable_frames: 262`, a post-detection number that does not decompose into 200 + 52.
+
+Three decisions were revisited with the author and narrowed:
+
+| Item | Was | Now | Why |
+|---|---|---|---|
+| D-13 lockfile | Committed inside the frozen sha | Run artifact beside the run manifest | `_run_manifest.py` already emits every version that moves a number; the commit-inside-the-sha shape forced a mandatory second tag for no added information |
+| D-14 thread pin | Blanket, all stages | Concurrent accuracy stages only; both regimes recorded | Every historical timing measurement was unpinned, incl. 3 ledger rows and the nine-cell grid `main.tex:285` names |
+| D-10 frame count | Count frames per camera | `exists()` + recursive byte sum, existing assertions unchanged | Would have invented an expected number nobody has measured |
+
+D-04 was rewritten as a consequence: a second tag is a normal outcome, but nothing forces one now.
