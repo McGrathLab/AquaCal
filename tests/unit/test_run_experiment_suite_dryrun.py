@@ -1462,3 +1462,148 @@ class TestFullScalePathDidNotMove:
             "the dispatch recorder captured nothing at all, so the snapshot "
             "test above passed vacuously"
         )
+
+
+class TestPortableInterpreterResolution:
+    """D-12 as SUPERSEDED by D-29: the conda-env-by-name rung is gone.
+
+    D-12 asked for a three-rung chain whose middle rung discovered a conda env
+    named `AquaCal` on either platform. Plan 27-01 measured the Linux run
+    machine and the author deleted that rung outright (D-29): the env there is
+    lowercase `aquacal`, and case-fixing it would have pointed the fallback at
+    exactly the environment D-26 excludes -- OpenCV **4.14.0**, the version
+    `pyproject.toml` pins against for a measured reason. Auto-discovery by name
+    is the defect; the case was incidental.
+    """
+
+    def test_the_resolution_is_logged_on_success_not_only_on_failure(self, pooled_run):
+        """A run against the wrong interpreter must be visible in the log.
+
+        Before D-29 the only interpreter output was a stderr WARNING on the
+        degrade path, so a successful resolve to the WRONG environment left no
+        trace at all.
+        """
+        assert "INTERPRETERS:" in pooled_run.stdout, (
+            "the driver never printed which interpreter it resolved.\n"
+            f"{pooled_run.stdout[:3000]}"
+        )
+        assert "rung:" in pooled_run.stdout, (
+            "the resolution line does not name WHICH rung won"
+        )
+        assert "PRELAUNCH_GATE_PYTHON" in pooled_run.stdout, (
+            "the resolution line must name the override, so an operator on a "
+            "machine where the fallback is wrong knows what to set"
+        )
+
+    def test_the_resolution_line_names_both_interpreters(self, pooled_run):
+        """D-30: the gate interpreter is NOT the stage interpreter.
+
+        `GATE_PYTHON` writes the run manifest; every stage runs bare
+        `python -u -m experiments.<mod>`. Recording only one of them lets the
+        manifest describe an interpreter that computed nothing.
+        """
+        line = next(
+            line for line in pooled_run.stdout.splitlines() if "INTERPRETERS:" in line
+        )
+        assert "gate=" in line and "stage=" in line, line
+
+    def test_no_conda_environment_is_discovered_by_name(self):
+        """D-29, asserted on the driver SOURCE.
+
+        The deleted rung is named in a comment on purpose -- the reason it went
+        is worth more than the rung was -- so this looks for it as CODE.
+        """
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        code = [
+            line
+            for line in source.splitlines()
+            if not line.lstrip().startswith("#") and "envs/" in line
+        ]
+        assert not code, (
+            "the driver resolves an interpreter by conda environment NAME "
+            "again. D-29 deleted that rung because the name it would find on "
+            f"the run machine carries the excluded OpenCV 4.14.0: {code}"
+        )
+
+    def test_the_stage_interpreter_variable_matches_the_stage_call_sites(self):
+        """`SUITE_STAGE_PYTHON` must describe the interpreter stages ACTUALLY use.
+
+        A variable naming an interpreter no stage runs would be a provenance
+        record of nothing -- the D-30 defect in a new place.
+        """
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        assert 'STAGE_PYTHON="python"' in source
+        assert "export SUITE_STAGE_PYTHON=" in source
+        call_sites = [
+            line.strip()
+            for line in source.splitlines()
+            if "-u -m experiments." in line and not line.lstrip().startswith("#")
+        ]
+        assert call_sites, "no stage call site was found at all"
+        offenders = [
+            line for line in call_sites if "python -u -m experiments." not in line
+        ]
+        assert not offenders, (
+            "a stage runs something other than bare `python -u -m`, so "
+            f"SUITE_STAGE_PYTHON no longer describes it: {offenders}"
+        )
+
+
+class TestTheE2ReleaseConfigDefaultIsInRepo:
+    """D-11/D-12: the exact E2 inputs live INSIDE the frozen sha.
+
+    The default used to be an absolute path on the Windows planning box, which
+    put the inputs of the run that produces the manuscript's Section 3 numbers
+    outside the artifact describing them -- the F-001 shape.
+    """
+
+    def test_the_default_is_the_committed_linux_config(self, bash_available, tmp_path):
+        run = run_driver(tmp_path, args=("--skip-e2",))
+        assert "experiments/configs/e2_release_linux.yaml" in run.stdout, (
+            f"the driver did not resolve the in-repo default.\n{run.stdout[:3000]}"
+        )
+        assert "in-repo default" in run.stdout
+
+    def test_the_committed_config_actually_exists(self):
+        assert (
+            REPO_ROOT / "experiments" / "configs" / "e2_release_linux.yaml"
+        ).is_file(), (
+            "the driver's E2_RELEASE_CONFIG default points at a file that is "
+            "not in the repository"
+        )
+
+    def test_the_override_still_wins(self, bash_available, tmp_path):
+        """D-12's escape hatch: the Git Bash box is where defects get diagnosed.
+
+        The committed default's paths are the LINUX target's, so a local E2 run
+        needs this variable. It must not have been narrowed into a flag.
+        """
+        sentinel = (tmp_path / "somewhere_else.yaml").as_posix()
+        run = run_driver(
+            tmp_path,
+            args=("--skip-e2",),
+            extra_env={"SUITE_E2_RELEASE_CONFIG": sentinel},
+        )
+        assert sentinel in run.stdout, (
+            "SUITE_E2_RELEASE_CONFIG did not repoint the release config.\n"
+            f"{run.stdout[:3000]}"
+        )
+        assert "SUITE_E2_RELEASE_CONFIG override" in run.stdout
+
+    def test_no_windows_literal_survives_as_a_default(self):
+        """The Desktop path stays reachable, but only through the variable."""
+        source = DRIVER_PATH.read_text(encoding="utf-8")
+        code = [
+            line
+            for line in source.splitlines()
+            if not line.lstrip().startswith("#") and "Desktop/Aqua" in line
+        ]
+        assert not code, f"a Windows literal is still reachable as code: {code}"
+
+    def test_preflight_still_names_exactly_five_overrides(self, manifest):
+        """D-12, still binding: no fourth refusal and no sixth flag.
+
+        Phase 26 § D cut three pre-flight refusals; this phase adds none.
+        """
+        overrides = manifest["preflight"]["overrides"]
+        assert len(overrides) == 5, sorted(overrides)
