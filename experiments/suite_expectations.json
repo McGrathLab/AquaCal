@@ -776,13 +776,12 @@
       "dir": "experiments/results",
       "stage": "e3",
       "profiles": [
-        "smoke",
         "full"
       ],
       "rows": {
         "full": 84
       },
-      "rows_rationale": "committed baseline shape, unchanged.",
+      "rows_rationale": "committed baseline shape, unchanged. full-only (P27-D-20 class 1): e3_derived_quantities.py:1106-1126 is the --smoke branch, and it writes tiers 1-3 then returns WITHOUT calling _write_tier4 -- the only writer of this file. The smoke code path cannot produce it, so tagging it smoke made the completeness gate assert something no code emits.",
       "columns_constant": "experiments.e3_derived_quantities:SCALING_COLUMNS",
       "columns": 13,
       "extra_columns": [],
@@ -863,11 +862,10 @@
       "dir": "experiments/results",
       "stage": "e5",
       "profiles": [
-        "smoke",
         "full"
       ],
       "rows": {},
-      "rows_rationale": "provenance sidecar, not a table.",
+      "rows_rationale": "provenance sidecar, not a table. full-only (P27-D-20 class 1): e5_index_sensitivity.py:871-889 (_run_smoke_at) writes index_sensitivity.csv and returns without writing this sidecar -- the write at :725 is on the full run_band path only. The smoke code path cannot produce it.",
       "columns_constant": null,
       "columns": null,
       "extra_columns": [],
@@ -1574,11 +1572,10 @@
       "dir": "experiments/results",
       "stage": "fd_jacobian",
       "profiles": [
-        "smoke",
         "full"
       ],
       "rows": {},
-      "rows_rationale": "companion record, not a table.",
+      "rows_rationale": "companion record, not a table. full-only (P27-D-20 class 1): fd_jacobian_accuracy.py:652-666 (_run_smoke) writes fd_jacobian_accuracy.csv and returns without writing this sidecar -- the write at :631 is on the full path only. Note the sibling fd_jacobian_accuracy.csv IS written under smoke and stays [\"smoke\",\"full\"]; only this .json sidecar moves.",
       "columns_constant": null,
       "columns": null,
       "extra_columns": [],
