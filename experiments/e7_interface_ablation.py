@@ -635,7 +635,7 @@ def _build_arm_benchmark_payload(arm: ArmResult, scenario) -> tuple[dict, dict, 
 
 
 def _write_ablation_artifacts(
-    results: list[ArmResult], scenario, out_dir: Path, force: bool
+    results: list[ArmResult], scenario, out_dir: Path, force: bool, seed: int
 ) -> None:
     """Emit the full D-17 file set: CSV, conditioning JSON/NPZ, traces, benchmarks."""
     all_rows: list[dict] = []
@@ -690,6 +690,7 @@ def _write_ablation_artifacts(
             problem_shape=problem_shape,
             timings=arm.elapsed_seconds,
             diagnostics=arm.diagnostics,
+            seed=seed,
             solver_config=solver_config,
             accuracy=accuracy,
             force=force,
@@ -756,7 +757,9 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     Writes `interface_ablation_band.csv` (force implied -- see the module
     docstring's "--seeds band mode" section), `e7_seed_band_provenance.json`,
     and one `e7_benchmark_<arm>.json` per arm, additively carrying
-    `solver_config["seeds"] = seeds`. Deliberately does NOT write
+    `solver_config["seeds"] = seeds` and `solver_config["seed"] = seeds[-1]`
+    (the seed whose solve the record actually reflects -- `gate3_provenance`
+    requires the singular field; plan 26-13). Deliberately does NOT write
     `interface_ablation.csv`, conditioning JSON/NPZ, or trace CSVs -- those
     remain exclusively the single-seed run's artifacts. `ABLATION_COLUMNS` was
     unchanged by D-19.4-14 -- E7 already carried its claim quantity
@@ -859,6 +862,10 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             problem_shape=problem_shape,
             timings=arm.elapsed_seconds,
             diagnostics=arm.diagnostics,
+            # The record carries the LAST seed's diagnostics/timings/accuracy,
+            # so that is the seed it is labelled with; solver_config["seeds"]
+            # still carries the full swept list. Plan 26-13.
+            seed=seeds[-1],
             solver_config=solver_config,
             accuracy=accuracy,
             # Force is NOT implied for any artifact besides the band CSV
@@ -925,17 +932,23 @@ def main(argv: list[str] | None = None) -> int:
                 out_dir = resolve_out_dir(Path(tmp))
                 results, scenario = run_all_arms(seed=args.seed, smoke=True)
                 _log_smoke_summary(results)
-                _write_ablation_artifacts(results, scenario, out_dir, force=True)
+                _write_ablation_artifacts(
+                    results, scenario, out_dir, force=True, seed=args.seed
+                )
         else:
             out_dir = resolve_out_dir(args.out)
             results, scenario = run_all_arms(seed=args.seed, smoke=True)
             _log_smoke_summary(results)
-            _write_ablation_artifacts(results, scenario, out_dir, force=True)
+            _write_ablation_artifacts(
+                results, scenario, out_dir, force=True, seed=args.seed
+            )
         return 0
 
     out_dir = resolve_out_dir(args.out)
     results, scenario = run_all_arms(seed=args.seed, smoke=False)
-    _write_ablation_artifacts(results, scenario, out_dir, force=args.force)
+    _write_ablation_artifacts(
+        results, scenario, out_dir, force=args.force, seed=args.seed
+    )
     return 0
 
 

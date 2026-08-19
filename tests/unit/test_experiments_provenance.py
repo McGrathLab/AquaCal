@@ -90,15 +90,27 @@ SELF_DESCRIBING_JSON = frozenset(
 )
 
 # The six benchmark records written in Phase 19.1, before solver_config["seed"]
-# existed: E1's two and E7's four. Plan 19.2-02 added seed= to the direct-call
-# path (write_direct_call_benchmark) and plan 19.2-14 added it to the pipeline
-# entry point's solver_config -- both are additive,
-# landing AFTER these six records were written. Re-running them costs roughly
-# 90 minutes for records the manuscript already cites and produces no new
-# information (19.2-CONTEXT.md Claude's Discretion item 1). This exemption is
-# removed the moment any of these six is regenerated -- test_seedless_carve_
-# out_is_exact fails the instant a member stops lacking a seed, so the set
-# cannot silently become a blanket exemption.
+# existed: E1's two and E7's four. Plan 19.2-02 added the seed PARAMETER to the
+# direct-call writer (write_direct_call_benchmark) and plan 19.2-14 added it to
+# the pipeline entry point's solver_config -- both additive, landing AFTER these
+# six records were written.
+#
+# CORRECTED 2026-08-18 (plan 26-13). This comment used to say the exemption was
+# "removed the moment any of these six is regenerated". That was false: 19.2-02
+# added the writer's parameter but NOT E1's or E7's call sites, so regenerating
+# these six never stamped a seed -- the 26-10 smoke pass wrote all six fresh,
+# with current code, and check_rerun_gates reported six gate3_provenance FAILs
+# on them. Plan 26-13 fixed the five call sites. The six files NAMED here are
+# the archived Phase-19.1 artifacts under experiments/pre_rerun_baseline/results/
+# (see RESULTS_DIR above); they are exempt because they will never be rewritten,
+# not because a rewrite would fix them. Records written by today's code carry a
+# seed and are covered by TestE1AndE7BenchmarkRecordsCarryASeed.
+#
+# Re-running the originals would cost roughly 90 minutes for records the
+# manuscript already cites and produce no new information (19.2-CONTEXT.md
+# Claude's Discretion item 1). test_seedless_carve_out_is_exact still fails the
+# instant a member stops lacking a seed, so the set cannot silently become a
+# blanket exemption.
 SEEDLESS_LEGACY_RECORDS = frozenset(
     {
         "e1_benchmark_refractive.json",
@@ -812,3 +824,114 @@ def test_every_experiment_passes_normal_fixed_explicitly():
         "library's normal_fixed=True default instead of stating the "
         "resolved value explicitly:\n" + "\n".join(missing)
     )
+
+
+class TestE1AndE7BenchmarkRecordsCarryASeed:
+    """Plan 26-13.
+
+    `gate3_provenance` reads `record["seed"]` or `record["solver_config"]["seed"]`
+    (`check_rerun_gates.py:374-378`). E1's and E7's call sites never passed one, so
+    every run -- including the 26-10 smoke pass, on records it had just written --
+    produced six unconditional gate FAILs.
+
+    E7's four records here are written by a REAL reduced-scale run of the experiment.
+    E1's two are constructed through the same writer with a representative payload,
+    because E1's own `--smoke` path writes into an internal TemporaryDirectory that
+    `--out` cannot redirect (`e1_refractive_comparison.py:893`), so no file it writes
+    survives the call. The E1 assertion therefore covers the writer contract, not
+    E1's argument threading; the call sites are covered by `test_e1_call_sites_pass_a_seed`.
+    """
+
+    E7_RECORDS = (
+        "e7_benchmark_shared_fixed.json",
+        "e7_benchmark_shared_refined.json",
+        "e7_benchmark_percamera_fixed.json",
+        "e7_benchmark_percamera_refined.json",
+    )
+    E1_RECORDS = (
+        "e1_benchmark_refractive.json",
+        "e1_benchmark_nonrefractive.json",
+    )
+
+    def test_e7_records_from_a_real_run_carry_a_seed(self, tmp_path):
+        from experiments.check_rerun_gates import _provenance_gaps
+        from experiments.e7_interface_ablation import (
+            _write_ablation_artifacts,
+            run_all_arms,
+        )
+
+        results, scenario = run_all_arms(seed=7, smoke=True)
+        _write_ablation_artifacts(results, scenario, tmp_path, force=True, seed=7)
+
+        for name in self.E7_RECORDS:
+            path = tmp_path / name
+            assert path.exists(), f"{name} was not written by the run"
+            record = _load_json(path)
+            assert record["solver_config"]["seed"] == 7, (
+                f"{name} carries solver_config['seed']="
+                f"{record['solver_config'].get('seed')!r}, expected 7"
+            )
+            assert _provenance_gaps(record, require_water_index=True) == [], (
+                f"{name} still fails gate3_provenance"
+            )
+
+    def test_e1_records_carry_a_seed_through_the_writer(self, tmp_path):
+        from experiments._io import write_direct_call_benchmark
+        from experiments.check_rerun_gates import _provenance_gaps
+        from experiments.e7_interface_ablation import (
+            _build_arm_benchmark_payload,
+            run_all_arms,
+        )
+
+        results, scenario = run_all_arms(seed=11, smoke=True)
+        problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(
+            results[0], scenario
+        )
+        assert "seed" not in solver_config, (
+            "the payload builder must not pre-seed solver_config -- "
+            "write_direct_call_benchmark raises on a duplicate key"
+        )
+
+        for name in self.E1_RECORDS:
+            path = tmp_path / name
+            write_direct_call_benchmark(
+                path,
+                problem_shape=problem_shape,
+                timings=results[0].elapsed_seconds,
+                diagnostics=results[0].diagnostics,
+                seed=11,
+                solver_config=solver_config,
+                accuracy=accuracy,
+                force=True,
+            )
+            record = _load_json(path)
+            assert record["solver_config"]["seed"] == 11
+            assert _provenance_gaps(record, require_water_index=True) == []
+
+    def test_e1_call_sites_pass_a_seed(self):
+        """Every `write_direct_call_benchmark` call in E1 and E7 passes `seed=`.
+
+        Read from the SOURCE rather than a run, because E1's full and band paths are
+        minutes-long and its smoke path writes nowhere reachable. A call site that
+        stops passing the seed fails here even though no file is produced.
+        """
+        import ast
+
+        for module in (
+            "experiments/e1_refractive_comparison.py",
+            "experiments/e7_interface_ablation.py",
+        ):
+            tree = ast.parse(pathlib.Path(module).read_text(encoding="utf-8"))
+            calls = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and getattr(node.func, "id", None) == "write_direct_call_benchmark"
+            ]
+            assert calls, f"{module}: no write_direct_call_benchmark calls found"
+            for call in calls:
+                kwargs = {kw.arg for kw in call.keywords}
+                assert "seed" in kwargs, (
+                    f"{module}:{call.lineno} calls write_direct_call_benchmark "
+                    f"without seed= -- gate3_provenance will FAIL on its output"
+                )

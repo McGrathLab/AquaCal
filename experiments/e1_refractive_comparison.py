@@ -105,10 +105,12 @@ artifact's overwrite behavior changes. `--seeds` is mutually exclusive with
 `e1_benchmark_nonrefractive.json` written during a band run additively
 carries a `seeds` list holding the resolved seed list, reflecting the LAST
 seed's diagnostics/timings/accuracy (one provenance record cannot represent
-N independent solves) -- these are seedless legacy records that band mode
-must never overwrite with a single seed's values, which is why the band's
-OWN provenance lives in a separate, band-owned `e1_seed_band_provenance.json`
-sidecar (see below).
+N independent solves). Since plan 26-13 they ALSO carry
+`solver_config["seed"]` naming that last seed -- the two are different
+statements: `seed` names what this record measured, `seeds` what the band
+swept, and `gate3_provenance` requires the former. The band's OWN provenance
+still lives in a separate, band-owned `e1_seed_band_provenance.json` sidecar
+(see below), which is what represents the N solves as a set.
 
 E1's reproduction bar (D-19, AMENDED 2026-07-27): within CHECK_RTOL is fully autonomous.
 A divergence touching none of D-19's named headline numbers gets a written mechanism and
@@ -838,6 +840,7 @@ def _run_full(args: argparse.Namespace) -> int:
             },
             timings=timings_by_model[label],
             diagnostics=diagnostics_by_model[label],
+            seed=args.seed,
             solver_config={
                 "robust_loss": "huber",
                 "loss_scale": 1.0,
@@ -964,6 +967,7 @@ def _run_smoke(args: argparse.Namespace) -> int:
                 },
                 timings=timings_by_model[label],
                 diagnostics=diagnostics_by_model[label],
+                seed=args.seed,
                 solver_config={
                     "robust_loss": "huber",
                     "loss_scale": 1.0,
@@ -1069,7 +1073,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     regenerable per seed rather than existing only in the single-seed
     `exp1_parameter_errors.csv` -- and `e1_seed_band_provenance.json`, plus both
     `e1_benchmark_<model>.json` sidecars, additively carrying
-    `solver_config["seeds"] = seeds`. Deliberately does NOT write
+    `solver_config["seeds"] = seeds` and `solver_config["seed"] = seeds[-1]`. Deliberately does NOT write
     `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
     `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those
     remain exclusively the single-seed run's artifacts.
@@ -1305,6 +1309,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             },
             timings=last_timings_by_model[label],
             diagnostics=last_diagnostics_by_model[label],
+            # The record reflects the LAST seed's diagnostics/timings/accuracy
+            # (see this function's docstring), so that is the seed it is
+            # labelled with. `solver_config["seeds"]` still carries the full
+            # list -- one names what this record measured, the other what the
+            # band swept. Plan 26-13.
+            seed=seeds[-1],
             solver_config=solver_config,
             accuracy={
                 "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
