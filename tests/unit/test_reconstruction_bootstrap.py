@@ -7,6 +7,7 @@ no calibration, no reading of the real committed
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -290,3 +291,163 @@ class TestResolveReconstructionErrorsPath:
         never trigger a multi-gigabyte download."""
         assert isinstance(rb.LOCAL_RECONSTRUCTION_ERRORS_PATH, Path)
         assert isinstance(rb.ARCHIVE_RECONSTRUCTION_ERRORS_RELPATH, Path)
+
+
+class TestResolveRealRigMetricsPath:
+    """D-23: `real_rig_metrics.json` must be resolved relative to `--out`.
+
+    The old code read a cwd-relative module constant, so any non-default
+    `--out` (notably `--smoke`'s `experiments/results_smoke/`) died with
+    `FileNotFoundError` and exit 1. The replacement mirrors
+    `e4_benchmark_grid.py:296-309`: native, then a `__file__`-anchored
+    default-tree fallback, then an honest `None` plus a reason.
+    """
+
+    def test_native_case_resolves_relative_to_out_dir(self, tmp_path):
+        companion = tmp_path / "real_rig_metrics.json"
+        companion.write_text("{}")
+
+        path, note = rb.resolve_real_rig_metrics_path(tmp_path)
+
+        assert path == companion
+        assert "native" in note
+
+    def test_default_tree_uses_the_file_anchored_constant(self, tmp_path, monkeypatch):
+        default = tmp_path / "results" / "real_rig_metrics.json"
+        default.parent.mkdir(parents=True)
+        default.write_text("{}")
+        monkeypatch.setattr(rb, "REAL_RIG_METRICS_PATH", default)
+
+        path, note = rb.resolve_real_rig_metrics_path(default.parent)
+
+        assert path == default
+        assert "default tree" in note
+
+    def test_absent_and_not_default_tree_returns_none_with_both_locations(
+        self, tmp_path, monkeypatch
+    ):
+        default = tmp_path / "results" / "real_rig_metrics.json"
+        default.parent.mkdir(parents=True)
+        default.write_text("{}")
+        monkeypatch.setattr(rb, "REAL_RIG_METRICS_PATH", default)
+        elsewhere = tmp_path / "results_smoke"
+        elsewhere.mkdir()
+
+        path, note = rb.resolve_real_rig_metrics_path(elsewhere)
+
+        assert path is None
+        assert str(elsewhere) in note
+        assert str(default) in note
+
+    def test_constant_is_file_anchored_not_cwd_relative(self):
+        assert rb.REAL_RIG_METRICS_PATH.is_absolute()
+        assert rb.REAL_RIG_METRICS_PATH.name == "real_rig_metrics.json"
+
+
+def _write_errors_csv(path: Path) -> Path:
+    """Write a tiny four-frame comparisons CSV, sufficient for `_run`."""
+    rows = ["frame_idx,signed_error_m"]
+    for frame in range(4):
+        for corner in range(3):
+            rows.append(f"{frame},{0.001 * (frame + 1) + 0.0001 * corner}")
+    path.write_text("\n".join(rows) + "\n")
+    return path
+
+
+class TestRunRealRigMetricsComparison:
+    """Absence must degrade to `None`, never to a false negative."""
+
+    def test_absent_companion_gives_none_not_false(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            rb, "REAL_RIG_METRICS_PATH", tmp_path / "default" / "real_rig_metrics.json"
+        )
+        errors = _write_errors_csv(tmp_path / "errors.csv")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        record = rb._run(seed=0, n_resamples=5, errors_path=errors, out_dir=out_dir)
+
+        assert record["point_estimate_matches_real_rig_metrics"] is None
+        assert "absent" in record["real_rig_metrics_resolution"]
+
+    def test_present_companion_is_compared(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            rb, "REAL_RIG_METRICS_PATH", tmp_path / "default" / "real_rig_metrics.json"
+        )
+        errors = _write_errors_csv(tmp_path / "errors.csv")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        truth = reconstruction_statistics(pd.read_csv(errors))
+        (out_dir / "real_rig_metrics.json").write_text(
+            json.dumps(
+                {
+                    "reconstruction_rmse_mm": truth["reconstruction_rmse_mm"],
+                    "reconstruction_mae_mm": truth["reconstruction_mae_mm"],
+                }
+            )
+        )
+
+        record = rb._run(seed=0, n_resamples=5, errors_path=errors, out_dir=out_dir)
+
+        assert record["point_estimate_matches_real_rig_metrics"] is True
+        assert "native" in record["real_rig_metrics_resolution"]
+
+    def test_present_but_disagreeing_companion_is_false(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            rb, "REAL_RIG_METRICS_PATH", tmp_path / "default" / "real_rig_metrics.json"
+        )
+        errors = _write_errors_csv(tmp_path / "errors.csv")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        (out_dir / "real_rig_metrics.json").write_text(
+            json.dumps(
+                {"reconstruction_rmse_mm": 999.0, "reconstruction_mae_mm": 999.0}
+            )
+        )
+
+        record = rb._run(seed=0, n_resamples=5, errors_path=errors, out_dir=out_dir)
+
+        assert record["point_estimate_matches_real_rig_metrics"] is False
+
+
+class TestMainUnderNonDefaultOut:
+    """The whole point of D-23: the stage exits 0 under `--smoke`."""
+
+    def test_smoke_run_without_companion_exits_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            rb, "REAL_RIG_METRICS_PATH", tmp_path / "default" / "real_rig_metrics.json"
+        )
+        errors = _write_errors_csv(tmp_path / "errors.csv")
+        out_dir = tmp_path / "results_smoke"
+        out_dir.mkdir()
+
+        code = rb.main(
+            ["--out", str(out_dir), "--smoke", "--reconstruction-errors", str(errors)]
+        )
+
+        assert code == 0
+        written = json.loads((out_dir / "reconstruction_bootstrap.json").read_text())
+        assert written["point_estimate_matches_real_rig_metrics"] is None
+
+    def test_check_treats_none_as_not_comparable_not_a_mismatch(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        monkeypatch.setattr(
+            rb, "REAL_RIG_METRICS_PATH", tmp_path / "default" / "real_rig_metrics.json"
+        )
+        errors = _write_errors_csv(tmp_path / "errors.csv")
+        out_dir = tmp_path / "results_smoke"
+        out_dir.mkdir()
+        argv = [
+            "--out",
+            str(out_dir),
+            "--smoke",
+            "--reconstruction-errors",
+            str(errors),
+        ]
+        assert rb.main(argv) == 0
+
+        code = rb.main([*argv, "--check"])
+
+        assert code == 0
+        assert "not comparable" in capsys.readouterr().out
