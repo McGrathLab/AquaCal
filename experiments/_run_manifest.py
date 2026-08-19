@@ -55,6 +55,7 @@ import argparse
 import importlib.metadata
 import json
 import logging
+import os
 import platform
 import subprocess
 import sys
@@ -72,6 +73,11 @@ MANIFEST_SCHEMA_VERSION = 1
 #: Exactly the fields D-20 requires. `check_rerun_gates.py` imports this tuple
 #: rather than keeping a second copy -- two lists of required fields is the
 #: drift D-05 exists to prevent.
+#:
+#: P27-D-14's three thread-regime keys are deliberately NOT here. Gate 3's
+#: manifest check turns a `None` in this tuple into a FAIL, and an unset cap on
+#: a serial local run is legitimate, not a defect. The keys are always PRESENT
+#: in the manifest -- they are simply not required to be non-null.
 REQUIRED_MANIFEST_FIELDS: tuple[str, ...] = (
     "schema_version",
     "git_sha",
@@ -108,6 +114,17 @@ _OPENCV_DISTRIBUTIONS = (
 _VERSION_TAG_GLOB = "v[0-9]*"
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
+
+#: The environment variable the driver exports to declare the BLAS thread cap
+#: actually in force (D-14). This module DEFINES the contract; the shell half
+#: that exports it lives in `run_experiment_suite.sh`. Unset is legitimate --
+#: see the note beside the manifest keys below.
+THREAD_CAP_ENV_VAR = "SUITE_THREAD_CAP"
+
+#: The single source for which stages the cap applies to. Read, never
+#: duplicated: a second hardcoded stage list is exactly the drift
+#: `REQUIRED_MANIFEST_FIELDS`' single-copy comment exists to prevent.
+_SUITE_EXPECTATIONS_PATH = _REPO_ROOT / "experiments" / "suite_expectations.json"
 
 
 def _run_git(args: list[str]) -> str | None:
@@ -191,6 +208,62 @@ def _resolve_installed_distribution_version() -> str | None:
         return None
 
 
+def _resolve_thread_cap() -> int | str | None:
+    """The BLAS thread cap in force, from `SUITE_THREAD_CAP` (D-14).
+
+    Returns `None` when the variable is unset -- which is the normal state of a
+    serial local run, not a defect. An integer-looking value is recorded as an
+    int; anything else is recorded VERBATIM rather than dropped, because a
+    malformed cap is itself evidence about the run and silently discarding it
+    would make the record disagree with the environment.
+    """
+    raw = os.environ.get(THREAD_CAP_ENV_VAR)
+    if raw is None or raw.strip() == "":
+        return None
+    raw = raw.strip()
+    try:
+        return int(raw)
+    except ValueError:
+        logger.debug(
+            "%s=%r is not an integer; recorded verbatim.", THREAD_CAP_ENV_VAR, raw
+        )
+        return raw
+
+
+def _resolve_stage_ids_by_concurrency() -> tuple[list[str] | None, list[str] | None]:
+    """Split the suite's stage ids by their `concurrency` attribute (D-14).
+
+    Returns:
+        `(concurrent_ids, serial_alone_ids)`, read from
+        `experiments/suite_expectations.json`. Never a second hardcoded list:
+        the manifest is where stage attributes live, and `run_one_stage`
+        already reads the same attribute.
+
+    Never raises. A missing, unreadable or unparseable manifest degrades to
+    `(None, None)`, mirroring `_run_git`'s contract -- turning a `None` into a
+    failure is Gate 3's job, not this module's.
+    """
+    try:
+        payload = json.loads(_SUITE_EXPECTATIONS_PATH.read_text(encoding="utf-8"))
+        stages = payload["stages"]
+        concurrent = [
+            stage["id"] for stage in stages if stage.get("concurrency") == "concurrent"
+        ]
+        serial_alone = [
+            stage["id"]
+            for stage in stages
+            if stage.get("concurrency") == "serial_alone"
+        ]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        logger.debug(
+            "Could not read stage concurrency from %s: %s",
+            _SUITE_EXPECTATIONS_PATH,
+            exc,
+        )
+        return None, None
+    return concurrent, serial_alone
+
+
 def _utc_now_iso_z() -> str:
     """UTC timestamp as `YYYY-MM-DDTHH:MM:SSZ`."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -211,6 +284,7 @@ def build_run_manifest() -> dict:
         what turns a `None` into a FAIL (D-21).
     """
     env = capture_environment()
+    cap_stages, unpinned_stages = _resolve_stage_ids_by_concurrency()
 
     manifest = {
         "schema_version": MANIFEST_SCHEMA_VERSION,
@@ -232,6 +306,22 @@ def build_run_manifest() -> dict:
         # F-002: the last BUILT version, never "the code that ran".
         "installed_distribution_version": _resolve_installed_distribution_version(),
         "aquacal_version_declared": env.get("aquacal_version_declared"),
+        # D-14, regime 1: the BLAS thread cap actually in force, as declared by
+        # the driver through SUITE_THREAD_CAP. The pin is justified where 4-5
+        # processes compete -- the probe measured a solve holding a median 0.99
+        # cores of 20 (mean 1.20, p95 2.01, peak 2.56), so a small cap costs
+        # nothing there. `None` means no cap was declared.
+        "blas_thread_cap": _resolve_thread_cap(),
+        # D-14, regime 1's scope: every stage the pool runs concurrently.
+        "blas_thread_cap_stages": cap_stages,
+        # D-14, regime 2: the stages deliberately left at the LIBRARY DEFAULT.
+        # Every historical timing measurement was taken unpinned --
+        # `results_linux32gb/e2_timing/`, `results_linux32gb/e4/
+        # benchmark_grid.csv` (3 ledger rows) and the nine-cell grid
+        # `main.tex:285` names -- so pinning these would silently change what is
+        # being timed. Recording BOTH regimes is what keeps the numbers
+        # interpretable; a manifest naming only the cap would not.
+        "blas_thread_unpinned_stages": unpinned_stages,
         "utc_start": _utc_now_iso_z(),
     }
     return manifest
