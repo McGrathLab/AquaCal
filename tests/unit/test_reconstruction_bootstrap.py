@@ -312,13 +312,33 @@ class TestResolveRealRigMetricsPath:
         assert path == companion
         assert "native" in note
 
-    def test_default_tree_uses_the_file_anchored_constant(self, tmp_path, monkeypatch):
+    def test_default_tree_with_the_file_present_resolves_that_same_file(
+        self, tmp_path, monkeypatch
+    ):
+        """Production behaviour, unchanged: `--out experiments/results` reads
+        `experiments/results/real_rig_metrics.json`, exactly as before D-23."""
         default = tmp_path / "results" / "real_rig_metrics.json"
         default.parent.mkdir(parents=True)
         default.write_text("{}")
         monkeypatch.setattr(rb, "REAL_RIG_METRICS_PATH", default)
 
-        path, note = rb.resolve_real_rig_metrics_path(default.parent)
+        path, _note = rb.resolve_real_rig_metrics_path(default.parent)
+
+        assert path == default
+
+    def test_non_canonical_spelling_of_the_default_tree_uses_the_constant(
+        self, tmp_path, monkeypatch
+    ):
+        """Branch 2 is only distinguishable from branch 1 when `--out` names
+        the default tree by a path form that does not literally hold the file
+        (a `..` component, a symlink, a relative path). Then the
+        `__file__`-anchored constant is used -- and only then."""
+        default = tmp_path / "results" / "real_rig_metrics.json"
+        default.parent.mkdir(parents=True)
+        monkeypatch.setattr(rb, "REAL_RIG_METRICS_PATH", default)
+        non_canonical = tmp_path / "results" / "nested" / ".."
+
+        path, note = rb.resolve_real_rig_metrics_path(non_canonical)
 
         assert path == default
         assert "default tree" in note
@@ -381,8 +401,8 @@ class TestRunRealRigMetricsComparison:
         (out_dir / "real_rig_metrics.json").write_text(
             json.dumps(
                 {
-                    "reconstruction_rmse_mm": truth["reconstruction_rmse_mm"],
-                    "reconstruction_mae_mm": truth["reconstruction_mae_mm"],
+                    "inter_corner_rmse_mm": truth["reconstruction_rmse_mm"],
+                    "inter_corner_mae_mm": truth["reconstruction_mae_mm"],
                 }
             )
         )
@@ -400,9 +420,7 @@ class TestRunRealRigMetricsComparison:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
         (out_dir / "real_rig_metrics.json").write_text(
-            json.dumps(
-                {"reconstruction_rmse_mm": 999.0, "reconstruction_mae_mm": 999.0}
-            )
+            json.dumps({"inter_corner_rmse_mm": 999.0, "inter_corner_mae_mm": 999.0})
         )
 
         record = rb._run(seed=0, n_resamples=5, errors_path=errors, out_dir=out_dir)
