@@ -449,3 +449,73 @@ six criteria and REQUIREMENTS.md RUN-01, not from a todo file.**
 
 *Phase: 27-frozen-single-sha-handoff-package*
 *Context gathered: 2026-08-19*
+
+---
+
+## Amendment 2026-08-19 — the target is reachable, and three findings that bind wave 5
+
+Written after SSH access was established. **D-06's open item is CLOSED.**
+
+### D-25: the target is reachable as the SSH alias `lab-pc`
+
+Connection details live in the operator's `~/.ssh/config` and are deliberately NOT recorded here
+(27-01's redaction rule). Plans and commands refer to the alias only. Key auth is configured with a
+dedicated passphrase-free ed25519 key scoped to this host; the host's ed25519 fingerprint was
+verified **out-of-band on the machine itself**, not accepted at a prompt.
+
+Target facts, confirmed 2026-08-19: **Ubuntu 22.04.4 LTS**, kernel 6.8.0-136 x86_64, **32 logical
+cores**, **31 GiB RAM** (28 GiB available), **662 GB free** on `$HOME`'s filesystem, and
+**github.com is reachable** — anonymous `git ls-remote` on `McGrathLab/AquaCal` succeeds, so
+27-12's clone of the frozen tag needs no credential on the target.
+
+That confirms D-15: 32 cores and ~31 GiB is exactly the geometry the 4–5 worker pool and the
+at-most-one-200-frame-stage rule were sized against. The 20 GiB pre-flight floor clears easily.
+
+### D-26: ⚠ the existing env has OpenCV **4.14.0** — the version the pin exists to EXCLUDE
+
+`~/anaconda3/envs/aquacal` holds Python 3.11.15, numpy 2.4.6, scipy 1.17.1, pandas 3.0.5 — and
+**`cv2 4.14.0`**. `pyproject.toml` pins `opencv-python==4.13.*` for a measured reason recorded in
+that file: 4.14.0 detects **1.95% fewer corners** and moves the paper's reconstruction RMSE by
+**+7.8%** on the published real-rig dataset.
+
+**27-12 must build a NEW environment at `opencv-python==4.13.*` rather than reuse this one.** Reusing
+it would silently produce E2 numbers that disagree with the archive the paper cites. D-13's lockfile
+must be captured from the NEW env, and its OpenCV line is the single most important row in it.
+
+### D-27: ⚠ the env imports aquacal from a DIFFERENT checkout by absolute path
+
+`site-packages/__editable__.aquacal-2.0.1.pth` contains the literal line
+`<home>/PycharmProjects/AquaCal/src`. That checkout sits on branch
+`experiments/linux32gb-rerun` at **`27c80e7`** — not the frozen sha, and not even the frozen branch.
+
+**This is the worst failure mode available to this phase**, because it is silent: a run launched
+from a fresh clone of the frozen tag would still `import aquacal` from `27c80e7`, while every
+artifact's `git_sha` — derived by the driver from `git rev-parse HEAD` in the *cwd* — would stamp
+the **frozen** sha. Artifacts would claim provenance they do not have. That is the F-001/F-002
+fracture class this whole milestone exists to close, in a form no gate currently catches: Gate 3
+asserts the shas AGREE, and here they would.
+
+Binding on 27-12:
+
+1. Create a **fresh conda env** for the frozen run; do not reuse `envs/aquacal`.
+2. Install the frozen clone into it (`pip install -e .` from the clone, or a non-editable install)
+   so the `.pth` resolves to the clone and nothing else.
+3. **Assert it**, do not assume it: `python -c "import aquacal; print(aquacal.__file__)"` must
+   print a path under the frozen clone, and this belongs in 27-12's acceptance criteria and in the
+   run manifest's record.
+4. Note the interaction with `PYTHONPATH` — the project's own knowledge base already records
+   worktree runs resolving to the wrong source tree. Same defect, remote edition.
+
+### D-28: `conda` is not on the PATH for non-interactive SSH
+
+`~/anaconda3` exists, but conda is initialised in `~/.bashrc`, which a non-interactive `ssh host
+'cmd'` never sources. Every remote command must call interpreters by **absolute path**
+(`~/anaconda3/envs/<env>/bin/python`) or explicitly source conda first. A plan step that assumes a
+bare `conda activate` works over SSH will fail in a way that reads like a missing install.
+
+This also refines **D-12**: on the target, `GATE_PYTHON`'s detect-then-fallback chain must find the
+frozen run's env by absolute path. If it falls through to bare `python`, it lands on system
+**Python 3.10.12** — below `pyproject.toml`'s `requires-python = ">=3.11"` floor — and fails at
+import rather than at a clear version check.
+
+*Amended: 2026-08-19*
