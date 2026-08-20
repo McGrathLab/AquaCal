@@ -559,9 +559,19 @@ output tree than it did on the tree the production run inherited.
      That pass is what licenses the re-run; the re-run itself is a re-execution of Phase 28 and
      is not in this phase's scope.
 
-**Not in scope**: the re-run, the Zenodo results package (both wait on the new tag), and the
-scientific question of *what* the 198 unprojectable observations are — that is the separate
-2026-08-15 classification todo and is independent of criterion 1's plumbing decision.
+**Not in scope**: the re-run and the Zenodo results package — both wait on the new tag.
+
+**Already settled, so criterion 1 is not a scientific question**: the 198 unprojectable
+observations are **above-water board corners**. The 2026-08-15 classification todo opens by saying
+"what the 198 are is not established, and no committed artifact can settle it" — true when written,
+and superseded by Phase 24's DEGEN-02 instrumentation, which did not exist yet. This run's
+`benchmark.json` decomposes them: **198 of 198 `above_interface`**, 0 `behind_camera`,
+0 `interface_below_camera`, all in `stage3_intrinsic_pass`, all continued via the pinhole extension.
+With trigger (b) — obliquity/TIR — already refuted on 2026-08-15, the breached-interface reading is
+the only one left, and it matches the independent rate in `reconstruction_errors.csv` (31 of 7762
+validation corners, 0.40%, reconstructing up to 51.7 mm above the interface in 2 of 52 frames)
+against the 198's 0.268%. Criterion 1 is therefore purely a plumbing-and-policy decision about how
+a known, physically-explained count is reported — not an open question about what it is.
 
 **Plans**: TBD
 
