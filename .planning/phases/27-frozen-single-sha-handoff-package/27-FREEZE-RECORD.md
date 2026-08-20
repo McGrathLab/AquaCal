@@ -60,10 +60,21 @@ not own. See `experiments/HANDOFF.md` §2.8 and `27-PREPUSH-AUDIT.md`.
 
 | # | Tag | Sha | Cut (UTC) | Outcome | Defect that ended it |
 |---|---|---|---|---|---|
-| 1 | `rerun-freeze-01` | `3ab9c13` | 2026-08-19T22:24Z | **verification pending** | — |
+| 1 | `rerun-freeze-01` | `3ab9c13` | 2026-08-19T22:24Z | **CLOSED — verified on target** | — |
 
-Plan 27-12 (clone, environment, dry run on the Linux target) and plan 27-13 (one real stage, the
-gate roll-up, the on-target smoke pass) fill in this row's outcome.
+**Closed 2026-08-20.** Plans 27-12 and 27-13 verified the tag on the Linux run machine: clean
+clone at the frozen sha, fresh environment at cv2 4.13.0, dry run 20/20, `fd_jacobian` at full
+scale, and an on-target `--smoke` roll-up of **72 PASS / 18 N/A / 0 FAIL** with all 20 stages at
+exit 0 — matching the Windows pass exactly. Pre-flight's frameset identity check PASSED on the
+real image set.
+
+One deviation, recorded not fixed: the frozen `HANDOFF.md` §1.2 install command omits the `dev`
+and `bench` extras, so a runtime-only environment kills e3 (no pytest) and nulls two required
+manifest fields (no psutil). Environment corrected on the target with
+`pip install -e ".[dev,bench]"`. No code defect, so **no refreeze**. See
+`27-ONTARGET-VERIFICATION.md` §6 and the post-submission todo.
+
+The production run (Phase 28) launched from the verified clone at **2026-08-20T00:14:10Z**.
 
 **Tags are never moved.** If on-target verification finds a defect, that finding sends the freeze
 **back**: fix it in the branch, commit, cut `rerun-freeze-02` at the new sha, and re-verify against

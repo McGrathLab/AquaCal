@@ -391,34 +391,34 @@ classification finding, and driver capability must be in before the freeze)
 Plans:
 **Wave 1** *(no inter-plan dependencies; `files_modified` pairwise disjoint)*
 
-- [ ] 27-01-PLAN.md — ORCHESTRATOR/author: target reconnaissance over SSH; the measured facts D-10's byte floor, D-11's paths, D-12's interpreter chain and D-15 all read (RUN-01)
-- [ ] 27-02-PLAN.md — driver: path-kind-agnostic `_preflight_frameset` (D-09/D-10) and exit-code-aware resume (D-22)
-- [ ] 27-03-PLAN.md — a truthful smoke profile: manifest retags + profile-aware E4/E5/E6 gates (D-20), and the Phase 25 registration finding (D-24, criterion 6)
-- [ ] 27-04-PLAN.md — `reconstruction_bootstrap.py` honours `--out` (D-23); the exit-1 stage that also blocks a green smoke
-- [ ] 27-05-PLAN.md — the environment lockfile emitter (D-13) and the two-regime thread record in the run manifest (D-14)
-- [ ] 27-06-PLAN.md — emitter-coverage report over the ledger's 27 artifacts, and the three genuine candidates (D-16/D-17/D-18, criterion 5)
-- [ ] 27-07-PLAN.md — the frozen-row classification note: every row this run will not regenerate, with sha and machine (D-19)
+- [x] 27-01-PLAN.md — ORCHESTRATOR/author: target reconnaissance over SSH; the measured facts D-10's byte floor, D-11's paths, D-12's interpreter chain and D-15 all read (RUN-01)
+- [x] 27-02-PLAN.md — driver: path-kind-agnostic `_preflight_frameset` (D-09/D-10) and exit-code-aware resume (D-22)
+- [x] 27-03-PLAN.md — a truthful smoke profile: manifest retags + profile-aware E4/E5/E6 gates (D-20), and the Phase 25 registration finding (D-24, criterion 6)
+- [x] 27-04-PLAN.md — `reconstruction_bootstrap.py` honours `--out` (D-23); the exit-1 stage that also blocks a green smoke
+- [x] 27-05-PLAN.md — the environment lockfile emitter (D-13) and the two-regime thread record in the run manifest (D-14)
+- [x] 27-06-PLAN.md — emitter-coverage report over the ledger's 27 artifacts, and the three genuine candidates (D-16/D-17/D-18, criterion 5)
+- [x] 27-07-PLAN.md — the frozen-row classification note: every row this run will not regenerate, with sha and machine (D-19)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 27-08-PLAN.md — the committed Linux E2 release config (D-11), both Windows literals detect-then-fallback (D-12), the concurrent-stages-only thread pin and the lockfile call site (D-14/D-13)
-- [ ] 27-09-PLAN.md — `experiments/HANDOFF.md`: environment requirements (criterion 3), the run procedure, and the two never-rehearsed invocation lines (D-21)
+- [x] 27-08-PLAN.md — the committed Linux E2 release config (D-11), both Windows literals detect-then-fallback (D-12), the concurrent-stages-only thread pin and the lockfile call site (D-14/D-13)
+- [x] 27-09-PLAN.md — `experiments/HANDOFF.md`: environment requirements (criterion 3), the run procedure, and the two never-rehearsed invocation lines (D-21)
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 27-10-PLAN.md — ORCHESTRATOR: the local `--smoke` acceptance pass (roll-up `0 FAIL`; the driver's own exit code is non-zero on a healthy run — see 27-PREPUSH-AUDIT.md) and the pre-push public-exposure audit
+- [x] 27-10-PLAN.md — ORCHESTRATOR: the local `--smoke` acceptance pass (roll-up `0 FAIL`; the driver's own exit code is non-zero on a healthy run — see 27-PREPUSH-AUDIT.md) and the pre-push public-exposure audit
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 27-11-PLAN.md — push the branch and cut the annotated non-`v*` tag `rerun-freeze-01`; record the frozen sha (D-01/D-02/D-03, criterion 1)
+- [x] 27-11-PLAN.md — push the branch and cut the annotated non-`v*` tag `rerun-freeze-01`; record the frozen sha (D-01/D-02/D-03, criterion 1)
 
 **Wave 5** *(blocked on Wave 4 — the tag must exist)*
 
-- [ ] 27-12-PLAN.md — ORCHESTRATOR: clean clone of the tag on the Linux target, environment build, OpenBLAS + lockfile capture, dry run and the pre-flight frameset verdict (D-05/D-06/D-07)
+- [x] 27-12-PLAN.md — ORCHESTRATOR: clean clone of the tag on the Linux target, environment build, OpenBLAS + lockfile capture, dry run and the pre-flight frameset verdict (D-05/D-06/D-07)
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 27-13-PLAN.md — ORCHESTRATOR: `fd_jacobian` at full scale on target, the gate roll-up, `--smoke` roll-up `0 FAIL` (NOT exit 0 — see HANDOFF.md §2.8), and the close-or-refreeze loop (D-03/D-04, criteria 2 and 4)
+- [x] 27-13-PLAN.md — ORCHESTRATOR: `fd_jacobian` at full scale on target, the gate roll-up, `--smoke` roll-up `0 FAIL` (NOT exit 0 — see HANDOFF.md §2.8), and the close-or-refreeze loop (D-03/D-04, criteria 2 and 4)
 
 ### Phase 28: Suite Execution on Linux Machine
 
