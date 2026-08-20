@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 status: executing
-stopped_at: Phase 27 -- waves 1 and 2 merged, post-merge gate running
+stopped_at: Phase 28 -- production run EXECUTING on the Linux machine since 2026-08-20T00:14:10Z
 last_updated: "2026-08-19T15:03:43.269Z"
 last_activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 41
-  completed_plans: 37
-  percent: 62
+  completed_plans: 41
+  percent: 72
 ---
 
 # Project State
@@ -32,11 +32,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 27 (frozen-single-sha-handoff-package) — EXECUTING
-Plan: 9 of 13 (waves 1 and 2 complete; wave 3 = plan 27-10 next)
+Phase: 28 (suite-execution-on-linux-machine) — EXECUTING. Previous: 27 COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
+Plan: 13 of 13 — Phase 27 COMPLETE. Phase 28 (RUN-02) is executing on the Linux machine.
 Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
-Status: Executing Phase 27 -- waves 1-2 merged, post-merge suite gate in flight
-Last activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
+Status: Phase 28 EXECUTING — full suite running at 3ab9c13 (rerun-freeze-01). READ .planning/MORNING-HANDOFF-2026-08-20.md FIRST.
+Last activity: 2026-08-20 -- Phase 27 closed (13/13); production run launched on the Linux target
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
