@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
+current_phase: 29.1
+current_phase_name: "post-run-fixes-re-freeze (INSERTED) -- fix the four defects the production run surfaced, correct the install extras, cut a new frozen tag"
 status: executing
-stopped_at: Phase 28 -- production run EXECUTING on the Linux machine since 2026-08-20T00:14:10Z
-last_updated: "2026-08-19T15:03:43.269Z"
-last_activity: 2026-08-19 -- waves 1-2 merged (plans 27-01..27-09); full-suite gate running
+stopped_at: "Phase 29 PARTIAL -- run graded and committed at rerun-freeze-01 (roll-up 175 PASS / 7 N/A / 2 FAIL, both real); E7 before/after and the Zenodo package open. Phase 29.1 inserted for the post-run fixes and a new frozen tag."
+last_updated: "2026-08-20T14:04:49.636Z"
+last_activity: 2026-08-20
+last_activity_desc: production run graded and committed on branch results/rerun-freeze-01; four defects filed; Phase 29.1 inserted
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 5
   total_plans: 41
   completed_plans: 41
-  percent: 72
+  percent: 56
 ---
 
 # Project State
@@ -24,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 27 — frozen-single-sha-handoff-package
+**Current focus:** Phase 29.1 — post-run-fixes-re-freeze (inserted 2026-08-20)
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -32,11 +35,19 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 28 (suite-execution-on-linux-machine) — EXECUTING. Previous: 27 COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Plan: 13 of 13 — Phase 27 COMPLETE. Phase 28 (RUN-02) is executing on the Linux machine.
-Previous phase: 26 (full-suite-driver-handoff-readiness) — COMPLETE (14/14 plans), closed at `88512b7`
-Status: Phase 28 EXECUTING — full suite running at 3ab9c13 (rerun-freeze-01). READ .planning/MORNING-HANDOFF-2026-08-20.md FIRST.
-Last activity: 2026-08-20 -- Phase 27 closed (13/13); production run launched on the Linux target
+Phase: 29.1 (post-run-fixes-re-freeze) — INSERTED 2026-08-20, not yet planned.
+Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
+Plan: Phase 28's run completed all 20 stages with exit 0 (00:14:10Z → 06:14:31Z at 3ab9c13 / rerun-freeze-01).
+Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
+Status: Phase 29 PARTIAL. DONE: gates re-run and reproduce the as-run roll-up exactly (175 PASS,
+7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
+.planning/phases/28-full-suite-production-run/); results committed and pushed on branch
+`results/rerun-freeze-01`; E2 sanity control PASSES (seed 42 reproduces real_rig_metrics.json
+within rtol=1e-6). OPEN: the E7 before/after comparison (success criterion 3) and the Zenodo
+results package (RUN-05) — the latter deliberately deferred until after 29.1's re-freeze and
+re-run, so the archive is built from clean output.
+NEXT: /gsd-plan-phase 29.1
+Last activity: 2026-08-20 -- production run graded and committed; four defects filed; Phase 29.1 inserted
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
@@ -187,11 +198,16 @@ v2.0 inserted five decimal phases mid-milestone, each because the previous one e
 defect. Full narrative in `.planning/milestones/v2.0-ROADMAP.md` § Milestone Summary and in
 `.planning/RETROSPECTIVE.md`. Not duplicated here.
 
-v2.1's roadmap (2026-08-15) is a straight-line eight-phase sequence, not an inserted-phase
-narrative: fixes and instrumentation (23-26) → freeze (27) → execute off-repo (28) → gate and
-commit (29) → reconcile after submission (30). No phase is expected to insert siblings the way
-19.1-19.5 did, because the code-side work is fully scoped by 19 already-filed todos rather than
-discovered mid-run.
+v2.1's roadmap (2026-08-15) was planned as a straight-line eight-phase sequence: fixes and
+instrumentation (23-26) → freeze (27) → execute off-repo (28) → gate and commit (29) → reconcile
+after submission (30). It was expected to insert no siblings, on the reasoning that the code-side
+work was fully scoped by 19 already-filed todos rather than discovered mid-run.
+
+**That held until the run itself.** Phase 28's execution surfaced four defects no todo predicted —
+two of them the roll-up's only real FAILs — so 29.1 was inserted on 2026-08-20. The reasoning was
+sound for code-side work and did not extend to what executing the suite end to end would reveal.
+
+- Phase 29.1 inserted after Phase 29: Post-Run Fixes & Re-Freeze -- four defects from the 2026-08-20 production run, the deferred install-extras documentation fix, and a new frozen tag (URGENT)
 
 ### Decisions
 

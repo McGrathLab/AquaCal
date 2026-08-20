@@ -109,6 +109,7 @@ its own §3. What stays in Phase 30 is the reconciliation *around* that archive,
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
 - [ ] **Phase 28: Suite Execution on Linux Machine** - The full experiment suite — E1 through E7, the band runs, and E2 — executes once end to end at the frozen sha
 - [ ] **Phase 29: Gate Verification & Results Commit** - The returned run passes `check_rerun_gates.py`, clears the E2 sanity control and the E7 before/after comparison, its results are committed with provenance intact, and the Zenodo results package is published before submission
+- [ ] **Phase 29.1: Post-Run Fixes & Re-Freeze** (INSERTED) - The four defects the 2026-08-20 production run surfaced are fixed, the frozen package's install command gains the `dev` and `bench` extras the suite actually needs, and a new frozen sha is cut so the suite can be re-run cleanly before the Zenodo upload
 - [ ] **Phase 30: Post-Submission Reconciliation** - After the 2026-08-21 submission: §3/tutorial re-cut as a matched set with the archive, stale outputs purged, MF-19 closed
 
 ## Phase Details
@@ -493,6 +494,75 @@ manuscript-facing number traceable to it.
      This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
      unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
+**Plans**: TBD
+
+### Phase 29.1: Post-Run Fixes & Re-Freeze (INSERTED)
+
+**Goal**: The defects the 2026-08-20 production run surfaced are fixed, the frozen package's
+install instructions match what the suite actually needs, and a new frozen sha is cut and tagged
+so the suite can be re-run cleanly before the Zenodo results package is built.
+**Depends on**: Phase 29
+**Requirements**: Discharges the five todos listed under Success Criteria; no new REQUIREMENTS.md
+IDs (this phase closes defects rather than adding scope).
+**Why inserted**: The run at `rerun-freeze-01` completed all 20 stages with exit 0 and a roll-up
+of 175 PASS / 7 N/A / **2 FAIL**. Neither FAIL is expected-by-construction, and two further
+defects are invisible to the gates entirely. Directive 2 of the return handoff forbade fixing
+anything on the run machine, so they were filed rather than repaired. This is where they get
+repaired — before a re-run, not after, because one of them behaves differently on a clean
+output tree than it did on the tree the production run inherited.
+
+**Success Criteria** (what must be TRUE):
+
+  1. **E4's real-rig row no longer fails Gate 1 for an unexplained reason.** The row nulls
+     `degenerate_observations_at_solution` on a D-26 comment asserting E2's `benchmark.json`
+     "predates this plan's discard_stats threading" — untrue as of this run, which records 198
+     twice with the full cause/fate split. The decision is the author's and all three options
+     are live: thread the value through and accept the anchor row publishing as `degenerate`
+     under E4's exact `>0` rule; give that rule a threshold consistent with the library's own
+     1% (198 is 0.268%); or keep the null, replace the stale rationale, and exempt
+     `record_source="pipeline"` rows from Gate 1 explicitly. What must not survive is the
+     current state, where a real FAIL is produced by a comment describing a world that ended.
+
+  2. **`e1_seed_band_degeneracy_breakdown.json` exists or is unclaimed — consistently.**
+     `suite_expectations.json`, `EXPECTATIONS.md` and `README.md` all name it; the authoritative
+     writer table in the 2026-08-15 reshaped-artifacts todo has band rows for E5 and E7 and none
+     for E1, and the code matches the table. All four documents agree afterwards, whichever way
+     it is decided.
+
+  3. **No log line claims a write that did not happen.** `_run_band` prints `Wrote <path>`
+     ignoring `write_direct_call_benchmark`'s `False` return, so `e1_band.log` claims two writes
+     the resumability guard skipped. The contradiction behind it is also resolved: the comment at
+     `e1_refractive_comparison.py:1209-1212` says band mode must never overwrite the benchmark
+     records, and the call at `:1300-1328` overwrites them. **This one is load-bearing for the
+     re-run** — the skip is what enforced the policy last night, and a clean `experiments/results/`
+     removes the skip, so the same code would silently overwrite instead.
+
+  4. **E1's band scope string states the domain that was actually run.** The provenance sidecar
+     records `seeds: [42, 43, 44, 45]` while its own `scope` field authorises quoting E1 over a
+     ten-seed, 640/960-row domain. Four is correct per ruling A1
+     (`run_experiment_suite.sh:1452`); the prose is the survivor, and it is the field whose whole
+     job is stating what a published number may be quoted over.
+
+  5. **A fresh clone can run the suite by following the bundled instructions verbatim.**
+     `experiments/HANDOFF.md` §1.2 says `pip install -e .`, which installs runtime dependencies
+     only. The suite needs two extras: without `pytest` (`dev`) **e3 dies outright** on both
+     `--check` and `--force`, taking `code_constants.csv`, `newton_iterations.csv`,
+     `cpr_grouping.csv`, `e3_provenance.json` and the LaTeX fragments with it; without `psutil`
+     (`bench`) the required manifest fields `cpu_count_logical` and `ram_total_bytes` go null.
+     The working command is `pip install -e ".[dev,bench]"`. Ruled **record, do not refreeze** on
+     2026-08-19 because the run had to start that night — this phase is where the refreeze
+     happens. Verified by execution from a clean environment, not by asserting the string changed.
+
+  6. **A new frozen sha is cut and tagged, replacing `rerun-freeze-01`,** and carries the same
+     on-target verification Phase 27 applied to its predecessor: a smoke pass on the Linux run
+     machine from a fresh clone, installed by following criterion 5's corrected command exactly.
+     That pass is what licenses the re-run; the re-run itself is a re-execution of Phase 28 and
+     is not in this phase's scope.
+
+**Not in scope**: the re-run, the Zenodo results package (both wait on the new tag), and the
+scientific question of *what* the 198 unprojectable observations are — that is the separate
+2026-08-15 classification todo and is independent of criterion 1's plumbing decision.
+
 **Plans**: TBD
 
 ### Phase 30: Post-Submission Reconciliation
