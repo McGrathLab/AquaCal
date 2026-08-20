@@ -61,9 +61,18 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
-      - id: tests
-        name: Run tests
-        entry: bash .hooks/pre-push-tests.sh
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+      # The `pytest tests/ -m "not slow"` pre-push hook was removed 2026-08-20.
+      # It duplicated .github/workflows/test.yml, which runs the same command on
+      # 3.11/3.12 x ubuntu/windows for pushes to `main` and PRs into it. Locally
+      # it cost ~50 min per push, which trained us out of pushing -- and this
+      # repo has already paid for that once, when 674 unpushed commits turned two
+      # trivial CI fixes into a release-day emergency. It also invoked bare
+      # `python`, so it failed with ~62 collection errors whenever the conda env
+      # was off PATH: an environment fault wearing a test-failure costume, and a
+      # gate that cries wolf gets bypassed with --no-verify, which skips the two
+      # ruff hooks above as well.
+      #
+      # Note the gap this leaves: test.yml triggers only on `main` and PRs into
+      # it, so pushes to a long-lived branch like experiments/* now have no
+      # automated test gate. If that stops being acceptable, widen test.yml's
+      # push trigger rather than reinstating a slow local hook.
