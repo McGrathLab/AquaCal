@@ -435,3 +435,48 @@ experiments/pre_rerun_baseline/verify_probes/
 # production band tree.
 experiments/results_smoke/
 experiments/results_smoke_*/
+
+# Phase 28 production run (2026-08-20, tag rerun-freeze-01): the three E2
+# output trees the DATA-01b policy above never learned about.
+#
+# experiments/results/ and experiments/results_e2_band/ are governed above, but
+# run_experiment_suite.sh also writes results_e2_invocations/, results_e2_timing/
+# and results_e2_memory/ -- D-15 makes the timing and memory runs two distinct
+# runs, so each gets its own tree so neither can overwrite the production one.
+# No rule covered any of them, so `git add -A experiments/` staged 33.0 MB
+# including EIGHT files over the check-added-large-files --maxkb=1000 guard
+# (.pre-commit-config.yaml:17): three 2061 KB calibration.json copies, a
+# 10676 KB all_observation_depths.csv, and two 1206 KB reprojection_residuals.csv.
+# The clone that produced the run has no hooks installed, so nothing would have
+# caught it locally -- it would have failed for the next person to clone.
+#
+# Same DATA-01b policy as experiments/results/ above: the bulk E2 artifacts ship
+# in the published Zenodo real-rig archive (record 21889922), not in git. What
+# stays committed is the citable ~260 KB: each invocation's benchmark.json
+# (the entire point of the timing and memory stages), real_rig_metrics.json
+# (what gate_e2_band compares at rtol=1e-6), camera_parameters.csv,
+# diagnostics.json, degenerate_observations.csv, the stage-3 internals records,
+# and the emitted configs plus e2_invocation_scope.json.
+#
+# Appended at the END of this file deliberately: e2_real_rig.py:543 cites
+# ".gitignore:238-239" by line number, and inserting mid-file would silently
+# invalidate that citation.
+experiments/results_e2_timing/calibration.json
+experiments/results_e2_timing/reprojection_residuals.csv
+experiments/results_e2_timing/reconstruction_errors.csv
+experiments/results_e2_memory/calibration.json
+experiments/results_e2_memory/reprojection_residuals.csv
+experiments/results_e2_memory/reconstruction_errors.csv
+
+# results_e2_invocations/ is a working tree of three E2 invocations emitted from
+# one release config, so the same bulk classes are excluded per subdirectory.
+# The per-camera diagnostic PNGs go too, on the established precedent rather
+# than a new judgement: experiments/results/ carries ZERO PNGs and all 87 in
+# results_e2_band are ignored, so committing these 87 would make this the only
+# tree in the repo that ships them. They are regenerable from the configs above.
+experiments/results_e2_invocations/*/calibration.json
+experiments/results_e2_invocations/*/all_observation_depths.csv
+experiments/results_e2_invocations/*/reprojection_residuals.csv
+experiments/results_e2_invocations/*/reconstruction_errors.csv
+experiments/results_e2_invocations/*/spatial_measurements.csv
+experiments/results_e2_invocations/*/*.png
