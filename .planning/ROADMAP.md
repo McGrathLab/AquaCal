@@ -563,6 +563,28 @@ output tree than it did on the tree the production run inherited.
      That pass is what licenses the re-run; the re-run itself is a re-execution of Phase 28 and
      is not in this phase's scope.
 
+  7. **The completeness gate stops reporting a PASS it cannot justify.** `e2_production`'s two
+     conditional artifacts — `degenerate_observations.csv` and `all_observation_depths.csv` — are
+     both expected at `experiments/results` and both scored **PASS** on the reasoning that "this
+     artifact is conditional and is legitimately absent when the condition did not hold (Phase 25
+     D-08)". For this run that reasoning is false in both cases: the condition **held** (198
+     observations were flagged) and both files **were written**, into
+     `results_e2_invocations/` rather than `experiments/results`. The gate therefore reads
+     "no flagged rows" from an absence that actually means "written somewhere else" — a green
+     result standing in for an unchecked one, which is the failure mode
+     `check_rerun_gates.py`'s own docstring calls out as a defect this project has already hit.
+     These are the only two `conditional: true` entries in `suite_expectations.json`, so the
+     mechanism is 100% mis-scored where it is used at all.
+
+     What must be true afterwards: an absent conditional artifact is scored PASS **only** when the
+     condition demonstrably did not hold, and an artifact written outside its expected directory is
+     never silently green. The mechanism is open — correct the manifest's `dir`, have E2 emit into
+     `--out` as well, or teach the completeness gate to resolve conditional artifacts across the
+     invocation trees. Do **not** resolve it by removing the conditional mechanism or by treating
+     absence as unconditionally acceptable. **Constraint:** `all_observation_depths.csv` is
+     10.9 MB, so any fix that lands it under `experiments/results` needs a matching DATA-01b
+     ignore rule or it trips `check-added-large-files --maxkb=1000`.
+
 **Not in scope**: the re-run and the Zenodo results package — both wait on the new tag.
 
 **Already settled, so criterion 1 is not a scientific question**: the 198 unprojectable
