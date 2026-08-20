@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 29.1
-current_phase_name: "post-run-fixes-re-freeze (INSERTED) -- fix the four defects the production run surfaced, correct the install extras, cut a new frozen tag"
+current_phase_name: post-run-fixes-re-freeze (INSERTED) -- fix the four defects the production run surfaced, correct the install extras, cut a new frozen tag
 status: executing
-stopped_at: "Phase 29 PARTIAL -- run graded and committed at rerun-freeze-01 (roll-up 175 PASS / 7 N/A / 2 FAIL, both real); E7 before/after and the Zenodo package open. Phase 29.1 inserted for the post-run fixes and a new frozen tag."
-last_updated: "2026-08-20T14:04:49.636Z"
+stopped_at: Phase 29.1 context gathered
+last_updated: "2026-08-20T14:25:48.740Z"
 last_activity: 2026-08-20
 last_activity_desc: production run graded and committed on branch results/rerun-freeze-01; four defects filed; Phase 29.1 inserted
 progress:
@@ -228,10 +228,12 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-Last session: 2026-08-19T13:16:27.645Z
+**Resume file:** .planning/phases/29.1-post-run-fixes-re-freeze/29.1-CONTEXT.md
+
+Last session: 2026-08-20T14:25:48.729Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 27 context gathered
+Stopped at: Phase 29.1 context gathered
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
