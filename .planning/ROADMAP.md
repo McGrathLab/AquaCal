@@ -573,7 +573,19 @@ validation corners, 0.40%, reconstructing up to 51.7 mm above the interface in 2
 against the 198's 0.268%. Criterion 1 is therefore purely a plumbing-and-policy decision about how
 a known, physically-explained count is reported — not an open question about what it is.
 
-**Plans**: TBD
+**Plans**: 8 plans, 6 waves. Wave 1 leads with a tracer that proves the writer -> CSV -> gate ->
+roll-up path end to end; every later plan expands from it. The re-freeze strictly follows all
+of them.
+
+Plans:
+- [ ] 29.1-01-PLAN.md — E4's real-rig guard count: publish the value, exempt the pipeline row at both sites (SC-1) [wave 1, tracer]
+- [ ] 29.1-02-PLAN.md — E1's band: unclaim the sidecar, enforce the write policy, derive the scope string (SC-2, SC-3, SC-4) [wave 2]
+- [ ] 29.1-03-PLAN.md — bounded stale-string sweep over the run's writer modules, with a claim-sentence gate (SC-4) [wave 3]
+- [ ] 29.1-04-PLAN.md — install extras corrected in HANDOFF.md, proven from a clean environment (SC-5) [wave 2]
+- [ ] 29.1-05-PLAN.md — discharge the 198-observation and E4-path todos; file the sixth defect (folded todos) [wave 2]
+- [ ] 29.1-06-PLAN.md — record the gate before/after, then archive the 2026-08-20 output aside (SC-1..SC-4, SC-6) [wave 4]
+- [ ] 29.1-07-PLAN.md — Phase 27 attempt 1's full verification bar, run locally (SC-6) [wave 5]
+- [ ] 29.1-08-PLAN.md — cut, verify from a fresh clone, and push `rerun-freeze-02` (SC-5, SC-6) [wave 6, checkpoints]
 
 ### Phase 30: Post-Submission Reconciliation
 
