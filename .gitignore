@@ -480,3 +480,28 @@ experiments/results_e2_invocations/*/reprojection_residuals.csv
 experiments/results_e2_invocations/*/reconstruction_errors.csv
 experiments/results_e2_invocations/*/spatial_measurements.csv
 experiments/results_e2_invocations/*/*.png
+
+# The PRODUCTION queue's per-stage logs, un-ignored against *.log above for the
+# same reason as rerun_19_5.log, results_e4_repeat/repeat_stdout.log and
+# results_linux32gb/*/run.log: these are citable records, not rerunnable noise.
+#
+# Each stage log is the only committed place its stage's narrative survives.
+# benchmark.json carries the numbers; only these carry the solver iteration
+# tables, the frame accounting, and the warning TEXT. Every defect filed from
+# the 2026-08-20 run was diagnosed from them and from nothing else:
+#   e2_production.log  the DegenerateObservationWarning stating the 198 count
+#                      as 0.268% of 73975, its cause/fate split, and its
+#                      explicit refusal to declare the optimality unreliable
+#   e1_band.log        the "Skipping write ... / Wrote ..." pair, which is the
+#                      entire evidence that _run_band's confirmation line lies
+#   e4_repeat.log      "0 'already exists (resumability)' skip line(s) found",
+#                      the only proof repeat 2 was a genuine re-solve
+#   e7_focal_standoff.log  the vacuous_by_construction verdict table
+# 18 files, 363 KB total, largest 50 KB (e6_band.log) -- all far under
+# check-added-large-files --maxkb=1000.
+#
+# The sha is globbed for the same reason as the dryrun rules above (D-23/D-48).
+# This does NOT re-include the dry-run logs: those are excluded by a DIRECTORY
+# rule (`...dryrun.stagelogs/`), and git cannot re-include a file whose parent
+# directory is excluded. Verified, not assumed -- see the commit message.
+!experiments/run_experiment_suite_state.*.stagelogs/*.log
