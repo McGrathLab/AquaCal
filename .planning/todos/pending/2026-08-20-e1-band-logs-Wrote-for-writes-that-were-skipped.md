@@ -37,9 +37,15 @@ For this run the outcome is arguably the intended one. The comment immediately a
 
 ...and then the code calls the writer with `seed=seeds[-1]`. The resumability skip is the only
 reason the policy in the comment was honoured. That makes the artifact content **order- and
-state-dependent**: on a `results/` tree where stage 4 had not already run — a resumed queue, a
-`--force` run, a fresh out-dir — stage 16 *would* overwrite both records with the last seed's
-values, silently, and the log would look identical either way.
+state-dependent**.
+
+**Correction (2026-08-20, during Phase 29.1 planning).** The originally-filed mechanism —
+"a clean `experiments/results/` removes the skip" — is wrong. Stage `e1` runs with `--force`
+(`run_stage_e1`) and always precedes `e1_band` in the queue, so both records exist by the time
+the band runs; that is why the skip fired on 2026-08-20 even though the run started clean. The
+live hazards are narrower but real: a `--force` band run, or a standalone band invoked into a
+fresh `--out` with no single-seed run before it — there the write proceeds and creates both
+records stamped `seed=seeds[-1]`, silently, with a log that looks identical either way.
 
 ## The fix
 

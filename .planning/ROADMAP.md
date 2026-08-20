@@ -533,9 +533,13 @@ output tree than it did on the tree the production run inherited.
      ignoring `write_direct_call_benchmark`'s `False` return, so `e1_band.log` claims two writes
      the resumability guard skipped. The contradiction behind it is also resolved: the comment at
      `e1_refractive_comparison.py:1209-1212` says band mode must never overwrite the benchmark
-     records, and the call at `:1300-1328` overwrites them. **This one is load-bearing for the
-     re-run** — the skip is what enforced the policy last night, and a clean `experiments/results/`
-     removes the skip, so the same code would silently overwrite instead.
+     records, and the call at `:1300-1328` overwrites them. **Correction (2026-08-20, from planning):** the
+     originally-stated mechanism was wrong. A clean `experiments/results/` does *not* remove the
+     skip — stage `e1` runs with `--force` (`run_stage_e1`) and always precedes `e1_band` in the
+     queue, so both records exist by the time the band runs. That is why the skip fired on
+     2026-08-20 even though the run started from a clean tree. The defect is real; the live
+     hazards are a `--force` band run, or a standalone band into a fresh `--out` with no
+     single-seed run before it, where the write proceeds and stamps the records with `seeds[-1]`.
 
   4. **E1's band scope string states the domain that was actually run.** The provenance sidecar
      records `seeds: [42, 43, 44, 45]` while its own `scope` field authorises quoting E1 over a
