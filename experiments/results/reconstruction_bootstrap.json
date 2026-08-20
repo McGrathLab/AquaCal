@@ -1,0 +1,50 @@
+{
+  "ci_95": {
+    "reconstruction_mae_mm": [
+      0.21534863264079257,
+      0.3115045951586153
+    ],
+    "reconstruction_rmse_mm": [
+      0.41823683619067353,
+      0.8269663333720608
+    ],
+    "signed_mean_mm": [
+      0.015275526948503334,
+      0.07891755438720265
+    ]
+  },
+  "cluster_column": "frame_idx",
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "experiment": "reconstruction_bootstrap",
+  "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+  "n_frames": 52,
+  "n_resamples": 10000,
+  "n_rows": 7762,
+  "point_estimate_matches_real_rig_metrics": true,
+  "point_estimates": {
+    "reconstruction_mae_mm": 0.2581771773787865,
+    "reconstruction_rmse_mm": 0.628138596646187,
+    "signed_mean_mm": 0.04318901477836542
+  },
+  "real_rig_metrics_resolution": "native: resolved relative to --out (/home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/real_rig_metrics.json)",
+  "schema_version": 1,
+  "scope": "metric sampling variance only -- this interval resamples the inter-corner comparisons of ONE calibration; it is not a calibration band and must never be presented as one (D-19.5-05).",
+  "seconds": 10.293104612967,
+  "seed": 42,
+  "solver_config": {
+    "seed": 42
+  }
+}

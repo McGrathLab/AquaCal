@@ -1,0 +1,40 @@
+preflight	1	start	2026-08-20T00:14:10.195Z	
+preflight	1	complete	2026-08-20T00:14:11.120Z	0
+prelaunch_probe	2	start	2026-08-20T00:14:11.124Z	
+prelaunch_probe	2	complete	2026-08-20T00:14:11.500Z	0
+fd_jacobian	3	start	2026-08-20T00:14:11.507Z	
+e1	4	start	2026-08-20T00:14:11.509Z	
+e7	5	start	2026-08-20T00:14:11.511Z	
+e5	6	start	2026-08-20T00:14:11.513Z	
+fd_jacobian	3	complete	2026-08-20T00:14:13.540Z	0
+e2_production	7	start	2026-08-20T00:14:13.954Z	
+e1	4	complete	2026-08-20T00:15:58.740Z	0
+e6_repeat1	8	start	2026-08-20T00:15:59.167Z	
+e7	5	complete	2026-08-20T00:16:22.315Z	0
+e7_band	13	start	2026-08-20T00:16:22.729Z	
+e5	6	complete	2026-08-20T00:22:45.657Z	0
+e5_band	14	start	2026-08-20T00:22:46.074Z	
+e7_band	13	complete	2026-08-20T00:38:08.512Z	0
+e1_band	16	start	2026-08-20T00:38:08.942Z	
+e2_production	7	complete	2026-08-20T00:40:07.364Z	0
+e3	9	start	2026-08-20T00:40:07.703Z	
+e3	9	complete	2026-08-20T00:40:14.910Z	0
+reconstruction_bootstrap	10	start	2026-08-20T00:40:15.338Z	
+reconstruction_bootstrap	10	complete	2026-08-20T00:40:25.954Z	0
+e2_band	15	start	2026-08-20T00:40:26.291Z	
+e6_repeat1	8	complete	2026-08-20T00:52:46.788Z	0
+e6_band	18	start	2026-08-20T00:52:47.157Z	
+e1_band	16	complete	2026-08-20T01:12:28.988Z	0
+e7_focal_standoff	19	start	2026-08-20T01:12:29.389Z	
+e7_focal_standoff	19	complete	2026-08-20T01:12:29.762Z	0
+e5_band	14	complete	2026-08-20T01:15:45.919Z	0
+e2_band	15	complete	2026-08-20T01:53:06.746Z	0
+e6_band	18	complete	2026-08-20T04:28:11.033Z	0
+e2_timing	11	start	2026-08-20T04:28:11.440Z	
+e2_timing	11	complete	2026-08-20T04:47:55.586Z	0
+e2_memory	12	start	2026-08-20T04:47:55.977Z	
+e2_memory	12	complete	2026-08-20T05:08:00.795Z	0
+e4	17	start	2026-08-20T05:08:01.252Z	
+e4	17	complete	2026-08-20T05:50:59.033Z	0
+e4_repeat	20	start	2026-08-20T05:50:59.479Z	
+e4_repeat	20	complete	2026-08-20T06:14:31.094Z	0

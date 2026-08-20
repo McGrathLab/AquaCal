@@ -1,0 +1,168 @@
+{
+  "accuracy": {
+    "reprojection_rms": 0.7069562397293482,
+    "validation_3d_error_mean": 3.2479661342429854e-05,
+    "validation_3d_error_std": 0.00035486871125996417
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "memory": {
+    "mode": "proc_status_vmhwm",
+    "whole_run_peak_bytes": 3765583872
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 0,
+    "memory_pressure": "clean",
+    "n_cameras": 16,
+    "n_cameras_observing_per_frame_median": 7.0,
+    "n_cameras_observing_per_frame_min": 3,
+    "n_frames": 100,
+    "n_observations": 739,
+    "peak_bytes_baseline": 192069632
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "n_air": 1.0,
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "refine_intrinsics": true,
+    "seed": 42,
+    "shared_interface": true
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 9891.962274918591,
+      "fd_reduction": 53.30769230769231,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 69300,
+      "max_nfev_source": "scipy_auto",
+      "memory": {
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 3454504960,
+        "delta_bytes_since_previous_boundary": 3262435328,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
+      },
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 693,
+      "n_params_reason": null,
+      "n_residuals": 80348,
+      "n_residuals_reason": null,
+      "nfev": 40,
+      "njev": 30,
+      "optimality": 0.0020330506582695307,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame13_rvec_y",
+          "max_scaled": 0.0010964456336708395,
+          "max_unscaled": 0.0010964456336708395,
+          "n_params": 600
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam10_rvec_x",
+          "max_scaled": 0.0020330506582695307,
+          "max_unscaled": 0.0020330506582695307,
+          "n_params": 90
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 9.519214173910059e-05,
+          "max_unscaled": 0.0004760120914397703,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.001674038246226839,
+          "max_unscaled": 0.0016386639013532545,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 249.73080992198084,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 9882.724296703036,
+      "fd_reduction": 44.529411764705884,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 75700,
+      "max_nfev_source": "scipy_auto",
+      "memory": {
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 3765583872,
+        "delta_bytes_since_previous_boundary": 311078912,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
+      },
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 757,
+      "n_params_reason": null,
+      "n_residuals": 80348,
+      "n_residuals_reason": null,
+      "nfev": 4,
+      "njev": 4,
+      "optimality": 0.0028907206732782242,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame98_rvec_y",
+          "max_scaled": 0.0028907206732782242,
+          "max_unscaled": 0.0028907206732782242,
+          "n_params": 600
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam13_tvec_x",
+          "max_scaled": 0.002401536807269622,
+          "max_unscaled": 0.002401536807269622,
+          "n_params": 90
+        },
+        "intrinsics": {
+          "argmax_parameter": "cam5_cx",
+          "max_scaled": 0.0007585651340464728,
+          "max_unscaled": 7.894774842753804e-07,
+          "n_params": 64
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_ry",
+          "max_scaled": 0.00017808058019218293,
+          "max_unscaled": 0.0008890781541595061,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.00022905430743680263,
+          "max_unscaled": 0.0002242462042598703,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 35.88531797705218,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}
