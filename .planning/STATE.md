@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Completed 29.1-05-PLAN.md
-last_updated: "2026-08-24T14:26:48.673Z"
+stopped_at: Completed 29.1-03-PLAN.md
+last_updated: "2026-08-24T14:57:06.107Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 45
+  completed_plans: 46
   percent: 56
 ---
 
@@ -37,7 +37,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 4 of 9
+Plan: 5 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
@@ -228,6 +228,9 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29.1]: Plan 29.1-05: The 198 unprojectable observations are settled as above-water board corners in MANUSCRIPT-FINDINGS.md MF-24, by citation of the committed 198-row per-observation table rather than by inference from summary counts
 - [Phase 29.1]: Plan 29.1-05: The degeneracy count is seed-sensitive (198/210/183 across band seeds 42/43/44) while the cause decomposition is not -- 198 must be attributed to seed 42 in the manuscript, not presented as a dataset constant
 - [Phase 29.1]: Plan 29.1-05: The E4 aggregator path defect (E2_BENCHMARK_PATH not following --out) is confirmed fixed by Phase 23's FIX-05/D-09 at BOTH build_grid_dataframe call sites, verified by AST and by the run's own e4.log:12 announcement
+- [Phase ?]: 29.1-03: the stale-string sweep's enumeration command was widened mid-pass after its own blind spot was found by hand -- a pre-filter for comment/string lines silently dropped wrapped docstring lines, one of which was a defect. A boundary with a blind spot is not a boundary.
+- [Phase ?]: 29.1-03: retired measurements are retained under an explicit owner, never scrubbed and never swapped for the current value -- MF-12's digits stay in e6 under its name, because a corrected literal reproduces the defect one run later.
+- [Phase ?]: 29.1-03: two twin sites outside D-09's bound (_expectations.py, check_rerun_gates.py) were corrected rather than only recorded; the sweep did not widen but a twin of a corrected claim is the partial-fix shape the gate module exists to catch.
 
 ### Blockers/Concerns
 
@@ -246,10 +249,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T14:26:48.660Z
+Last session: 2026-08-24T14:56:52.700Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.1-05-PLAN.md
+Stopped at: Completed 29.1-03-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -263,3 +266,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P02 | 78 min | 3 tasks | 10 files |
 | Phase 29.1 P04 | 7 min | 2 tasks | 3 files |
 | Phase 29.1 P05 | 12 min | 2 tasks | 3 files |
+| Phase 29.1 P03 | 72 min | 3 tasks | 12 files |
