@@ -109,7 +109,7 @@ its own §3. What stays in Phase 30 is the reconciliation *around* that archive,
 - [ ] **Phase 27: Frozen Single-Sha Handoff Package** - The library, driver, gates, and environment requirements are frozen at one sha and packaged for the Linux machine
 - [ ] **Phase 28: Suite Execution on Linux Machine** - The full experiment suite — E1 through E7, the band runs, and E2 — executes once end to end at the frozen sha
 - [ ] **Phase 29: Gate Verification & Results Commit** - The returned run passes `check_rerun_gates.py`, clears the E2 sanity control and the E7 before/after comparison, its results are committed with provenance intact, and the Zenodo results package is published before submission
-- [ ] **Phase 29.1: Post-Run Fixes & Re-Freeze** (INSERTED) - The four defects the 2026-08-20 production run surfaced are fixed, the frozen package's install command gains the `dev` and `bench` extras the suite actually needs, and a new frozen sha is cut so the suite can be re-run cleanly before the Zenodo upload
+- [x] **Phase 29.1: Post-Run Fixes & Re-Freeze** (INSERTED) - The four defects the 2026-08-20 production run surfaced are fixed, the frozen package's install command gains the `dev` and `bench` extras the suite actually needs, and a new frozen sha is cut so the suite can be re-run cleanly before the Zenodo upload (completed 2026-08-24)
 - [ ] **Phase 30: Post-Submission Reconciliation** - After the 2026-08-21 submission: §3/tutorial re-cut as a matched set with the archive, stale outputs purged, MF-19 closed
 
 ## Phase Details
@@ -680,4 +680,5 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 0/TBD | Not started | - |
 | 29. Gate Verification & Results Commit | v2.1 | 0/TBD | Not started | - |
+| 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

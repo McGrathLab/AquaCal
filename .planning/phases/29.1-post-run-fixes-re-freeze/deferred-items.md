@@ -157,7 +157,7 @@ the Linux run machine. Measured `2407 passed, 26 skipped, 3 failed` in 27:47.
 
 **Status: pre-existing, and not a defect of this branch.** Everything the three tests execute
 or read is byte-identical to `rerun-freeze-01` — the three modules, `tests/fixtures/`,
-`tests/conftest.py`, `pyproject.toml`, `src/`, and `experiments/_degeneracy.py`. Running them
+`tests/synthetic/conftest.py`, `pyproject.toml`, `src/`, and `experiments/_degeneracy.py`. Running them
 at HEAD is running them at the tag.
 
 **Why they fail:** all three compare with `==` / `assert_array_equal` against anchors captured
@@ -256,7 +256,7 @@ and no artifact of this phase records "0 failed".
 Two facts were added by 29.1-08 that 29.1-07 did not have:
 
 1. **They fail at `rerun-freeze-01` too.** The three modules, `tests/fixtures/`,
-   `tests/conftest.py`, `pyproject.toml`, `src/` and `experiments/_degeneracy.py` are
+   `tests/synthetic/conftest.py`, `pyproject.toml`, `src/` and `experiments/_degeneracy.py` are
    byte-identical between the tags, so the failure is not a property of `rerun-freeze-02`.
    Attempt 1's `0 failed` is a Windows measurement, and `27-ONTARGET-VERIFICATION.md` never ran
    `pytest` on this box. Blocking the freeze would therefore not avoid them — no reachable sha
@@ -309,3 +309,70 @@ return its single `N/A` rather than the two `FAIL`s the present-but-empty state 
 
 giving `72 PASS / 18 N/A / 0 FAIL`. The prediction held exactly. The defect itself is unfixed
 and remains post-submission cleanup.
+
+---
+
+## D1 RULING (2026-08-24, author-directed, pre-run) — map debt, not run defects; fix AFTER the re-run
+
+Ruled before the re-run at the author's direction, so the verdict exists in advance rather than
+being improvised while holding fresh results.
+
+**Method:** the eight were classified against the archived 2026-08-20 tree
+(`experiments/freeze01_run_output/results/`) — the tree whose shape the re-run will reproduce —
+rather than from their names. Every figure below is measured.
+
+### None of the eight is a defect in the run's numbers
+
+**A. A stale map claim that is wrong today — 2 failures**
+
+`CSV_TO_RECORD` declares `exp1_band.csv` and `exp1_parameter_band.csv` as covering
+*"seeds 42-51"*. The committed tree carries **42-45**. Ruling A1 (2026-08-15) cut E1's band from
+ten seeds to four and the map was never updated.
+
+This is the SAME defect as SC-4, which this phase fixed in E1's band `scope` field. D-09's sweep
+was bounded to `experiments/` writer modules, so it never looked in `tests/`; the map is the twin
+that boundary excluded. The test is correct and is doing what its docstring promises — *"the
+expected span is computed FROM the CSV, never hard-coded"*. It caught a stale claim.
+
+**B. Artifacts the map never learned about — 4 failures**
+
+- `generalization_sweep_per_camera.csv`, `generalization_sweep_per_camera_band.csv` — absent from
+  `CSV_TO_RECORD` entirely.
+- `generalization_sweep_per_camera_band.csv` — spans 6 seeds (42-47), undeclared.
+- `SELF_DESCRIBING_JSON` names two members; the tree holds **eight** versionless JSONs — the five
+  `*_degeneracy_breakdown.json` files from Phase 24's DEGEN instrumentation, plus
+  `calibration.json`, which DATA-01b (plan 21-11) recorded as having left the repository and
+  which is demonstrably back.
+
+**C. A category error — 2 failures**
+
+`run_manifest.json` is swept into the benchmark-record rails and asserted to carry an
+`environment` block and `solver_config['seed']`. It carries neither, because it IS the
+environment record: its top-level keys are `git_sha`, `cpu_model`, `numpy_version`,
+`python_version`, `opencv_version`. A suite-level manifest is not a benchmark record. The
+artifact is newer than the rail that collects it.
+
+### The ruling: do not re-freeze; fix in Phase 29 grading
+
+`tests/unit/test_experiments_provenance.py` is INSIDE `rerun-freeze-02`. Any fix changes the tree
+and yields a sha that is not the frozen sha, forcing a `rerun-freeze-03` with a new fresh-clone
+verification and pre-push audit — the whole of this phase's tail, repeated.
+
+Fixing after the run costs nothing, because the run cannot see this code — verified, not assumed:
+
+- `experiments/run_experiment_suite.sh` never invokes pytest.
+- Nothing in `experiments/` or `src/` consumes `CSV_TO_RECORD` or `SELF_DESCRIBING_JSON`; the only
+  two hits are comments in `e6_generalization_sweep.py` that refer to the tests without reading
+  them.
+
+These rails are graded at verification time against whatever the run produced. Fixing the map
+afterwards changes no measurement, and is strictly better done then: the spans can be set from
+what the run actually wrote rather than inferred from the archive.
+
+### What the re-run's verifier should expect
+
+Expect these eight to return once `experiments/results/` is repopulated. Expect them to be map
+debt. Fix them in Phase 29 grading, category by category.
+
+**A NINTH provenance failure would be a different thing entirely** — that would be about the new
+run rather than about the map, and deserves real attention rather than this ruling.

@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-current_phase: 29.1
-current_phase_name: post-run-fixes-re-freeze
-status: executing
+current_phase: 30
+current_phase_name: Post-Submission Reconciliation
+status: planning
 stopped_at: "29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished"
-last_updated: "2026-08-24T20:57:39.821Z"
+last_updated: "2026-08-24T21:14:20.221Z"
 last_activity: 2026-08-24
 last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 progress:
@@ -35,11 +35,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
+Phase: 30 — Post-Submission Reconciliation
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 9 of 9 — all nine complete; plan 08 closed with the push
+Plan: Not started
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: **`rerun-freeze-02` is PUSHED and public** at `7005a2771aa115e4f4c1284cec7e145739586a4a`
+Status: Ready to plan
 (annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
 0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH, library imported from inside the
 clone, environment built by executing the tag's own corrected install command. `rerun-freeze-01`
@@ -60,7 +60,7 @@ NEXT: launch the v2.1 full-suite production run from a FRESH clone of `rerun-fre
 `~/aquacal-frozen-rerun-freeze-02` — plan 29.1-08's own `--smoke` verification left a state file
 at that sha there (D5), and a real run would skip all 20 stages. Set `PRELAUNCH_GATE_PYTHON`
 explicitly (D-28). Read `29.1-FREEZE-RECORD.md` § *Hazards* first.
-Last activity: 2026-08-24 — 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
+Last activity: 2026-08-24 — Phase 29.1 complete, transitioned to Phase 30
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would

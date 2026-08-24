@@ -271,8 +271,9 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | RUN-02 | Phase 28 | Pending |
 | RUN-03 | Phase 29 | Pending |
 | RUN-04 | Phase 29 | Pending |
+| RUN-05 | Phase 29 | Pending |
 | POST-01 | Phase 30 | Pending |
-| POST-02 | Phase 30 | Pending |
+| POST-02 | — | Retired — re-timed to RUN-05 (2026-08-15) |
 | POST-03 | Phase 30 | Pending |
 | POST-04 | Phase 30 | Pending |
 
