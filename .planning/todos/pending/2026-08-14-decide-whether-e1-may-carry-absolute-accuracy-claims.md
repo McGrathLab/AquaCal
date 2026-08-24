@@ -182,3 +182,47 @@ For this fix specifically: `exp1_band.csv` gains a `noise_std` column and its ro
 Also add the same expectations to the sheet in
 `2026-08-15-suspend-programmatic-check-for-reshaped-artifacts.md`, since hand-verification is the
 only check covering these artifacts during this run.
+
+---
+
+## Overtaken by ruling A1 — annotation only, 2026-08-24 (Phase 29.1, plan 03)
+
+**Stays pending.** The accuracy-claim decision this todo owns belongs to Phase 25/29, not to Phase
+29.1, and nothing here is being decided. What follows corrects the *plan* this file describes,
+because a reader arriving today would implement a grid that was cut nine days ago.
+
+**Ruling A1 (2026-08-15, recorded at `run_experiment_suite.sh`'s `run_stage_e1_band`) resized the
+seed axis from ten to four.** The scoping text above still describes the ten-seed plan
+throughout:
+
+- § *Scope for the re-run* — *"across the existing ten seeds"* and *"Row count goes 160 → 640"*.
+  Under ruling A1 the band is **four** seeds and the emitted CSVs are **256 rows** of
+  `exp1_band.csv` and **384 rows** of `exp1_parameter_band.csv` (`4 seeds × 4 noise levels × 16` and
+  `× 24` rows per cell). Both counts are confirmed against the committed 2026-08-20 output.
+- § *Cost* — *"40 solves where there are now 10"*. Under ruling A1 it is 16 of those 40 cells,
+  sized at about 2.8 h against the ten-seed plan's ~7 h. That cost is why the axis was cut.
+- § *Register the outputs with the driver and the gate* — *"row count goes 160 -> 640 (10 seeds x 4
+  noise levels x depths x models). The gate must assert the new count."* The gate does assert a
+  count; it asserts the **four**-seed one, via `suite_expectations.json`'s `full` profile.
+- § *Re-run scoping question ANSWERED* — its P1 probe results and the linear-response finding are
+  **unaffected**: they are one-seed measurements of the noise response, and ruling A1 changed only
+  the seed axis. The level set `{0.25, 0.5, 0.82, 1.2}` it locks is unchanged and was executed.
+
+**What was implemented, and where the record is.** The `noise_std` axis landed and the band ran in
+the 2026-08-20 production suite. Phase 29.1 plan 02 then made the band's `scope` field **derived at
+write time** rather than a literal, precisely because a corrected literal buys one grid resize
+before it rots again (D-08/D-10) — so `e1_seed_band_provenance.json` now states the seed list, both
+emitted row counts, the noise levels and the depths of the run that wrote it. Plan 03's bounded
+stale-string sweep then found and corrected **six further sites** in
+`e1_refractive_comparison.py` and one in `run_experiment_suite.sh` that still stated this todo's
+ten-seed arithmetic; see
+`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-STALE-STRING-AUDIT.md`.
+
+**Do not** update the numbers in the body above. They record what was planned on 2026-08-14, and
+this section records what ruling A1 changed — the same retain-and-attribute treatment the rest of
+this class gets. Read the two together.
+
+**Why this stays pending.** The question this todo actually owns — whether E1 may carry absolute
+accuracy claims, and the header reconciliation with D-19.3-17's demotion note — is a Phase 25/29
+scope decision resting on `REVISION-ROADMAP.md` §10.8 in the Spinoffs repo. Phase 29.1 changes what
+the suite records about itself and never what it claims, so it is the wrong phase to settle it in.

@@ -105,3 +105,54 @@ in `REQUIREMENTS.md` (FIX-06) has been corrected.
 
 Library and experiment work only. The manuscript tree (`Spinoffs/papers/aquacal/`) is read-only
 from this repo. References to `main.tex` / `supplement.tex` here are motivation, never work orders.
+
+---
+
+## Partially discharged in Phase 29.1 — 2026-08-24 (plan 03)
+
+**Stays pending.** This todo was folded into Phase 29.1 under D-09's bounded scope: only strings
+annotating values the 2026-08-20 production run recomputed were in scope. Its own four code sites
+are a *narrower* set than that, and all four were already corrected by Phase 23's FIX-06 — so what
+this phase discharges here is the **verification**, not a fresh fix.
+
+### Each named site, verified against the current source on 2026-08-24
+
+| Site | State now | Evidence |
+|---|---|---|
+| **1.** `e2_real_rig.py` — the `--config` help describing a retired archive | **Corrected** (FIX-06). The help now says the published archive *does* reproduce §3 via its own `config_paper.yaml`, names record `21889922` and its `frame_step: 1` / `max_calibration_frames: 200`, and says `--config` is *"NOT required to reproduce the manuscript's section-3 FRAMESET"*. | `experiments/e2_real_rig.py:1230-1233` |
+| **2.** `e2_real_rig.py` — `real_rig_metrics.json`'s provenance quoting `0.8786` | **Corrected** (FIX-06), and corrected *in the right way*: it names the derivation, quotes no live value, and marks the release comparison `SUPERSEDED as a description of this field` rather than swapping `0.8786` for `0.8240`. | `experiments/e2_real_rig.py:297-304`; pinned by `tests/unit/test_stale_provenance_strings.py::TestE2RealRigStrings::test_provenance_string_hardcodes_no_live_value`, which asserts `"0.8240" not in source` |
+| **3.** `synthetic.py:184` — `WATER_Z` called "the real-rig standoff" | **Corrected**, *and out of this phase's scope regardless.* The docstring now reads *"a FROZEN DESIGN CONSTANT that approximates the real-rig standoff rather than measuring it"* and names the rig's own estimated `water_z` of `1.0738404 m` with its `h_c` range. The constant itself is unchanged at `1.031`, as this todo's § *Do not* requires. | `src/aquacal/datasets/synthetic.py:185-188`, `:135`, `:296`; pinned by `TestSyntheticWaterZDescription` (three cases, including `test_constant_itself_is_unchanged`) |
+| **4.** `e2_real_rig.py:555-563` — the explicit-config comment carrying site 1's claim in its worst form | **Corrected** (FIX-06). Now reads *"claim corrected 2026-08-17 … The PUBLISHED Zenodo archive is NO LONGER frame-subsampled"*, and the `60 -> 12 -> 1,817` triple is retained under an explicit **RETIRED record 18645385** attribution rather than scrubbed. | `experiments/e2_real_rig.py:634-642`; pinned by `test_both_archive_sites_were_corrected`, which requires `21889922`, `18645385`, `262 usable frames` and `7762` at **both** sites (count ≥ 2) so one site cannot be fixed alone |
+| **5.** `19.1-E2-FRAMESET-PROVENANCE.md` — needs a header, not an edit | **Done.** The file opens with a `> **SUPERSEDED as a description of the current archive — 2026-08-17 (FIX-06, phase 23).**` header naming both record ids and the repointing commit `25655f7`, with the historical body intact. | `.planning/phases/19.1-experiment-suite-consolidation/19.1-E2-FRAMESET-PROVENANCE.md:1-6`; pinned by `TestFramesetProvenanceSupersession` (header-is-first **and** body-is-preserved) |
+
+**Note on site 3 specifically.** `src/` is out of this phase's scope by **hard constraint 1** —
+`git diff --quiet -- src/` must exit 0 for every plan in Phase 29.1 — so it would have been left
+alone whatever its state. It is recorded as verified-correct rather than as skipped, so a later
+pass does not re-open it. This is consistent with
+`2026-08-17-audit-static-strings-that-annotate-recomputed-values.md` § *Known non-issues*, which
+already cleared `synthetic.py`'s four real-rig-standoff mentions on 2026-08-17.
+
+### What the bounded pass added beyond this todo
+
+The wider sweep in `29.1-STALE-STRING-AUDIT.md` classified `e2_real_rig.py`'s `0.8786` / `1.0191`
+release citations as **legitimate** — the canonical example of a number that is *supposed* to stay
+frozen — and left them untouched, exactly as this todo's sibling requires. `e2_real_rig.py`
+produced **no** defective rows in that pass. The 11 defects it did find are in
+`e1_refractive_comparison.py`, `e4_benchmark_grid.py`, `e6_generalization_sweep.py` and
+`run_experiment_suite.sh`, and are unrelated to this todo's subject.
+
+### Why this stays pending
+
+Every site this todo names is verified corrected, but two things it asks for are not settled by
+verification alone:
+
+1. This file is the **record of the FIX-06 instance set**, and its supersession trail
+   (§ *A fourth site, found 2026-08-17*, and the count correction from three sites to four plus a
+   planning-doc header) is still the only place that history is written down. Closing it moves that
+   trail into `done/` before the re-freeze that will cite it.
+2. Its § *Solution* bullet asks to *"check the surrounding module docstring and any
+   `19.1-E2-FRAMESET-PROVENANCE.md` references for the same stale claim"* — a reference sweep, not
+   a site fix. Phase 29.1's bound covered `e2_real_rig.py`'s own text, not every document that
+   cites the retired frameset numbers.
+
+Close it in the pass that finishes item 2, not before.
