@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Completed 29.1-01-PLAN.md
-last_updated: "2026-08-24T12:48:55.351Z"
+stopped_at: Completed 29.1-02-PLAN.md
+last_updated: "2026-08-24T14:03:07.640Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 42
+  completed_plans: 43
   percent: 56
 ---
 
@@ -37,7 +37,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 2 of 9
+Plan: 3 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
@@ -218,6 +218,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29.1]: Phase 29.1 work happens on branch phase/29.1-post-run-fixes, based on results/rerun-freeze-01 (D-13). Merge it back; never check out around it, or the 147 tracked files under experiments/results/ leave the tree.
 - [Phase 29.1]: E4 gate 1 exempts record_source="pipeline" rows inside the existing gate rather than gaining a second gate id, because the roll-up PASS/N/A/FAIL totals are an audited number (D-02). The exemption is keyed to row kind, never to a count magnitude, so synthetic (assembled) rows are gated exactly as before.
 - [Phase 29.1]: E4 real-rig row publishes the guard count E2 measured (198 above-water board corners) and is exempt from the > 0 status downgrade at both the writer and the gate (D-01). Reverting means re-nulling a number the manuscript may cite.
+- [Phase 29.1]: D-04 resolved by removal: the 2026-08-15 design table has --seeds sidecar rows for E5 and E7 and deliberately none for E1, so the expectation was unclaimed rather than a writer added
+- [Phase 29.1]: D-07 resolved in favour of the :1209 comment: band mode may CREATE e1_benchmark_<model>.json and never overwrites it, enforced by a literal force=False that ignores the run's --force
+- [Phase 29.1]: D-08 fixed as a class not an instance: e1_seed_band_provenance.json's scope field is derived at write time rather than re-frozen at four seeds and 256/384 rows (D-10)
+- [Phase 29.1]: E7's identical band-overwrite hazard is filed as a pending todo, not fixed: it surfaced by reading rather than by a failing gate and is out of this phase's scope
 
 ### Blockers/Concerns
 
@@ -236,10 +240,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T12:48:32.512Z
+Last session: 2026-08-24T14:03:00.545Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.1-01-PLAN.md
+Stopped at: Completed 29.1-02-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -250,3 +254,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 29.1 P01 | 13 min | 3 tasks | 7 files |
+| Phase 29.1 P02 | 78 min | 3 tasks | 10 files |
