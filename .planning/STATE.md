@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 28
-current_phase_name: Suite Execution on Linux Machine
+current_phase_name: full-suite-production-run
 status: executing
-stopped_at: "29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished"
-last_updated: "2026-08-24T22:50:11.138Z"
+stopped_at: Completed 28-01-PLAN.md — production venue built and proven; NOTHING LAUNCHED
+last_updated: "2026-08-24T23:52:13.231Z"
 last_activity: 2026-08-24
 last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 55
-  completed_plans: 50
+  completed_plans: 51
   percent: 67
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 29.1 — post-run-fixes-re-freeze
+**Current focus:** Phase 28 — full-suite-production-run
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -35,9 +35,9 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 28 — Suite Execution on Linux Machine (re-run at rerun-freeze-02)
+Phase: 28 (full-suite-production-run) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL, from **attempt 1** only.
-Plan: 5 plans (28-01 … 28-05), 5 waves — planned 2026-08-24, plan-checker VERIFICATION PASSED.
+Plan: 2 of 5
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 (annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
@@ -60,7 +60,7 @@ NEXT: launch the v2.1 full-suite production run from a FRESH clone of `rerun-fre
 `~/aquacal-frozen-rerun-freeze-02` — plan 29.1-08's own `--smoke` verification left a state file
 at that sha there (D5), and a real run would skip all 20 stages. Set `PRELAUNCH_GATE_PYTHON`
 explicitly (D-28). Read `29.1-FREEZE-RECORD.md` § *Hazards* first.
-Last activity: 2026-08-24 — Phase 29.1 complete, transitioned to Phase 30
+Last activity: 2026-08-24 — Phase 28 execution started
 
 **Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
 Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
@@ -269,6 +269,11 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 29.1-08: rerun-freeze-02 cut at 7005a27 as an annotated tag; rerun-freeze-01 not moved; version-tag count and the git describe semver anchor both unchanged.
 - [Phase ?]: 29.1-08: SC-5 proven by execution rather than by a string diff: a new conda env built by running the tag's own corrected HANDOFF section 1.2 command produced e3 exit 0 and all 17 manifest fields non-null.
 - [Phase ?]: 29.1-08: results/rerun-freeze-01 deliberately left at 89c2092 on the remote (author's ruling) as attempt 1's preserved endpoint -- same principle that never moves a tag. Recorded in all three freeze records so the lagging pointer is not later read as an oversight.
+- [Phase ?]: 28-01: the production clone was taken from the GitHub remote (git clone --branch rerun-freeze-02) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod -- the -prod suffix is load-bearing; the plain name is 29.1-08's rehearsal clone and must be neither reused nor shadowed
+- [Phase ?]: 28-01: the freshly resolved dependency set is IDENTICAL to attempt 1's -- numpy 2.4.6, scipy 1.17.1, cv2 4.13.0.92, python 3.11.15, BLAS scipy-openblas 0.3.31.188.0, pytest 9.1.1, psutil 7.2.2. Assumption A2's unpinned-resolve drift did not materialise, so Phase 29's E2 sanity control compares like with like
+- [Phase ?]: 28-01: D4 confirmed in the new environment BEFORE launch -- 3 failed, 2407 passed, 26 skipped (0:27:18), the three registered node ids verbatim and the disagreement values bit-for-bit. The suite is NOT clean at this sha and no artifact of this phase says otherwise
+- [Phase ?]: 28-01: pytest tests/ creates an EMPTY experiments/results/ in the clone; it was moved aside to /home/tlancaster/AquaCal_prod_aside/2026-08-24-7005a27-pytest-created-results/, never deleted and never overridden. Re-check that directory before pre-flight if pytest is run again in the production clone
+- [Phase ?]: 28-01: NOTHING HAS BEEN LAUNCHED. The dry run walked all 20 stages at exit 0 into the .dryrun.tsv path only; the real state file is still absent. The production run is plan 28-03 and remains gated behind a human decision not yet given
 
 ### Blockers/Concerns
 
@@ -289,10 +294,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T20:57:39.809Z
+Last session: 2026-08-24T23:51:59.134Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: 29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished
+Stopped at: Completed 28-01-PLAN.md — production venue built and proven; NOTHING LAUNCHED
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -311,3 +316,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P06 | 50m | 3 tasks | 11 files |
 | Phase 29.1 P07 | 2h45m | 3 tasks | 2 files |
 | Phase 29.1 P08 | 65m | 3 tasks | 6 files |
+| Phase 28 P01 | 31m | 3 tasks | 7 files |

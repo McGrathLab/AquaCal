@@ -234,10 +234,30 @@ The disagreement values reproduce bit-for-bit against the register's table, whic
 - **Verification:** all three hashes confirmed present via `git log --oneline --all`
 - **Committed in:** `baa0523`, `79106d8`, `701b257`
 
+**3. [Rule 1 — Bug] `requirements mark-complete RUN-02` asserted a run that has not happened**
+
+- **Found during:** state updates, after Task 3
+- **Issue:** The executor's state-update step marks every ID in the plan's `requirements:`
+  frontmatter complete. All five of this phase's plans carry `RUN-02`, so running it here flipped
+  `REQUIREMENTS.md` to `- [x] **RUN-02**: The full experiment suite … executes once end to end at
+  that single sha` and its traceability row to `Complete`. **That claim is false.** Nothing has
+  been launched; RUN-02 is satisfied by plan 28-03, not by 28-01. Left in place it would have
+  been a durable, committed statement that the production run had already succeeded — precisely
+  the class of misread verdict this phase's constraints exist to prevent, and one that would have
+  made Phase 29 believe it had a run to grade.
+- **Fix:** `git checkout -- .planning/REQUIREMENTS.md`. RUN-02 is back to `- [ ]` / `Pending`, and
+  the tool's incidental blank-line reformatting of 27 unrelated requirement rows went with it.
+- **Files modified:** none (the change was reverted before any commit)
+- **Verification:** `grep -n 'RUN-02' .planning/REQUIREMENTS.md` → `- [ ] **RUN-02**` at line 188
+  and `| RUN-02 | Phase 28 | Pending |` at line 271; `git status --short` shows REQUIREMENTS.md
+  clean.
+- **Committed in:** n/a — reverted, never committed. **Plan 28-03 is the plan that may mark
+  RUN-02 complete, and only after the run's roll-up is read.**
+
 ---
 
-**Total deviations:** 2 auto-fixed (2 blocking).
-**Impact on plan:** No scope creep and no change to what the assertions mean. Deviation 1 is the plan's own contingency executed as written; deviation 2 is a protocol accommodation to an off-repo plan, not a change to the work.
+**Total deviations:** 3 auto-fixed (2 blocking, 1 bug).
+**Impact on plan:** No scope creep and no change to what the assertions mean. Deviation 1 is the plan's own contingency executed as written; deviation 2 is a protocol accommodation to an off-repo plan; deviation 3 prevented a false completion claim from entering the record.
 
 ## Issues Encountered
 
