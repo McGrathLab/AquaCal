@@ -64,13 +64,16 @@ of this and must be read with it.**
 **STATED DOMAIN (BAND-01, D-14, corrected 2026-08-24 under D-08).** E1's
 absolute-accuracy numbers are to be quoted ONLY over the domain the band
 actually swept: the `realistic` scenario's single 12-camera synthetic
-geometry, the seeds sized by **ruling A1**
-(`run_experiment_suite.sh`'s `run_stage_e1_band`, which carries the seed
-count, the reason for it, and the arithmetic behind the row counts), the
-detection-noise levels of `NOISE_LEVELS`, and the test depths of
-`TEST_DEPTHS`. Outside it -- another rig geometry, a noisier detector, a
-deeper test point -- E1's numbers are unlicensed. **The authoritative,
-per-run statement of that domain is the `scope` field of
+geometry, the seeds sized by **ruling A1** (`run_experiment_suite.sh`'s
+`run_stage_e1_band`, which carries the seed count, the reason for it,
+and the arithmetic behind the row counts), the four detection-noise
+levels of `NOISE_LEVELS` (0.25, 0.5, 0.82, 1.2 px), and the eight test
+depths of `TEST_DEPTHS` (1.10 m to 2.50 m). Those two axes restate
+constants defined in this module and ruling A1 did not touch either; the
+SEED axis is the one it resized, which is why it is cited rather than
+counted here. Outside the domain -- another rig geometry, a noisier
+detector, a deeper test point -- E1's numbers are unlicensed. **The
+authoritative, per-run statement of that domain is the `scope` field of
 `e1_seed_band_provenance.json`**, which `_run_band` DERIVES from the run
 that wrote it: the seed list actually swept, the row counts actually
 emitted, and the noise levels and depths actually used. This paragraph
@@ -78,13 +81,17 @@ names the axes and points there for the values; it deliberately quotes
 neither a seed count nor a row count. The version that did -- ten seeds,
 640/960 rows, from the pre-A1 plan -- outlived ruling A1 and was still
 authorising a domain that had never been run when the 2026-08-20
-production run shipped it (D-08, D-10). Phase 25 ran a two-seed probe
-only, which licenses no manuscript-facing number, because two seeds cannot
-separate a noise effect from seed variance. What already supports the
-claim is measured and independent of that band: warm-restarting each solve
-from its own solution recovers no cost (largest relative drop 1.8e-9), so
-the non-refractive baseline is CONVERGED and the comparison is fair -- the
-97-178x band is strengthened, not caveated
+production run shipped it (D-08, D-10). The band that establishes the
+domain was EXECUTED IN **Phase 28** at the frozen sha (D-21) -- a
+completed fact, stated in the past tense on purpose, because the clause
+it replaces was a schedule and needed re-dating after every run. Phase
+25 ran a two-seed probe only, which licenses no manuscript-facing
+number, because two seeds cannot separate a noise effect from seed
+variance. What already supports the claim is measured and independent of
+that band: warm-restarting each solve from its own solution recovers no
+cost (largest relative drop 1.8e-9), so the non-refractive baseline is
+CONVERGED and the comparison is fair -- the 97-178x band is
+strengthened, not caveated
 (`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`). The
 one caveat that travels with the band, stated here in the same paragraph so
 it can never be read as under-convergence: the non-refractive baseline arm
