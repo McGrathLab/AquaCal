@@ -381,3 +381,127 @@ class TestNoiseAxis:
         parameter_band = pd.read_csv(tmp_path / "exp1_parameter_band.csv")
         assert parameter_band["noise_std"].nunique() == 1
         assert len(parameter_band) == 2 * len(STUB_CAMERAS) * len(MODELS)
+
+
+class TestBandBenchmarkWritePolicy:
+    """D-06/D-07: band mode may CREATE `e1_benchmark_<model>.json` when it is
+    absent, and must NEVER overwrite one that exists -- enforced at the call
+    site with a literal `force=False`, not delegated to the resumability
+    guard. Its log says which of the two happened.
+
+    Every test here uses `_patch_band_internals`, so no calibration runs and
+    nothing under `experiments/results/` is read or written.
+    """
+
+    def _existing_records(self, out_dir):
+        """Pre-create both single-seed benchmark records with sentinel bytes."""
+        paths = {}
+        for label, filename in BENCHMARK_FILENAMES.items():
+            path = out_dir / filename
+            path.write_text(
+                json.dumps(
+                    {"sentinel": label, "solver_config": {"seed": 7}},
+                    indent=2,
+                )
+            )
+            paths[label] = path
+        return paths
+
+    def test_force_band_run_leaves_existing_records_byte_identical(
+        self, tmp_path, monkeypatch
+    ):
+        """The `--force` case is the live hazard D-07 names: without a literal
+        `force=False` at the call, a forced band run silently republishes two
+        records another stage owns, stamped with `seeds[-1]`."""
+        _patch_band_internals(monkeypatch)
+        paths = self._existing_records(tmp_path)
+        before = {label: path.read_bytes() for label, path in paths.items()}
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=True)
+
+        for label, path in paths.items():
+            assert path.read_bytes() == before[label], label
+
+    def test_unforced_band_run_leaves_existing_records_byte_identical(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_band_internals(monkeypatch)
+        paths = self._existing_records(tmp_path)
+        before = {label: path.read_bytes() for label, path in paths.items()}
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=False)
+
+        for label, path in paths.items():
+            assert path.read_bytes() == before[label], label
+
+    def test_kept_records_are_logged_and_no_write_is_claimed(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """D-06: the defect was a log claiming two writes the guard skipped."""
+        _patch_band_internals(monkeypatch)
+        paths = self._existing_records(tmp_path)
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=True)
+        out = capsys.readouterr().out
+
+        for label, path in paths.items():
+            assert f"Wrote {path}" not in out, label
+            kept = [
+                line
+                for line in out.splitlines()
+                if str(path) in line and "Kept existing" in line
+            ]
+            assert len(kept) == 1, (label, out)
+
+    def test_empty_out_dir_creates_both_records_and_confirms_each(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """The other half of the policy: band mode still CREATES the records
+        when they are absent -- a standalone band into a fresh --out."""
+        _patch_band_internals(monkeypatch)
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=False)
+        out = capsys.readouterr().out
+
+        for filename in BENCHMARK_FILENAMES.values():
+            path = tmp_path / filename
+            assert path.exists(), filename
+            assert f"Wrote {path}" in out, filename
+            assert "Kept existing" not in out
+
+    def test_created_records_carry_seeds_list_and_last_seed(
+        self, tmp_path, monkeypatch
+    ):
+        """`seeds` names what the band swept; `seed` names what this record
+        measured. Both must survive the write-policy change."""
+        _patch_band_internals(monkeypatch)
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=False)
+
+        for filename in BENCHMARK_FILENAMES.values():
+            with open(tmp_path / filename) as f:
+                record = json.load(f)
+            assert record["solver_config"]["seeds"] == [42, 43], filename
+            assert record["solver_config"]["seed"] == 43, filename
+
+    def test_band_owned_outputs_still_written_when_records_are_kept(
+        self, tmp_path, monkeypatch
+    ):
+        """Force stays implied for the three band-owned outputs (D-19.4-14).
+        Narrowing the benchmark write must not narrow these."""
+        _patch_band_internals(monkeypatch)
+        self._existing_records(tmp_path)
+        band_owned = [
+            tmp_path / "exp1_band.csv",
+            tmp_path / "exp1_parameter_band.csv",
+            tmp_path / "e1_seed_band_provenance.json",
+        ]
+        for path in band_owned:
+            path.write_text("stale sentinel\n")
+        before = {path: path.read_bytes() for path in band_owned}
+
+        e1._run_band([42, 43], tmp_path, smoke=True, force=False)
+
+        for path in band_owned:
+            assert path.exists(), path.name
+            assert path.read_bytes() != before[path], path.name
