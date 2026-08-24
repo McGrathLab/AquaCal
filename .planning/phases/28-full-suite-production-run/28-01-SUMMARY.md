@@ -288,3 +288,9 @@ Carry forward into 28-02/28-03:
 ---
 *Phase: 28-full-suite-production-run*
 *Completed: 2026-08-24*
+
+## Self-Check: PASSED
+
+All 8 claimed artifact paths exist on disk (production clone, environment interpreter,
+`.dryrun.tsv`, the four `freeze02-*` evidence files, the moved-aside directory), and all four
+claimed commits resolve in `git log --oneline --all`: `baa0523`, `79106d8`, `701b257`, `055225c`.
