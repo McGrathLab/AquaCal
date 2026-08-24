@@ -2,7 +2,6 @@
 created: 2026-08-20T00:00:00.000Z
 title: E7's band carries the same benchmark-overwrite hazard E1's did, and phase 29.1 fixed only E1
 area: experiments
-resolves_phase: 29.1
 files:
   - experiments/e7_interface_ablation.py
 ---
@@ -10,6 +9,25 @@ files:
 Filed 2026-08-24 by phase 29.1 plan 02, which fixed the identical defect at E1's site and
 deliberately left E7's alone. **This todo exists so the asymmetry is discoverable from E7's
 side**, not only from E1's comment.
+
+> **`resolves_phase` removed 2026-08-24.** This todo was created BY phase 29.1 to record work
+> that phase deliberately did NOT do, but carried `resolves_phase: 29.1` — which would have
+> auto-closed it as resolved at phase completion, filing a live hazard as fixed. It is
+> unscheduled on purpose: the fix touches `experiments/e7_interface_ablation.py`, which is
+> inside the frozen `rerun-freeze-02` tag, so discharging it costs a re-freeze. Do not
+> re-tag for it alone — fold it into the next re-freeze if one happens for another reason.
+>
+> **Measured 2026-08-24: the hazard does NOT fire in the production run.** `run_stage_e7_band`
+> (`run_experiment_suite.sh:1522`) invokes e7 with `--seeds ... --out ...` and NO `--force`, so
+> `force=False` reaches the call and `_io.py`'s resumability guard holds. The `--force` at
+> `:1511` is the single-seed E7 stage, not the band. Latent, not live.
+>
+> **The file's closing question is answered: E5 is NOT affected.** `run_stage_e5_band` (`:1594`)
+> does pass `--force`, but `e5_index_sensitivity.py` contains zero `write_direct_call_benchmark`
+> calls — it has no benchmark record to overwrite.
+>
+> Residual risk: one manual `--force` band run at E7 fires it. Do not run E7's band by hand
+> with `--force` against a populated tree.
 
 ## The hazard
 
