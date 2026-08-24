@@ -1467,6 +1467,12 @@
       "columns": 12,
       "extra_columns": [],
       "conditional": true,
+      "condition": {
+        "description": "E2's calibration flagged at least one observation as degenerate at its solution",
+        "source": "experiments/results/benchmark.json",
+        "pointer": "discard_stats.degenerate_observations_at_solution",
+        "holds_when": "nonzero_number"
+      },
       "immutable": false,
       "shape_only_columns": []
     },
@@ -1483,6 +1489,12 @@
       "columns": 8,
       "extra_columns": [],
       "conditional": true,
+      "condition": {
+        "description": "E2's classification invocation was configured to log every observation's depth",
+        "source": "experiments/results_e2_invocations/config_e2_classification.yaml",
+        "pointer": "internals.log_all_observation_depths",
+        "holds_when": "boolean_true"
+      },
       "immutable": false,
       "shape_only_columns": []
     },

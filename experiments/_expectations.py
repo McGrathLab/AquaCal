@@ -56,6 +56,16 @@ PRIMARY_OUT_DIR = "experiments/results"
 # family relocatable in one move (D-29.1-17).
 MANIFEST_DIR_ROOT = PurePosixPath(PRIMARY_OUT_DIR).parts[0]
 
+# The CLOSED vocabulary a conditional artifact's `condition.holds_when` may draw
+# from (D-29.1-18). Two members suffice today. `load_expectations` rejects
+# anything outside this set, so the vocabulary cannot grow by accident -- a
+# predicate the evaluator does not understand would otherwise become a silent
+# N/A, which is how a gate quietly stops gating.
+HOLDS_WHEN = frozenset({"nonzero_number", "boolean_true"})
+
+# The keys every `condition` object must carry, all non-empty.
+CONDITION_KEYS = ("description", "source", "pointer", "holds_when")
+
 
 def _gate_result_cls() -> type[GateResult]:
     """Return `check_rerun_gates.GateResult`, imported late.

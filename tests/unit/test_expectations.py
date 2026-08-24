@@ -28,6 +28,7 @@ import pytest
 
 from experiments._expectations import (
     EXPECTATIONS_PATH,
+    HOLDS_WHEN,
     PROFILES,
     _resolve_dir,
     check_completeness,
@@ -305,19 +306,300 @@ class TestProfiles:
             assert set(artifact["profiles"]) <= set(PROFILES), artifact["name"]
 
 
-class TestConditionalArtifacts:
-    """A conditional artifact's ABSENCE is PASS, not FAIL (Phase 25 D-08)."""
+class TestResolveDirIsAWidening:
+    """D-29.1-17: the nested-directory resolution must not re-point anything.
 
-    def test_missing_degenerate_observations_csv_passes(self, tmp_path):
-        out_dir = _build_tree(tmp_path, "full")
-        artifact = next(
-            a for a in ARTIFACTS if a["name"] == "degenerate_observations.csv"
+    `_resolve_dir` used to keep only ``Path(artifact_dir).name``, which is why
+    a nested invocation-tree path could not be written into the manifest at
+    all. The replacement resolves the declared path RELATIVE to the manifest's
+    ``experiments/`` root. For every single-component non-primary entry the two
+    rules agree by construction -- and this class asserts that agreement rather
+    than assuming it, so a widening that silently moved an existing entry fails
+    here.
+    """
+
+    @staticmethod
+    def _old_rule(out_dir: pathlib.Path, artifact_dir: str) -> pathlib.Path:
+        """The pre-29.1-09 resolution, kept verbatim as the reference."""
+        if artifact_dir == PRIMARY_DIR:
+            return out_dir
+        return out_dir.parent / pathlib.Path(artifact_dir).name
+
+    @pytest.mark.parametrize(
+        "artifact_dir",
+        sorted({a["dir"] for a in ARTIFACTS}),
+    )
+    def test_declared_dirs_resolve_as_before_or_are_newly_expressible(
+        self, artifact_dir, tmp_path
+    ):
+        out_dir = tmp_path / "results"
+        new = _resolve_dir(out_dir, artifact_dir)
+        old = self._old_rule(out_dir, artifact_dir)
+        nested = len(pathlib.PurePosixPath(artifact_dir).parts) > 2
+        if nested:
+            assert new != old, (
+                f"{artifact_dir} is nested, so the old last-component rule "
+                "could not express it; the two rules must differ here"
+            )
+        else:
+            assert new == old, (
+                f"{artifact_dir} resolved to {new} under the new rule and "
+                f"{old} under the old one -- this was meant to be a widening, "
+                "not a re-pointing"
+            )
+
+    def test_the_three_pre_existing_siblings_are_byte_identical(self, tmp_path):
+        out_dir = tmp_path / "results"
+        for name in ("results_e2_band", "results_e2_timing", "results_e2_memory"):
+            assert _resolve_dir(out_dir, f"experiments/{name}") == tmp_path / name
+
+    def test_the_primary_dir_still_resolves_to_out_dir_itself(self, tmp_path):
+        out_dir = tmp_path / "results"
+        assert _resolve_dir(out_dir, PRIMARY_DIR) == out_dir
+
+    def test_a_nested_dir_resolves_through_every_component(self, tmp_path):
+        out_dir = tmp_path / "results"
+        assert (
+            _resolve_dir(
+                out_dir, "experiments/results_e2_invocations/e2_classification"
+            )
+            == tmp_path / "results_e2_invocations" / "e2_classification"
         )
-        (_resolve_dir(out_dir, artifact["dir"]) / artifact["name"]).unlink()
-        results = check_completeness(out_dir, profile="full", stage="e2_production")
-        verdict = next(r for r in results if "degenerate_observations.csv" in r.gate)
+
+
+# --------------------------------------------------------------------------- #
+# Conditional artifacts and their machine-evaluated predicates (D-29.1-18)
+# --------------------------------------------------------------------------- #
+
+CONDITIONAL_NAME = "conditional_artifact.csv"
+SIBLING_DIR = "experiments/results_elsewhere"
+PREDICATE_SOURCE = "experiments/results/predicate.json"
+
+
+def _artifact_entry(name: str, directory: str, **overrides) -> dict:
+    """A minimal manifest artifact entry, for synthetic manifests."""
+    entry = {
+        "name": name,
+        "dir": directory,
+        "stage": "synthetic_stage",
+        "profiles": ["full"],
+        "rows": {},
+        "rows_rationale": "synthetic entry, no row count pinned",
+        "columns_constant": None,
+        "columns": None,
+        "extra_columns": [],
+        "conditional": False,
+        "immutable": False,
+        "shape_only_columns": [],
+    }
+    entry.update(overrides)
+    return entry
+
+
+def _synthetic_manifest(condition: dict | None, *, with_sibling_dir: bool = False):
+    """A manifest holding one conditional artifact and, optionally, a sibling
+    directory the misplacement search is therefore allowed to look in."""
+    artifacts = [
+        _artifact_entry(
+            CONDITIONAL_NAME, PRIMARY_DIR, conditional=True, condition=condition
+        )
+    ]
+    if with_sibling_dir:
+        artifacts.append(_artifact_entry("sibling_marker.csv", SIBLING_DIR))
+    return {
+        "profiles": list(PROFILES),
+        "stages": [
+            {
+                "id": "synthetic_stage",
+                "produces": [a["name"] for a in artifacts],
+                "depends_on": [],
+                "profiles": list(PROFILES),
+                "out_dir": PRIMARY_DIR,
+            }
+        ],
+        "artifacts": artifacts,
+    }
+
+
+def _write_predicate_source(root: pathlib.Path, value, *, pointer_root="discard_stats"):
+    """Write the synthetic predicate source under the primary out dir."""
+    out_dir = root / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "predicate.json"
+    path.write_text(json.dumps({pointer_root: {"flagged": value}}), encoding="utf-8")
+    return path
+
+
+def _condition(holds_when="nonzero_number", pointer="discard_stats.flagged", **over):
+    condition = {
+        "description": "at least one observation was flagged",
+        "source": PREDICATE_SOURCE,
+        "pointer": pointer,
+        "holds_when": holds_when,
+    }
+    condition.update(over)
+    return condition
+
+
+def _conditional_verdict(root: pathlib.Path, manifest: dict):
+    out_dir = root / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results = check_completeness(out_dir, profile="full", manifest=manifest)
+    return next(r for r in results if CONDITIONAL_NAME in r.gate)
+
+
+class TestConditionalArtifacts:
+    """A conditional artifact's absence is PASS only when a MACHINE-EVALUATED
+    predicate shows the condition did not hold (D-29.1-18).
+
+    The defect this class exists to keep dead: before 29.1-09 the conditional
+    branch returned PASS on absence with no evaluation of the condition at all,
+    so the 2026-08-20 roll-up reported "legitimately absent when the condition
+    did not hold" for two artifacts whose condition HELD and which had been
+    written into a directory the manifest did not name. A FAIL announces
+    itself; a false PASS does not.
+    """
+
+    def test_present_artifact_is_checked_not_excused(self, tmp_path):
+        manifest = _synthetic_manifest(_condition())
+        (tmp_path / "results").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "results" / CONDITIONAL_NAME).write_text("a\n1\n", encoding="utf-8")
+        verdict = _conditional_verdict(tmp_path, manifest)
         assert verdict.verdict == "PASS", verdict.detail
-        assert "conditional" in verdict.detail.lower()
+        assert "present at" in verdict.detail
+
+    def test_absent_and_condition_did_not_hold_passes(self, tmp_path):
+        _write_predicate_source(tmp_path, 0)
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "PASS", verdict.detail
+
+    def test_a_pass_names_the_source_the_pointer_and_the_value(self, tmp_path):
+        _write_predicate_source(tmp_path, 0)
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert "predicate.json" in verdict.detail
+        assert "discard_stats.flagged" in verdict.detail
+        assert "0" in verdict.detail
+
+    def test_absent_but_condition_held_fails(self, tmp_path):
+        """The false-PASS case. Against the pre-29.1-09 branch this is PASS."""
+        _write_predicate_source(tmp_path, 198)
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "FAIL", verdict.detail
+
+    def test_a_fail_names_the_source_the_pointer_and_the_value(self, tmp_path):
+        _write_predicate_source(tmp_path, 198)
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert "predicate.json" in verdict.detail
+        assert "discard_stats.flagged" in verdict.detail
+        assert "198" in verdict.detail
+
+    def test_a_missing_predicate_source_is_na_never_pass(self, tmp_path):
+        """The second false-PASS case: a judgement the gate could not make."""
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "N/A", verdict.detail
+        assert "predicate.json" in verdict.detail
+
+    def test_an_unresolvable_pointer_is_na_and_names_the_pointer(self, tmp_path):
+        _write_predicate_source(tmp_path, 0)
+        condition = _condition(pointer="discard_stats.no_such_field")
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(condition))
+        assert verdict.verdict == "N/A", verdict.detail
+        assert "no_such_field" in verdict.detail
+
+    def test_an_unparseable_predicate_source_is_na(self, tmp_path):
+        out_dir = tmp_path / "results"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "predicate.json").write_text("{not json", encoding="utf-8")
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "N/A", verdict.detail
+
+    def test_a_non_numeric_value_under_nonzero_number_is_na(self, tmp_path):
+        _write_predicate_source(tmp_path, "many")
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "N/A", verdict.detail
+
+    def test_boolean_true_predicate_holds_and_fails_on_absence(self, tmp_path):
+        _write_predicate_source(tmp_path, True)
+        manifest = _synthetic_manifest(_condition(holds_when="boolean_true"))
+        verdict = _conditional_verdict(tmp_path, manifest)
+        assert verdict.verdict == "FAIL", verdict.detail
+
+    def test_boolean_false_predicate_does_not_hold_and_passes(self, tmp_path):
+        _write_predicate_source(tmp_path, False)
+        manifest = _synthetic_manifest(_condition(holds_when="boolean_true"))
+        verdict = _conditional_verdict(tmp_path, manifest)
+        assert verdict.verdict == "PASS", verdict.detail
+
+    def test_a_non_boolean_value_under_boolean_true_is_na(self, tmp_path):
+        _write_predicate_source(tmp_path, 1)
+        manifest = _synthetic_manifest(_condition(holds_when="boolean_true"))
+        verdict = _conditional_verdict(tmp_path, manifest)
+        assert verdict.verdict == "N/A", verdict.detail
+
+    def test_a_yaml_predicate_source_is_read(self, tmp_path):
+        out_dir = tmp_path / "results"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "predicate.yaml").write_text(
+            "internals:\n  log_all: false\n", encoding="utf-8"
+        )
+        condition = _condition(
+            holds_when="boolean_true",
+            pointer="internals.log_all",
+            source="experiments/results/predicate.yaml",
+        )
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(condition))
+        assert verdict.verdict == "PASS", verdict.detail
+
+    def test_misplaced_artifact_fails_naming_both_paths(self, tmp_path):
+        """Absent where expected, present in a directory the manifest names."""
+        _write_predicate_source(tmp_path, 0)
+        elsewhere = tmp_path / "results_elsewhere"
+        elsewhere.mkdir(parents=True, exist_ok=True)
+        (elsewhere / CONDITIONAL_NAME).write_text("a\n1\n", encoding="utf-8")
+        manifest = _synthetic_manifest(_condition(), with_sibling_dir=True)
+        verdict = _conditional_verdict(tmp_path, manifest)
+        assert verdict.verdict == "FAIL", verdict.detail
+        assert str(tmp_path / "results" / CONDITIONAL_NAME) in verdict.detail
+        assert str(elsewhere / CONDITIONAL_NAME) in verdict.detail
+
+    def test_misplacement_overrides_a_predicate_that_did_not_hold(self, tmp_path):
+        """FAIL "whatever the predicate says" -- the predicate here says PASS."""
+        _write_predicate_source(tmp_path, 0)
+        elsewhere = tmp_path / "results_elsewhere"
+        elsewhere.mkdir(parents=True, exist_ok=True)
+        (elsewhere / CONDITIONAL_NAME).write_text("a\n1\n", encoding="utf-8")
+        manifest = _synthetic_manifest(_condition(), with_sibling_dir=True)
+        assert _conditional_verdict(tmp_path, manifest).verdict == "FAIL"
+
+    def test_misplacement_overrides_an_unevaluable_predicate(self, tmp_path):
+        elsewhere = tmp_path / "results_elsewhere"
+        elsewhere.mkdir(parents=True, exist_ok=True)
+        (elsewhere / CONDITIONAL_NAME).write_text("a\n1\n", encoding="utf-8")
+        manifest = _synthetic_manifest(_condition(), with_sibling_dir=True)
+        assert _conditional_verdict(tmp_path, manifest).verdict == "FAIL"
+
+    def test_a_copy_in_an_undeclared_directory_is_not_searched(self, tmp_path):
+        """The stated limitation: the search set is bounded to declared dirs.
+
+        The timing and memory invocation trees hold byproduct copies of
+        `degenerate_observations.csv` and are deliberately not declared, so this
+        is the behaviour the production manifest depends on -- not an oversight.
+        """
+        _write_predicate_source(tmp_path, 0)
+        undeclared = tmp_path / "somewhere_undeclared"
+        undeclared.mkdir(parents=True, exist_ok=True)
+        (undeclared / CONDITIONAL_NAME).write_text("a\n1\n", encoding="utf-8")
+        verdict = _conditional_verdict(tmp_path, _synthetic_manifest(_condition()))
+        assert verdict.verdict == "PASS", verdict.detail
+
+    def test_a_non_conditional_artifacts_absence_still_fails(self, tmp_path):
+        manifest = _synthetic_manifest(_condition(), with_sibling_dir=True)
+        out_dir = tmp_path / "results"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        results = check_completeness(out_dir, profile="full", manifest=manifest)
+        verdict = next(r for r in results if "sibling_marker.csv" in r.gate)
+        assert verdict.verdict == "FAIL", verdict.detail
+        assert "NOT FOUND" in verdict.detail
 
     def test_conditional_set_is_exactly_the_two_known_sidecars(self):
         conditional = sorted(a["name"] for a in ARTIFACTS if a["conditional"])
@@ -325,6 +607,89 @@ class TestConditionalArtifacts:
             "all_observation_depths.csv",
             "degenerate_observations.csv",
         ]
+
+    def test_the_committed_conditional_entries_carry_a_complete_condition(self):
+        for artifact in ARTIFACTS:
+            if not artifact["conditional"]:
+                continue
+            condition = artifact.get("condition")
+            assert isinstance(condition, dict), artifact["name"]
+            for key in ("description", "source", "pointer", "holds_when"):
+                assert condition.get(key), (artifact["name"], key)
+            assert condition["holds_when"] in HOLDS_WHEN, artifact["name"]
+
+    def test_the_committed_conditions_resolve_to_files_that_exist(self):
+        """Both predicate sources are artifacts THIS run produces, so the
+        predicate is a statement about this run and a stale artifact from
+        another one cannot satisfy it."""
+        repo_results = REPO_ROOT / "experiments" / "results"
+        for artifact in ARTIFACTS:
+            if not artifact["conditional"]:
+                continue
+            source = artifact["condition"]["source"]
+            directory = _resolve_dir(
+                repo_results, str(pathlib.PurePosixPath(source).parent)
+            )
+            path = directory / pathlib.PurePosixPath(source).name
+            assert path.is_file(), (artifact["name"], str(path))
+
+    def test_the_holds_when_vocabulary_is_closed_and_small(self):
+        assert HOLDS_WHEN == frozenset({"nonzero_number", "boolean_true"})
+
+
+class TestConditionValidation:
+    """`_validate_manifest` rejects a conditional entry the gate could not
+    reason about, and always names the offending artifact."""
+
+    @staticmethod
+    def _load_mutated(tmp_path, mutate):
+        mutated = json.loads(json.dumps(MANIFEST))
+        for artifact in mutated["artifacts"]:
+            if artifact["conditional"]:
+                mutate(artifact)
+                break
+        path = tmp_path / "mutated_expectations.json"
+        path.write_text(json.dumps(mutated), encoding="utf-8")
+        return load_expectations(path)
+
+    def test_the_committed_manifest_still_loads(self):
+        assert load_expectations()
+
+    def test_a_conditional_entry_with_no_condition_is_rejected(self, tmp_path):
+        with pytest.raises(ValueError, match="degenerate_observations.csv"):
+            self._load_mutated(tmp_path, lambda a: a.pop("condition"))
+
+    def test_a_condition_missing_a_key_is_rejected_naming_the_key(self, tmp_path):
+        with pytest.raises(ValueError, match="pointer"):
+            self._load_mutated(tmp_path, lambda a: a["condition"].pop("pointer"))
+
+    def test_an_unrecognised_holds_when_is_rejected(self, tmp_path):
+        def mutate(artifact):
+            artifact["condition"]["holds_when"] = "vibes"
+
+        with pytest.raises(ValueError, match="degenerate_observations.csv"):
+            self._load_mutated(tmp_path, mutate)
+
+    def test_an_unrecognised_holds_when_names_the_allowed_values(self, tmp_path):
+        def mutate(artifact):
+            artifact["condition"]["holds_when"] = "vibes"
+
+        with pytest.raises(ValueError, match="nonzero_number"):
+            self._load_mutated(tmp_path, mutate)
+
+    def test_a_non_conditional_entry_may_not_carry_a_condition(self, tmp_path):
+        mutated = json.loads(json.dumps(MANIFEST))
+        target = next(a for a in mutated["artifacts"] if not a["conditional"])
+        target["condition"] = {
+            "description": "d",
+            "source": PREDICATE_SOURCE,
+            "pointer": "a.b",
+            "holds_when": "nonzero_number",
+        }
+        path = tmp_path / "mutated_expectations.json"
+        path.write_text(json.dumps(mutated), encoding="utf-8")
+        with pytest.raises(ValueError, match=target["name"]):
+            load_expectations(path)
 
 
 # --------------------------------------------------------------------------- #
