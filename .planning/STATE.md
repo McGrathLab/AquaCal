@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Completed 29.1-02-PLAN.md
-last_updated: "2026-08-24T14:03:07.640Z"
+stopped_at: Completed 29.1-04-PLAN.md
+last_updated: "2026-08-24T14:13:12.140Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 43
+  completed_plans: 44
   percent: 56
 ---
 
@@ -222,6 +222,9 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29.1]: D-07 resolved in favour of the :1209 comment: band mode may CREATE e1_benchmark_<model>.json and never overwrites it, enforced by a literal force=False that ignores the run's --force
 - [Phase 29.1]: D-08 fixed as a class not an instance: e1_seed_band_provenance.json's scope field is derived at write time rather than re-frozen at four seeds and 256/384 rows (D-10)
 - [Phase 29.1]: E7's identical band-overwrite hazard is filed as a pending todo, not fixed: it surfaced by reading rather than by a failing gate and is out of this phase's scope
+- [Phase 29.1]: Plan 29.1-04: took todo option 1 (doc-only) in full — HANDOFF §1.2 now installs ".[dev,bench]"; options 2 (move DECLARED_CONSTANTS out of the test module) and 3 (promote psutil to runtime) left explicitly open because both touch src/ and need the suite re-run behind them (D-11).
+- [Phase 29.1]: Plan 29.1-04: `pip install -e . --no-deps` metadata-refresh sites must NOT gain extras — five sites ruled 'correct as-is — not a first install'; adding extras would change what the command does.
+- [Phase 29.1]: Plan 29.1-04: install-instruction correctness is verified by building an environment from the command read out of HANDOFF.md, not by diffing the string — aquacal-freeze02-cleanenv left in place for plan 29.1-07.
 
 ### Blockers/Concerns
 
@@ -240,10 +243,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T14:03:00.545Z
+Last session: 2026-08-24T14:13:05.575Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.1-02-PLAN.md
+Stopped at: Completed 29.1-04-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -255,3 +258,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 |------|----------|-------|-------|
 | Phase 29.1 P01 | 13 min | 3 tasks | 7 files |
 | Phase 29.1 P02 | 78 min | 3 tasks | 10 files |
+| Phase 29.1 P04 | 7 min | 2 tasks | 3 files |
