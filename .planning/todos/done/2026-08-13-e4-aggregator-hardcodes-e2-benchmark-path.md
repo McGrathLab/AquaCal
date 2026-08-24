@@ -120,3 +120,82 @@ constant directly. The Solution above describes the aggregation path only; the f
 even after the main path is corrected. There are **two call sites, not one.**
 
 Column-by-column enumeration: `.planning/probes/2026-08-17-phase-23-recon/e4_check_detail.py`.
+
+---
+
+## Resolved — 2026-08-24 (phase 29.1, plan 05)
+
+**Fixed by Phase 23 as FIX-05 / D-09, and left pending afterwards.** This block closes it, but
+only after checking every requirement above against the current source of
+`experiments/e4_benchmark_grid.py` on `phase/29.1-post-run-fixes` — the tree the new freeze will
+carry. A todo left pending after its fix ships is the same defect class this phase exists to end
+(29.1-CONTEXT.md D-10), so it is closed on evidence, not on the assumption that FIX-05 covered it.
+
+### The resolver
+
+`resolve_e2_benchmark_path(out_dir) -> tuple[Path | None, str]` at **:261**, three branches at
+**:297-308**, verbatim:
+
+```python
+out_dir = Path(out_dir)
+candidate = out_dir / "benchmark.json"
+if candidate.exists():                                    # :299-300  branch 1
+    return candidate, "native: resolved relative to --out"
+if out_dir.resolve() == E2_BENCHMARK_PATH.parent:         # :301-302  branch 2
+    return E2_BENCHMARK_PATH, "default tree: __file__-anchored E2_BENCHMARK_PATH"
+return (                                                  # :303-308  branch 3
+    None,
+    f"absent: no benchmark.json under {out_dir} and --out is not the default "
+    f"tree; refusing to import {E2_BENCHMARK_PATH}, which describes a "
+    "different machine's run",
+)
+```
+
+### Requirement-by-requirement, with evidence
+
+| # | requirement (from *Solution* above) | verdict | evidence |
+|---|---|---|---|
+| 1 | Resolve relative to `--out` first | **HOLDS** | branch 1, `:299-300` — `out_dir / "benchmark.json"` is tried before anything else. |
+| 2 | Fall back to the `__file__`-anchored constant **only** when `out_dir` is the default tree | **HOLDS** | branch 2, `:301-302`, gated on `out_dir.resolve() == E2_BENCHMARK_PATH.parent`. |
+| 3 | Return nothing rather than importing across machines | **HOLDS** | branch 3, `:303-308` — returns `None`, and the note says so in words: *"refusing to import ..., which describes a different machine's run"*. |
+| 4 | Keep the `__file__` anchoring for the default path | **HOLDS** | `E2_BENCHMARK_PATH` at `:256-258` is unchanged, still `Path(__file__).resolve().parents[1] / ...`, with the cwd-relative rationale still on it at `:251-255`. Branch 2 exists *specifically* to preserve it, and the docstring at `:276-282` records that it is kept as an explicit branch even though it is path-equal to branch 1 for the default directory. |
+| 5 | Announce the resolved path | **HOLDS, and it is observed firing.** `_run_check`: `logger.info` at `:2101` **and** `print` at `:2102`. `_run_full`: `logger.info` at `:2197`. Measured, not asserted — the 2026-08-20 production run's committed stage log `experiments/run_experiment_suite_state.3ab9c13.stagelogs/e4.log:12` reads: `E2 real-rig record: /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/benchmark.json (native: resolved relative to --out)`. Branch 1, native, announced in the run's own log. |
+| 6 | A missing record produces an **announced null row**, not a silent drop | **HOLDS** | `logger.warning` at `:1579-1583`; the row is then built at `:1607-1619` with `status="failed"`, `status_reason=f"E2 benchmark.json missing or unreadable at {e2_benchmark_path}"` and `record_source="missing_e2_benchmark"`. The row is emitted and marked, never dropped. |
+| 7 | **Both** `build_grid_dataframe` call sites go through the resolver | **HOLDS — this is the 2026-08-17 correction, and it is covered.** `_run_check` (`:2060`): resolver at `:2100`, call at `:2114` as `build_grid_dataframe(out_dir, cell_statuses, e2_path)`. `_run_full` (`:2160`): resolver at `:2196`, call at `:2199`, identical form. Verified structurally by AST rather than by grep: exactly two `build_grid_dataframe` calls and exactly two `resolve_e2_benchmark_path` calls exist in the module, and **neither call site passes `E2_BENCHMARK_PATH` as an argument**. |
+| 8 | The always-red `--check` contract is settled | **HOLDS, and settled where the todo asked** | `CHECK_EXCLUDED_COLUMNS = ("exit_code", "status_reason")` at `:215`, passed to `compare_experiment_csv` as `exclude_columns` at `:2120`. The exclusion is printed **unconditionally, before the comparison runs**, at `:2106-2113` — pass or fail — with the reason for each column inline (`exit_code`: `_run_check` hardcodes `None` because no subprocess runs under `--check`; `status_reason`: an empty-string-versus-NaN round-trip through CSV). |
+
+Requirement 8 was settled by DRIVER-03's excluded-columns contract, exactly as the 2026-08-17
+correction asked ("settle it once, there, and have this fix consume it rather than inventing a
+local answer"), not by a local answer here. The comment at `:210-214` records that a third entry
+in that tuple would require the same measurement-backed justification rather than being inherited
+silently.
+
+The `build_grid_dataframe` docstring at `:1464-1468` now states the contract on the callee side
+too: *"Callers should supply the output of the module's `resolve_e2_benchmark_path` resolver rather
+than a bare constant (FIX-05, D-09) — `None` means no native record exists for this `out_dir` and
+the row is emitted absent-and-marked rather than imported from another tree."* So the requirement
+is documented where the next caller will read it, not only where it was fixed.
+
+### Interaction with plan 29.1-06's archive-aside
+
+Plan 29.1-06 moves the 2026-08-20 output tree aside (to `experiments/freeze01_run_output/`) before
+the re-run. That **independently defuses the worst case this todo names** — one machine's synthetic
+cells silently paired with another machine's real-rig row — because that failure requires a stale
+`benchmark.json` to be sitting at the default path in the first place, and after the archive-aside
+none is.
+
+**The archive-aside does not replace this fix, and must not be read as covering it.** It is a
+property of one particular run's directory layout; the resolver is a property of the code. An
+`--out` run on a tree that *does* still hold a default-path record — a developer's working clone, a
+partial re-run, any future machine — is protected by branch 3 and by nothing else.
+
+### Verification
+
+```
+$PY -c "<AST check>"   # two build_grid_dataframe calls, two resolve_e2_benchmark_path calls,
+                       # neither call site passing E2_BENCHMARK_PATH; CHECK_EXCLUDED_COLUMNS present
+=> OK
+```
+
+No file under `experiments/` or `src/` was modified while closing this — the fix was already in the
+tree; this plan only checked it and wrote the evidence down.
