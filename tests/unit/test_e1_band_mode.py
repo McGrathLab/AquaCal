@@ -505,3 +505,101 @@ class TestBandBenchmarkWritePolicy:
         for path in band_owned:
             assert path.exists(), path.name
             assert path.read_bytes() != before[path], path.name
+
+
+class TestBandScopeIsDerived:
+    """D-08/D-10: `e1_seed_band_provenance.json`'s `scope` field states the
+    domain THIS run swept, computed at write time, rather than a literal that
+    can outlive the conditions that produced it.
+
+    Every expected value below is built from the module's own constants and
+    from the emitted frames, never hardcoded -- a test that froze `4` or `256`
+    into itself would be the same defect one level up.
+    """
+
+    def _scope(self, tmp_path, monkeypatch, seeds, smoke):
+        _patch_band_internals(monkeypatch)
+        e1._run_band(list(seeds), tmp_path, smoke=smoke, force=False)
+        with open(tmp_path / "e1_seed_band_provenance.json") as f:
+            record = json.load(f)
+        return record["scope"], record
+
+    def test_scope_states_the_seed_count_and_list_that_were_run(
+        self, tmp_path, monkeypatch
+    ):
+        seeds = [42, 43, 44, 45]
+        scope, record = self._scope(tmp_path, monkeypatch, seeds, smoke=False)
+        assert f"{len(seeds)} seed(s) {seeds}" in scope
+        # The derived string and the machine-readable field cannot disagree.
+        assert record["solver_config"]["seeds"] == seeds
+
+    def test_scope_states_the_emitted_row_counts(self, tmp_path, monkeypatch):
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43, 44, 45], smoke=False)
+        band_rows = len(pd.read_csv(tmp_path / "exp1_band.csv"))
+        parameter_rows = len(pd.read_csv(tmp_path / "exp1_parameter_band.csv"))
+        assert f"{band_rows} rows of exp1_band.csv" in scope
+        assert f"{parameter_rows} rows of exp1_parameter_band.csv" in scope
+        # Ruling A1's arithmetic, checked rather than trusted: the production
+        # shape is 256/384, and it is what the strings above must carry.
+        assert (band_rows, parameter_rows) == (256, 384)
+
+    def test_scope_states_the_noise_levels_and_depths_that_were_run(
+        self, tmp_path, monkeypatch
+    ):
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43, 44, 45], smoke=False)
+        expected_noise = sorted(round(float(v), 6) for v in e1.NOISE_LEVELS)
+        expected_depths = sorted(round(float(v), 6) for v in e1.TEST_DEPTHS)
+        assert f"{len(expected_noise)} detection-noise level(s) " in scope
+        assert f"{expected_noise} px" in scope
+        assert f"{len(expected_depths)} test depth(s) {expected_depths} m" in scope
+
+    def test_smoke_band_scope_describes_its_own_collapsed_axes(
+        self, tmp_path, monkeypatch
+    ):
+        """A --smoke band must be truthful about ONE noise level and ONE depth
+        rather than describing the production grid -- the exact way the old
+        literal lied."""
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43], smoke=True)
+        assert "2 seed(s) [42, 43]" in scope
+        assert "1 detection-noise level(s) " in scope
+        assert f"[{PRESET_NOISE}] px" in scope
+        assert "1 test depth(s) [1.3] m" in scope
+        assert f"{len(pd.read_csv(tmp_path / 'exp1_band.csv'))} rows of " in scope
+        # The production figures must not appear in a smoke run's scope.
+        assert "256 rows" not in scope
+        assert "384 rows" not in scope
+
+    def test_scope_cites_ruling_a1_for_the_seed_axis(self, tmp_path, monkeypatch):
+        """A stable cross-reference is a citation, not a recomputed value, so
+        it stays -- and it is the only place a reader can learn why the seed
+        axis is the size it is."""
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43], smoke=True)
+        assert "RULING A1" in scope
+        assert "run_stage_e1_band" in scope
+
+    def test_scope_carries_no_forward_looking_schedule_clause(
+        self, tmp_path, monkeypatch
+    ):
+        """A schedule is not a domain, and it is the half of the old string
+        that needed re-dating after every run."""
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43], smoke=True)
+        for clause in (
+            "WILL BE quoted over",
+            "is executed in Phase",
+            "verified in Phase 29",
+            "ten seeds",
+            "640/960",
+        ):
+            assert clause not in scope, clause
+
+    def test_scope_preserves_the_static_claims(self, tmp_path, monkeypatch):
+        """The parts that are genuinely static claims rather than measurements
+        survive: the scenario restriction, the warm-restart evidence, the
+        ill-conditioning caveat (D-16) and D-19.3-17's qualification."""
+        scope, _ = self._scope(tmp_path, monkeypatch, [42, 43], smoke=True)
+        assert "12-camera synthetic geometry" in scope
+        assert "1.8e-9" in scope
+        assert "ill-conditioned" in scope
+        assert "D-16" in scope
+        assert "D-19.3-17" in scope
+        assert "E2 carries the accuracy claim against reality" in scope

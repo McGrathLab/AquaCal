@@ -26,6 +26,7 @@ import pytest
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 E2_SOURCE = REPO_ROOT / "experiments" / "e2_real_rig.py"
+E1_SOURCE = REPO_ROOT / "experiments" / "e1_refractive_comparison.py"
 SYNTHETIC_SOURCE = REPO_ROOT / "src" / "aquacal" / "datasets" / "synthetic.py"
 FRAMESET_DOC = (
     REPO_ROOT
@@ -42,6 +43,29 @@ RETIRED_CLAIM_SENTENCES = (
     "frame-subsampled extraction of the capture that produced them",
     "The PUBLISHED Zenodo archive is a",
     "release diagnostics.json: 0.8786 px, quoted as 0.88)",
+)
+
+# D-08/D-10's claim-sentence gate for E1's band. These are the PRE-RULING-A1
+# clauses, taken verbatim from
+# `.planning/todos/pending/2026-08-20-e1-band-scope-string-still-claims-ten-
+# seeds-after-ruling-A1-cut-it-to-four.md`, as they appeared in the source --
+# each fragment fits inside ONE source line, because the strings they came from
+# were implicitly concatenated across lines and a whole sentence would never
+# match the file text.
+#
+# Ruling A1 cut E1's band from ten seeds to four on 2026-08-15; these clauses
+# survived it and shipped in the 2026-08-20 production run's
+# `e1_seed_band_provenance.json`, authorising a ten-seed, 640/960-row domain
+# that was never executed. The `scope` field is now DERIVED at write time, so
+# a regression here means someone re-froze a measurement into a literal.
+E1_PRE_RULING_A1_CLAIMS = (
+    "seeds, detection noise from 0.25 px to 1.2 px",
+    "the four-level ten-seed",
+    "band establishing it (640/960 rows) is executed in Phase",
+    "WILL BE quoted over",
+    "STATED DOMAIN (BAND-01, D-14).",
+    "eight test depths 1.10-2.50 m",
+    "verified in Phase 29 (D-21)",
 )
 
 
@@ -147,3 +171,69 @@ class TestFramesetProvenanceSupersession:
         body = source[rule_index:]
         assert "# E2 frameset provenance" in body
         assert "60 usable" in body
+
+
+class TestE1BandScopeIsDerived:
+    """Source-text assertions on `experiments/e1_refractive_comparison.py`.
+
+    The subject is the `scope` field of `e1_seed_band_provenance.json` and the
+    module docstring's STATED DOMAIN paragraph, which carried the same
+    pre-ruling-A1 claim. Both are source text here, and both are checked
+    together for the reason this module exists at all: correcting one site and
+    leaving its twin reads as complete from either site alone.
+
+    Like the rest of this module, **this class necessarily contains the stale
+    clauses itself** -- `E1_PRE_RULING_A1_CLAIMS` quotes them. Any grep-based
+    gate elsewhere must therefore stay scoped by filename and never run
+    repo-wide, or it matches this file after a perfect fix.
+    """
+
+    @pytest.mark.parametrize("clause", E1_PRE_RULING_A1_CLAIMS)
+    def test_pre_ruling_a1_claims_are_gone(self, clause: str) -> None:
+        """Each pre-A1 clause must be entirely absent from the source."""
+        source = _read(E1_SOURCE)
+        assert clause not in source, (
+            f"pre-ruling-A1 band claim regressed in {E1_SOURCE}: {clause!r}"
+        )
+
+    def test_scope_is_derived_not_a_literal(self) -> None:
+        """The positive half. Absence alone would also be satisfied by deleting
+        the field; these assert it is COMPUTED from the run that wrote it.
+        """
+        source = _read(E1_SOURCE)
+        assert "MEASURED DOMAIN (BAND-01, D-08)" in source
+        assert "{len(seeds)} seed(s) {list(seeds)}" in source
+        assert "{len(band_df)} rows of exp1_band.csv" in source
+        assert "{len(parameter_band_df)} rows of " in source
+        assert "swept_noise_levels" in source
+        assert "swept_depths" in source
+
+    def test_ruling_a1_is_cited_by_name(self) -> None:
+        """A stable cross-reference is a citation, not a recomputed value, and
+        it is the only place a reader learns why the seed axis is that size.
+        """
+        source = _read(E1_SOURCE)
+        assert "RULING A1" in source
+        assert "run_stage_e1_band" in source
+
+    def test_module_docstring_points_at_the_derived_field(self) -> None:
+        """The docstring's STATED DOMAIN paragraph names the axes and defers to
+        the sidecar for the values, rather than quoting a count that goes stale
+        the next time the grid is resized.
+        """
+        source = _read(E1_SOURCE)
+        docstring = source[: source.index('"""', 3)]
+        assert "ruling A1" in docstring
+        assert "e1_seed_band_provenance.json" in docstring
+        assert "DERIVES from the run" in docstring
+
+    def test_retired_claim_is_named_rather_than_scrubbed(self) -> None:
+        """The docstring keeps the retired ten-seed/640/960 figures under an
+        explicit "the version that did" attribution -- the same retention this
+        module already pins for e2_real_rig.py's site 4. A version with them
+        scrubbed has destroyed the trail that explains the correction.
+        """
+        source = _read(E1_SOURCE)
+        docstring = source[: source.index('"""', 3)]
+        assert "ten seeds," in docstring
+        assert "640/960 rows, from the pre-A1 plan" in docstring

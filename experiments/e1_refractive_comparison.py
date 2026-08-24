@@ -61,21 +61,29 @@ never reaches `generate_camera_array`). **That demotion is qualified as of
 2026-08-15 -- see STATED DOMAIN immediately below, which is the other half
 of this and must be read with it.**
 
-**STATED DOMAIN (BAND-01, D-14).** E1's absolute-accuracy numbers are to be
-quoted ONLY over this domain: the `realistic` scenario's single 12-camera
-synthetic geometry, ten seeds, detection noise from 0.25 px to 1.2 px, and
-the eight test depths of `TEST_DEPTHS` (1.10 m to 2.50 m). Outside it --
-another rig geometry, a noisier detector, a deeper test point -- E1's
-numbers are unlicensed. This sentence states the domain the claim WILL BE
-quoted over; it is NOT a measured result of the phase that wrote it. The
-four-level ten-seed band that establishes the domain (640 band rows / 960
-parameter-band rows, ~7 h) is EXECUTED IN Phase 28 at the frozen sha and
-verified in Phase 29 (D-21). Phase 25 ran a two-seed probe only, which
-licenses no manuscript-facing number, because two seeds cannot separate a
-noise effect from seed variance. What already supports the claim is
-measured and independent of that band: warm-restarting each solve from its
-own solution recovers no cost (largest relative drop 1.8e-9), so the
-non-refractive baseline is CONVERGED and the comparison is fair -- the
+**STATED DOMAIN (BAND-01, D-14, corrected 2026-08-24 under D-08).** E1's
+absolute-accuracy numbers are to be quoted ONLY over the domain the band
+actually swept: the `realistic` scenario's single 12-camera synthetic
+geometry, the seeds sized by **ruling A1**
+(`run_experiment_suite.sh`'s `run_stage_e1_band`, which carries the seed
+count, the reason for it, and the arithmetic behind the row counts), the
+detection-noise levels of `NOISE_LEVELS`, and the test depths of
+`TEST_DEPTHS`. Outside it -- another rig geometry, a noisier detector, a
+deeper test point -- E1's numbers are unlicensed. **The authoritative,
+per-run statement of that domain is the `scope` field of
+`e1_seed_band_provenance.json`**, which `_run_band` DERIVES from the run
+that wrote it: the seed list actually swept, the row counts actually
+emitted, and the noise levels and depths actually used. This paragraph
+names the axes and points there for the values; it deliberately quotes
+neither a seed count nor a row count. The version that did -- ten seeds,
+640/960 rows, from the pre-A1 plan -- outlived ruling A1 and was still
+authorising a domain that had never been run when the 2026-08-20
+production run shipped it (D-08, D-10). Phase 25 ran a two-seed probe
+only, which licenses no manuscript-facing number, because two seeds cannot
+separate a noise effect from seed variance. What already supports the
+claim is measured and independent of that band: warm-restarting each solve
+from its own solution recovers no cost (largest relative drop 1.8e-9), so
+the non-refractive baseline is CONVERGED and the comparison is fair -- the
 97-178x band is strengthened, not caveated
 (`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`). The
 one caveat that travels with the band, stated here in the same paragraph so
@@ -1244,6 +1252,18 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     # identical call and the identical comment and is out of phase 29.1's scope,
     # so E7 still passes `force=force` there. Tracked in
     # .planning/todos/pending/2026-08-20-e7-band-mirrors-e1-benchmark-overwrite-hazard.md.
+    # D-08/D-10: the `scope` field below is DERIVED from this run, never
+    # frozen into a literal. These four values are read back out of the frames
+    # that were just emitted rather than recomputed from the constants, so
+    # they describe what was actually written -- including under `--smoke`,
+    # where both axes collapse.
+    swept_noise_levels = sorted(
+        round(float(value), 6) for value in band_df["noise_std"].unique()
+    )
+    swept_depths = sorted(
+        round(float(value), 6) for value in band_df["test_depth_m"].unique()
+    )
+
     sidecar_path = out_dir / "e1_seed_band_provenance.json"
     with open(sidecar_path, "w") as f:
         json.dump(
@@ -1265,41 +1285,62 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 # artifact. It ALSO covers exp1_parameter_band.csv's
                 # parameter-level columns, which previously existed per-seed
                 # only in gitignored sweep output.
+                # D-08/D-10: DERIVED, never a literal. This field's whole
+                # job is stating the domain a published number may be quoted
+                # over, and the literal it replaced authorised a ten-seed,
+                # 640/960-row domain that ruling A1 had already cut to four
+                # seeds and 256/384 rows -- a claim outliving the conditions
+                # that produced it, which is the class of defect D-10 names.
+                # Every quantity below comes from THIS run. What stays fixed
+                # text is the citation of ruling A1 (a stable cross-reference
+                # is not a recomputed value) and the four static claims after
+                # it, which are properties of the comparison rather than
+                # measurements of the run. The pre-29.1 forward-looking clause
+                # naming the phase that "will" execute and verify this band is
+                # deliberately gone: a schedule is not a domain, and it is the
+                # half of this string that needed re-dating after every run.
                 "scope": (
-                    "STATED DOMAIN (BAND-01, D-14): E1's absolute-accuracy "
-                    "numbers are to be quoted ONLY over the 'realistic' "
-                    "scenario's single 12-camera synthetic geometry, ten "
-                    "seeds, detection noise from 0.25 px to 1.2 px, and the "
-                    "eight test depths 1.10-2.50 m. That is the domain the "
-                    "claim WILL BE quoted over, not a measured result of the "
-                    "phase that wrote this sentence: the four-level ten-seed "
-                    "band establishing it (640/960 rows) is executed in Phase "
-                    "28 at the frozen sha and verified in Phase 29 (D-21). "
-                    "Supporting evidence, already measured: warm restarts "
-                    "recover no cost (largest relative drop 1.8e-9), so the "
-                    "non-refractive baseline is converged and the comparison "
-                    "is fair. The caveat travelling with it, stated together "
-                    "so it cannot be read as under-convergence: that baseline "
-                    "arm is severely ill-conditioned (~3e8 directional "
-                    "curvature), which is a property of fitting a pinhole "
-                    "model to refracted data -- expected, not a defect, and "
-                    "not a reason to qualify the accuracy claim (D-16). "
-                    "This band varies the SEED and (BAND-01) the DETECTION "
-                    "NOISE across E1's depth-generalization "
-                    "and xy-vs-z anisotropy sweep on the 'realistic' synthetic "
-                    "scenario, and bounds seed-to-seed variance of "
-                    "exp1_band.csv's metrics -- including z_rmse_mm, the column "
-                    "the manuscript's deepest-test-point refractive-vs-"
-                    "non-refractive ratio is computed from -- on that synthetic "
-                    "scenario only. It ALSO bounds seed-to-seed variance of the "
-                    "parameter-level columns emitted in exp1_parameter_band.csv "
-                    "(focal_length_error_pct, reprojection_rms_px, and the "
-                    "per-camera position errors), over the same seeds and the "
-                    "same scenario. It is NOT a physical-rig or real-data claim: "
-                    "D-19.3-17's demotion of E1's own accuracy claim is "
-                    "qualified, not reversed, by the stated domain above -- "
-                    "E1 bounds estimator variance under stated noise, and E2 "
-                    "carries the accuracy claim against reality."
+                    f"MEASURED DOMAIN (BAND-01, D-08): this run swept "
+                    f"{len(seeds)} seed(s) {list(seeds)} x "
+                    f"{len(swept_noise_levels)} detection-noise level(s) "
+                    f"{swept_noise_levels} px x {len(swept_depths)} test "
+                    f"depth(s) {swept_depths} m, on the 'realistic' scenario's "
+                    f"single 12-camera synthetic geometry, emitting "
+                    f"{len(band_df)} rows of exp1_band.csv and "
+                    f"{len(parameter_band_df)} rows of "
+                    f"exp1_parameter_band.csv. E1's absolute-accuracy numbers "
+                    f"are to be quoted ONLY over that domain -- it is what was "
+                    f"run, read back from the emitted frames, not a plan. The "
+                    f"seed axis is sized by RULING A1 (run_experiment_suite.sh, "
+                    f"run_stage_e1_band), which carries the arithmetic and the "
+                    f"reason it is four seeds and not ten; see it before "
+                    f"quoting a wider seed domain than this one. "
+                    f"Supporting evidence, already measured: warm restarts "
+                    f"recover no cost (largest relative drop 1.8e-9), so the "
+                    f"non-refractive baseline is converged and the comparison "
+                    f"is fair. The caveat travelling with it, stated together "
+                    f"so it cannot be read as under-convergence: that baseline "
+                    f"arm is severely ill-conditioned (~3e8 directional "
+                    f"curvature), which is a property of fitting a pinhole "
+                    f"model to refracted data -- expected, not a defect, and "
+                    f"not a reason to qualify the accuracy claim (D-16). "
+                    f"This band varies the SEED and (BAND-01) the DETECTION "
+                    f"NOISE across E1's depth-generalization and xy-vs-z "
+                    f"anisotropy sweep on the 'realistic' synthetic scenario, "
+                    f"and bounds seed-to-seed variance of exp1_band.csv's "
+                    f"metrics -- including z_rmse_mm, the column the "
+                    f"manuscript's deepest-test-point refractive-vs-"
+                    f"non-refractive ratio is computed from -- on that "
+                    f"synthetic scenario only. It ALSO bounds seed-to-seed "
+                    f"variance of the parameter-level columns emitted in "
+                    f"exp1_parameter_band.csv (focal_length_error_pct, "
+                    f"reprojection_rms_px, and the per-camera position "
+                    f"errors), over the same seeds and the same scenario. It "
+                    f"is NOT a physical-rig or real-data claim: D-19.3-17's "
+                    f"demotion of E1's own accuracy claim is qualified, not "
+                    f"reversed, by the measured domain above -- E1 bounds "
+                    f"estimator variance under stated noise, and E2 carries "
+                    f"the accuracy claim against reality."
                 ),
             },
             f,
