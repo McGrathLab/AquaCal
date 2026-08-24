@@ -46,18 +46,49 @@ environment's interpreter.
 Install from the frozen clone:
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev,bench]"
 ```
 
-which resolves `pyproject.toml`'s runtime dependencies:
+**Both extras are load-bearing for this suite — neither is optional.** A bare
+`python -m pip install -e .` resolves `pyproject.toml`'s *runtime* dependencies only, and the
+suite additionally needs two packages that `pyproject.toml` declares as **extras**:
 
-| Dependency | Constraint | Note |
-|---|---|---|
-| `opencv-python` | **`==4.13.*`** | **Hard pin. Do not relax it.** See below. |
-| `scipy` | `>=1.16` | floor only |
-| `numpy` | unpinned | deliberately — see below |
-| `pyyaml`, `matplotlib`, `pandas`, `requests`, `tqdm` | unpinned | |
-| `natsort` | `>=8.4.0` | |
+- **`dev`, for `pytest`.** `experiments/e3_derived_quantities.py` imports `DECLARED_CONSTANTS`
+  from `tests/unit/test_experiments_e3_constants.py`, and that test module imports `pytest` — so
+  a **§3-facing artifact generator depends on a test module, which depends on the test runner**.
+  Without `pytest`, **e3 exits 1 on both `--check` and `--force`** with
+  `ModuleNotFoundError: No module named 'pytest'`, taking `code_constants.csv`,
+  `newton_iterations.csv`, `cpr_grouping.csv`, `e3_provenance.json` and the LaTeX fragments
+  down with it.
+- **`bench`, for `psutil`.** `capture_environment()` fills `cpu_count_logical` and
+  `ram_total_bytes` from `psutil` inside a `try/except`, so both are left `None` when it is
+  absent. Both are in `REQUIRED_MANIFEST_FIELDS`, so **`gate3_run_manifest_fields` FAILs** — a
+  Gate 3 failure caused by a missing optional package rather than by anything about the run.
+
+> ⚠ **This was measured on the Linux run machine on 2026-08-19**, by the on-target smoke pass
+> against `rerun-freeze-01`: e3 failed on both passes and Gate 3's manifest check failed, and
+> `pip install -e ".[dev,bench]"` fixed both. **It did not surface on the Windows development
+> box**, where `pytest` and `psutil` are permanently present because the test suite is run there
+> constantly — nothing there ever asked whether the *shipped instructions* would build a working
+> environment. That is precisely the Linux-only failure class the on-target verification venue
+> exists to catch, and it is the strongest single argument for keeping that step. Recorded in
+> `27-ONTARGET-VERIFICATION.md` §6; the instructions are corrected here.
+
+The resulting dependency set:
+
+| Dependency | Constraint | Source | Note |
+|---|---|---|---|
+| `opencv-python` | **`==4.13.*`** | runtime | **Hard pin. Do not relax it.** See below. |
+| `scipy` | `>=1.16` | runtime | floor only |
+| `numpy` | unpinned | runtime | deliberately — see below |
+| `pyyaml`, `matplotlib`, `pandas`, `requests`, `tqdm` | unpinned | runtime | |
+| `natsort` | `>=8.4.0` | runtime | |
+| `pytest` | unpinned | **`dev` extra** | **Required.** e3 exits 1 on both passes without it. |
+| `psutil` | `>=5.9` | **`bench` extra** | **Required.** Two `REQUIRED_MANIFEST_FIELDS` go null without it. |
+
+The rest of the `dev` extra (`pytest-cov`, `ruff`, `pre-commit`, `python-semantic-release`)
+arrives alongside `pytest` and is inert here; the run needs none of it. The `docs` extra is
+**not** needed — do not install it.
 
 **The OpenCV pin is the single most important line in the environment.** ChArUco corner detection
 is entirely OpenCV's, and it changes across minor versions. A controlled single-variable experiment
