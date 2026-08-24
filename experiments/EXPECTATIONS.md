@@ -28,6 +28,26 @@ verdicts you *can* trust are the completeness gate (`experiments/_expectations.p
 only gate that FAILs over an empty tree) and the numeric gates in
 `experiments/check_rerun_gates.py`.
 
+**Which tree this sheet is about.** Every directory named in §7 below — `experiments/results`,
+`experiments/results_e2_band`, `experiments/results_e2_invocations`,
+`experiments/results_e2_timing`, `experiments/results_e2_memory`, `experiments/results_e4_repeat`
+— is where **a fresh run writes**, and none of them moved. They are empty on a clone of
+`rerun-freeze-02`, and that is required: the driver's D-24 pre-flight refuses to start into a
+non-empty output tree.
+
+What *did* move is the **previous** run's output. The 2026-08-20 production run at
+`rerun-freeze-01` is archived whole at `experiments/freeze01_run_output/`, and the pre-re-run
+tree before it at `experiments/pre_rerun_baseline/` (`experiments/README.md` §2 has the table).
+Nothing was deleted. So if you are comparing this run against the last one, name the archive:
+
+```bash
+python experiments/check_rerun_gates.py experiments/freeze01_run_output/results --profile full
+# TOTAL: 176 PASS, 7 N/A, 0 FAIL -- the 2026-08-20 run after Phase 29.1's fixes
+```
+
+Do not read this sheet's expectations as statements about the archive. They describe what the
+run in front of you should produce, at the paths it produces them.
+
 ## 2. The `--check` contract across the deliberate re-base
 
 The mechanism is `compare_experiment_csv(..., exclude_columns=())` in `experiments/_io.py`

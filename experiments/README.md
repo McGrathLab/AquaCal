@@ -56,14 +56,28 @@ produced the manuscript's single-seed numbers and **none of its seed bands**. Ev
 invocation the v2.1 re-run performs now has a row below, and each row's command is the one
 `experiments/run_experiment_suite.sh` actually runs.
 
-**Where the committed baselines live.** They are no longer under `experiments/results/`.
-Plan 26-01 moved the whole pre-re-run tree aside to **`experiments/pre_rerun_baseline/`**
-(preserving the sibling layout: `results/`, `results_e2_band/`, `results_e4_repeat/`,
-`results_e6_repeat2/`, `results_e6_seed43/`, `results_linux32gb/`, plus `driver_state/`),
-leaving `experiments/results/` empty for the re-run to write into. The archived tree is the
-`--baseline-dir` every surviving `--check` path reads from, and it stays reachable for the
-whole run — E2's control and E3's tier diff both compare against it. It is purged in Phase
-30, against the **`pre-rerun-baseline`** tag, and not before.
+**Where the committed baselines live.** They are no longer under `experiments/results/`,
+and there are now **two** archives, each named for the run it holds. Both preserve the sibling
+layout one level down, so a path under either reads the same as it did at the top level.
+
+| Archive | Holds | Moved by | Purged by |
+|---|---|---|---|
+| `experiments/pre_rerun_baseline/` | the **pre-re-run** tree (`results/`, `results_e2_band/`, `results_e4_repeat/`, `results_e6_repeat2/`, `results_e6_seed43/`, `results_linux32gb/`, `driver_state/`) | plan 26-01, at the `pre-rerun-baseline` tag | Phase 30 / POST-03 |
+| `experiments/freeze01_run_output/` | the **2026-08-20 production run** (`results/`, `results_e2_band/`, `results_e2_invocations/`, `results_e2_memory/`, `results_e2_timing/`, `results_e4_repeat/`, `driver_state/`) | plan 29.1-06, at the `rerun-freeze-01` tag | Phase 2 of the archive-stale-outputs todo, after the re-run is verified |
+
+`pre_rerun_baseline/` is the `--baseline-dir` every surviving `--check` path reads from, and it
+stays reachable for the whole run — E2's control and E3's tier diff both compare against it.
+
+`freeze01_run_output/` is the run whose two gate FAILs Phase 29.1 fixed. It is kept because the
+re-run needs something to be compared against, and because Phase 29's still-open E7 before/after
+comparison reads from it. **Nothing was deleted in either move.**
+
+Both moves exist for the same reason and it is not tidiness: `experiments/results/` must be
+**empty** when a run starts, or `run_experiment_suite.sh`'s D-24 pre-flight refuses to launch
+(`:1059-1064`), the verifier loses its strongest invariant — everything under
+`experiments/results/` was produced by *this* run — and E4's cross-machine pairing hazard is
+re-armed, since its worst case can only occur while a stale record sits at the default path.
+Do not resolve a non-empty output tree with `--allow-nonempty-out`; archive it.
 
 **What the outputs should look like** is `experiments/EXPECTATIONS.md` — the written
 hand-verification sheet, whose generated region is rendered from
@@ -233,7 +247,10 @@ invents a fourth shape.
 
 ### The accuracy tree and the timing tree are deliberately different trees
 
-`experiments/results/` holds the **accuracy** numbers, measured on Windows.
+`experiments/results/` holds the **accuracy** numbers, measured on Windows — or rather it will,
+once the re-run writes it. It is empty today; the 2026-08-20 accuracy numbers are in
+`experiments/freeze01_run_output/results/` and the pre-re-run ones in
+`experiments/pre_rerun_baseline/results/` (see §2).
 `experiments/pre_rerun_baseline/results_linux32gb/` holds the pre-re-run **timing and memory**
 numbers, measured on 32 GB Linux, because the accuracy machine has 16 GB and a 13-camera run
 peaks at 10.26 GiB there. It is a sibling distinguished by **machine**, not by experiment
@@ -466,9 +483,10 @@ A reader following the default (no-`--config`) path today reproduces the
 1,817-comparison numbers, not §3's. Closing that gap — regenerating the published
 archive to the full frameset — is tracked as **DATA-01a** in Phase 21 and is a
 prerequisite for publication, not a nice-to-have (`19.1-E2-FRAMESET-PROVENANCE.md`).
-The committed CSVs in `experiments/results/` come from the full-frameset local-video run,
-which the published archive cannot currently reproduce; that gap closes when Phase 21's
-DATA-01/02/03 lands.
+The committed CSVs from the full-frameset local-video run — under
+`experiments/freeze01_run_output/results/` since plan 29.1-06, and written back into
+`experiments/results/` by the re-run — are what the published archive cannot currently
+reproduce; that gap closes when Phase 21's DATA-01/02/03 lands.
 
 ## 4. The gauge-freedom correction
 
@@ -564,6 +582,27 @@ Expect **≈15–17 h** with the default 4-wide pool, **≈28–31 h** serial. R
 drops the four E2 invocations, which are the only ones needing the local frameset. Judge the
 finished tree against `experiments/EXPECTATIONS.md`, not against a memory of what the old
 tree looked like — four schemas moved in Phases 23–25.
+
+**Gating a tree, including an archived one.** `check_rerun_gates.py` takes the output directory
+as its argument, so the default-path form judges whatever the NEXT run wrote, and an archived
+run has to be named:
+
+```bash
+python experiments/check_rerun_gates.py experiments/results --profile full                  # this run
+python experiments/check_rerun_gates.py experiments/freeze01_run_output/results --profile full   # 2026-08-20
+```
+
+Pointing it at an archive resolves the sibling trees *inside* that archive, not at the default
+paths — `_resolve_dir` anchors every non-primary directory at `out_dir.parent`, which is why both
+archives preserve the sibling layout. The second command reproduces the 2026-08-20 run's
+post-fix roll-up exactly: `TOTAL: 176 PASS, 7 N/A, 0 FAIL`
+(`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-GATE-BEFORE-AFTER.md`).
+
+Two things the same command says about the **empty** default tree, both correct and both easy to
+misread as breakage: nearly everything FAILs, because an absent artifact from a run that has not
+happened is exactly what a completeness gate should report; and `e2_production`'s two conditional
+artifacts score **N/A**, not PASS, because their predicate source moved with the archive and a
+gate must not claim a judgement it could not make (D-29.1-18).
 
 ### 7.2 Reproducing one number
 

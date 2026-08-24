@@ -618,20 +618,61 @@ class TestConditionalArtifacts:
                 assert condition.get(key), (artifact["name"], key)
             assert condition["holds_when"] in HOLDS_WHEN, artifact["name"]
 
+    @staticmethod
+    def _run_output_root():
+        """`(root, which)` for the tree that holds a run's output, or `(None, None)`.
+
+        Live first, then the 29.1-06 archive. This is `resolve_results_dir`'s
+        live-or-archive rule (`tests/unit/_baseline_paths.py`) with the NEWER
+        archive as the fallback, and the choice of archive is the whole point:
+        this test's subject is the two CONDITIONAL artifacts, which only the
+        2026-08-20 run produced. `pre_rerun_baseline/` predates the condition
+        mechanism entirely, so falling back there would assert against a tree
+        that could not satisfy the claim under any correct manifest.
+
+        Plan 29.1-06 emptied `experiments/results/` deliberately -- the
+        re-freeze tag must ship an empty output tree or the driver's own D-24
+        pre-flight refuses to start (`run_experiment_suite.sh:1059-1064`). The
+        live branch therefore re-tightens automatically the moment the re-run
+        repopulates it, which is the property this rule exists to provide.
+        """
+        for root, which in (
+            (REPO_ROOT / "experiments" / "results", "live"),
+            (
+                REPO_ROOT / "experiments" / "freeze01_run_output" / "results",
+                "freeze01 archive",
+            ),
+        ):
+            if root.is_dir() and any(path.is_file() for path in root.rglob("*")):
+                return root, which
+        return None, None
+
     def test_the_committed_conditions_resolve_to_files_that_exist(self):
         """Both predicate sources are artifacts THIS run produces, so the
         predicate is a statement about this run and a stale artifact from
-        another one cannot satisfy it."""
-        repo_results = REPO_ROOT / "experiments" / "results"
+        another one cannot satisfy it.
+
+        The resolved subject is NAMED in every assertion, for the reason
+        `resolve_results_dir` returns its `which`: a test that silently
+        switched what it validates is no better than one that silently
+        validates nothing. When no tree holds a run at all -- a fresh clone of
+        the re-freeze tag, before the suite has run -- this SKIPS naming both
+        trees it looked in, rather than passing vacuously.
+        """
+        root, which = self._run_output_root()
+        if root is None:
+            pytest.skip(
+                "no run output on disk: neither experiments/results nor "
+                "experiments/freeze01_run_output/results holds a file. A fresh "
+                "clone of the re-freeze tag has neither until the suite has run."
+            )
         for artifact in ARTIFACTS:
             if not artifact["conditional"]:
                 continue
             source = artifact["condition"]["source"]
-            directory = _resolve_dir(
-                repo_results, str(pathlib.PurePosixPath(source).parent)
-            )
+            directory = _resolve_dir(root, str(pathlib.PurePosixPath(source).parent))
             path = directory / pathlib.PurePosixPath(source).name
-            assert path.is_file(), (artifact["name"], str(path))
+            assert path.is_file(), (artifact["name"], which, str(path))
 
     def test_the_holds_when_vocabulary_is_closed_and_small(self):
         assert HOLDS_WHEN == frozenset({"nonzero_number", "boolean_true"})

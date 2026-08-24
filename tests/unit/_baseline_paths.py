@@ -20,6 +20,42 @@ follow the live tree -- `SEEDLESS_LEGACY_RECORDS` and its tests, which are state
 six specific Phase-19.1 files. Those same six filenames, written by today's code, DO carry a
 seed (plan 26-13), so a carve-out that followed the live tree would invert into a false
 failure.
+
+THERE ARE NOW TWO ARCHIVES, AND `ARCHIVE` DELIBERATELY STILL NAMES THE OLDER ONE.
+
+    experiments/pre_rerun_baseline/results/   26-09, the pre-re-run tree  <- ARCHIVE
+    experiments/freeze01_run_output/results/  29.1-06, the 2026-08-20 run
+
+Plan 29.1-06 moved the 2026-08-20 production run's output -- the run committed on
+`results/rerun-freeze-01` -- into the second archive, so the `rerun-freeze-02` tag ships an
+EMPTY `experiments/results/`. The driver's D-24 pre-flight refuses to start a fresh run into
+a non-empty `OUT_DIR` (`experiments/run_experiment_suite.sh:1059-1064`), and the verifier's
+strongest invariant -- everything under `experiments/results/` was produced by THIS run -- is
+only true if the tree starts empty. Nothing was deleted.
+
+NO CODE BELOW CHANGED, and that is the point: `resolve_results_dir` prefers the live tree
+only while it holds a file, so emptying `experiments/results/` repointed every
+committed-baseline rail back at `ARCHIVE` by itself. That is the same automatic
+re-tightening this module was written for, running in the other direction.
+
+`ARCHIVE` was NOT repointed at the newer tree, and the reason is the carve-out immediately
+above rather than a preference. `archive_results_dir` is a statement about six specific
+Phase-19.1 seedless records, and those live in `pre_rerun_baseline/`. The 2026-08-20 run
+wrote those same six filenames WITH seeds, so pointing `ARCHIVE` at `freeze01_run_output/`
+would invert the carve-out into exactly the false failure the paragraph above forbids -- the
+live-tree version of the mistake, made against the wrong archive instead.
+
+One consequence worth stating, because it looks like a regression and is not: with the live
+tree empty, the rails again validate `pre_rerun_baseline/` -- which is precisely the tree
+state the PREDECESSOR tag's test suite passed against, since `rerun-freeze-01` was itself cut
+from a branch whose `experiments/results/` held zero tracked files. Any rail that fails
+against the 2026-08-20 output goes quiet here and RETURNS the moment the re-run repopulates
+the live tree. It is dormant, not fixed.
+
+A test whose subject is an artifact only the 2026-08-20 run produced must therefore name
+`freeze01_run_output/` itself rather than call `resolve_results_dir` --
+`tests/unit/test_expectations.py::TestConditionalArtifacts` is the one such caller, and it
+says so at its own resolution helper.
 """
 
 from __future__ import annotations

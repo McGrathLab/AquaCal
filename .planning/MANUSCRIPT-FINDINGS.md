@@ -2444,14 +2444,32 @@ ledger T-06). The answer, measured by the 2026-08-20 production run at `rerun-fr
 here 2026-08-24 (phase 29.1, plan 05), closing
 `.planning/todos/done/2026-08-15-classify-the-198-unprojectable-observations.md`.
 **Source of truth:**
-`experiments/results_e2_invocations/e2_classification/degenerate_observations.csv` — 198 rows ×
-12 columns, committed in `83da9b3`. Corroborating, all from the same run at the same sha:
-`experiments/results/benchmark.json` (`discard_stats`),
-`experiments/results/reconstruction_errors.csv`, `experiments/results/camera_parameters.csv`,
-`experiments/results_e2_band/seed_{42,43,44}/diagnostics.json`, and the committed stage logs
-`experiments/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158` and
-`e2_band.log:159,378,597`.
+`experiments/freeze01_run_output/results_e2_invocations/e2_classification/degenerate_observations.csv`
+— 198 rows × 12 columns, committed in `83da9b3`. Corroborating, all from the same run at the same
+sha:
+`experiments/freeze01_run_output/results/benchmark.json` (`discard_stats`),
+`experiments/freeze01_run_output/results/reconstruction_errors.csv`,
+`experiments/freeze01_run_output/results/camera_parameters.csv`,
+`experiments/freeze01_run_output/results_e2_band/seed_{42,43,44}/diagnostics.json`, and the
+committed stage logs
+`experiments/freeze01_run_output/driver_state/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`
+and `e2_band.log:159,378,597` in the same directory.
 **Where the prose is:** the §3 disclosure of `degenerate_observations_at_solution = 198`.
+
+> **Every artifact path in this entry moved after it was written, and the move is deliberate.**
+> When plan 29.1-05 recorded this entry on 2026-08-24, all of them sat under `experiments/results*/` and
+> `experiments/run_experiment_suite_state.3ab9c13.*`. Plan 29.1-06 then moved the whole 2026-08-20
+> output tree into `experiments/freeze01_run_output/`, because the `rerun-freeze-02` tag must ship
+> an **empty** output directory: the driver's D-24 pre-flight refuses to start a fresh run into a
+> non-empty `OUT_DIR` (`run_experiment_suite.sh:1059-1064`), and the verifier's strongest
+> invariant — everything under `experiments/results/` was produced by *this* run — is only true if
+> the tree starts empty. **Nothing was deleted**; every path in this entry resolves today, and the full-profile
+> gate over `experiments/freeze01_run_output/results` reproduces the run's roll-up unchanged at
+> `TOTAL: 176 PASS, 7 N/A, 0 FAIL`. The citation was updated rather than left to rot because a
+> claim outliving the conditions that produced it is the exact defect class this phase exists to
+> end (D-10) — and a path citation that silently stops resolving is that defect at its purest.
+> Phase 2 of the archive todo purges the archive after the re-run is verified; at that point these
+> citations resolve from git history at `83da9b3`, which is why the sha is named.
 
 > **The premise this entry retires.** The 2026-08-15 TODO opened: *"What the 198 are is not
 > established, and no committed artifact can settle it."* That was true when written and was
@@ -2480,7 +2498,7 @@ The chain has two links, and collapsing them is the error that has already been 
    estimators, one localized event. That is what licenses "the board was lifted", and it is the
    part the 2026-08-15 analysis could not have had.
 
-### The decomposition (`experiments/results/benchmark.json`)
+### The decomposition (`experiments/freeze01_run_output/results/benchmark.json`)
 
 `discard_stats`, from the run's own record, is unanimous on every axis:
 
@@ -2506,7 +2524,7 @@ zeros**: the flagged population appears in the intrinsic pass and nowhere else.
 
 ### The per-observation table — the load-bearing citation
 
-`experiments/results_e2_invocations/e2_classification/degenerate_observations.csv`, 198 rows,
+`experiments/freeze01_run_output/results_e2_invocations/e2_classification/degenerate_observations.csv`, 198 rows,
 columns `camera, frame_idx, corner_id, stage, h_q_m, h_c_m, r_q_m, chord_incidence_deg, extended,
 nan_reason, n_flagged_at_stage, truncated`. Re-measured from the file on 2026-08-24; it is
 committed, so these reproduce exactly.
@@ -2549,9 +2567,9 @@ is *observed* depends on which cameras detected it in that frame, not on the lif
 
 ### Independent corroboration, from a disjoint frame set
 
-`experiments/results/reconstruction_errors.csv` holds the 52 held-out validation frames
+`experiments/freeze01_run_output/results/reconstruction_errors.csv` holds the 52 held-out validation frames
 (`problem_shape.n_frames_holdout = 52`), which are **not** in the stage-3 residual vector.
-Measured against `water_z_m = 1.0738404` from `experiments/results/camera_parameters.csv`:
+Measured against `water_z_m = 1.0738404` from `experiments/freeze01_run_output/results/camera_parameters.csv`:
 
 - **31 of 7,762 validation corners (0.399 %) reconstruct above the interface**, by up to
   **51.73 mm** — against the 198's 0.268 % of 73,975. Two estimators, two populations, the same
@@ -2568,7 +2586,7 @@ piece of evidence in the entry, and it is new with this run.
 
 ### The camera-submerged bucket is eliminated by measurement, not by argument
 
-`experiments/results/camera_parameters.csv` gives `h_c_m` for all **13** cameras:
+`experiments/freeze01_run_output/results/camera_parameters.csv` gives `h_c_m` for all **13** cameras:
 **1.047177 … 1.112502 m**, every value positive. The `interface_below_camera` cause (`h_c <= 0`)
 cannot fire on this rig, which is why `discard_stats` reports zero for it, and the per-observation
 table's own `h_c_m` column reproduces the same range on the flagged rows. Note what that bucket
@@ -2577,7 +2595,7 @@ hardware was submerged (`_degeneracy.py:113-117`).
 
 ### The count is seed-sensitive; the cause is not
 
-`experiments/results_e2_band/seed_{42,43,44}/diagnostics.json`, measured 2026-08-24:
+`experiments/freeze01_run_output/results_e2_band/seed_{42,43,44}/diagnostics.json`, measured 2026-08-24:
 
 | seed | flagged | observations evaluated | rate |
 |---|---|---|---|
@@ -2616,7 +2634,7 @@ anyone who tries to re-derive any of this from the shipped artifacts.*
 | artifact | observations | cameras |
 |---|---|---|
 | stage-3 residual vector (`benchmark.json`: `observations_evaluated__stage3_intrinsic_pass`; `stages.stage3_intrinsic_pass.n_residuals = 147950 = 2 × 73975`) | **73,975** | **12** |
-| `experiments/results/reprojection_residuals.csv` and `per_corner_residuals` in `calibration.json` | **23,028** | **13**, including the auxiliary **fisheye** `e3v8250` |
+| `experiments/freeze01_run_output/results/reprojection_residuals.csv` and `per_corner_residuals` in `calibration.json` | **23,028** | **13**, including the auxiliary **fisheye** `e3v8250` |
 
 They differ by more than **3×**, and not only in size: the exports *include* the auxiliary fisheye,
 which is excluded from stages 2 and 3 entirely, while the residual vector excludes it. The exports
@@ -2683,7 +2701,7 @@ corroboration on a disjoint frame set.
 `DegenerateObservationWarning` emitted by this run
 (`src/aquacal/calibration/pipeline.py:1288`; text at
 `interface_estimation.py:160-185`, captured verbatim in
-`experiments/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`) states:
+`experiments/freeze01_run_output/driver_state/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`) states:
 
 > "198 were continued with the pinhole extension, which is C0 but not C1 at the refractive/pinhole
 > boundary and **carries ZERO water_z gradient** — every other parameter keeps full gradient, so
