@@ -143,3 +143,103 @@ run it **scoped to the files the phase actually changed**, not `--all-files`, or
 explicit exemption for the two archives. The three hooks that matter for the move
 (`check-added-large-files`, `detect-secrets`, `check-yaml`) were run explicitly against the move
 commit range and all pass; only the two formatting hooks are implicated.
+
+---
+
+## D4. Three exact-equality anchor tests fail on Linux — BLOCKING for plan 29.1-08
+
+**Found during:** plan 29.1-07, task 1 — the first full `pytest tests/` run ever performed on
+the Linux run machine. Measured `2407 passed, 26 skipped, 3 failed` in 27:47.
+
+    FAILED tests/unit/test_discard_accounting.py::test_matches_frozen_anchor
+    FAILED tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector
+    FAILED tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+
+**Status: pre-existing, and not a defect of this branch.** Everything the three tests execute
+or read is byte-identical to `rerun-freeze-01` — the three modules, `tests/fixtures/`,
+`tests/conftest.py`, `pyproject.toml`, `src/`, and `experiments/_degeneracy.py`. Running them
+at HEAD is running them at the tag.
+
+**Why they fail:** all three compare with `==` / `assert_array_equal` against anchors captured
+on another machine, and all three miss in the last few significant digits — rel. 1.4e-9 on a
+reprojection RMS, **1 ULP** on a `sqrt(dx²+dy²)`, and 2.4e-16 on the off-diagonal zeros of an
+identity rotation. Deterministic on re-run; unchanged under
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1`, so not a threading artifact.
+
+**Why this was never seen before:** attempt 1's `0 failed` is a Windows measurement, and
+`27-ONTARGET-VERIFICATION.md` verified the tag on this Linux box with a dry run, `fd_jacobian`
+and an on-target `--smoke` pass — never with `pytest`. This is the first evaluation of the
+frozen code's exact-equality anchors on this platform. The environment is the same one, by
+absolute interpreter path and all four pins, that produced the accepted 2026-08-20 production
+run. `tests/fixtures/discard_anchor.json`'s `provenance` records a sha but no platform, no
+numpy version and no BLAS, so nothing in the fixture says which machine it is exact against.
+
+**Why not fixed here:** two of the three forbid the obvious fix in their own docstrings — *"A
+mismatch here is a finding to report, not a tolerance to loosen"* and *"compared with `==`,
+never `pytest.approx` — a tolerance would pass on a sink that had drifted to a different (but
+nearby) formula."* Regenerating the anchors or loosening them inside the freeze window would
+convert a real platform finding into a green number and destroy the only property those tests
+exist to hold. Plan 29.1-07's own action text also forbids it.
+
+**Where it matters:** D-14 requires the full test suite to pass locally before `rerun-freeze-02`
+is cut. **It does not pass.** Plan 29.1-08 must either resolve these three or record an explicit
+ruling for them in `29.1-PREPUSH-AUDIT.md`, the way attempt 1 ruled on its `GATE FAIL` findings.
+It must not record "full test suite: 0 failed". Full diagnosis in `29.1-VERIFICATION-BAR.md`.
+
+---
+
+## D5. A `--smoke` rehearsal and a real run at the same sha share one state file
+
+**Found during:** plan 29.1-07, task 2.
+
+`STATE_FILE` is derived from `RUN_EXPERIMENT_SUITE_DRY_RUN` and the short sha only
+(`run_experiment_suite.sh:288-292`). `--smoke` does not enter it. So a completed rehearsal
+leaves `experiments/run_experiment_suite_state.<sha>.tsv` holding 20 `complete … 0` lines, and
+`stage_is_complete` (`:822`) would make a **real** run at that same sha skip all 20 stages and
+produce nothing — exit 0, no artifacts, which is F-001's shape. The dry-run path has an
+explicit `.dryrun.tsv` separation for precisely this failure mode, added after the 19.5 defect;
+`--smoke` has no equivalent.
+
+Related, and measured at the same time: the real state artifacts
+(`…<sha>.tsv`, `…failures.txt`, `…stagelogs/`) are **not** gitignored — deliberately, because a
+production run's are citable artifacts and only the `.dryrun.*` forms are ignored. A rehearsal
+therefore leaves three untracked entries in `experiments/`. They do not affect
+`git describe --dirty` or `gate3_run_manifest_clean_tree`, both of which ignore untracked
+files, but they do make `git status --porcelain` non-empty.
+
+**Not fixed:** a change to the driver's state-file naming inside the freeze window. Both
+rehearsal state files produced by this plan were archived to
+`/home/tlancaster/AquaCal_smoke_aside/2026-08-24-a833a15/` so neither hazard reaches the tag.
+
+**Where it matters:** `experiments/HANDOFF.md` should warn the operator not to rehearse with
+`--smoke` at the sha they are about to run for real without first removing the rehearsal's
+state file. Plan 29.1-08 should confirm the tree is clean of these before tagging.
+
+---
+
+## D6. `check_e2_band`'s sibling-directory resolution does not honour `--smoke`
+
+**Found during:** plan 29.1-07, task 2 — it produced the phase's only `--smoke` roll-up FAILs.
+
+`check_rerun_gates.py:2262` resolves E2's band directory as `out_dir.parent / "results_e2_band"`,
+a literal with no smoke form. Under `--smoke`, `out_dir` is `experiments/results_smoke`, so the
+end-of-run roll-up judges the **production** `experiments/results_e2_band` while the stage
+itself correctly writes to `experiments/results_smoke_e2_band`. Same class as
+`e7_focal_standoff_analysis`, which the driver already documents as reading a hardcoded
+`experiments/results/…` path.
+
+It becomes visible only in combination with the gate's three-state behaviour at `:1666` —
+directory **absent** → one `N/A`; **present but empty** → two `FAIL`s (`record_count`, `scope`);
+populated → the full battery. Plan 29.1-06's `git mv` removed the tracked files under
+`experiments/results_e2_band` but left the empty directory on disk, putting this working copy in
+the middle state. A fresh clone of the tag has no such directory (zero tracked files, and git
+does not track empty directories), so it lands in the *absent* state and the roll-up reads
+`72 PASS / 18 N/A / 0 FAIL` — attempt 1's totals exactly. Confirmed by controlled re-run after
+`rmdir experiments/results_e2_band`.
+
+**Not fixed:** editing the script that judges every artifact, inside the freeze window, to
+change a number rather than evidence — the same trade attempt 1 declined for the per-stage
+gates. Reasonable post-submission cleanup.
+
+**Where it matters:** any operator who rehearses with `--smoke` in a working copy that has an
+empty `experiments/results_e2_band/` will see two roll-up FAILs that say nothing about the run.
