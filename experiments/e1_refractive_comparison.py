@@ -1071,9 +1071,17 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     `EXP1_COLUMNS`, so the parameter-level columns (`focal_length_error_pct`,
     `reprojection_rms_px` and the per-camera position errors) are likewise
     regenerable per seed rather than existing only in the single-seed
-    `exp1_parameter_errors.csv` -- and `e1_seed_band_provenance.json`, plus both
-    `e1_benchmark_<model>.json` sidecars, additively carrying
-    `solver_config["seeds"] = seeds` and `solver_config["seed"] = seeds[-1]`. Deliberately does NOT write
+    `exp1_parameter_errors.csv` -- and `e1_seed_band_provenance.json`, which is
+    where the band's own seed record lives.
+
+    The two `e1_benchmark_<model>.json` sidecars are written ONLY when they are
+    absent (D-07): band mode may create them, carrying
+    `solver_config["seeds"] = seeds` and `solver_config["seed"] = seeds[-1]`,
+    and never overwrites an existing one -- not even under `--force`, which is
+    deliberately not honoured at that one call site. When they already exist the
+    run says so and leaves them byte-identical; nothing is lost, because
+    `e1_seed_band_provenance.json` records the seeds this band actually swept.
+    Deliberately does NOT write
     `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
     `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those
     remain exclusively the single-seed run's artifacts.
@@ -1207,9 +1215,35 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     )
 
     # Band-owned provenance (D-260807-dcv, mirrors E5/E6's pattern): the
-    # e1_benchmark_<model>.json records below are seedless legacy records that
-    # band mode must never overwrite with a single seed's values, so the
-    # seeds actually run here have nowhere else to be recorded.
+    # e1_benchmark_<model>.json records below are single-seed records that band
+    # mode may CREATE when they are absent and NEVER overwrites when they
+    # exist, so the seeds actually run here have nowhere else to be recorded.
+    #
+    # D-07: that policy is ENFORCED, not aspirational. The mechanism is the
+    # literal `force=False` at the write_direct_call_benchmark call below --
+    # this function's own `force` argument is deliberately not honoured there,
+    # and only there. Before phase 29.1 the policy was stated in this comment
+    # and contradicted by the call, which passed `force=force`; the resumability
+    # guard was all that kept it true, and `--force` removed even that.
+    #
+    # Two corrections to the sources that filed this, both relied on when the
+    # defect was written up and both wrong:
+    #
+    #   1. A clean experiments/results/ does NOT remove the skip. Stage `e1`
+    #      runs with --force (run_experiment_suite.sh's run_stage_e1) and
+    #      `e1_band` depends_on `e1`, so both records already exist by the time
+    #      the band runs. That is why the skip fired on 2026-08-20 despite a
+    #      clean start. The live hazards are (a) a --force band run and (b) a
+    #      standalone band into a fresh --out with no preceding single-seed run,
+    #      where the write proceeds and stamps the records with seeds[-1].
+    #   2. gate3_provenance does NOT depend on this write. `_run_full` already
+    #      stamps seed=args.seed onto both records (see :829-871), so nothing
+    #      downstream needs band mode to republish them.
+    #
+    # ASYMMETRY, deliberate: e7_interface_ablation.py's _run_band carries the
+    # identical call and the identical comment and is out of phase 29.1's scope,
+    # so E7 still passes `force=force` there. Tracked in
+    # .planning/todos/pending/2026-08-20-e7-band-mirrors-e1-benchmark-overwrite-hazard.md.
     sidecar_path = out_dir / "e1_seed_band_provenance.json"
     with open(sidecar_path, "w") as f:
         json.dump(
@@ -1297,7 +1331,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             "seeds": list(seeds),
             **build_water_z_provenance(last_water_z_pin_by_model[label]),
         }
-        write_direct_call_benchmark(
+        wrote = write_direct_call_benchmark(
             record_path,
             problem_shape={
                 "n_cameras": len(last_scenario.intrinsics),
@@ -1322,11 +1356,28 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                     next(iter(result.cameras.values())).water_z
                 ),
             },
-            # Force is NOT implied for any artifact besides the band CSV
-            # (D-19.4-14) -- normal resumability applies here.
-            force=force,
+            # Force is NOT implied for any artifact besides the band CSVs
+            # (D-19.4-14), and this is the ONE place where the run's own
+            # --force is deliberately not honoured either (D-07). Honouring it
+            # is exactly what would turn the policy stated above into a lie:
+            # a forced band run would silently republish two records the
+            # single-seed stage owns, stamped with seeds[-1]'s values. The
+            # literal below is the enforcement; the resumability guard is only
+            # a second line of defence.
+            force=False,
         )
-        print(f"Wrote {record_path}")
+        # D-06: the log reports what happened, not what was attempted. The
+        # writer returns False when it skipped, and printing "Wrote" over that
+        # return is the defect this branch replaces. The skip line is worded
+        # differently from _io's own logger.info skip message on purpose --
+        # two identical claims in one log is the shape the defect had.
+        if wrote:
+            print(f"Wrote {record_path}")
+        else:
+            print(
+                f"Kept existing {record_path}: band mode never overwrites the "
+                "single-seed benchmark record (D-07)."
+            )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
