@@ -1362,6 +1362,18 @@ def _extract_pipeline_row(record: dict) -> dict:
     solver_config = record.get("solver_config", {})
     accuracy = record.get("accuracy", {})
     memory = record.get("memory", {})
+    # D-01: read the guard count out of E2's own record instead of nulling it.
+    # `discard_stats` is the canonical site; `problem_shape` is the fallback.
+    # Absent from both stays `None` -- an un-instrumented record must remain
+    # distinguishable from a measured zero, which is the property gate 1 rests
+    # on. (Rationale in full at the dict entry below.)
+    degenerate_at_solution = _get_nested(
+        record, "discard_stats", "degenerate_observations_at_solution"
+    )
+    if degenerate_at_solution is None:
+        degenerate_at_solution = _get_nested(
+            record, "problem_shape", "degenerate_observations_at_solution"
+        )
 
     return {
         "seed": solver_config.get("seed"),
@@ -1373,11 +1385,7 @@ def _extract_pipeline_row(record: dict) -> dict:
         # D-26: E2 never recorded a memory_pressure classification (its
         # benchmark.json predates D-33); None rather than invented (D-14).
         "memory_pressure": None,
-        # D-26: E2's benchmark.json predates this plan's discard_stats
-        # threading and stays out of this phase's re-run scope (E2 is real
-        # data, unaffected by a synthetic scenario-geometry change); None
-        # rather than invented (D-14).
-        "degenerate_observations_at_solution": None,
+        "degenerate_observations_at_solution": degenerate_at_solution,
         "seconds_stage3_interface_optimization": stage1.get("seconds"),
         "seconds_stage3_intrinsic_pass": stage2.get("seconds"),
         "peak_bytes_baseline": None,

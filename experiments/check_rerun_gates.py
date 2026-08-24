@@ -84,6 +84,11 @@ from experiments._expectations import PROFILES, check_completeness
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
 _GUARD_COLUMN = "degenerate_observations_at_solution"
+# D-02: gate 1's exemption key. A row tagged with this `record_source` carries a
+# guard count the gate reports but does not gate on -- see `_check_guard_column`
+# for why, and `e4_benchmark_grid._extract_pipeline_row` for the writer side.
+_RECORD_SOURCE_COLUMN = "record_source"
+_EXEMPT_RECORD_SOURCE = "pipeline"
 _STATUS_COLUMN = "status"
 _DEGENERATE_STATUS = "degenerate"
 
@@ -589,10 +594,49 @@ def _validate_profile(profile: str | None, *, caller: str) -> None:
     )
 
 
+def _format_guard_count(value) -> str:
+    """Render one guard-count cell for a gate message: `missing` for NaN/None."""
+    if value is None or pd.isna(value):
+        return "missing"
+    try:
+        as_float = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if as_float.is_integer():
+        return str(int(as_float))
+    return str(value)
+
+
 def _check_guard_column(
     experiment: str, label: str, df: pd.DataFrame | None, column: str = _GUARD_COLUMN
 ) -> GateResult:
-    """Gate 1 over an aggregated CSV: every row's guard-count column is zero."""
+    """Gate 1 over an aggregated CSV: every GATED row's guard-count column is zero.
+
+    A row whose `record_source` is `"pipeline"` is EXEMPT from the predicate
+    (D-01/D-02). E4's `benchmark_grid.csv` carries one such row -- the
+    real-hardware anchor harvested from E2 -- and since D-01 that row publishes
+    the count E2 measured (198) instead of a null. The count is real, so gating
+    on it would convert the pre-D-01 "missing" FAIL into a "non-zero" FAIL
+    rather than resolving anything, and the library that produced the number
+    explicitly declines to read it as a verdict: at 0.268% of 73,975
+    observations it sits below `pipeline.py:1288`'s 1% threshold and is
+    "reported for the record rather than as a verdict on the whole solve".
+
+    Mechanism, stated here so the next reader does not re-derive it: ONE gate
+    result is kept rather than a second gate id, because the roll-up's
+    PASS/N/A/FAIL arithmetic is an audited number. The exemption instead
+    narrows `bad_mask` and is made visible in the gate's own message, which
+    names how many rows were gated, how many were exempt, each exempt row's
+    `cell_key` and its count, and why a pipeline row is exempt.
+
+    Rows with any other `record_source` -- `"assembled"` above all -- are gated
+    exactly as before: a non-zero count FAILs, and a MISSING count still FAILs,
+    since an un-instrumented artifact is not evidence of a clean solve. When
+    the frame carries no `record_source` column at all (E6's
+    `generalization_sweep.csv`, and every ad-hoc frame predating this change),
+    behaviour is byte-identical to the pre-D-02 gate: every row is gated and
+    the messages are unchanged.
+    """
     if df is None:
         return GateResult(
             experiment, f"gate1_guard_count:{label}", "FAIL", f"{label} not found"
@@ -604,21 +648,57 @@ def _check_guard_column(
             "FAIL",
             f"{label}: no {column!r} column present (cannot confirm zero)",
         )
-    bad_mask = df[column].isna() | (df[column].fillna(1) != 0)
-    if not bad_mask.any():
-        return GateResult(
-            experiment,
-            f"gate1_guard_count:{label}",
-            "PASS",
-            f"{label}: {len(df)} row(s), guard count zero everywhere",
+
+    has_record_source = _RECORD_SOURCE_COLUMN in df.columns
+    if has_record_source:
+        exempt_mask = df[_RECORD_SOURCE_COLUMN] == _EXEMPT_RECORD_SOURCE
+    else:
+        exempt_mask = pd.Series(False, index=df.index)
+
+    gated = df.loc[~exempt_mask]
+    n_gated = len(gated)
+    n_exempt = int(exempt_mask.sum())
+    bad_mask = gated[column].isna() | (gated[column].fillna(1) != 0)
+
+    if n_exempt:
+        exempt_rows = df.loc[exempt_mask]
+        described = ", ".join(
+            f"{row.get('cell_key', '<no cell_key>')}={_format_guard_count(row[column])}"
+            for _, row in exempt_rows.iterrows()
         )
+        exemption = (
+            f"; {n_exempt} row(s) exempt ({described}) -- a "
+            f"record_source={_EXEMPT_RECORD_SOURCE!r} row is a real-hardware "
+            "anchor row whose count the library itself declines to treat as a "
+            "verdict at 0.268% of 73,975 observations (pipeline.py:1288), so "
+            "it is published and reported here rather than gated on "
+            "(D-01/D-02)"
+        )
+    else:
+        exemption = ""
+
+    if not bad_mask.any():
+        if has_record_source:
+            detail = (
+                f"{label}: {n_gated} of {len(df)} row(s) gated, guard count zero "
+                f"everywhere{exemption}"
+            )
+        else:
+            detail = f"{label}: {len(df)} row(s), guard count zero everywhere"
+        return GateResult(experiment, f"gate1_guard_count:{label}", "PASS", detail)
+
     n_bad = int(bad_mask.sum())
-    return GateResult(
-        experiment,
-        f"gate1_guard_count:{label}",
-        "FAIL",
-        f"{label}: {n_bad} of {len(df)} row(s) have a non-zero or missing guard count",
-    )
+    if has_record_source:
+        detail = (
+            f"{label}: {n_bad} of {n_gated} gated row(s) have a non-zero or "
+            f"missing guard count{exemption}"
+        )
+    else:
+        detail = (
+            f"{label}: {n_bad} of {len(df)} row(s) have a non-zero or missing "
+            "guard count"
+        )
+    return GateResult(experiment, f"gate1_guard_count:{label}", "FAIL", detail)
 
 
 def _check_status_column(
