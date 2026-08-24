@@ -257,3 +257,72 @@ For this fix specifically: the per-observation classification log is a NEW artif
 Also add the same expectations to the sheet in
 `2026-08-15-suspend-programmatic-check-for-reshaped-artifacts.md`, since hand-verification is the
 only check covering these artifacts during this run.
+
+---
+
+## Resolved — 2026-08-24 (phase 29.1, plan 05)
+
+**Answer: the 198 are above-water board corners.** The classification is settled in
+`.planning/MANUSCRIPT-FINDINGS.md` § **MF-24**, which carries the full derivation, every figure
+tied to a named artifact path, and both surviving findings from this file. Read MF-24, not this
+file, for the verdict.
+
+### Why this closes without the work item being executed
+
+**The opening premise was overtaken, not wrong.** This file states: *"What the 198 are is not
+established, and no committed artifact can settle it."* That was true on 2026-08-15. Phase 24's
+DEGEN-02 `discard_stats` threading and Phase 25's DEGEN-04 per-observation sink did not exist yet,
+and the Solution section above is a design sketch **for the instrumentation that has since been
+built and run**. Its four steps were all executed — by Phases 24 and 25, and by the 2026-08-20
+production run at `rerun-freeze-01` — not skipped:
+
+1. *"Patch `compute_residuals` to record per-observation geometry"* — DEGEN-04, plan 25-01,
+   hooked at the post-solve counting evaluation exactly as the *Instrumentation design* section
+   below specifies.
+2. *"Re-run E2 under OpenCV 4.13"* — the 2026-08-20 production run, cv2 4.13.0.92, one E2 run in
+   the suite.
+3. *"Classify into buckets"* — `experiments/_degeneracy.py`'s `OBSERVATION_BUCKETS`, keyed on the
+   library's `nan_reason` code, with the taxonomy owned outside the solver as this file asked.
+4. *"Commit the per-observation table so the answer is reproducible rather than reported"* —
+   **`experiments/results_e2_invocations/e2_classification/degenerate_observations.csv`**,
+   198 rows × 12 columns, committed in `83da9b3`.
+
+### The artifacts that settle it
+
+| artifact | what it establishes |
+|---|---|
+| `experiments/results_e2_invocations/e2_classification/degenerate_observations.csv` | The per-observation table this file said could not exist. All 198 rows in `stage3_intrinsic_pass`, all `extended=True`, none `truncated`, `nan_reason = 2` (`above_interface`) throughout; `h_q_m` −0.064021 … −0.001251 m; 8 frames in two clusters (22-26, 102/104/105) across 8 cameras; `chord_incidence_deg` 2.797 … 29.822°. |
+| `experiments/results/benchmark.json` (`discard_stats`) | 198/198 `above_interface`, 0 `behind_camera`, 0 `interface_below_camera`, 198 `extended`, 0 `penalized`, all in the intrinsic pass, over 73,975 evaluated observations. |
+| `experiments/results/reconstruction_errors.csv` | The independent corroboration on a **disjoint** frame set: 31 of 7,762 held-out validation corners above the interface, up to 51.73 mm, in frames 21 and 103 — the two frames flanking the flagged clusters. |
+| `experiments/results/camera_parameters.csv` | Bucket (c) eliminated by measurement: `h_c` 1.047177 … 1.112502 m across all 13 cameras. |
+| `experiments/results_e2_band/seed_{42,43,44}/diagnostics.json` | The verdict is seed-invariant (100 % `above_interface`, 100 % `extended` on every seed) while the *count* is not: 198 / 210 / 183. MF-24 records this as a new §3 caveat. |
+
+**The count was decomposed, never re-derived.** 198 is unchanged.
+
+### What was preserved, and where
+
+This file held two findings recorded nowhere else. Both are carried into MF-24 **in full, with
+their reasoning**, not as one-line summaries:
+
+1. **The residual-path-vs-export population trap** — the stage-3 residual vector covers 73,975
+   observations over 12 cameras while `reprojection_residuals.csv` and `per_corner_residuals` hold
+   23,028 over 13 including the auxiliary fisheye. Including the corollary that kills the shortcut:
+   hunting the flat `INVALID_PROJECTION_PENALTY_PX` in the exports cannot detect behind-camera
+   cases, so the exports' 75.98 px maximum is not evidence.
+2. **The refutation of the obliquity/TIR trigger** — all three 2026-08-15 legs (no TIR check on the
+   path, `θ_w < 48.61°` by construction, zero unprojectable corners at ground truth on both
+   presets), plus the misreading of the `ideal` precedent, plus **a fourth leg this run supplies**:
+   the flagged population's own chord incidence tops out at 29.822° against a 48.61° critical
+   angle. MF-24 also records the caveat that `chord_incidence_deg` is a straight-chord surrogate
+   rather than a refracted exit angle, so leg 4 is corroboration and legs 1-2 remain what make the
+   refutation absolute.
+
+### What is NOT closed by this
+
+- **The manuscript sentence.** Nothing under `Spinoffs/papers/aquacal/` was edited. MF-24 records
+  what the disclosure may now say; writing it belongs to the manuscript session, per this file's
+  own *Scope boundary — artifacts, not prose*.
+- **The driver/gate registration clause** (*Register the outputs with the driver and the gate*).
+  Already discharged by the run itself — the classification invocation is in the suite driver and
+  `degenerate_observations.csv` is an expected artifact in `suite_expectations.json`. Its
+  `conditional` scoring is separately defective and is fixed by **plan 29.1-09**, not here.

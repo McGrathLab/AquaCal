@@ -2431,3 +2431,292 @@ be decided deliberately rather than discovered by a gate.
 `experiments/README.md` §2 previously claimed `cpr_grouping.csv` was the sole origin of `tab:cpr`.
 Plan 26-09 replaced that section with this finding; the README and this entry must agree, and the
 README points here for the derivation.
+
+
+## MF-24 — The 198 unprojectable observations are above-water board corners, settled by the run's own per-observation table
+
+**Status:** **SETTLED as a finding; the prose edit it licenses is the manuscript session's call.**
+No published number changes. What changes is that the §3 disclosure may now name the mechanism
+instead of staying deliberately cause-agnostic. One new caveat is attached: the count is
+**seed-sensitive**, and §3 must not present it as a seed-invariant constant.
+**Found:** the question, 2026-08-14/15 (manuscript goal-4 audit, findings F-009a and F-010, TODO
+ledger T-06). The answer, measured by the 2026-08-20 production run at `rerun-freeze-01`; recorded
+here 2026-08-24 (phase 29.1, plan 05), closing
+`.planning/todos/done/2026-08-15-classify-the-198-unprojectable-observations.md`.
+**Source of truth:**
+`experiments/results_e2_invocations/e2_classification/degenerate_observations.csv` — 198 rows ×
+12 columns, committed in `83da9b3`. Corroborating, all from the same run at the same sha:
+`experiments/results/benchmark.json` (`discard_stats`),
+`experiments/results/reconstruction_errors.csv`, `experiments/results/camera_parameters.csv`,
+`experiments/results_e2_band/seed_{42,43,44}/diagnostics.json`, and the committed stage logs
+`experiments/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158` and
+`e2_band.log:159,378,597`.
+**Where the prose is:** the §3 disclosure of `degenerate_observations_at_solution = 198`.
+
+> **The premise this entry retires.** The 2026-08-15 TODO opened: *"What the 198 are is not
+> established, and no committed artifact can settle it."* That was true when written and was
+> **overtaken, not wrong** — Phase 24's DEGEN-02 `discard_stats` threading and Phase 25's DEGEN-04
+> per-observation sink did not exist yet. The artifact the TODO said could not exist is now
+> committed, and it is the citation this entry rests on. Every figure below was read out of that
+> file or its named siblings; none is inferred from a summary count.
+
+### The verdict
+
+**The 198 are above-water board corners.** In eight calibration frames, in two episodes during the
+capture session, the board was lifted through the water surface; the corners that broke the surface
+have no refracted path to any camera, so the projector returns NaN and the guard counts them.
+
+The chain has two links, and collapsing them is the error that has already been made once here:
+
+1. **What the flag says by itself.** `h_q = Q_z - z_int` is a statement about the *estimate* —
+   both `Q_z` and `z_int` are free parameters, and it is evaluated at the solution. So a flagged
+   row means "the recovered geometry places this corner at or above the recovered interface", not,
+   on its own, "the physical board was in air". `experiments/_degeneracy.py:36-43` says this
+   explicitly, and it is exactly the conflation that made `19.3-ORCHESTRATOR-NOTES.md` §4 misread
+   the `ideal` preset (see leg 4 below).
+2. **What upgrades it to a physical claim.** An independent dataset — the 52 held-out validation
+   frames, which are not in the stage-3 solve at all — puts corners above the surface in precisely
+   the two frames flanking the two flagged clusters. Two disjoint frame sets, two different
+   estimators, one localized event. That is what licenses "the board was lifted", and it is the
+   part the 2026-08-15 analysis could not have had.
+
+### The decomposition (`experiments/results/benchmark.json`)
+
+`discard_stats`, from the run's own record, is unanimous on every axis:
+
+| key | value |
+|---|---|
+| `degenerate_observations_at_solution` | **198** |
+| `..._cause_above_interface__stage3_intrinsic_pass` | **198** |
+| `..._cause_above_interface__stage3_interface_optimization` | 0 |
+| `..._cause_behind_camera__{intrinsic_pass, interface_optimization}` | 0, 0 |
+| `..._cause_interface_below_camera__{intrinsic_pass, interface_optimization}` | 0, 0 |
+| `..._fate_extended__stage3_intrinsic_pass` | **198** |
+| `..._fate_penalized__{both stages}` | 0, 0 |
+| `observations_evaluated__stage3_intrinsic_pass` | 73,975 |
+
+`problem_shape.degenerate_observations_at_solution` carries the same 198. The rate is
+**198 / 73,975 = 0.268 %**.
+
+Two facts hide in those zeros. Every flagged observation was **continued by the pinhole
+extension**, none **penalized** — and `penalized` is reachable only for points behind the camera,
+where no extension exists (`_optim_common.py:896-906`), so a zero there is a second, independent
+statement that nothing was behind a camera. And the `stage3_interface_optimization` row is **all
+zeros**: the flagged population appears in the intrinsic pass and nowhere else.
+
+### The per-observation table — the load-bearing citation
+
+`experiments/results_e2_invocations/e2_classification/degenerate_observations.csv`, 198 rows,
+columns `camera, frame_idx, corner_id, stage, h_q_m, h_c_m, r_q_m, chord_incidence_deg, extended,
+nan_reason, n_flagged_at_stage, truncated`. Re-measured from the file on 2026-08-24; it is
+committed, so these reproduce exactly.
+
+| measurement | value |
+|---|---|
+| rows | **198**, matching `discard_stats` exactly |
+| `stage` | **`stage3_intrinsic_pass` on all 198 rows**, no other value present |
+| `nan_reason` | **`2` on all 198 rows** — `NAN_REASON_ABOVE_INTERFACE` (`refractive_geometry.py:32`), bucket `above_interface`. Zero rows carry code `1` (`interface_below_camera`) or `3` (`camera_model_failure`) |
+| `extended` | `True` on all 198 |
+| `truncated` | `False` on all 198 — the per-stage row cap never fired, so this is the **complete** flagged population, not a sample |
+| `n_flagged_at_stage` | `198` on every row — the table's own denominator agrees with `benchmark.json` |
+| `h_q_m` | **−0.064021 … −0.001251 m**, negative on all 198 rows |
+| `h_c_m` | 1.047177 … 1.112502 m |
+| `r_q_m` | 0.050834 … 0.597174 m |
+| `chord_incidence_deg` | **2.797 … 29.822°** |
+| frames | **8**: 22, 23, 24, 25, 26, 102, 104, 105 |
+| cameras | **8** of the 12 in the stage-3 solve: `e3v82f9, e3v831e, e3v83e9, e3v83eb, e3v83ee, e3v83ef, e3v83f0, e3v83f1` |
+| distinct (frame, camera) pairs | 35 |
+| `corner_id` | 23 distinct ids, spanning 0 … 78 |
+
+**The signed span is the measurement that matters.** `h_q_m` is not a cause label — it is a
+distance. Every flagged corner sits **past** the interface, by **1.3 mm to 64 mm**. A cause label
+could in principle be a bookkeeping artifact; a signed distance with a consistent sign across 198
+independent rows cannot be.
+
+**The frame structure is the second.** The 198 are not diffuse. They fall in **two clusters —
+22-26 and 102/104/105** — 116 observations in the first and 82 in the second, with per-frame counts
+rising and falling within each (22:35, 23:29, 24:23, 25:19, 26:10 | 102:20, 104:49, 105:13). That
+is the signature of a board passing through the surface twice during a capture session; numerical
+noise would scatter across all 200 calibration frames.
+
+> **Say "two clusters", not "two contiguous runs".** Frame 103 carries no flagged rows, so the
+> second cluster is not contiguous *in this table*. The reason is **not** that frame 103 was clean
+> — see the next section — and a reader must not infer that it was.
+
+**Camera concentration.** Eight of the twelve cameras see it, at very uneven counts (`e3v83f1`: 42,
+down to `e3v831e`: 1). Uneven is what a lifted board predicts: whether a given above-water corner
+is *observed* depends on which cameras detected it in that frame, not on the lift itself.
+
+### Independent corroboration, from a disjoint frame set
+
+`experiments/results/reconstruction_errors.csv` holds the 52 held-out validation frames
+(`problem_shape.n_frames_holdout = 52`), which are **not** in the stage-3 residual vector.
+Measured against `water_z_m = 1.0738404` from `experiments/results/camera_parameters.csv`:
+
+- **31 of 7,762 validation corners (0.399 %) reconstruct above the interface**, by up to
+  **51.73 mm** — against the 198's 0.268 % of 73,975. Two estimators, two populations, the same
+  order of magnitude.
+- Those 31 fall in **2 of 52 frames: 21 and 103**.
+
+Frames 21 and 103 are **exactly** the two frames flanking the two flagged clusters, and the
+calibration and holdout frame sets are **disjoint** (verified: no frame index appears in both). So
+frame 103's absence from the 198 is not evidence that it was clean — frame 103 was *held out of the
+calibration solve entirely*, and the independent estimator that does see it finds corners above the
+surface there. Read together, the two lift episodes span roughly frames 21-26 and 102-105, and each
+artifact sees its own half of them. Neither could establish this alone; this is the single strongest
+piece of evidence in the entry, and it is new with this run.
+
+### The camera-submerged bucket is eliminated by measurement, not by argument
+
+`experiments/results/camera_parameters.csv` gives `h_c_m` for all **13** cameras:
+**1.047177 … 1.112502 m**, every value positive. The `interface_below_camera` cause (`h_c <= 0`)
+cannot fire on this rig, which is why `discard_stats` reports zero for it, and the per-observation
+table's own `h_c_m` column reproduces the same range on the flagged rows. Note what that bucket
+means if it ever *is* non-zero: it is a diagnostic of **solver excursion**, never a claim that
+hardware was submerged (`_degeneracy.py:113-117`).
+
+### The count is seed-sensitive; the cause is not
+
+`experiments/results_e2_band/seed_{42,43,44}/diagnostics.json`, measured 2026-08-24:
+
+| seed | flagged | observations evaluated | rate |
+|---|---|---|---|
+| 42 | **198** | 73,975 | 0.268 % |
+| 43 | **210** | 73,887 | 0.284 % |
+| 44 | **183** | 74,141 | 0.247 % |
+
+In all three, **100 % of the flagged observations are `above_interface` and 100 % are `extended`** —
+zero `behind_camera`, zero `interface_below_camera`, zero `penalized`. So the *verdict* is
+seed-invariant while the *count* moves over a ±7 % range around 198.
+
+**This corrects the 2026-08-15 TODO on a point of fact, and it matters for §3.** That TODO recorded
+the count as appearing "identically" across the archive's band seeds, which invited reading 198 as a
+fixed property of the dataset. On this run it is not: it is seed 42's value under this detection
+seed, and 198 must be quoted as such. The finding it supports — above-water corners at roughly a
+quarter of a percent — is what is stable, and that is the claim §3 should carry.
+
+### The stage-grouping caveat — never quote a stage-agnostic row count
+
+`degenerate_observations_at_solution` is a **cross-stage sum**. The counter is evaluated once per
+stage that runs a counting residual pass, so an observation flagged in both stage-3 passes appears
+twice in a stage-agnostic row count. Here that risk did not materialize — all 198 are in
+`stage3_intrinsic_pass` and `stage3_interface_optimization` contributes zero — but **that is a
+finding, not a formality**. It is the reason "198" is simultaneously the cross-stage total, the
+per-stage count and the table's row count. Any future run whose two stages both flag observations
+breaks that coincidence, and a row count taken without grouping by `stage` will double-count.
+Always group by `stage`.
+
+### Preserved finding 1 — the residual-path-vs-export population trap
+
+*Recorded here because it existed only inside the TODO being closed, and it is a live trap for
+anyone who tries to re-derive any of this from the shipped artifacts.*
+
+**The optimizer's residual vector and the reprojection exports describe different populations.**
+
+| artifact | observations | cameras |
+|---|---|---|
+| stage-3 residual vector (`benchmark.json`: `observations_evaluated__stage3_intrinsic_pass`; `stages.stage3_intrinsic_pass.n_residuals = 147950 = 2 × 73975`) | **73,975** | **12** |
+| `experiments/results/reprojection_residuals.csv` and `per_corner_residuals` in `calibration.json` | **23,028** | **13**, including the auxiliary **fisheye** `e3v8250` |
+
+They differ by more than **3×**, and not only in size: the exports *include* the auxiliary fisheye,
+which is excluded from stages 2 and 3 entirely, while the residual vector excludes it. The exports
+are a **post-hoc reprojection evaluation, not the optimizer's residual vector.** Anything built
+against them silently measures the wrong population. Instrumentation of this question must hook the
+residual path (`_optim_common.py:888` → `refractive_project_batch` →
+`_refractive_project_newton_batch`), which is what DEGEN-04 did.
+
+**The corollary that kills the attractive shortcut.** It is tempting to detect behind-camera cases
+by hunting the flat 100 px `INVALID_PROJECTION_PENALTY_PX` inside `reprojection_residuals.csv`. The
+exports top out at **75.98 px** with nothing at or above 99 — **and that is not evidence.** A
+penalty can fire inside the solve and never reach the export, because the export is a different
+computation over a different population. Recorded so that nobody runs that check again and draws a
+conclusion from it. The behind-camera count here really is zero, but it is `discard_stats` and the
+all-`extended` fate column that say so, not the exports.
+
+### Preserved finding 2 — the obliquity / total-internal-reflection trigger is refuted
+
+*The original TODO framed the guard as having two triggers — breached interface and
+beyond-critical-angle obliquity — and called the remaining work "apportioning them". The second
+trigger does not exist. Three legs of this were argued on 2026-08-15; the fourth is measured by
+this run, and it is the one that closes the question empirically.*
+
+1. **There is no TIR check on the path.** The library's only `sin_t_sq > 1.0` test lives inside
+   `refract_ray`, which has **zero callers anywhere in `src/`**. The residual path never evaluates
+   it. A trigger that is never evaluated cannot fire.
+2. **TIR cannot fire for this direction of travel, by construction.** The Newton solve returns a
+   crossing point satisfying `n_air sin θ_a = n_water sin θ_w` with `θ_a < 90°`, so
+   `sin θ_w < 1/1.333` and **θ_w < 48.61°** always, at the solution. A submerged point viewed from
+   an above-water camera always admits a valid path.
+3. **Ground truth, both presets, seed 42.** `ideal` (4 × 20, 7,040 corner observations) and
+   `realistic` (12 × 30, 31,680) each produced **zero** unprojectable corners — `realistic` at
+   chord incidences up to **61.5°**, well past the 48.61° **critical angle**.
+4. **This run measures the flagged population itself, and it never approaches the limit.**
+   `chord_incidence_deg` across all 198 rows spans **2.797 … 29.822°**. The maximum is **18.8°
+   below** the 48.61° critical angle, and 31.7° below the incidence at which `realistic` projected
+   cleanly. Where 2026-08-15 could only argue that obliquity was unreachable *in principle*, this
+   run shows the flagged corners were nowhere near it *in fact*. **Leg 4 replaces the 2026-08-15
+   argument; it does not repeat it.**
+
+> **Read `chord_incidence_deg` for what it is.** It is a **straight-chord surrogate**, *not* the
+> refracted exit angle: for a flagged observation the Newton loop never runs, so no refraction
+> point exists at which to take an angle (`_degeneracy.py:60-63`). That is why leg 4 is stated as
+> "the flagged population is not even geometrically near obliquity" rather than "the exit angle was
+> measured below θ_c". Legs 1 and 2 are what make the refutation absolute; leg 4 removes the last
+> empirical foothold the alternative had. Do not quote leg 4 as a direct measurement of an exit
+> angle — that would be a new version of the same category error leg 4's own history warns about.
+
+**The `ideal` precedent was misread, and the misreading must not be restored.**
+`19.3-ORCHESTRATOR-NOTES.md` §4 reasoned, from `ideal` showing 12 flagged observations against
+"0 / 1760 corners above the surface", that obliquity must be responsible. But **0 / 1760 is a
+ground-truth statement while the guard counts at the optimizer's solution.** The two are not
+comparable, which is precisely why the note had to reach for obliquity to explain a gap that was
+never there. `experiments/_degeneracy.py:44-49` carries this as a standing falsification note.
+
+### What this licenses for the manuscript — and what it does not
+
+**Licensed.** The disclosure may now name the mechanism plainly — in a small number of frames the
+board was raised through the water surface — instead of the cause-agnostic wording drafted when the
+cause was unknown. The evidence is a committed, complete, per-observation table plus an independent
+corroboration on a disjoint frame set.
+
+**The finding is benign, and the library says so in its own words.** The
+`DegenerateObservationWarning` emitted by this run
+(`src/aquacal/calibration/pipeline.py:1288`; text at
+`interface_estimation.py:160-185`, captured verbatim in
+`experiments/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`) states:
+
+> "198 were continued with the pinhole extension, which is C0 but not C1 at the refractive/pinhole
+> boundary and **carries ZERO water_z gradient** — every other parameter keeps full gradient, so
+> those parameters still contribute to the reported optimality."
+
+The mechanism, from source: `_extend_invalid_projections` (`_optim_common.py:56`) takes **only**
+`camera` and `points_3d` — it never sees the interface — so the extended residual is independent of
+`water_z` and the interface tilt. **Those 198 observations cannot bias the interface estimate.**
+Keep the second half of the sentence attached, though: the extension *does* keep a gradient in the
+pose and intrinsic parameters, and its docstring names that as the restoring gradient that pushes a
+lifted board back underwater. "Zero gradient" is true of the interface parameters specifically and
+false of the residual as a whole.
+
+**Why the count is published rather than treated as a defect to clear.** At 0.268 % the library
+declines to read it as a verdict — below the 1 % `DEGENERACY_WARNING_FRACTION_THRESHOLD`
+(`interface_estimation.py:73`), it is "reported for the record rather than as a verdict on the whole
+solve". And on measured hardware the library's own remedy — *move the board so no corner sits at or
+above the interface* — is unavailable retrospectively, so a re-run of this dataset reports the same
+kind of count. That is why phase 29.1 plan 01 chose to **publish** the value on E4's real-rig row
+with a permanent, documented gate exemption rather than assign a status the project expects to
+clear.
+
+**Not licensed.**
+
+- **No manuscript file was edited, and none may be edited on the strength of this entry alone.**
+  `Spinoffs/papers/aquacal/` is read-only from this repository. The deliverable here is the
+  evidence and its derivation; the sentence belongs to the manuscript session.
+- **No published number is challenged.** 198 is unchanged and was not re-derived — it was
+  *decomposed*. But see the seed-sensitivity section: it must be attributed to seed 42, not
+  presented as invariant.
+- **The OpenCV pin still matters.** The count is 198 at OpenCV 4.13 and 194 at 4.14
+  (`MANUSCRIPT-FINDINGS.md:2102`, in MF-20's table). Everything above is measured at 4.13.0.92. Do
+  not compare a 4.14 count against the published 198.
+- **This says nothing about the synthetic experiments.** E1, E5, E6 and E7 record zero flagged
+  observations in every committed artifact; the classification machinery is always on and simply
+  has nothing to classify there.
