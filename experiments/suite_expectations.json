@@ -1456,13 +1456,13 @@
     },
     {
       "name": "degenerate_observations.csv",
-      "dir": "experiments/results",
+      "dir": "experiments/results_e2_invocations/e2_classification",
       "stage": "e2_production",
       "profiles": [
         "full"
       ],
       "rows": {},
-      "rows_rationale": "written ONLY when at least one flagged row exists, so a clean run legitimately produces no file and its absence is PASS, not FAIL (Phase 25 D-08). A stage-agnostic len() double-counts observations flagged in both stage-3 passes -- group by `stage` first.",
+      "rows_rationale": "written ONLY when at least one flagged row exists, so a run in which nothing was flagged legitimately produces no file and its absence is PASS, not FAIL (Phase 25 D-08) -- but ONLY when the `condition` below shows the condition did not hold. A stage-agnostic len() double-counts observations flagged in both stage-3 passes -- group by `stage` first. DIRECTORY (D-29.1-17): `aquacal.validation.diagnostics` writes this into the PIPELINE's output_dir, which E2's generated invocation configs set per variant; it is a pipeline-level diagnostic, not an experiment-level --out artifact. The manifest declared `experiments/results` until 2026-08-24, a directory the writer never uses, so the 2026-08-20 roll-up scored it PASS-by-absence while 198 rows sat in the invocation tree. The classification invocation is the copy of record and the one MF-24 cites. The timing and memory invocations write their own byproduct copies of this same file into their own trees; those are properties of two runs whose purpose is timing and memory rather than measurements anyone cites, and they are deliberately not separately gated.",
       "columns_constant": "aquacal.validation.diagnostics:DEGENERATE_OBSERVATION_COLUMNS",
       "columns": 12,
       "extra_columns": [],
@@ -1472,13 +1472,13 @@
     },
     {
       "name": "all_observation_depths.csv",
-      "dir": "experiments/results",
+      "dir": "experiments/results_e2_invocations/e2_classification",
       "stage": "e2_production",
       "profiles": [
         "full"
       ],
       "rows": {},
-      "rows_rationale": "written ONLY when internals.log_all_observation_depths is true, which rides E2's classification run and nothing else. Absence is PASS. Expect about 11 MB on the 13-camera rig.",
+      "rows_rationale": "written ONLY when internals.log_all_observation_depths is true, which rides E2's classification run and nothing else; absence is PASS ONLY when the `condition` below shows that switch was off. Expect about 11 MB on the 13-camera rig. DIRECTORY (D-29.1-17): written by `aquacal.validation.diagnostics` into the PIPELINE's output_dir, i.e. the classification invocation's tree -- never into --out. Only the classification variant sets the switch, so unlike `degenerate_observations.csv` there are no byproduct copies in the timing and memory trees. The file is large and is gitignored under the invocation tree (`experiments/results_e2_invocations/*/all_observation_depths.csv`, committed in 672be71), so it exists on a machine that has run the suite and is never committed -- the same DATA-01b treatment the bulk E2 artifacts already get. It is deliberately NOT duplicated into `experiments/results`, which has no ignore rule for that filename and would trip check-added-large-files --maxkb=1000 for the next person to clone (D-29.1-19).",
       "columns_constant": "aquacal.validation.diagnostics:OBSERVATION_DEPTH_COLUMNS",
       "columns": 8,
       "extra_columns": [],

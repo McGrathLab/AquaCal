@@ -225,8 +225,8 @@ Stated so nobody over-reads it:
 | `real_rig_metrics.json` | `e2_production` | `experiments/results` | not pinned | no | no | — |
 | `reconstruction_errors.csv` | `e2_production` | `experiments/results` | not pinned | no | no | — |
 | `reprojection_residuals.csv` | `e2_production` | `experiments/results` | not pinned | no | no | — |
-| `degenerate_observations.csv` | `e2_production` | `experiments/results` | not pinned | yes | no | — |
-| `all_observation_depths.csv` | `e2_production` | `experiments/results` | not pinned | yes | no | — |
+| `degenerate_observations.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes | no | — |
+| `all_observation_depths.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes | no | — |
 | `e2_band_scope.json` | `e2_band` | `experiments/results_e2_band` | not pinned | no | no | — |
 | `benchmark.json` | `e2_timing` | `experiments/results_e2_timing` | not pinned | no | no | — |
 | `benchmark.json` | `e2_memory` | `experiments/results_e2_memory` | not pinned | no | no | — |

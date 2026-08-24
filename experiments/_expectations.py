@@ -32,7 +32,7 @@ in the band sidecars, never in this docstring.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -49,6 +49,12 @@ PROFILES: tuple[str, ...] = ("smoke", "full")
 # Do not replace it with an absolute path; that is the property that makes
 # `--baseline-dir` cheap.
 PRIMARY_OUT_DIR = "experiments/results"
+
+# Every `dir` in the manifest is written as a path from the repository root, and
+# every one of them lives under this directory. `_resolve_dir` strips it and
+# re-roots the remainder at `out_dir.parent`, which is what keeps the whole
+# family relocatable in one move (D-29.1-17).
+MANIFEST_DIR_ROOT = PurePosixPath(PRIMARY_OUT_DIR).parts[0]
 
 
 def _gate_result_cls() -> type[GateResult]:
@@ -131,10 +137,51 @@ def load_expectations(path: Path | None = None) -> dict[str, Any]:
 
 
 def _resolve_dir(out_dir: Path, artifact_dir: str) -> Path:
-    """Resolve an artifact's declared directory against the run's `out_dir`."""
+    """Resolve an artifact's declared directory against the run's `out_dir`.
+
+    The primary directory resolves to `out_dir` itself. Every other declared
+    directory resolves as a SIBLING of `out_dir`, by its path relative to the
+    manifest's own `experiments/` root (`MANIFEST_DIR_ROOT`) rather than by its
+    last path component alone.
+
+    **This is a widening, not a re-pointing (D-29.1-17).** Until this change the
+    resolver kept only `Path(artifact_dir).name`, so a NESTED non-primary
+    directory could not be written down in the manifest at all -- which is the
+    single-line reason `e2_production`'s two conditional artifacts could not
+    simply have their `dir` corrected to the invocation tree their writer
+    actually writes into. Every single-component non-primary entry
+    (`experiments/results_e2_band`, `experiments/results_e2_timing`,
+    `experiments/results_e2_memory`) resolves to a byte-identical path under
+    both rules, because stripping one leading component from a two-component
+    path leaves exactly the last component. `tests/unit/test_expectations.py`
+    asserts that equivalence against the pre-change rule rather than assuming
+    it.
+
+    **The limitation this does NOT fix, stated because the next person will hit
+    it.** The resolution is anchored at `out_dir.parent`, so it tracks a
+    relocated `--out` only for directories that move WITH it. A run that
+    repoints the invocation tree independently -- `SUITE_E2_INVOCATION_DIR`,
+    `run_experiment_suite.sh:405` -- is not tracked, and the gate would look
+    under `<out_dir>/../results_e2_invocations/...` for files written elsewhere.
+    That is the pre-existing behaviour of all three sibling entries above and is
+    not introduced here. It cannot bite the two entries added today: both are
+    `full`-only, and the production invocation directory is the default one.
+
+    Args:
+        out_dir: The run's primary output directory.
+        artifact_dir: The artifact's declared `dir`, as written in the manifest.
+
+    Returns:
+        The directory the artifact is expected in for this run.
+    """
     if artifact_dir == PRIMARY_OUT_DIR:
         return out_dir
-    return out_dir.parent / Path(artifact_dir).name
+    parts = PurePosixPath(artifact_dir).parts
+    if parts and parts[0] == MANIFEST_DIR_ROOT:
+        parts = parts[1:]
+    if not parts:
+        return out_dir.parent
+    return out_dir.parent.joinpath(*parts)
 
 
 def _data_row_count(path: Path) -> int | None:

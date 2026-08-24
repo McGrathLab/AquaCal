@@ -29,6 +29,7 @@ import pytest
 from experiments._expectations import (
     EXPECTATIONS_PATH,
     PROFILES,
+    _resolve_dir,
     check_completeness,
     load_expectations,
 )
@@ -76,12 +77,14 @@ def _header_for(artifact: dict) -> list[str]:
 
 
 def _write_stub(root: pathlib.Path, artifact: dict, n_rows: int) -> pathlib.Path:
-    """Write an ``n_rows``-row stand-in for ``artifact`` under ``root``."""
-    directory = (
-        root / "results"
-        if artifact["dir"] == PRIMARY_DIR
-        else root / pathlib.Path(artifact["dir"]).name
-    )
+    """Write an ``n_rows``-row stand-in for ``artifact`` under ``root``.
+
+    The directory is resolved by the gate's OWN `_resolve_dir` rather than by a
+    second copy of the rule here. A fixture that re-implements the resolution
+    can agree with a broken resolver and disagree with a fixed one, which is the
+    two-sources-of-truth shape this manifest exists to end.
+    """
+    directory = _resolve_dir(root / "results", artifact["dir"])
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / artifact["name"]
     if artifact["name"].endswith(".csv"):
@@ -307,7 +310,10 @@ class TestConditionalArtifacts:
 
     def test_missing_degenerate_observations_csv_passes(self, tmp_path):
         out_dir = _build_tree(tmp_path, "full")
-        (out_dir / "degenerate_observations.csv").unlink()
+        artifact = next(
+            a for a in ARTIFACTS if a["name"] == "degenerate_observations.csv"
+        )
+        (_resolve_dir(out_dir, artifact["dir"]) / artifact["name"]).unlink()
         results = check_completeness(out_dir, profile="full", stage="e2_production")
         verdict = next(r for r in results if "degenerate_observations.csv" in r.gate)
         assert verdict.verdict == "PASS", verdict.detail
