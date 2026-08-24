@@ -69,6 +69,22 @@ def _yes_no(flag: bool) -> str:
     return "yes" if flag else "no"
 
 
+def _conditional_cell(artifact: dict[str, Any]) -> str:
+    """The `Conditional` cell, carrying the predicate's one-line description.
+
+    The sheet is the HAND-verification document, so a reader judging a finished
+    run needs to know what makes an absence acceptable -- not merely that the
+    artifact is conditional. Only the `description` is surfaced, never the whole
+    `condition` object: the sheet is for a human and the manifest remains the
+    machine-readable authority on the source, the pointer and the `holds_when`
+    (D-29.1-18).
+    """
+    if not artifact["conditional"]:
+        return "no"
+    description = artifact["condition"]["description"]
+    return f"yes — absent only if NOT: {_escape(description)}"
+
+
 def _stage_table(manifest: dict[str, Any]) -> list[str]:
     lines = [
         "| # | Stage | Concurrency | Est. h | Profiles | Output directory |",
@@ -97,7 +113,7 @@ def _artifact_table(manifest: dict[str, Any]) -> list[str]:
         lines.append(
             f"| `{artifact['name']}` | `{artifact['stage']}` | "
             f"`{artifact['dir']}` | {_rows_cell(artifact)} | "
-            f"{_yes_no(artifact['conditional'])} | "
+            f"{_conditional_cell(artifact)} | "
             f"{_yes_no(artifact['immutable'])} | {_escape(shape_cell)} |"
         )
     return lines
@@ -135,9 +151,12 @@ def render_sheet(manifest: dict[str, Any] | None = None) -> str:
         f"**{len(data['artifacts'])} declared artifacts** "
         f"({len(full_artifacts)} expected under the `full` profile, of which "
         f"{len(pinned)} pin a row count).",
-        f"- **{len(conditional)} conditional** artifact(s): legitimately absent "
-        "when the condition did not hold, and their absence is not evidence of "
-        "an incomplete run.",
+        f"- **{len(conditional)} conditional** artifact(s): absent only when a "
+        "MACHINE-EVALUATED predicate shows the condition did not hold. Each "
+        "one's predicate is summarised in its `Conditional` cell below; an "
+        "absence the gate cannot adjudicate is reported N/A, never PASS, and "
+        "an artifact found outside its declared directory is a FAIL "
+        "(D-29.1-18).",
         f"- **{len(immutable)} immutable** artifact(s): the re-run must not "
         "change them.",
         f"- **{len(shape_only)} artifact(s) carry shape-only columns** — present "

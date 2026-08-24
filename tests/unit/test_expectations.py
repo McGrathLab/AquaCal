@@ -1193,6 +1193,29 @@ class TestExpectationSheet:
         ]
         assert missing == []
 
+    def test_the_sheet_carries_each_conditional_predicates_description(self):
+        """The sheet is the hand-verification document (D-29.1-18).
+
+        A reader judging a finished run needs to know what makes an absence
+        acceptable, not merely that the artifact is conditional. The one-line
+        `description` is surfaced; the machine-readable source, pointer and
+        `holds_when` stay in the manifest, which remains the authority.
+        """
+        generated = self._sheet_module().render_sheet()
+        conditional = [a for a in ARTIFACTS if a["conditional"]]
+        assert conditional, "the manifest declares no conditional artifacts"
+        for artifact in conditional:
+            assert artifact["condition"]["description"] in generated, artifact["name"]
+
+    def test_the_sheet_does_not_leak_the_whole_condition_object(self):
+        """Only the description belongs in the sheet."""
+        generated = self._sheet_module().render_sheet()
+        for artifact in ARTIFACTS:
+            if not artifact["conditional"]:
+                continue
+            assert artifact["condition"]["pointer"] not in generated
+            assert artifact["condition"]["holds_when"] not in generated
+
     def test_the_sheet_marks_every_shape_only_column(self):
         """Existence and row count are not correctness: a gauge-corrected column
         populated with uncorrected values passes every completeness check. The

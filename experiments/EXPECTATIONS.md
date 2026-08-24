@@ -135,7 +135,7 @@ Stated so nobody over-reads it:
 ### Shape of the run
 
 - **20 stages**, **62 declared artifacts** (62 expected under the `full` profile, of which 20 pin a row count).
-- **2 conditional** artifact(s): legitimately absent when the condition did not hold, and their absence is not evidence of an incomplete run.
+- **2 conditional** artifact(s): absent only when a MACHINE-EVALUATED predicate shows the condition did not hold. Each one's predicate is summarised in its `Conditional` cell below; an absence the gate cannot adjudicate is reported N/A, never PASS, and an artifact found outside its declared directory is a FAIL (D-29.1-18).
 - **3 immutable** artifact(s): the re-run must not change them.
 - **5 artifact(s) carry shape-only columns** — present and correctly counted proves nothing about their values. Those are the cells a hand-verifier actually has to read.
 - Serial wall clock **28.3-31.3 h**; with the concurrency pool **15-17 h**. Dominant stage `e6_band` at 8.9 h.
@@ -225,8 +225,8 @@ Stated so nobody over-reads it:
 | `real_rig_metrics.json` | `e2_production` | `experiments/results` | not pinned | no | no | — |
 | `reconstruction_errors.csv` | `e2_production` | `experiments/results` | not pinned | no | no | — |
 | `reprojection_residuals.csv` | `e2_production` | `experiments/results` | not pinned | no | no | — |
-| `degenerate_observations.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes | no | — |
-| `all_observation_depths.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes | no | — |
+| `degenerate_observations.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes — absent only if NOT: E2's calibration flagged at least one observation as degenerate at its solution | no | — |
+| `all_observation_depths.csv` | `e2_production` | `experiments/results_e2_invocations/e2_classification` | not pinned | yes — absent only if NOT: E2's classification invocation was configured to log every observation's depth | no | — |
 | `e2_band_scope.json` | `e2_band` | `experiments/results_e2_band` | not pinned | no | no | — |
 | `benchmark.json` | `e2_timing` | `experiments/results_e2_timing` | not pinned | no | no | — |
 | `benchmark.json` | `e2_memory` | `experiments/results_e2_memory` | not pinned | no | no | — |
