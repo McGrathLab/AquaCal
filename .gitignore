@@ -505,3 +505,91 @@ experiments/results_e2_invocations/*/*.png
 # rule (`...dryrun.stagelogs/`), and git cannot re-include a file whose parent
 # directory is excluded. Verified, not assumed -- see the commit message.
 !experiments/run_experiment_suite_state.*.stagelogs/*.log
+
+# ---------------------------------------------------------------------------
+# Phase 29.1 / plan 29.1-06: the 2026-08-20 production run's archive.
+#
+# Every output tree the 2026-08-20 production run wrote -- the run committed on
+# `results/rerun-freeze-01`, driver sha 3ab9c13 -- moved to
+# experiments/freeze01_run_output/ in plan 29.1-06, before the `rerun-freeze-02`
+# tag was cut. NOTHING WAS DELETED; every move is a move. The archive is named
+# for the tag whose run produced it, so that with two archives present
+# (pre_rerun_baseline/ is the older, pre-re-run one) a reader can tell which run
+# each holds without opening either.
+#
+# WHY the move: run_experiment_suite.sh's D-24 pre-flight refuses a fresh run
+# into a non-empty OUT_DIR (:1059-1064), and the verifier's strongest invariant
+# -- everything under experiments/results/ was produced by THIS run -- is only
+# true if the tree starts empty. rerun-freeze-01 was cut from a branch where
+# experiments/results/ held ZERO tracked files; this branch held 147, so a fresh
+# clone of a tag cut as-is would have been refused by its own driver.
+#
+# Every literal-prefix rule above that names a moved tree is MIRRORED below.
+# Without these, the ~230 untracked/ignored files that travel with those trees
+# become newly visible in `git status` and newly committable -- re-breaking the
+# repo-wide 1000 KB large-file guard the DATA-01b rules exist to hold. One of
+# them is not routine: results_e2_invocations/*/all_observation_depths.csv is a
+# 10.9 MB file, and `experiments/` has no rule for that filename outside the
+# invocation-tree prefix (D-19).
+#
+# The ORIGINAL rules above are deliberately KEPT: experiments/results/ and its
+# siblings are where the NEXT run writes, and the DATA-01b lines must keep
+# applying to them.
+#
+# Phase 2 of 2026-08-15-archive-stale-outputs-before-the-run-purge-them-after.md
+# purges this archive once the re-run is verified; this whole block goes with it.
+# ---------------------------------------------------------------------------
+
+# Mirrors experiments/results/ (E7 conditioning arrays, DATA-01b E2 bulk, E1 spatial CSV)
+experiments/freeze01_run_output/results/interface_ablation_conditioning.npz
+experiments/freeze01_run_output/results/calibration.json
+experiments/freeze01_run_output/results/reprojection_residuals.csv
+experiments/freeze01_run_output/results/reconstruction_errors.csv
+experiments/freeze01_run_output/results/exp2_spatial_errors.csv
+
+# Mirrors experiments/results_e2_band/ (the ~129-file derived bulk stays out)
+experiments/freeze01_run_output/results_e2_band/*
+!experiments/freeze01_run_output/results_e2_band/config_seed*.yaml
+!experiments/freeze01_run_output/results_e2_band/e2_band_scope.json
+!experiments/freeze01_run_output/results_e2_band/seed_*_e2_out/
+experiments/freeze01_run_output/results_e2_band/seed_*_e2_out/*
+!experiments/freeze01_run_output/results_e2_band/seed_*_e2_out/real_rig_metrics.json
+
+# Mirrors experiments/results_e2_timing/ and experiments/results_e2_memory/
+experiments/freeze01_run_output/results_e2_timing/calibration.json
+experiments/freeze01_run_output/results_e2_timing/reprojection_residuals.csv
+experiments/freeze01_run_output/results_e2_timing/reconstruction_errors.csv
+experiments/freeze01_run_output/results_e2_memory/calibration.json
+experiments/freeze01_run_output/results_e2_memory/reprojection_residuals.csv
+experiments/freeze01_run_output/results_e2_memory/reconstruction_errors.csv
+
+# Mirrors experiments/results_e2_invocations/. THE SECOND LINE IS THE D-19 ONE:
+# all_observation_depths.csv is 10.9 MB -- 190x the check-added-large-files
+# --maxkb=1000 gate -- and it is the single file in this whole block whose
+# mirror is load-bearing rather than hygienic. Checked explicitly, not swept.
+experiments/freeze01_run_output/results_e2_invocations/*/calibration.json
+experiments/freeze01_run_output/results_e2_invocations/*/all_observation_depths.csv
+experiments/freeze01_run_output/results_e2_invocations/*/reprojection_residuals.csv
+experiments/freeze01_run_output/results_e2_invocations/*/reconstruction_errors.csv
+experiments/freeze01_run_output/results_e2_invocations/*/spatial_measurements.csv
+experiments/freeze01_run_output/results_e2_invocations/*/*.png
+
+# Mirrors experiments/results_e4_repeat/repeat_stdout.log -- un-ignored against
+# *.log (line 59) for the same reason as the original: it is the only surviving
+# record of repeat 1's per-stage numbers.
+!experiments/freeze01_run_output/results_e4_repeat/repeat_stdout.log
+
+# Mirrors the driver's dry-run state (D-23/D-48's sha glob). Control-flow
+# rehearsal only, never a record of a real run. The archived copies are the
+# 3ab9c13 rehearsal that preceded the 2026-08-20 launch.
+experiments/freeze01_run_output/driver_state/run_experiment_suite_state.*.dryrun.tsv
+experiments/freeze01_run_output/driver_state/run_experiment_suite_state.*.dryrun.failures.txt
+experiments/freeze01_run_output/driver_state/run_experiment_suite_state.*.dryrun.stagelogs/
+
+# Mirrors the PRODUCTION queue's 18 per-stage logs, un-ignored against *.log for
+# the same reason as the original: every defect this phase fixed was diagnosed
+# from them and from nothing else. As above, this does NOT re-include the
+# dry-run logs -- those sit under a DIRECTORY exclusion (the .dryrun.stagelogs/
+# rule immediately above), and git cannot re-include a file whose parent
+# directory is excluded.
+!experiments/freeze01_run_output/driver_state/run_experiment_suite_state.*.stagelogs/*.log

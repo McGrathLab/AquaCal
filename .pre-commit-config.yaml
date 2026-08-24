@@ -38,12 +38,20 @@ repos:
         # run (D-19.3-20) -- inherit the same reasoning. They hold the same
         # artifact types, produced by the same code, with the same
         # regenerated-every-run `git_sha`.
-        # The optional `pre_rerun_baseline/` segment covers Phase 26 / DRIVER-04's
-        # archive (D-28..D-32): the same six trees, byte-identical, at a new path.
-        # Without it the pure-rename commit trips the hook on ~200 `git_sha` and
-        # `config_hash` fields that were already committed and already excluded.
-        # Phase 30 / POST-03 purges the archive and drops this segment again.
-        exclude: ^(docs/tutorials/.*\.ipynb|experiments/(pre_rerun_baseline/)?results[^/]*/.*|tests/fixtures/.*\.json)$
+        # The optional archive segment covers the two archive-aside moves, each
+        # of which relocates the same trees, byte-identical, to a new path:
+        #   pre_rerun_baseline/   Phase 26 / DRIVER-04 (D-28..D-32)
+        #   freeze01_run_output/  Phase 29.1 / plan 29.1-06, the 2026-08-20 run
+        # Without the segment the pure-rename commit trips this hook on ~200
+        # `git_sha` and `config_hash` fields that were already committed and
+        # already excluded at the old path. This is NOT hypothetical for the
+        # second one: measured on 29.1-06's staged move, detect-secrets reported
+        # Hex High Entropy String findings across the e6_configs records before
+        # the segment was widened, and none after.
+        # Each archive's purge drops its own alternative: Phase 30 / POST-03 for
+        # pre_rerun_baseline/, and Phase 2 of the archive-stale-outputs todo for
+        # freeze01_run_output/.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/(pre_rerun_baseline/|freeze01_run_output/)?results[^/]*/.*|tests/fixtures/.*\.json)$
 
   - repo: local
     hooks:
