@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Phase 29.1 planned -- 9 plans, 6 waves, plan-checker PASS
-last_updated: "2026-08-20T15:50:56.692Z"
+stopped_at: Completed 29.1-01-PLAN.md
+last_updated: "2026-08-24T12:48:55.351Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 41
+  completed_plans: 42
   percent: 56
 ---
 
@@ -37,9 +37,9 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 1 of 9
+Plan: 2 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Executing Phase 29.1
+Status: Ready to execute
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
 .planning/phases/28-full-suite-production-run/); results committed and pushed on branch
 `results/rerun-freeze-01`; E2 sanity control PASSES (seed 42 reproduces real_rig_metrics.json
@@ -215,6 +215,10 @@ Logged in PROJECT.md § Key Decisions. The load-bearing one from v2.0: **D-19.3-
 experiment may carry an accuracy claim only where a measured seed band supports it.** BAND-01
 (Phase 25) applies this to E1's noise axis.
 
+- [Phase 29.1]: Phase 29.1 work happens on branch phase/29.1-post-run-fixes, based on results/rerun-freeze-01 (D-13). Merge it back; never check out around it, or the 147 tracked files under experiments/results/ leave the tree.
+- [Phase 29.1]: E4 gate 1 exempts record_source="pipeline" rows inside the existing gate rather than gaining a second gate id, because the roll-up PASS/N/A/FAIL totals are an audited number (D-02). The exemption is keyed to row kind, never to a count magnitude, so synthetic (assembled) rows are gated exactly as before.
+- [Phase 29.1]: E4 real-rig row publishes the guard count E2 measured (198 above-water board corners) and is exempt from the > 0 status downgrade at both the writer and the gate (D-01). Reverting means re-nulling a number the manuscript may cite.
+
 ### Blockers/Concerns
 
 - **MF-19** — §3's numbers predate the current library. This is the manuscript-level blocker and
@@ -226,15 +230,23 @@ experiment may carry an accuracy claim only where a measured seed band supports 
   so Phase 30 (POST-01) must re-cut all three together against the new numbers before another
   Zenodo version is cut.
 
+- 8 pre-existing failures in tests/unit/test_experiments_provenance.py (not caused by 29.1-01; verified at branch base). They will meet the D-14 full-suite bar in plan 29.1-08 -- resolve there or rule expected-by-construction. Details: .planning/phases/29.1-post-run-fixes-re-freeze/deferred-items.md
+
 ## Session Continuity
 
-**Resume file:** .planning/phases/29.1-post-run-fixes-re-freeze/29.1-01-PLAN.md
+**Resume file:** None
 
-Last session: 2026-08-20T15:31:14.209Z
+Last session: 2026-08-24T12:48:32.512Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 29.1 planned -- 9 plans, 6 waves, plan-checker PASS
+Stopped at: Completed 29.1-01-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 `.planning/milestones/v2.0-ROADMAP.md`.
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 29.1 P01 | 13 min | 3 tasks | 7 files |

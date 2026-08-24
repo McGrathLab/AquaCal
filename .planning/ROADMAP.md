@@ -599,13 +599,14 @@ validation corners, 0.40%, reconstructing up to 51.7 mm above the interface in 2
 against the 198's 0.268%. Criterion 1 is therefore purely a plumbing-and-policy decision about how
 a known, physically-explained count is reported — not an open question about what it is.
 
-**Plans**: 9 plans, 6 waves. Wave 1 leads with a tracer that proves the writer -> CSV -> gate ->
+**Plans**: 1/9 plans executed, 6 waves. Wave 1 leads with a tracer that proves the writer -> CSV -> gate ->
 roll-up path end to end; every later plan expands from it. The re-freeze strictly follows all
 of them. Plan 09 was added when criterion 7 was folded in; it is numbered last but executes in
 wave 3, so the list below is ordered by wave rather than by number.
 
 Plans:
-- [ ] 29.1-01-PLAN.md — E4's real-rig guard count: publish the value, exempt the pipeline row at both sites (SC-1) [wave 1, tracer]
+
+- [x] 29.1-01-PLAN.md — E4's real-rig guard count: publish the value, exempt the pipeline row at both sites (SC-1) [wave 1, tracer]
 - [ ] 29.1-02-PLAN.md — E1's band: unclaim the sidecar, enforce the write policy, derive the scope string (SC-2, SC-3, SC-4) [wave 2]
 - [ ] 29.1-04-PLAN.md — install extras corrected in HANDOFF.md, proven from a clean environment (SC-5) [wave 2]
 - [ ] 29.1-05-PLAN.md — discharge the 198-observation and E4-path todos against committed evidence (folded todos) [wave 2]
