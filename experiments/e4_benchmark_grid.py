@@ -1362,11 +1362,31 @@ def _extract_pipeline_row(record: dict) -> dict:
     solver_config = record.get("solver_config", {})
     accuracy = record.get("accuracy", {})
     memory = record.get("memory", {})
-    # D-01: read the guard count out of E2's own record instead of nulling it.
-    # `discard_stats` is the canonical site; `problem_shape` is the fallback.
-    # Absent from both stays `None` -- an un-instrumented record must remain
-    # distinguishable from a measured zero, which is the property gate 1 rests
-    # on. (Rationale in full at the dict entry below.)
+    # D-01/D-03: the real-rig row's guard count is READ FROM E2's OWN RECORD.
+    # Since Phase 24's DEGEN-02 instrumentation, E2's benchmark.json carries
+    # `degenerate_observations_at_solution` twice -- under `discard_stats`
+    # (canonical, read first) and under `problem_shape` (fallback) -- together
+    # with the full cause/fate decomposition. Absent from both stays `None`, so
+    # an un-instrumented record remains distinguishable from a measured zero;
+    # that distinction is the property gate 1 rests on.
+    #
+    # What the count physically is, for the committed 2026-08-20 record: 198
+    # real-hardware board corners that sat ABOVE the water interface at the
+    # final solution -- 198 of 198 `above_interface`, 0 `behind_camera`,
+    # 0 `interface_below_camera`, all of them in `stage3_intrinsic_pass`, and
+    # all continued via the pinhole extension (`fate_extended`, none
+    # penalized). Per-observation evidence:
+    # results_e2_invocations/e2_classification/degenerate_observations.csv
+    # (198 rows, `h_q_m` from -0.0640 to -0.0013 m, in two contiguous frame
+    # clusters -- the board being lifted through the surface twice, not a
+    # diffuse numerical effect).
+    #
+    # This row is DELIBERATELY EXEMPT from the `> 0` status downgrade applied
+    # to the declared synthetic cells (see the publish rule in
+    # `build_grid_dataframe`), and its published count is likewise exempt from
+    # gate 1 in `check_rerun_gates._check_guard_column`, which keys the
+    # exemption on `record_source == "pipeline"`. Publishing the value without
+    # both exemptions would only convert one gate failure into another.
     degenerate_at_solution = _get_nested(
         record, "discard_stats", "degenerate_observations_at_solution"
     )
@@ -1525,6 +1545,22 @@ def build_grid_dataframe(
             # a resumed `skipped_existing` cell with a positive count is
             # gated too, since its on-disk record is exactly as degenerate as
             # a freshly-run one would be.
+            # D-01: this downgrade is scoped to `record_source="assembled"`
+            # rows -- the nine DECLARED_CELLS synthetic cells assembled in this
+            # loop. E2's real-rig row (`record_source="pipeline"`) is built in
+            # the separate branch below and never reaches here; that exemption
+            # is INTENTIONAL, not an accident of control flow, so do not unify
+            # the two branches without re-deciding it. Why: the library that
+            # produced the real-rig count declines to read it as a verdict --
+            # at 0.268% of 73,975 observations it is below `pipeline.py:1288`'s
+            # 1% threshold and is "reported for the record rather than as a
+            # verdict on the whole solve". And on measured hardware the
+            # library's own remedy -- reposition the board so no corner sits at
+            # or above the interface -- is unavailable retrospectively, so a
+            # re-run reports the same count. The anchor row's status must
+            # therefore be one the project can live with permanently, not one
+            # it expects to clear. The gate-side counterpart is
+            # `check_rerun_gates._check_guard_column`.
             n_degenerate = row.get("degenerate_observations_at_solution")
             if row["status"] in ("ok", "skipped_existing") and (
                 n_degenerate is not None and n_degenerate > 0
