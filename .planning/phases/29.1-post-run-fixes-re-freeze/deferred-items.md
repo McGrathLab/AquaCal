@@ -243,3 +243,69 @@ gates. Reasonable post-submission cleanup.
 
 **Where it matters:** any operator who rehearses with `--smoke` in a working copy that has an
 empty `experiments/results_e2_band/` will see two roll-up FAILs that say nothing about the run.
+
+---
+
+## D4 RESOLUTION (plan 29.1-08, 2026-08-24) — ruled on, not fixed
+
+**Ruled, not resolved.** `29.1-PREPUSH-AUDIT.md` §1 records an explicit, reasoned exception:
+the tag was cut with the three failures present, in the same shape attempt 1 ruled on its 17
+`GATE FAIL` findings. Nothing was deselected, marked `xfail`, skipped, loosened or regenerated,
+and no artifact of this phase records "0 failed".
+
+Two facts were added by 29.1-08 that 29.1-07 did not have:
+
+1. **They fail at `rerun-freeze-01` too.** The three modules, `tests/fixtures/`,
+   `tests/conftest.py`, `pyproject.toml`, `src/` and `experiments/_degeneracy.py` are
+   byte-identical between the tags, so the failure is not a property of `rerun-freeze-02`.
+   Attempt 1's `0 failed` is a Windows measurement, and `27-ONTARGET-VERIFICATION.md` never ran
+   `pytest` on this box. Blocking the freeze would therefore not avoid them — no reachable sha
+   satisfies the condition.
+2. **The re-run's verifier must expect `3 failed` on Linux.** It is recorded in the tag's own
+   annotation message, in `29.1-FREEZE-RECORD.md`, and in the attempt log, so it survives
+   without this file.
+
+**Still open as post-submission work:** `tests/fixtures/discard_anchor.json`'s `provenance`
+carries a sha, a scenario and kwargs but **no platform, no numpy version and no BLAS**. Nothing
+in the fixture says which machine it is exact against. That is the actual repair, and it is a
+change to what the project accepts as an anchor — outside a freeze window.
+
+---
+
+## D5 UPDATE (plan 29.1-08, 2026-08-24) — the hazard was reproduced, in the verification clone
+
+Plan 29.1-08's `--smoke` verification of `rerun-freeze-02` ran inside
+`/home/tlancaster/aquacal-frozen-rerun-freeze-02` and left, exactly as D5 predicts:
+
+    experiments/run_experiment_suite_state.7005a27.tsv          (20 x "complete ... 0")
+    experiments/run_experiment_suite_state.7005a27.failures.txt
+    experiments/run_experiment_suite_state.7005a27.stagelogs/
+
+**A real run at `7005a27` in that clone would skip all 20 stages and produce nothing.** All
+three were archived to `/home/tlancaster/AquaCal_smoke_aside/2026-08-24-7005a27/` (together with
+the smoke log, its roll-up, the install log, the import assertion and the dry-run log), and the
+clone's `git status --porcelain` is empty again.
+
+Confirmed at the same time: the tree the tag ships is clean of these — a fresh clone of
+`rerun-freeze-02` carries no state file of any form, and only the `.dryrun.*` forms are
+gitignored, so the real ones would dirty `git status` if they returned.
+
+**The operator instruction that follows from this is in `29.1-FREEZE-RECORD.md` § *Hazards*:
+do not reuse the verification clone for the production run — clone the tag fresh.**
+`experiments/HANDOFF.md` still carries no warning about rehearsing with `--smoke` at the sha you
+are about to run for real. That remains the post-submission fix.
+
+---
+
+## D6 CONFIRMATION (plan 29.1-08, 2026-08-24) — the fresh clone lands in the `N/A` state, as predicted
+
+29.1-07 predicted that a fresh clone of the tag would have no `experiments/results_e2_band/` at
+all (zero tracked files, and git does not track empty directories), so `check_e2_band` would
+return its single `N/A` rather than the two `FAIL`s the present-but-empty state produces.
+
+**Measured in the clone:** the directory is absent, and the roll-up read
+
+    [N/A ] E2  gate_e2_band   .../experiments/results_e2_band not present (its stage has not run yet)
+
+giving `72 PASS / 18 N/A / 0 FAIL`. The prediction held exactly. The defect itself is unfixed
+and remains post-submission cleanup.
