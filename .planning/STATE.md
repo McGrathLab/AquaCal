@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 29.1
-current_phase_name: post-run-fixes-re-freeze (INSERTED) -- fix the four defects the production run surfaced, correct the install extras, cut a new frozen tag
+current_phase_name: post-run-fixes-re-freeze
 status: executing
 stopped_at: Phase 29.1 planned -- 9 plans, 6 waves, plan-checker PASS
-last_updated: "2026-08-20T15:31:14.310Z"
+last_updated: "2026-08-20T15:50:56.692Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 29.1 — post-run-fixes-re-freeze (inserted 2026-08-20)
+**Current focus:** Phase 29.1 — post-run-fixes-re-freeze
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -35,11 +35,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.1 (post-run-fixes-re-freeze) — INSERTED 2026-08-20, not yet planned.
+Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: Phase 28's run completed all 20 stages with exit 0 (00:14:10Z → 06:14:31Z at 3ab9c13 / rerun-freeze-01).
+Plan: 1 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Phase 29 PARTIAL. DONE: gates re-run and reproduce the as-run roll-up exactly (175 PASS,
+Status: Executing Phase 29.1
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
 .planning/phases/28-full-suite-production-run/); results committed and pushed on branch
 `results/rerun-freeze-01`; E2 sanity control PASSES (seed 42 reproduces real_rig_metrics.json
@@ -47,7 +47,7 @@ within rtol=1e-6). OPEN: the E7 before/after comparison (success criterion 3) an
 results package (RUN-05) — the latter deliberately deferred until after 29.1's re-freeze and
 re-run, so the archive is built from clean output.
 NEXT: /gsd-plan-phase 29.1
-Last activity: 2026-08-20 -- production run graded and committed; four defects filed; Phase 29.1 inserted
+Last activity: 2026-08-20 — Phase 29.1 execution started
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
