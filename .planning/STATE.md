@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Completed 29.1-03-PLAN.md
-last_updated: "2026-08-24T14:57:06.107Z"
+stopped_at: Completed 29.1-09-PLAN.md
+last_updated: "2026-08-24T15:13:37.491Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 46
+  completed_plans: 47
   percent: 56
 ---
 
@@ -37,7 +37,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 5 of 9
+Plan: 6 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
@@ -231,6 +231,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 29.1-03: the stale-string sweep's enumeration command was widened mid-pass after its own blind spot was found by hand -- a pre-filter for comment/string lines silently dropped wrapped docstring lines, one of which was a defect. A boundary with a blind spot is not a boundary.
 - [Phase ?]: 29.1-03: retired measurements are retained under an explicit owner, never scrubbed and never swapped for the current value -- MF-12's digits stay in e6 under its name, because a corrected literal reproduces the defect one run later.
 - [Phase ?]: 29.1-03: two twin sites outside D-09's bound (_expectations.py, check_rerun_gates.py) were corrected rather than only recorded; the sweep did not widen but a twin of a corrected claim is the partial-fix shape the gate module exists to catch.
+- [Phase ?]: 29.1-09: mechanism A of D-18's three -- correct the manifest dir and evaluate the predicate; the only candidate keeping src/ untouched, moving no published artifact, creating no second copy of a measurement and avoiding the 10.9 MB hazard
+- [Phase ?]: 29.1-09: an absent conditional artifact scores PASS only on a machine-evaluated predicate; an unevaluable predicate is N/A, never PASS, and a misplaced artifact is a FAIL naming both paths
+- [Phase ?]: 29.1-09: the predicate asks whether the flagged count is non-zero, never whether it is 198 -- MF-24 measured that count to be seed- and OpenCV-sensitive
+- [Phase ?]: 29.1-09: the misplacement search set is bounded to directories the manifest declares, with the bound stated in the docstring rather than closed by a filesystem walk
 
 ### Blockers/Concerns
 
@@ -249,10 +253,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T14:56:52.700Z
+Last session: 2026-08-24T15:13:25.197Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.1-03-PLAN.md
+Stopped at: Completed 29.1-09-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -267,3 +271,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P04 | 7 min | 2 tasks | 3 files |
 | Phase 29.1 P05 | 12 min | 2 tasks | 3 files |
 | Phase 29.1 P03 | 72 min | 3 tasks | 12 files |
+| Phase 29.1 P09 | 25 min | 3 tasks | 6 files |
