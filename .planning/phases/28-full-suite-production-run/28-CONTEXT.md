@@ -33,6 +33,26 @@ Phase 29's RUN-05. Any source change: this phase runs a frozen tag and must not 
 These are rulings already made and recorded during Phase 29.1. They are not open questions.
 A plan that contradicts one of them is wrong.
 
+**Index** (added 2026-08-24 for machine-trackability; the authoritative statement of each ruling is
+the section below it, not this line). IDs are inherited from Phase 29.1 and are cited across
+`28-RESEARCH.md`, all five plans, and prior-phase documents — **they must not be renumbered.**
+
+- **D5:** Clone fresh — do not reuse the working copy
+- **D4:** Expect exactly three test failures — do not treat them as a regression
+- **D1:** Expect eight provenance failures to return
+- **D-28:** Set `PRELAUNCH_GATE_PYTHON` explicitly
+- **D-12:** Leave `SUITE_E2_RELEASE_CONFIG` unset
+- **D6:** `check_e2_band`'s `--smoke` quirk is known and NOT fixed
+- Use no pre-flight override flags *(no inherited ID)*
+
+> **Scope of the automated decision-coverage gate — read this before trusting its number.** The
+> gate counts only IDs in the hyphenated `D-NN` form, so it reports **2/2**, and that means
+> **`D-28` and `D-12` only**. The other five rulings (`D5`, `D4`, `D1`, `D6`, and the
+> no-override-flags rule) are *not* pattern-trackable and did **not** pass on the gate. They were
+> verified twice by other means on 2026-08-24: the planner's multi-source coverage audit, and the
+> plan-checker's independent locked-decision check. **A `2/2 passed` here is a narrow pass, not
+> confirmation that all seven rulings were machine-verified.**
+
 ### Clone fresh — do not reuse the working copy (D5)
 
 The run MUST start from a clean clone:

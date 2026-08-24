@@ -4,15 +4,15 @@ milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 28
 current_phase_name: Suite Execution on Linux Machine
-status: planning
+status: executing
 stopped_at: "29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished"
-last_updated: "2026-08-24T21:14:20.221Z"
+last_updated: "2026-08-24T22:50:11.138Z"
 last_activity: 2026-08-24
 last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 50
+  total_plans: 55
   completed_plans: 50
   percent: 67
 ---
@@ -36,10 +36,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 ## Current Position
 
 Phase: 28 — Suite Execution on Linux Machine (re-run at rerun-freeze-02)
-Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: Not started
+Phase 29 (gate-verification-results-commit) — PARTIAL, from **attempt 1** only.
+Plan: 5 plans (28-01 … 28-05), 5 waves — planned 2026-08-24, plan-checker VERIFICATION PASSED.
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Ready to plan
+Status: Ready to execute
 (annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
 0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH, library imported from inside the
 clone, environment built by executing the tag's own corrected install command. `rerun-freeze-01`
@@ -61,6 +61,16 @@ NEXT: launch the v2.1 full-suite production run from a FRESH clone of `rerun-fre
 at that sha there (D5), and a real run would skip all 20 stages. Set `PRELAUNCH_GATE_PYTHON`
 explicitly (D-28). Read `29.1-FREEZE-RECORD.md` § *Hazards* first.
 Last activity: 2026-08-24 — Phase 29.1 complete, transitioned to Phase 30
+
+**Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
+Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
+Decision coverage gate: **2/2 passed — this is a NARROW pass.** The gate counts only IDs in the
+hyphenated `D-NN` form, so 2/2 means **`D-28` and `D-12` only**. The other five rulings in
+`28-CONTEXT.md` (`D5`, `D4`, `D1`, `D6`, and the no-override-flags rule) are not pattern-trackable
+and did **not** pass on the gate; they were verified instead by the planner's multi-source coverage
+audit and the plan-checker's independent locked-decision check. Do not read `2/2` as "all decisions
+verified". The IDs are inherited from Phase 29.1 and are cited across `28-RESEARCH.md`, all five
+plans, and prior-phase docs — **they must not be renumbered** to make the gate broader.
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would

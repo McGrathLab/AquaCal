@@ -451,11 +451,14 @@ Plans:
 - [ ] 28-01-PLAN.md — fresh clone at the tag, new conda environment, install from the tag's own
       command, dry run all 20 stages, environment-provenance assertion, D4 three-failure
       confirmation [wave 1, tracer]
+
 - [ ] 28-02-PLAN.md — the pre-launch assertion checklist, recorded as evidence [wave 2]
 - [ ] 28-03-PLAN.md — authorise the burn, launch the production run, read the verdict from the
       three hard signals (never `$?`) [wave 3, checkpoints]
+
 - [ ] 28-04-PLAN.md — preserve all nine driver-defined output paths with a post-archive count
       assertion, lock read-only, record checksums [wave 4]
+
 - [ ] 28-05-PLAN.md — capture the post-run gate output, assemble the `freeze02-*` evidence set,
       write `28-RUN-RECORD.md` [wave 5]
 
