@@ -61,7 +61,7 @@ not own. See `experiments/HANDOFF.md` §2.8 and `27-PREPUSH-AUDIT.md`.
 | # | Tag | Sha | Cut (UTC) | Outcome | Defect that ended it |
 |---|---|---|---|---|---|
 | 1 | `rerun-freeze-01` | `3ab9c13` | 2026-08-19T22:24Z | **SUPERSEDED by attempt 2** — closed successfully; verified on target; its run surfaced the defects attempt 2 fixes | — (closed clean; see the note below) |
-| 2 | `rerun-freeze-02` | `7005a27` | 2026-08-24T18:07Z | **OPEN** — cut and verified from a fresh clone; push awaiting author approval | — |
+| 2 | `rerun-freeze-02` | `7005a27` | 2026-08-24T18:07Z | **OPEN — cut, verified from a fresh clone, approved and pushed 2026-08-24.** Licenses the v2.1 re-run; closes when that run is verified on target | — (carries a ruled-on 3-test exception; see below) |
 
 **Closed 2026-08-20.** Plans 27-12 and 27-13 verified the tag on the Linux run machine: clean
 clone at the frozen sha, fresh environment at cv2 4.13.0, dry run 20/20, `fd_jacobian` at full
@@ -111,6 +111,21 @@ They are byte-identical to `rerun-freeze-01` and **fail at attempt 1's tag too**
 `0 failed` is a Windows measurement, and its on-target verification never ran `pytest`. Nothing
 was deselected, xfailed, skipped, regenerated or loosened. The ruling — recorded, reasoned, and
 in the same shape as this phase's own `GATE FAIL` ruling — is `29.1-PREPUSH-AUDIT.md` §1.
+
+**Pushed 2026-08-24**, after the author approved the exposure audit. `git push` named the branch
+and the one tag by full ref — never the all-tags form — and created exactly two refs, as its dry
+run predicted. Verified against the remote afterwards: `rerun-freeze-02` is public with its
+annotated object intact (`533f79fb…` → `7005a277…`), `rerun-freeze-01` still resolves to
+`b31c8020…` → `3ab9c137…`, and the `v[0-9]*` tag count is still **20**. **No workflow fired** —
+confirmed against the public Actions API, which shows no run at the new tag, the new branch or
+sha `7005a27`, and which also shows `Publish to PyPI` runs at `ref=v2.0.1` and `ref=v2.0.0`, so
+the trigger this naming convention exists to dodge is demonstrably live rather than theoretical.
+
+**`results/rerun-freeze-01` was deliberately left at `89c2092`** on the remote, by the author's
+ruling, rather than fast-forwarded — the same preservation principle that never moves a tag. A
+later reader who finds that pointer 48 commits behind should read it as attempt 1's preserved
+endpoint, not a forgotten push; every commit between the two is reachable from
+`refs/tags/rerun-freeze-02`.
 
 **Tags are never moved.** If on-target verification finds a defect, that finding sends the freeze
 **back**: fix it in the branch, commit, cut `rerun-freeze-02` at the new sha, and re-verify against
