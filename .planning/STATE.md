@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-current_phase: 30
-current_phase_name: Post-Submission Reconciliation
+current_phase: 28
+current_phase_name: Suite Execution on Linux Machine
 status: planning
 stopped_at: "29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished"
 last_updated: "2026-08-24T21:14:20.221Z"
@@ -35,7 +35,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 30 — Post-Submission Reconciliation
+Phase: 28 — Suite Execution on Linux Machine (re-run at rerun-freeze-02)
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
 Plan: Not started
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
