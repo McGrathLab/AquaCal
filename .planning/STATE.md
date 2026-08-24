@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: Completed 29.1-09-PLAN.md
-last_updated: "2026-08-24T15:13:37.491Z"
+stopped_at: Completed 29.1-06-PLAN.md (archive-aside + gate record); next is 29.1-07 (attempt-1 verification bar)
+last_updated: "2026-08-24T16:11:06.870Z"
 last_activity: 2026-08-20
 last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 50
-  completed_plans: 47
+  completed_plans: 48
   percent: 56
 ---
 
@@ -37,7 +37,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 6 of 9
+Plan: 7 of 9
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
@@ -235,6 +235,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 29.1-09: an absent conditional artifact scores PASS only on a machine-evaluated predicate; an unevaluable predicate is N/A, never PASS, and a misplaced artifact is a FAIL naming both paths
 - [Phase ?]: 29.1-09: the predicate asks whether the flagged count is non-zero, never whether it is 198 -- MF-24 measured that count to be seed- and OpenCV-sensitive
 - [Phase ?]: 29.1-09: the misplacement search set is bounded to directories the manifest declares, with the bound stated in the docstring rather than closed by a filesystem walk
+- [Phase ?]: 29.1-06: the 2026-08-20 run output is archived at experiments/freeze01_run_output/ -- named for the tag whose run produced it, so two archives stay distinguishable. 499 files moved, 0 deleted.
+- [Phase ?]: 29.1-06: experiments/results/ must be EMPTY at tag time -- D-24's pre-flight refuses a non-empty OUT_DIR, and 'everything here was produced by this run' is only true if it starts empty. Never --allow-nonempty-out.
+- [Phase ?]: 29.1-06: suite_expectations.json's two conditional entries deliberately did NOT follow the move -- they describe where a fresh run writes. Proved: archive gates PASS/PASS, emptied tree gates N/A/N/A.
+- [Phase ?]: 29.1-06: _baseline_paths.ARCHIVE still points at pre_rerun_baseline/ -- its subject is six Phase-19.1 seedless records that live there. No code changed; the live-or-archive rule repointed the rails by itself.
 
 ### Blockers/Concerns
 
@@ -253,10 +257,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T15:13:25.197Z
+Last session: 2026-08-24T16:11:06.857Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.1-09-PLAN.md
+Stopped at: Completed 29.1-06-PLAN.md (archive-aside + gate record); next is 29.1-07 (attempt-1 verification bar)
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -272,3 +276,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P05 | 12 min | 2 tasks | 3 files |
 | Phase 29.1 P03 | 72 min | 3 tasks | 12 files |
 | Phase 29.1 P09 | 25 min | 3 tasks | 6 files |
+| Phase 29.1 P06 | 50m | 3 tasks | 11 files |
