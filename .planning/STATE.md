@@ -5,10 +5,10 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: post-run-fixes-re-freeze
 status: executing
-stopped_at: "29.1-08: tag cut and verified; STOPPED at the push checkpoint awaiting author approval"
-last_updated: "2026-08-24T18:51:42.448Z"
-last_activity: 2026-08-20
-last_activity_desc: "Phase 29.1 planned: 9 plans / 6 waves, plan-checker PASS; criterion 7 folded in"
+stopped_at: "29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished"
+last_updated: "2026-08-24T20:57:39.821Z"
+last_activity: 2026-08-24
+last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 progress:
   total_phases: 9
   completed_phases: 6
@@ -37,22 +37,30 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 29.1 (post-run-fixes-re-freeze) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL. Phase 28's run FINISHED on the Linux machine.
-Plan: 9 of 9 — all nine have summaries; plan 08 STOPPED at its push checkpoint
+Plan: 9 of 9 — all nine complete; plan 08 closed with the push
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: BLOCKED — `rerun-freeze-02` is cut at `7005a27` and verified from a fresh clone
-(72 PASS / 18 N/A / 0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH), but NOTHING
-IS PUSHED. The push is the phase's only one-way door and needs the author's approval of
-`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-PREPUSH-AUDIT.md` §7. The tag was cut
-with a known, ruled-on 3-test failure (D4) — see §1 of that audit.
+Status: **`rerun-freeze-02` is PUSHED and public** at `7005a2771aa115e4f4c1284cec7e145739586a4a`
+(annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
+0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH, library imported from inside the
+clone, environment built by executing the tag's own corrected install command. `rerun-freeze-01`
+untouched at `b31c8020…` / `3ab9c137…`; `v[0-9]*` tag count still 20; no workflow fired
+(measured against the public Actions API). **The v2.1 re-run is licensed.**
+CAVEAT the re-run's verifier must carry: the tag was cut with a known, ruled-on 3-test failure
+(D4) — `pytest tests/` reports 2407 passed, 26 skipped, **3 failed** on Linux. See
+`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-PREPUSH-AUDIT.md` §1. Also expect D1's 8
+provenance failures to return once `experiments/results/` is repopulated.
 7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
 .planning/phases/28-full-suite-production-run/); results committed and pushed on branch
 `results/rerun-freeze-01`; E2 sanity control PASSES (seed 42 reproduces real_rig_metrics.json
 within rtol=1e-6). OPEN: the E7 before/after comparison (success criterion 3) and the Zenodo
 results package (RUN-05) — the latter deliberately deferred until after 29.1's re-freeze and
 re-run, so the archive is built from clean output.
-NEXT: approve (or amend) the push in 29.1-PREPUSH-AUDIT.md §7, then resume 29.1-08 to push
-the branch and the one tag and re-assert the invariants against the remote.
-Last activity: 2026-08-24 — 29.1-08 cut and verified rerun-freeze-02; stopped before the push
+NEXT: launch the v2.1 full-suite production run from a FRESH clone of `rerun-freeze-02`
+(`git clone --branch rerun-freeze-02 https://github.com/McGrathLab/AquaCal.git`). Do NOT reuse
+`~/aquacal-frozen-rerun-freeze-02` — plan 29.1-08's own `--smoke` verification left a state file
+at that sha there (D5), and a real run would skip all 20 stages. Set `PRELAUNCH_GATE_PYTHON`
+explicitly (D-28). Read `29.1-FREEZE-RECORD.md` § *Hazards* first.
+Last activity: 2026-08-24 — 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 
 Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
 `_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
@@ -250,6 +258,7 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 29.1-08: D4 ruled on, not resolved: rerun-freeze-02 was cut with three known exact-equality anchor test failures, recorded as a reasoned exception (29.1-PREPUSH-AUDIT.md section 1). They fail at rerun-freeze-01 too -- attempt 1's '0 failed' was a Windows measurement.
 - [Phase ?]: 29.1-08: rerun-freeze-02 cut at 7005a27 as an annotated tag; rerun-freeze-01 not moved; version-tag count and the git describe semver anchor both unchanged.
 - [Phase ?]: 29.1-08: SC-5 proven by execution rather than by a string diff: a new conda env built by running the tag's own corrected HANDOFF section 1.2 command produced e3 exit 0 and all 17 manifest fields non-null.
+- [Phase ?]: 29.1-08: results/rerun-freeze-01 deliberately left at 89c2092 on the remote (author's ruling) as attempt 1's preserved endpoint -- same principle that never moves a tag. Recorded in all three freeze records so the lagging pointer is not later read as an oversight.
 
 ### Blockers/Concerns
 
@@ -264,16 +273,16 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 - 8 pre-existing failures in tests/unit/test_experiments_provenance.py (not caused by 29.1-01; verified at branch base). They will meet the D-14 full-suite bar in plan 29.1-08 -- resolve there or rule expected-by-construction. Details: .planning/phases/29.1-post-run-fixes-re-freeze/deferred-items.md
 - 29.1-08 BLOCKING (deferred-items D4): three exact-equality anchor tests fail on the Linux run machine, so D-14's full-suite bar is not met. 29.1-08 must resolve them or record an explicit ruling in 29.1-PREPUSH-AUDIT.md; it must not record 'full test suite: 0 failed'.
-- rerun-freeze-02 is cut and verified locally but NOT pushed. The push needs author approval of 29.1-PREPUSH-AUDIT.md section 7. Until it happens, the v2.1 re-run is not licensed and RUN-05 stays blocked.
+- ~~rerun-freeze-02 is cut and verified locally but NOT pushed.~~ RESOLVED 2026-08-24: the author approved 29.1-PREPUSH-AUDIT.md section 7 and the push ran (two ref creations, exit 0, no workflow fired). The v2.1 re-run is licensed. RUN-05 now waits only on that re-run's output.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/29.1-post-run-fixes-re-freeze/29.1-PREPUSH-AUDIT.md
+**Resume file:** None
 
-Last session: 2026-08-24T18:51:42.434Z
+Last session: 2026-08-24T20:57:39.809Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: 29.1-08: tag cut and verified; STOPPED at the push checkpoint awaiting author approval
+Stopped at: 29.1-08 complete: rerun-freeze-02 pushed and verified against the remote; phase 29.1 finished
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
