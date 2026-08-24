@@ -425,7 +425,7 @@
     },
     {
       "id": "e1_band",
-      "description": "E1 noise/seed band. Ruling A1: a UNIFORM grid of 4 seeds x the 4 levels of NOISE_LEVELS. _run_band is a strict cartesian seeds x NOISE_LEVELS (e1_refractive_comparison.py:1091, :1120) and cannot express a ragged grid; two invocations would overwrite each other (force=True at :1177, :1202).",
+      "description": "E1 noise/seed band. Ruling A1: a UNIFORM grid of 4 seeds x the 4 levels of NOISE_LEVELS. _run_band is a strict cartesian seeds x NOISE_LEVELS (e1_refractive_comparison.py:1091, :1120) and cannot express a ragged grid; two invocations would overwrite each other (force=True at :1177, :1202). D-04/D-05: E1's band writes NO degeneracy sidecar, by design -- there is no e1_seed_band_degeneracy_breakdown.json entry here or in produces, and none is missing. The authoritative writer table (2026-08-15-suspend-programmatic-check-for-reshaped-artifacts.md, section 'The new sidecar') carries --seeds rows for E5 and E7 and deliberately none for E1, and _run_band's code and docstring already match it. The design table is the reason, NOT emptiness: E1's synthetic scenario produces zero degenerate observations, so the sidecar would carry per-seed denominators (observations_evaluated__*) and PnP attempt counts and nothing else -- but E7's band sidecar is equally all-zero on real degeneracy counters and is written anyway, so 'it would be empty' is not disqualifying by precedent alone. The expectation was removed on 2026-08-24 (phase 29.1, plan 02) after it produced the only surviving FAIL in the 2026-08-20 roll-up; re-adding it means amending the design table first and adding a write_degeneracy_breakdown call site in _run_band.",
       "invocation": "python -u -m experiments.e1_refractive_comparison --seeds \"${E1_BAND_SEEDS}\" --out \"${OUT_DIR}\"",
       "out_dir": "experiments/results",
       "depends_on": [
@@ -444,8 +444,7 @@
       "produces": [
         "exp1_band.csv",
         "exp1_parameter_band.csv",
-        "e1_seed_band_provenance.json",
-        "e1_seed_band_degeneracy_breakdown.json"
+        "e1_seed_band_provenance.json"
       ]
     },
     {
@@ -706,22 +705,6 @@
       ],
       "rows": {},
       "rows_rationale": "band provenance sidecar, not a table.",
-      "columns_constant": null,
-      "columns": null,
-      "extra_columns": [],
-      "conditional": false,
-      "immutable": false,
-      "shape_only_columns": []
-    },
-    {
-      "name": "e1_seed_band_degeneracy_breakdown.json",
-      "dir": "experiments/results",
-      "stage": "e1_band",
-      "profiles": [
-        "full"
-      ],
-      "rows": {},
-      "rows_rationale": "Phase 24 band-owned sidecar keyed by seed.",
       "columns_constant": null,
       "columns": null,
       "extra_columns": [],

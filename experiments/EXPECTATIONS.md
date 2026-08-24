@@ -134,7 +134,7 @@ Stated so nobody over-reads it:
 
 ### Shape of the run
 
-- **20 stages**, **63 declared artifacts** (63 expected under the `full` profile, of which 20 pin a row count).
+- **20 stages**, **62 declared artifacts** (62 expected under the `full` profile, of which 20 pin a row count).
 - **2 conditional** artifact(s): legitimately absent when the condition did not hold, and their absence is not evidence of an incomplete run.
 - **3 immutable** artifact(s): the re-run must not change them.
 - **5 artifact(s) carry shape-only columns** — present and correctly counted proves nothing about their values. Those are the cells a hand-verifier actually has to read.
@@ -183,7 +183,6 @@ Stated so nobody over-reads it:
 | `exp1_band.csv` | `e1_band` | `experiments/results` | 256 | no | no | — |
 | `exp1_parameter_band.csv` | `e1_band` | `experiments/results` | 384 | no | no | — |
 | `e1_seed_band_provenance.json` | `e1_band` | `experiments/results` | not pinned | no | no | — |
-| `e1_seed_band_degeneracy_breakdown.json` | `e1_band` | `experiments/results` | not pinned | no | no | — |
 | `code_constants.csv` | `e3` | `experiments/results` | 9 | no | no | — |
 | `newton_iterations.csv` | `e3` | `experiments/results` | 26 | no | no | `mean_iterations`, `max_iterations` |
 | `cpr_grouping.csv` | `e3` | `experiments/results` | 12 | no | no | — |
