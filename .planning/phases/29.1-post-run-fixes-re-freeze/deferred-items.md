@@ -35,3 +35,34 @@ evidence, made outside any plan that reasoned about it.
 `rerun-freeze-02` tag is cut (plan 29.1-08). These 8 failures will meet that bar. Plan
 29.1-08 must either resolve them, or record an explicit expected-by-construction ruling for
 them in `29.1-PREPUSH-AUDIT.md` the way Phase 27 attempt 1 ruled on its GATE FAIL.
+
+---
+
+## Stale figures in `.planning/MANUSCRIPT-FINDINGS.md` (found by plan 29.1-03, not fixed)
+
+**Found:** 2026-08-24, during plan 29.1-03's bounded stale-string sweep, while verifying
+`e6_generalization_sweep.py:625` and `e1_refractive_comparison.py:51` against the committed
+2026-08-20 artifacts. Recorded in `29.1-STALE-STRING-AUDIT.md` § *Twin sites outside the boundary*.
+
+Two manuscript findings carry figures the 2026-08-20 run has since remeasured:
+
+- **MF-12 (`:1558-1564`)** — its decomposition table gives the seed-43 line-layout signed means as
+  `-18.8547 / -18.4955 / -0.3592 mm`. The committed `generalization_sweep_per_camera_band.csv` from
+  the 2026-08-20 run measures `-18.8593 / -18.4996 / -0.3596 mm`. The finding — ~80% gauge, ~20%
+  physical — is unchanged; only the digits moved, in the fourth significant figure.
+- **MF-16 (`:751`)** — states that MF-08's `97-178x` ratio band and the `2 of 10 seeds exceed 2 mm`
+  finding "both regenerate from the newly committed" `exp1_band.csv`. Ruling A1 (2026-08-15) cut
+  E1's band from ten seeds to four, so they do not: both are n=10 figures, and the committed
+  four-seed band yields a `92-179x` spread instead. `e1_refractive_comparison.py:51` and
+  `run_experiment_suite.sh:1471` carried the same claim in source and were corrected by plan
+  29.1-03; MF-16 is the planning-side twin.
+
+**Why not fixed here:** `.planning/` is outside D-09's bound, and a manuscript finding is *supposed*
+to record what was measured when it was written — editing the digits in place would destroy the
+provenance trail rather than repair it. What both entries need is a dated re-measurement note, and
+that is a manuscript-session decision, not an experiments-suite edit.
+
+**Where it matters:** MF-12's figures reach §3's layout discussion and MF-16's reach the abstract's
+improvement ratio. Neither is a *phase* blocker — no gate reads them and no artifact moves — but
+whoever next edits §3 should re-measure both against the tree at `rerun-freeze-02` rather than
+quoting the entries as they stand.

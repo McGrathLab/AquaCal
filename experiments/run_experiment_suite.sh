@@ -1468,10 +1468,16 @@ run_stage_e1_band() {
   #
   # FOUR seeds and not ten: ten seeds x four levels was sized at about 7 h in
   # Phase 25; the uniform 4-seed grid is 16 of those 40 cells, about 2.8 h.
-  # 0.5 px IS one of the four levels, and that matters: the headline 97-178x
-  # ratio band and all sixteen ledger numbers backed by exp1_band.csv live at
-  # 0.5 px. A grid that dropped it would regenerate everything except the
-  # numbers actually cited.
+  # 0.5 px IS one of the four levels, and that matters: every ledger number
+  # backed by exp1_band.csv lives at 0.5 px, so a grid that dropped it would
+  # regenerate everything except the numbers actually cited.
+  #
+  # NOT among those numbers is MF-08's published 97-178x ratio band. That
+  # spread is the TEN-seed seed_sweep_19_3/ sweep's own (MANUSCRIPT-FINDINGS
+  # records it as "mean 139.5, sd 25.1, n=10"), and a four-seed grid cannot
+  # reproduce an n=10 band -- ruling A1 sized this band below it knowingly.
+  # What this band regenerates is that comparison at the 0.5 px level over
+  # its OWN seeds. Quote the published band as the ten-seed sweep's.
   #
   # The `--seeds` band path IS checked BEFORE the smoke branch (`:1367` vs
   # `:1370`), so unlike the single-seed stage above this one DOES land its band

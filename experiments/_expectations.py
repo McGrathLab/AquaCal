@@ -20,9 +20,13 @@ Two profiles (D-06 as simplified by D-49):
 - `smoke` asserts artifact EXISTENCE only. A present-but-short artifact passes.
 - `full` asserts row counts as well. This is the frozen Phase 28 run.
 
-The split is what makes Phase 25's D-21 satisfiable: E1's band is 160/240 rows
-in the committed tree and a different shape at the frozen sha, so a gate
-asserting the frozen shape unconditionally would fail every run until Phase 28.
+The split is what makes Phase 25's D-21 satisfiable: when D-21 was written, the
+committed tree still held the pre-ruling-A1 band and the frozen sha would emit a
+different shape, so a gate asserting the frozen shape unconditionally would have
+failed every run until Phase 28. Phase 28 has since run and the committed tree
+now carries the frozen shape; the split stays because `smoke` must still pass on
+a deliberately short artifact. Row counts live in `suite_expectations.json` and
+in the band sidecars, never in this docstring.
 """
 
 from __future__ import annotations

@@ -618,9 +618,13 @@ def _check_guard_column(
     the count E2 measured (198) instead of a null. The count is real, so gating
     on it would convert the pre-D-01 "missing" FAIL into a "non-zero" FAIL
     rather than resolving anything, and the library that produced the number
-    explicitly declines to read it as a verdict: at 0.268% of 73,975
-    observations it sits below `pipeline.py:1288`'s 1% threshold and is
-    "reported for the record rather than as a verdict on the whole solve".
+    explicitly declines to read it as a verdict: on the committed 2026-08-20
+    record (seed 42, OpenCV 4.13.0.92) that is 0.268% of 73,975 observations,
+    below `pipeline.py:1288`'s 1% threshold and therefore "reported for the
+    record rather than as a verdict on the whole solve". The RATE is what
+    carries across runs, not the integer -- MF-24 measured 198/210/183 for
+    seeds 42/43/44 -- so this gate reports the row's own count rather than
+    comparing it against a number frozen here.
 
     Mechanism, stated here so the next reader does not re-derive it: ONE gate
     result is kept rather than a second gate id, because the roll-up's
@@ -670,9 +674,8 @@ def _check_guard_column(
             f"; {n_exempt} row(s) exempt ({described}) -- a "
             f"record_source={_EXEMPT_RECORD_SOURCE!r} row is a real-hardware "
             "anchor row whose count the library itself declines to treat as a "
-            "verdict at 0.268% of 73,975 observations (pipeline.py:1288), so "
-            "it is published and reported here rather than gated on "
-            "(D-01/D-02)"
+            "verdict below pipeline.py:1288's 1% threshold, so it is published "
+            "and reported here rather than gated on (D-01/D-02)"
         )
     else:
         exemption = ""

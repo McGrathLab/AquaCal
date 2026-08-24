@@ -40,19 +40,25 @@ Emits into `--out`:
 
 **`--seeds` band mode (D-19.4-14, SC-5a, D-260807-dcv).** `--seeds 42,43,...`
 runs E1's depth-generalization path once per listed seed and emits
-`exp1_band.csv` (one row per seed x test_depth x model -- 10 seeds x 8 depths
-x 2 models = 160 rows at production scale). Its columns are
+`exp1_band.csv` (one row per seed x noise level x test_depth x model; the
+production row count is the product of those four axes, and the run's own
+`e1_seed_band_provenance.json` states the counts it emitted). Its columns are
 `exp2_depth_generalization.csv`'s columns PLUS `exp3_xy_vs_z_anisotropy.csv`'s
 four non-key columns (`xy_rmse_mm`, `z_rmse_mm`, `anisotropy_ratio`,
 `n_points`) PLUS `seed` -- this GAINS COLUMNS on the artifact that already
 existed rather than adding a sibling file. `exp3_xy_vs_z_anisotropy.csv`
 itself is still written only by the single-seed run. This is the committed,
-regenerable artifact behind MF-08's 97-178x deepest-point ratio spread and
-the "2 of 10 seeds exceed 2 mm" finding, both of which previously lived only
-in gitignored `seed_sweep_19_3/` output -- and now, with `z_rmse_mm` merged
-in, is also the regenerable source for the abstract/L281 ~135x headline
-ratio, which was previously computable only from the seedless
-`exp3_xy_vs_z_anisotropy.csv` or that same gitignored sweep output. **E1
+regenerable artifact behind the deepest-point ratio comparison and the
+per-seed depth-error spread that previously lived only in gitignored
+`seed_sweep_19_3/` output -- and now, with `z_rmse_mm` merged in, it is also
+the committed source for the abstract/L281 headline ratio, which was
+previously computable only from the seedless `exp3_xy_vs_z_anisotropy.csv`
+or that same gitignored sweep output. **What it does NOT regenerate is
+MF-08's published `97-178x` band or the `2 of 10 seeds exceed 2 mm`
+finding**: both are the TEN-seed `seed_sweep_19_3/` sweep's own numbers
+(MANUSCRIPT-FINDINGS.md records the ratio band as "mean 139.5, sd 25.1,
+n=10"), and ruling A1 sized this band below that. Quote those two as the
+ten-seed sweep's, and quote this band for what its own seeds cover. **E1
 carries NO accuracy claim (D-19.3-17 demoted it)** -- this band exists for
 reproducibility, not because E1's numbers move: E1's production
 `SCENARIO_NAME = "realistic"` resolves to `generate_real_rig_array()`'s
@@ -209,8 +215,9 @@ TEST_DEPTHS = [1.10, 1.20, 1.30, 1.40, 1.50, 1.70, 2.00, 2.50]
 # mode ONLY (D-12) -- `_run_smoke`, `_run_check` and the single-seed run keep
 # today's behaviour at the scenario preset's own default.
 #
-# 0.5 px IS the preset default and therefore the level that reproduces the
-# committed 160/240-row baseline and E1's `--check` bar. It MUST stay in this
+# 0.5 px IS the preset default and therefore the level at which the band's own
+# rows reproduce the committed single-seed CSVs and E1's `--check` bar. It
+# MUST stay in this
 # list: drop it and the band no longer contains the rows the reproduction gate
 # compares against, and the clean `normal_fixed` isolator (D-13) disappears
 # with it. 0.82 px is the PRODUCTION RIG's measured detection noise and is the
@@ -336,9 +343,11 @@ SPATIAL_KEY_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m"]
 # sweeps NOISE_LEVELS inside each seed, so (seed, test_depth_m, model) names
 # FOUR rows, not one. `write_experiment_csv` validates only that the key
 # columns EXIST -- it sorts by them and never checks uniqueness -- so omitting
-# `noise_std` here does not fail loudly: it writes a 640-row file in which
-# every key appears four times, and `compare_experiment_csv` is then reporting
-# on rows it cannot align.
+# `noise_std` here does not fail loudly: it writes a file in which every
+# (seed, test_depth_m, model) key appears once per NOISE_LEVELS entry rather
+# than once, and `compare_experiment_csv` is then reporting on rows it cannot
+# align. The multiplicity is the point, not any particular row count -- that
+# count moves with the seed list and the level list.
 BAND_KEY_COLUMNS = ["seed", "noise_std", "test_depth_m", "model"]
 # A SECOND band key shape, not an extension of BAND_KEY_COLUMNS. EXP1's rows
 # are keyed by (camera, model) and have NO depth axis at all, so its columns
@@ -355,9 +364,11 @@ BAND_KEY_COLUMNS = ["seed", "noise_std", "test_depth_m", "model"]
 # same D-19.4-14 precedent, written unconditionally from the same accumulator
 # as exp1_band.csv, so the noise axis lands in it whether or not the key list
 # admits it. Leaving it out is strictly worse here than on exp1_band.csv,
-# because this file has NO depth column to disambiguate the four rows with --
-# 960 rows collapse onto 240 distinct keys. The column therefore goes in both
-# lists; the tension is settled here rather than rediscovered.
+# because this file has NO depth column to disambiguate the per-level rows
+# with -- without `noise_std` the whole band collapses onto one distinct key
+# per (seed, camera, model), i.e. one key for every len(NOISE_LEVELS) rows.
+# The column therefore goes in both lists; the tension is settled here rather
+# than rediscovered.
 PARAMETER_BAND_KEY_COLUMNS = ["seed", "noise_std", "camera", "model"]
 
 # Pinned column order -- byte-identical to the committed baselines (D-19).
@@ -1072,9 +1083,13 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     stamped with the effective level in a `noise_std` column. The axis is band
     mode's ALONE -- `_run_smoke`, `_run_check` and the single-seed run are
     untouched -- and it collapses to one level under `--smoke`. At production
-    scale this takes `exp1_band.csv` from 160 to 640 rows (10 seeds x 4 levels
-    x 8 depths x 2 models) and `exp1_parameter_band.csv` from 240 to 960 (10
-    seeds x 4 levels x 12 cameras x 2 models).
+    scale this multiplies both band CSVs by `len(NOISE_LEVELS)`:
+    `exp1_band.csv` is seeds x levels x `len(TEST_DEPTHS)` x models, and
+    `exp1_parameter_band.csv` is seeds x levels x cameras x models. The counts
+    a run actually emits are DERIVED into the `scope` field of
+    `e1_seed_band_provenance.json` (D-08) rather than frozen here;
+    `run_experiment_suite.sh`'s `run_stage_e1_band` carries the same
+    arithmetic for the production seed list under ruling A1.
 
     Writes `exp1_band.csv` (force implied -- see the module docstring's
     "--seeds band mode" section), now carrying `BAND_MERGED_COLUMNS` --

@@ -621,13 +621,18 @@ def compute_water_z_error_mm_signed(
     destroys the sign that separates a harmless global datum shift -- the
     rig and the water surface sliding through the world frame together --
     from a real physical standoff failure. MF-12 found the line layout's
-    18.9 mm `water_z_error_mm_mean` reading was ~80% gauge: the SIGNED mean
-    is -18.8547 mm, and the camera Z position error's own signed mean is
-    -18.4955 mm, so `h_c = water_z - C_z`'s error is only -0.3592 mm -- the
-    surface and the cameras moved together in Z, and only their small
-    residual difference is a genuine standoff error. The absolute form
-    cannot show this: it reports the same 18.9 mm magnitude regardless of
-    whether the error is common-mode (gauge) or differential (physical).
+    ~18.9 mm `water_z_error_mm_mean` reading was ~80% gauge: on the tree it
+    was measured on, the signed water_z mean was -18.8547 mm against a
+    camera Z signed mean of -18.4955 mm, leaving `h_c = water_z - C_z` in
+    error by only -0.3592 mm -- the surface and the cameras moved together
+    in Z, and only their small residual difference is a genuine standoff
+    error. Those three digits are MF-12's OWN MEASUREMENT and are quoted
+    here as its citation; every run remeasures all three, so read the
+    current values off `generalization_sweep_per_camera_band.csv` rather
+    than out of this docstring. The DECOMPOSITION is the finding, not the
+    digits. The absolute form cannot show it: it reports the same magnitude
+    regardless of whether the error is common-mode (gauge) or differential
+    (physical).
 
     Args:
         estimated_water_zs: Recovered water_z per camera (meters), typically
@@ -671,9 +676,13 @@ def build_per_camera_rows(
 
         h_c_error_mm_signed == water_z_error_mm_signed - z_position_error_mm_raw
 
-    On the committed seed-43, layout=line row this reads
-    -18.8547 - (-18.4955) == -0.3592, matching MF-12's reported `h_c`
-    signed mean of -0.3592 mm.
+    Check it against the run's own output rather than against a number
+    quoted here: mean those three columns over the seed-43, layout=line rows
+    of `generalization_sweep_per_camera_band.csv` and the identity holds to
+    floating point. MF-12 reports the same decomposition on the tree it was
+    measured on (see `compute_water_z_error_mm_signed` above); a literal
+    here would state one run's digits as this table's contract, which is the
+    FIX-06 defect class (`tests/unit/test_stale_provenance_strings.py`).
 
     Args:
         config: One entry from `build_axis_configurations()`.

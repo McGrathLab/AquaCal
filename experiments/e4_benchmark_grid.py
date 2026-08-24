@@ -1551,15 +1551,27 @@ def build_grid_dataframe(
             # the separate branch below and never reaches here; that exemption
             # is INTENTIONAL, not an accident of control flow, so do not unify
             # the two branches without re-deciding it. Why: the library that
-            # produced the real-rig count declines to read it as a verdict --
-            # at 0.268% of 73,975 observations it is below `pipeline.py:1288`'s
-            # 1% threshold and is "reported for the record rather than as a
-            # verdict on the whole solve". And on measured hardware the
-            # library's own remedy -- reposition the board so no corner sits at
-            # or above the interface -- is unavailable retrospectively, so a
-            # re-run reports the same count. The anchor row's status must
-            # therefore be one the project can live with permanently, not one
-            # it expects to clear. The gate-side counterpart is
+            # produced the real-rig count declines to read it as a verdict:
+            # on the committed 2026-08-20 record (seed 42, OpenCV 4.13.0.92)
+            # that count is 0.268% of 73,975 observations, below
+            # `pipeline.py:1288`'s 1% threshold, and is therefore "reported
+            # for the record rather than as a verdict on the whole solve".
+            # And on measured hardware the library's own remedy -- reposition
+            # the board so no corner sits at or above the interface -- is
+            # unavailable retrospectively, so a re-run keeps reporting a count
+            # of the same ORDER.
+            #
+            # It does NOT report the same count, and nothing here may assume
+            # it does (MF-24, plan 29.1-05): the same run's E2 band measured
+            # 198, 210 and 183 flagged observations for seeds 42, 43 and 44 --
+            # a ~+/-7% spread -- and the count is 194 under OpenCV 4.14. What
+            # is seed-invariant is the VERDICT (100% `above_interface`, 100%
+            # `extended`, in every seed) and the ~0.25% rate; the integer is
+            # seed 42's, under this run's pinned OpenCV.
+            #
+            # The anchor row's status must therefore be one the project can
+            # live with permanently, not one it expects to clear. The
+            # gate-side counterpart is
             # `check_rerun_gates._check_guard_column`.
             n_degenerate = row.get("degenerate_observations_at_solution")
             if row["status"] in ("ok", "skipped_existing") and (

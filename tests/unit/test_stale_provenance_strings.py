@@ -11,6 +11,14 @@ This file necessarily **contains** the stale strings itself -- the tests assert 
 them and the supersession header quotes them for context. Any grep-based gate
 elsewhere must therefore be scoped by filename, never run repo-wide, or it will
 match this file after a perfect fix (see the plan's grep-hygiene note).
+
+**There is a SECOND file with the same property**, added by phase 29.1 plan 03:
+`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-STALE-STRING-AUDIT.md`. That
+audit quotes every retired claim in its Pass B table, because quoting the claim is
+how it records what was corrected. It is therefore likewise **never scanned** by
+anything here, and no gate for this defect class may walk `.planning/`. Between the
+two of them, a repo-wide grep for any sentence below returns two guaranteed hits
+that are not defects.
 """
 
 from __future__ import annotations
@@ -28,6 +36,16 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 E2_SOURCE = REPO_ROOT / "experiments" / "e2_real_rig.py"
 E1_SOURCE = REPO_ROOT / "experiments" / "e1_refractive_comparison.py"
 SYNTHETIC_SOURCE = REPO_ROOT / "src" / "aquacal" / "datasets" / "synthetic.py"
+
+# Phase 29.1 plan 03: the four boundary files the bounded sweep corrected, plus the
+# two twin sites outside the boundary that carried the identical claim. Each is a
+# NAMED constant for the reason this module exists: a tree walk would match this
+# file and the audit document, both of which quote every sentence below.
+E4_SOURCE = REPO_ROOT / "experiments" / "e4_benchmark_grid.py"
+E6_SOURCE = REPO_ROOT / "experiments" / "e6_generalization_sweep.py"
+DRIVER_SOURCE = REPO_ROOT / "experiments" / "run_experiment_suite.sh"
+EXPECTATIONS_SOURCE = REPO_ROOT / "experiments" / "_expectations.py"
+GATES_SOURCE = REPO_ROOT / "experiments" / "check_rerun_gates.py"
 FRAMESET_DOC = (
     REPO_ROOT
     / ".planning"
@@ -237,3 +255,221 @@ class TestE1BandScopeIsDerived:
         docstring = source[: source.index('"""', 3)]
         assert "ten seeds," in docstring
         assert "640/960 rows, from the pre-A1 plan" in docstring
+
+
+# ---------------------------------------------------------------------------
+# Phase 29.1 plan 03 -- the bounded stale-string sweep (SC-4, D-09/D-10).
+#
+# Every sentence below was corrected because it annotated a value the 2026-08-20
+# production run RECOMPUTES, while carrying no attribution. The full boundary,
+# the enumeration command and the per-site classification are in
+# `.planning/phases/29.1-post-run-fixes-re-freeze/29.1-STALE-STRING-AUDIT.md`.
+#
+# Each fragment fits inside ONE source line: the surrounding text is wrapped
+# comment or docstring prose, so a whole sentence would never match the file.
+# ---------------------------------------------------------------------------
+
+# `experiments/e1_refractive_comparison.py`. Five sites, all of them ruling A1's
+# ten-seed band surviving in arithmetic and cross-references rather than in the
+# provenance prose plan 29.1-02 already corrected.
+E1_PRE_A1_ROW_COUNT_CLAIMS = (
+    "x 2 models = 160 rows at production scale",
+    "regenerable artifact behind MF-08's 97-178x",
+    "committed 160/240-row baseline",
+    "it writes a 640-row file in which",
+    "960 rows collapse onto 240 distinct keys",
+    "from 160 to 640 rows (10 seeds x 4 levels",
+    "from 240 to 960",
+)
+
+# `experiments/e4_benchmark_grid.py`. The seed-invariance claim MF-24 refuted.
+# NOTE the shape of this fragment: the corrected text deliberately says "It does
+# NOT report the same count", so a gate on the bare phrase "report the same
+# count" would fail against a perfect fix. The verb form is load-bearing.
+E4_SEED_INVARIANCE_CLAIM = "re-run reports the same count"
+
+# `experiments/e6_generalization_sweep.py`. Two docstrings stating MF-12's
+# pre-Phase-28 digits as present-tense facts about a field the run recomputes.
+E6_PRE_RUN_DECOMPOSITION_CLAIMS = (
+    "is -18.8547 mm, and the camera Z position error",
+    "On the committed seed-43, layout=line row this reads",
+    "-18.8547 - (-18.4955) == -0.3592",
+)
+
+# `experiments/run_experiment_suite.sh`, in ruling A1's own comment block.
+DRIVER_PRE_A1_CLAIMS = (
+    "and that matters: the headline 97-178x",
+    "ratio band and all sixteen ledger numbers backed by exp1_band.csv live at",
+)
+
+# The two twin sites OUTSIDE the sweep's boundary, corrected because leaving a
+# twin of a corrected claim is the partial-fix shape this whole module exists to
+# catch (see `test_both_archive_sites_were_corrected`).
+EXPECTATIONS_TWIN_CLAIM = "E1's band is 160/240 rows"
+GATES_TWIN_CLAIMS = (
+    "explicitly declines to read it as a verdict: at 0.268% of 73,975",
+    "verdict at 0.268% of 73,975 observations (pipeline.py:1288)",
+)
+
+
+class TestBoundedStaleStringSweep:
+    """Source-text assertions on the four boundary files plan 03 corrected.
+
+    Every assertion is scoped to a NAMED file constant. None walks the tree,
+    because this module and the audit document under `.planning/` both contain
+    the sentences below by necessity -- see the module docstring.
+
+    Absence assertions alone would also be satisfied by deleting the prose, so
+    each file also gets a POSITIVE assertion that the replacement states what is
+    true and names where the live value comes from.
+    """
+
+    @pytest.mark.parametrize("clause", E1_PRE_A1_ROW_COUNT_CLAIMS)
+    def test_e1_pre_a1_row_counts_are_gone(self, clause: str) -> None:
+        """No pre-ruling-A1 row count survives in E1's source."""
+        source = _read(E1_SOURCE)
+        assert clause not in source, (
+            f"pre-ruling-A1 row count regressed in {E1_SOURCE}: {clause!r}"
+        )
+
+    def test_e1_defers_row_counts_to_the_derived_sidecar(self) -> None:
+        """The positive half for E1: the shape claims now name their axes and
+        point at the field that derives the counts, instead of freezing a
+        product of a seed list that ruling A1 already resized.
+        """
+        source = _read(E1_SOURCE)
+        assert "one row per seed x noise level x test_depth x model" in source
+        assert "`e1_seed_band_provenance.json` states the counts it emitted" in source
+        assert "is seeds x levels x `len(TEST_DEPTHS)` x models" in source
+        assert "once per NOISE_LEVELS entry" in source
+
+    def test_e1_names_the_ten_seed_sweep_as_the_owner_of_its_own_numbers(
+        self,
+    ) -> None:
+        """The published 97-178x band and the "2 of 10 seeds" finding are the
+        TEN-seed sweep's. E1's four-seed band cannot regenerate them, and the
+        docstring must say so rather than claiming it can -- the correction is
+        attribution, not deletion, so the figures stay under an explicit owner.
+        """
+        source = _read(E1_SOURCE)
+        assert "What it does NOT regenerate is" in source
+        assert "TEN-seed `seed_sweep_19_3/` sweep's own numbers" in source
+        assert "n=10" in source
+
+    def test_e4_does_not_claim_the_guard_count_is_seed_invariant(self) -> None:
+        """The highest-severity row of the audit. MF-24 measured 198/210/183
+        over seeds 42/43/44 and 194 under OpenCV 4.14, so a re-run does NOT
+        report the same count -- and the anchor row's permanent-status argument
+        rested on the claim that it does.
+        """
+        source = _read(E4_SOURCE)
+        assert E4_SEED_INVARIANCE_CLAIM not in source, (
+            f"seed-invariance claim regressed in {E4_SOURCE}: "
+            f"{E4_SEED_INVARIANCE_CLAIM!r}"
+        )
+
+    def test_e4_attributes_the_guard_rate_and_states_the_spread(self) -> None:
+        """The positive half for E4: the rate keeps its numbers, now under the
+        record they were measured on, and the seed spread is stated so the next
+        reader cannot re-derive the retired invariance claim.
+        """
+        source = _read(E4_SOURCE)
+        assert "committed 2026-08-20 record (seed 42, OpenCV 4.13.0.92)" in source
+        assert "MF-24" in source
+        assert "198, 210 and 183 flagged observations for seeds 42, 43 and 44" in source
+        assert "194 under OpenCV 4.14" in source
+        assert "It does NOT report the same count" in source
+
+    @pytest.mark.parametrize("clause", E6_PRE_RUN_DECOMPOSITION_CLAIMS)
+    def test_e6_pre_run_decomposition_claims_are_gone(self, clause: str) -> None:
+        """No pre-Phase-28 digit is stated as a present-tense fact about a
+        field E6 recomputes.
+        """
+        source = _read(E6_SOURCE)
+        assert clause not in source, (
+            f"pre-run decomposition claim regressed in {E6_SOURCE}: {clause!r}"
+        )
+
+    def test_e6_keeps_mf12s_figures_under_an_explicit_attribution(self) -> None:
+        """Retained, not scrubbed -- the same retention this module already pins
+        for `e2_real_rig.py`'s site 4 and for E1's pre-A1 docstring figures. A
+        version with MF-12's digits deleted has destroyed the trail that
+        explains the correction, and must fail here.
+        """
+        source = _read(E6_SOURCE)
+        assert "-18.8547" in source
+        assert "-18.4955" in source
+        assert "MF-12's OWN MEASUREMENT" in source
+        assert "was measured on, the signed water_z mean was" in source
+
+    def test_e6_points_the_reader_at_the_recomputed_artifact(self) -> None:
+        """The positive half for E6: the checkable identity now names the file
+        to check it against, so the check survives the next run.
+        """
+        source = _read(E6_SOURCE)
+        assert "generalization_sweep_per_camera_band.csv" in source
+        assert "The DECOMPOSITION is the finding, not the" in source
+        assert "the identity holds to" in source
+
+    @pytest.mark.parametrize("clause", DRIVER_PRE_A1_CLAIMS)
+    def test_driver_pre_a1_claims_are_gone(self, clause: str) -> None:
+        """Ruling A1's own comment block must not claim the four-seed band
+        backs a ten-seed published spread.
+        """
+        source = _read(DRIVER_SOURCE)
+        assert clause not in source, (
+            f"pre-ruling-A1 claim regressed in {DRIVER_SOURCE}: {clause!r}"
+        )
+
+    def test_driver_attributes_the_published_band_to_the_ten_seed_sweep(
+        self,
+    ) -> None:
+        """The positive half for the driver, and the clause that must survive:
+        0.5 px still has to stay in `NOISE_LEVELS`, for the reason it always
+        did. Only the ownership of the 97-178x band changes.
+        """
+        source = _read(DRIVER_SOURCE)
+        assert "every ledger number" in source
+        assert "backed by exp1_band.csv lives at 0.5 px" in source
+        assert "TEN-seed seed_sweep_19_3/ sweep's own" in source
+        assert "cannot" in source and "reproduce an n=10 band" in source
+
+    def test_expectations_helper_twin_was_corrected_too(self) -> None:
+        """`experiments/_expectations.py` is OUTSIDE the sweep's boundary and
+        carried `e1_refractive_comparison.py:213`'s claim verbatim. Correcting
+        one and leaving the other is exactly the partial fix FIX-06 was reopened
+        to close, so the twin is pinned here with its in-boundary original.
+        """
+        source = _read(EXPECTATIONS_SOURCE)
+        assert EXPECTATIONS_TWIN_CLAIM not in source, (
+            f"stale band shape regressed in {EXPECTATIONS_SOURCE}: "
+            f"{EXPECTATIONS_TWIN_CLAIM!r}"
+        )
+        assert "Row counts live in `suite_expectations.json`" in source
+
+    @pytest.mark.parametrize("clause", GATES_TWIN_CLAIMS)
+    def test_gate_twin_no_longer_states_the_rate_unattributed(
+        self, clause: str
+    ) -> None:
+        """`experiments/check_rerun_gates.py` is outside the boundary too, and
+        one of its two sites is worse than a comment: it is the message the gate
+        PRINTS into every roll-up, so an unattributed frozen rate was emitted as
+        live output on each run.
+        """
+        source = _read(GATES_SOURCE)
+        assert clause not in source, (
+            f"unattributed guard rate regressed in {GATES_SOURCE}: {clause!r}"
+        )
+
+    def test_gate_twin_attributes_the_rate_and_drops_it_from_the_message(
+        self,
+    ) -> None:
+        """The positive half for the gate. The docstring keeps the figures under
+        the record they came from; the runtime message drops them entirely,
+        because it already prints each exempt row's OWN count -- which is the
+        derivation remedy in its strongest form.
+        """
+        source = _read(GATES_SOURCE)
+        assert "record (seed 42, OpenCV 4.13.0.92)" in source
+        assert "MF-24 measured 198/210/183 for" in source
+        assert "verdict below pipeline.py:1288's 1% threshold" in source
