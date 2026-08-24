@@ -17,6 +17,7 @@ from experiments._run_manifest import (
 )
 from experiments.check_rerun_gates import (
     GateResult,
+    _check_guard_column,
     _check_run_manifest,
     _guard_count_from_record,
     check_band_csv,
@@ -1777,3 +1778,97 @@ class TestRunAllGatesThreadsProfile:
             experiment="E4",
             gate_prefix="gate1_guard_count:benchmark_grid.csv",
         ) == ["FAIL"]
+
+
+class TestGate1PipelineRowExemption:
+    """Plan 29.1-01 / D-02: a `record_source="pipeline"` row is reported, not gated.
+
+    D-01 makes E4's real-rig row publish the count E2 measured (198). Gating on
+    it would convert the pre-D-01 "missing" FAIL into a "non-zero" FAIL rather
+    than resolving anything, so gate 1 excludes pipeline rows from its
+    predicate -- while leaving `assembled` rows, and frames with no
+    `record_source` column at all, exactly as they were.
+    """
+
+    @staticmethod
+    def _frame(record_sources, counts, cell_keys=None):
+        data = {
+            "cell_key": cell_keys or [f"cell_{i}" for i in range(len(counts))],
+            "degenerate_observations_at_solution": counts,
+        }
+        if record_sources is not None:
+            data["record_source"] = record_sources
+        return pd.DataFrame(data)
+
+    def test_pipeline_row_with_a_non_zero_count_passes_and_is_named(self):
+        df = self._frame(
+            ["assembled", "assembled", "pipeline"],
+            [0, 0, 198],
+            cell_keys=[
+                "cameras_8_frames_50",
+                "cameras_8_frames_100",
+                "real_rig_13cam_200fr",
+            ],
+        )
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        # The exemption is visible in the gate's own output: gated count,
+        # exempt count, the exempt row's key and its count, and the reason.
+        assert "2 of 3" in result.detail
+        assert "1 row(s) exempt" in result.detail
+        assert "real_rig_13cam_200fr=198" in result.detail
+        assert "pipeline.py:1288" in result.detail
+
+    def test_exempt_row_with_a_missing_count_is_still_exempt(self):
+        """The committed 2026-08-20 benchmark_grid.csv still nulls the cell --
+        the writer fix reaches it only on the next run -- so the exemption must
+        cover a missing count on a pipeline row too."""
+        df = self._frame(["assembled", "pipeline"], [0, None])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        assert "missing" in result.detail
+
+    def test_assembled_row_with_a_non_zero_count_still_fails(self):
+        """T-29.1-01: the exemption is keyed to `pipeline` only -- a synthetic
+        row's non-zero count FAILs even with a pipeline row alongside it."""
+        df = self._frame(["assembled", "pipeline"], [5, 198])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+        assert "1 of 1 gated row(s)" in result.detail
+
+    def test_assembled_row_with_a_missing_count_still_fails(self):
+        """Missing is not zero: an un-instrumented artifact is not evidence of
+        a clean solve, and D-02 does not touch that rule."""
+        df = self._frame(["assembled", "pipeline"], [None, 0])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+
+    def test_frame_without_a_record_source_column_is_unchanged(self):
+        """E6's generalization_sweep.csv and every pre-D-02 frame: every row is
+        gated and the messages are byte-identical to the pre-change gate."""
+        passing = self._frame(None, [0, 0])
+        assert _check_guard_column("E4", "benchmark_grid.csv", passing) == GateResult(
+            "E4",
+            "gate1_guard_count:benchmark_grid.csv",
+            "PASS",
+            "benchmark_grid.csv: 2 row(s), guard count zero everywhere",
+        )
+        failing = self._frame(None, [0, 5])
+        assert _check_guard_column("E4", "benchmark_grid.csv", failing) == GateResult(
+            "E4",
+            "gate1_guard_count:benchmark_grid.csv",
+            "FAIL",
+            "benchmark_grid.csv: 1 of 2 row(s) have a non-zero or missing guard count",
+        )
+
+    def test_a_frame_of_only_pipeline_rows_passes_without_gating_anything(self):
+        df = self._frame(["pipeline"], [198])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        assert "0 of 1" in result.detail
+
+    def test_missing_guard_column_still_fails_regardless_of_record_source(self):
+        df = pd.DataFrame({"cell_key": ["a"], "record_source": ["pipeline"]})
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+        assert "column present" in result.detail

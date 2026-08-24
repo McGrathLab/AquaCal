@@ -63,6 +63,7 @@ from experiments.e4_benchmark_grid import (
     SKIPPED_EXIT_CODE,
     _array_xy_span,
     _classify_memory_pressure,
+    _extract_pipeline_row,
     _invoke_subprocess_with_status_mapping,
     _validate_e4_args,
     build_arg_parser,
@@ -162,9 +163,14 @@ def _write_fake_cell(
     )
 
 
-def _write_fake_e2_record(path: Path) -> None:
-    """Write a minimal but schema-shaped E2 benchmark.json fixture."""
-    record = {
+def _fake_e2_record() -> dict:
+    """A minimal but schema-shaped E2 benchmark.json record.
+
+    Deliberately carries NO guard count under either `discard_stats` or
+    `problem_shape` -- that is the un-instrumented shape, and tests that need a
+    measured count add it explicitly (plan 29.1-01).
+    """
+    return {
         "schema_version": 1,
         "problem_shape": {
             "n_cameras": 13,
@@ -218,7 +224,11 @@ def _write_fake_e2_record(path: Path) -> None:
             },
         },
     }
-    path.write_text(json.dumps(record))
+
+
+def _write_fake_e2_record(path: Path) -> None:
+    """Write a minimal but schema-shaped E2 benchmark.json fixture."""
+    path.write_text(json.dumps(_fake_e2_record()))
 
 
 @pytest.fixture
@@ -1720,3 +1730,98 @@ def test_smoke_path_is_never_gated_at_any_count(full_grid_dir):
     df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     assert smoke_key not in set(df["cell_key"])
     assert (df["status"] == "ok").all()
+
+
+class TestPipelineRowGuardCount:
+    """Plan 29.1-01 / D-01: the real-rig row publishes the count E2 measured.
+
+    Before D-01 `_extract_pipeline_row` hardcoded `None` here on the (by then
+    retired) reasoning that E2's record predated `discard_stats` threading.
+    Phase 24's DEGEN-02 instrumentation ended that, so the value is read --
+    from `discard_stats` first, `problem_shape` as the fallback -- while an
+    un-instrumented record still yields `None`, keeping "never measured"
+    distinguishable from "measured zero".
+    """
+
+    @staticmethod
+    def _record(**overrides) -> dict:
+        record = _fake_e2_record()
+        record.update(overrides)
+        return record
+
+    def test_guard_count_is_read_from_discard_stats(self):
+        record = self._record(
+            discard_stats={"degenerate_observations_at_solution": 198}
+        )
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 198
+        assert row["record_source"] == "pipeline"
+
+    def test_guard_count_falls_back_to_problem_shape(self):
+        record = self._record()
+        record["problem_shape"]["degenerate_observations_at_solution"] = 7
+        assert "discard_stats" not in record
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 7
+
+    def test_discard_stats_wins_over_problem_shape(self):
+        record = self._record(
+            discard_stats={"degenerate_observations_at_solution": 198}
+        )
+        record["problem_shape"]["degenerate_observations_at_solution"] = 3
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 198
+
+    def test_uninstrumented_record_still_yields_none(self):
+        """The property gate 1 rests on: a record that never measured the
+        count must stay distinguishable from one that measured zero."""
+        record = self._record()
+        assert "discard_stats" not in record
+        assert "degenerate_observations_at_solution" not in record["problem_shape"]
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] is None
+
+    def test_measured_zero_is_published_as_zero_not_none(self):
+        record = self._record(discard_stats={"degenerate_observations_at_solution": 0})
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 0
+
+
+def test_real_rig_row_keeps_status_ok_at_a_non_zero_guard_count(
+    full_grid_dir, tmp_path
+):
+    """D-01: the `> 0` downgrade is scoped to `record_source="assembled"`
+    rows. The pipeline row carries a real, non-zero, real-hardware count and
+    must still publish as `status="ok"` -- while a synthetic cell with a
+    non-zero count in the SAME frame is still downgraded to "degenerate", so
+    this is an exemption for one row kind, not a blanket relaxation.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+
+    # Give E2's record the count it actually measured on 2026-08-20.
+    e2_record = json.loads(Path(e2_path).read_text())
+    e2_record["discard_stats"] = {"degenerate_observations_at_solution": 198}
+    Path(e2_path).write_text(json.dumps(e2_record))
+
+    # ... and give one synthetic cell a non-zero count too.
+    degenerate_cell = DECLARED_CELLS[0]
+    _write_fake_cell(
+        out_dir
+        / "e4_cells"
+        / f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}",
+        degenerate_cell[0],
+        degenerate_cell[1],
+        degenerate_observations_at_solution=4,
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    pipeline_row = df[df["record_source"] == "pipeline"].iloc[0]
+    assert pipeline_row["cell_key"] == "real_rig_13cam_200fr"
+    assert pipeline_row["degenerate_observations_at_solution"] == 198
+    assert pipeline_row["status"] == "ok"
+    assert pipeline_row["status_reason"] == ""
+
+    synthetic_key = f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}"
+    synthetic_row = df[df["cell_key"] == synthetic_key].iloc[0]
+    assert synthetic_row["status"] == "degenerate"
