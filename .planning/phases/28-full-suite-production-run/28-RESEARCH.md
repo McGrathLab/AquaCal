@@ -1051,7 +1051,26 @@ considerations are disclosure and irreversibility rather than exploitation.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+**All four were ruled by the user on 2026-08-24 during `/gsd-plan-phase 28`, before the planner
+ran.** The rulings are recorded below and are implemented in `28-01-PLAN.md` … `28-05-PLAN.md`.
+The questions are retained in full for the reasoning that produced them; the answers are
+authoritative.
+
+- **Q1 → RESOLVED (A1):** Phase 28 preserves the artifacts, captures the `freeze02-*` evidence and
+  records checksums; **Phase 29 commits and pushes** the results branch. Evidence capture stays in
+  28 because `gate3_run_manifest_clean_tree` and `git status --porcelain` must be read while the
+  tree is pristine.
+- **Q2 → RESOLVED (B1):** `SUITE_DISPATCH_LOG` stays **unset**, matching attempt 1 exactly for
+  provenance parity. Success criterion 3 is therefore *derived*; the derivation is written out as
+  prose in `28-03-PLAN.md` § *How ROADMAP success criterion 3 is derived (B1)* and copied into
+  `28-RUN-RECORD.md`.
+- **Q3 → RESOLVED:** `pytest tests/ -q` runs **before** launch, never during. Exactly 3 failures
+  (D4), node ids pinned. Encoded in `28-VALIDATION.md` and `28-01-PLAN.md` task 3.
+- **Q4 → RESOLVED (C1):** the clone path is **`~/aquacal-frozen-rerun-freeze-02-prod`**.
+  `~/aquacal-frozen-rerun-freeze-02` is the rehearsal clone and must be neither reused nor shadowed.
+
 
 1. **Where does the Phase 28 / Phase 29 boundary fall for committing the results?**
    - Known: RUN-04 ("returned results are committed with provenance intact") maps to Phase 29 in
