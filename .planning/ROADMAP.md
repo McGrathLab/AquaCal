@@ -438,7 +438,7 @@ executes off-repo):
 
   3. The set of returned invocations matches the driver's coverage from Phase 26 one for one.
 
-**Plans**: 2/5 plans executed, 5 waves. Attempt 2, at `rerun-freeze-02`. The phase writes no code — it is an
+**Plans**: 5/5 plans executed, 5 waves. Attempt 2, at `rerun-freeze-02`. COMPLETE 2026-08-25. The phase writes no code — it is an
 operational runbook that executes a frozen driver off-repo and returns artifacts with provenance
 intact. Wave 1 leads with a tracer: the driver's own dry run walks all 20 stages in ~1 s inside the
 production clone, proving clone → environment → install → queue end to end before any hours are
@@ -453,13 +453,13 @@ Plans:
       confirmation [wave 1, tracer]
 
 - [x] 28-02-PLAN.md — the pre-launch assertion checklist, recorded as evidence [wave 2]
-- [ ] 28-03-PLAN.md — authorise the burn, launch the production run, read the verdict from the
+- [x] 28-03-PLAN.md — authorise the burn, launch the production run, read the verdict from the
       three hard signals (never `$?`) [wave 3, checkpoints]
 
-- [ ] 28-04-PLAN.md — preserve all nine driver-defined output paths with a post-archive count
+- [x] 28-04-PLAN.md — preserve all nine driver-defined output paths with a post-archive count
       assertion, lock read-only, record checksums [wave 4]
 
-- [ ] 28-05-PLAN.md — capture the post-run gate output, assemble the `freeze02-*` evidence set,
+- [x] 28-05-PLAN.md — capture the post-run gate output, assemble the `freeze02-*` evidence set,
       write `28-RUN-RECORD.md` [wave 5]
 
 ### Phase 29: Gate Verification & Results Commit

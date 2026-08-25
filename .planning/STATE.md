@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-current_phase: 28
-current_phase_name: full-suite-production-run
-status: executing
-stopped_at: Completed 28-02-PLAN.md -- pre-launch assertions all PASS; NOTHING LAUNCHED; awaiting human authorisation for 28-03
-last_updated: "2026-08-25T00:00:14.407Z"
-last_activity: 2026-08-24
-last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
+current_phase: 29
+current_phase_name: gate-verification-results-commit
+status: ready_to_plan
+stopped_at: Phase 28 COMPLETE (5/5). Production run finished 2026-08-25T06:48:28Z, 20/20 stages at exit 0, roll-up 176 PASS / 7 N/A / 0 FAIL. Output archived read-only and checksummed; 28-RUN-RECORD.md written. Next is Phase 29 (grade the run, commit results/rerun-freeze-02).
+last_updated: "2026-08-25T15:10:00.000Z"
+last_activity: 2026-08-25
+last_activity_desc: "Phase 28 complete: the v2.1 production run executed, verdict read from the three hard signals, output preserved and checksummed, run record written"
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 55
-  completed_plans: 52
-  percent: 67
+  completed_plans: 55
+  percent: 78
 ---
 
 # Project State
@@ -35,11 +35,23 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 28 (full-suite-production-run) — EXECUTING
-Phase 29 (gate-verification-results-commit) — PARTIAL, from **attempt 1** only.
-Plan: 3 of 5
+Phase: 29 (gate-verification-results-commit) — READY TO PLAN
+Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Ready to execute
+Status: Ready to plan
+
+**Phase 28 outcome — attempt 2's run, at `rerun-freeze-02` / `7005a27`.** Ran
+2026-08-25T00:47:07Z → 06:48:28Z, **6 h 01 m 21 s** (attempt 1: 6 h 00 m 21 s). All three hard
+signals green: roll-up **`TOTAL: 176 PASS, 7 N/A, 0 FAIL`** (zero `NOT FOUND`), **0** `STAGE
+FAILED` lines, **20/20** stages complete at exit 0. 17 `GATE FAIL` findings, expected by
+construction — one per stage except `e4`, whose gate saw the finished tree and reported
+`112 PASS, 8 N/A, 0 FAIL`. The driver exited non-zero, as a healthy run does; `$?` was never read
+as the verdict. Post-run re-run of the gate over the returned tree agrees exactly: `176/7/0`,
+zero `[FAIL]` lines. `gate3_git_sha_consistency`, `gate3_run_manifest_fields` and
+`gate3_run_manifest_clean_tree` all PASS. Output archived read-only at
+`~/rerun-freeze-02-output.tar.gz` (461 files, 31,838,334 B, completeness proven by count) with
+`suite_run_freeze02.log.preserved`; both sha256'd. **Read
+`.planning/phases/28-full-suite-production-run/28-RUN-RECORD.md` first.**
 (annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
 0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH, library imported from inside the
 clone, environment built by executing the tag's own corrected install command. `rerun-freeze-01`
@@ -55,12 +67,31 @@ provenance failures to return once `experiments/results/` is repopulated.
 within rtol=1e-6). OPEN: the E7 before/after comparison (success criterion 3) and the Zenodo
 results package (RUN-05) — the latter deliberately deferred until after 29.1's re-freeze and
 re-run, so the archive is built from clean output.
-NEXT: launch the v2.1 full-suite production run from a FRESH clone of `rerun-freeze-02`
-(`git clone --branch rerun-freeze-02 https://github.com/McGrathLab/AquaCal.git`). Do NOT reuse
-`~/aquacal-frozen-rerun-freeze-02` — plan 29.1-08's own `--smoke` verification left a state file
-at that sha there (D5), and a real run would skip all 20 stages. Set `PRELAUNCH_GATE_PYTHON`
-explicitly (D-28). Read `29.1-FREEZE-RECORD.md` § *Hazards* first.
-Last activity: 2026-08-24 — Phase 28 execution started
+NEXT: `/gsd-plan-phase 29` — grade the returned run and commit it. Phase 29 carries RUN-03,
+RUN-04 and RUN-05: the gate verification, the E2 same-seed sanity control (seed 42 vs seed 42,
+~1e-8 — never across seeds), the E7 before/after ablation comparison, the
+`results/rerun-freeze-02` branch, manuscript traceability, and the Zenodo results package.
+
+Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
+
+1. **D1's 8 `test_experiments_provenance.py` failures should now reappear.** They went dormant
+   only because 29.1-06 emptied `experiments/results/`; that tree is repopulated as of this run.
+   Predicted in 29.1-VERIFICATION-BAR, not caused by the run.
+2. **D4's 3 exact-equality anchor failures stand as ruled on.** `pytest tests/` reports
+   `3 failed, 2407 passed, 26 skipped`. **Three is the expected count — zero or four are both
+   anomalies.**
+3. **Phase 29's success criterion 6 is unsatisfiable as written.** It requires the Zenodo package
+   published *"before the 2026-08-21 submission"*; that date has passed and this run finished
+   2026-08-25. Needs re-dating or re-scoping by the author before Phase 29 can close against it.
+4. **The two attempts' environments are NOT byte-identical.** Five dev-tooling packages drifted
+   (`filelock`, `packaging`, `platformdirs`, `python-discovery`, `ruff`). The numerical stack is
+   identical — numpy 2.4.6, scipy 1.17.1, opencv-python 4.13.0.92 — which is what licenses
+   comparing the two runs' numbers.
+
+Do not reuse `~/aquacal-frozen-rerun-freeze-02` for anything that runs the suite (D5). The
+production clone `~/aquacal-frozen-rerun-freeze-02-prod` is on a detached HEAD at the tag with the
+run output untracked in it; it has no `results/*` branch and nothing has been pushed from it.
+Last activity: 2026-08-25 — Phase 28 complete; the v2.1 production run is in hand
 
 **Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
 Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
