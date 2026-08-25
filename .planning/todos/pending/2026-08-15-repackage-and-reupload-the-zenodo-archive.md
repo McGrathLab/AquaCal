@@ -48,6 +48,18 @@ on an upload**, and that is a later gate.
   not before the run** (author decision, 2026-08-15). Planning happens on Windows, the suite runs
   on the Linux machine, and the Windows box is idle and better-connected for the whole window.
 
+  > **SUPERSEDED 2026-08-25 (author).** This did not happen — the run window opened and closed
+  > (2026-08-25T00:47Z–06:48Z) with no upload staged, and the author confirms it was never
+  > started from the Windows box. **All upload work now happens on the Linux run machine**
+  > (`EBB-MCGRATH-D04`), which is idle post-run. The two reasons the original decision gave are
+  > both spent: there is no longer a pre-launch checklist to keep short (the run is done), and
+  > the Linux box is no longer occupied. The concurrency constraint below is likewise moot —
+  > nothing is in flight to stay clear of. **What survives unchanged:** use the Zenodo API rather
+  > than a browser (resumable multipart), reserve the DOI on the draft if it comes to the wire,
+  > verify the round trip before publishing Record B, and the fallback if the input upload cannot
+  > complete in time. Record A's upload is now Phase 29's critical path — the paper submits
+  > within days and the transfer is hours.
+
   The reason is not only bandwidth: **the pre-run window is the highest-stakes moment of the
   milestone.** A mis-launched queue costs the entire run, so the checklist immediately before the
   push should be as short as possible. An unrelated multi-gigabyte upload does not belong in it.
