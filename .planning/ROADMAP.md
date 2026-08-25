@@ -438,7 +438,7 @@ executes off-repo):
 
   3. The set of returned invocations matches the driver's coverage from Phase 26 one for one.
 
-**Plans**: 1/5 plans executed, 5 waves. Attempt 2, at `rerun-freeze-02`. The phase writes no code — it is an
+**Plans**: 2/5 plans executed, 5 waves. Attempt 2, at `rerun-freeze-02`. The phase writes no code — it is an
 operational runbook that executes a frozen driver off-repo and returns artifacts with provenance
 intact. Wave 1 leads with a tracer: the driver's own dry run walks all 20 stages in ~1 s inside the
 production clone, proving clone → environment → install → queue end to end before any hours are
@@ -452,7 +452,7 @@ Plans:
       command, dry run all 20 stages, environment-provenance assertion, D4 three-failure
       confirmation [wave 1, tracer]
 
-- [ ] 28-02-PLAN.md — the pre-launch assertion checklist, recorded as evidence [wave 2]
+- [x] 28-02-PLAN.md — the pre-launch assertion checklist, recorded as evidence [wave 2]
 - [ ] 28-03-PLAN.md — authorise the burn, launch the production run, read the verdict from the
       three hard signals (never `$?`) [wave 3, checkpoints]
 
@@ -700,7 +700,7 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 25. Degeneracy Classification & Claim Licensing | v2.1 | 8/8 | Complete   | 2026-08-18 |
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 14/14 | Complete    | 2026-08-19 |
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
-| 28. Suite Execution on Linux Machine | v2.1 | 1/5 | In Progress|  |
+| 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
 | 29. Gate Verification & Results Commit | v2.1 | 0/TBD | Not started | - |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

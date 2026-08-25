@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 28
 current_phase_name: full-suite-production-run
 status: executing
-stopped_at: Completed 28-01-PLAN.md — production venue built and proven; NOTHING LAUNCHED
-last_updated: "2026-08-24T23:52:13.231Z"
+stopped_at: Completed 28-02-PLAN.md -- pre-launch assertions all PASS; NOTHING LAUNCHED; awaiting human authorisation for 28-03
+last_updated: "2026-08-25T00:00:14.407Z"
 last_activity: 2026-08-24
 last_activity_desc: 29.1-08 cut, verified and pushed rerun-freeze-02; phase 29.1 done
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 55
-  completed_plans: 51
+  completed_plans: 52
   percent: 67
 ---
 
@@ -37,7 +37,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 Phase: 28 (full-suite-production-run) — EXECUTING
 Phase 29 (gate-verification-results-commit) — PARTIAL, from **attempt 1** only.
-Plan: 2 of 5
+Plan: 3 of 5
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
 Status: Ready to execute
 (annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
@@ -274,6 +274,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 28-01: D4 confirmed in the new environment BEFORE launch -- 3 failed, 2407 passed, 26 skipped (0:27:18), the three registered node ids verbatim and the disagreement values bit-for-bit. The suite is NOT clean at this sha and no artifact of this phase says otherwise
 - [Phase ?]: 28-01: pytest tests/ creates an EMPTY experiments/results/ in the clone; it was moved aside to /home/tlancaster/AquaCal_prod_aside/2026-08-24-7005a27-pytest-created-results/, never deleted and never overridden. Re-check that directory before pre-flight if pytest is run again in the production clone
 - [Phase ?]: 28-01: NOTHING HAS BEEN LAUNCHED. The dry run walked all 20 stages at exit 0 into the .dryrun.tsv path only; the real state file is still absent. The production run is plan 28-03 and remains gated behind a human decision not yet given
+- [Phase ?]: 28-02: cleanliness asserted with git status --porcelain --untracked-files=no, the form _run_manifest.py:183 uses to derive git_dirty -- asserting the bare form would be the wrong gate and would send an operator hunting a defect that does not exist
+- [Phase ?]: 28-02: the residue enumeration used --untracked-files=all --ignored, because every residue entry in this clone is gitignored and the bare form reports an EMPTY residue -- an enumeration that shows nothing proves nothing. 190 entries, 0 unclassified, 0 matching experiments/results*
+- [Phase ?]: 28-02: a third residue category (src/aquacal.egg-info/, 6 files) was found outside the plan's permitted set; recorded on the record and ruled benign (it is what HANDOFF.md:49's own editable install writes; gitignored; moving it aside would damage the install assertion 6 depends on) rather than halted on or silently absorbed
+- [Phase ?]: 28-02: pre-launch assertion record written at /home/tlancaster/freeze02-prelaunch-assertions.txt -- 15 PASS / 0 FAIL, every line carrying its measured value, all-passed line emitted conditionally on the FAIL count. NOTHING LAUNCHED; RUN-02 deliberately left Pending
 
 ### Blockers/Concerns
 
@@ -294,10 +298,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-24T23:51:59.134Z
+Last session: 2026-08-25T00:00:14.394Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 28-01-PLAN.md — production venue built and proven; NOTHING LAUNCHED
+Stopped at: Completed 28-02-PLAN.md -- pre-launch assertions all PASS; NOTHING LAUNCHED; awaiting human authorisation for 28-03
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -317,3 +321,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P07 | 2h45m | 3 tasks | 2 files |
 | Phase 29.1 P08 | 65m | 3 tasks | 6 files |
 | Phase 28 P01 | 31m | 3 tasks | 7 files |
+| Phase 28 P02 | 5m | 1 tasks | 1 files |
