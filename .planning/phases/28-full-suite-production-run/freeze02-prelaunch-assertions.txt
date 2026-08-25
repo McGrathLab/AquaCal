@@ -1,0 +1,183 @@
+================================================================================
+PRE-LAUNCH ASSERTION RECORD -- v2.1 full-suite production run (attempt 2)
+================================================================================
+Written        : 2026-08-24T23:56:32Z (UTC)   2026-08-24 19:56:32 EDT
+Host           : EBB-MCGRATH-D04
+Phase / plan   : 28-full-suite-production-run / 28-02
+Clone          : /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod
+Environment    : aquacal-freeze02-prod  (/home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/bin/python)
+Tag / sha      : rerun-freeze-02 / 7005a2771aa115e4f4c1284cec7e145739586a4a
+Purpose        : evidence for the launch-authorisation gate that opens 28-03.
+                 NOTHING IS LAUNCHED BY THIS RECORD. The abort authority ends at
+                 pre-flight; nothing aborts once stage 1 has begun (D-03/D-50,
+                 run_experiment_suite.sh:2058-2076).
+Method         : every line below carries the MEASURED VALUE, not a bare verdict.
+                 The closing "ALL PRELAUNCH ASSERTIONS PASSED" line is written
+                 only if zero items failed (T-28-08).
+Order          : cheapest failure first.
+================================================================================
+
+-- 1. SHA -----------------------------------------------------------------
+     git -C $CLONE rev-parse HEAD  = 7005a2771aa115e4f4c1284cec7e145739586a4a
+     expected                       = 7005a2771aa115e4f4c1284cec7e145739586a4a
+     git describe --tags            = rerun-freeze-02
+PASS  1. Sha matches the frozen tag.
+
+-- 2. CLEAN BY THE DEFINITION THAT MATTERS ---------------------------------
+     _run_manifest.py:183 derives git_dirty from
+         git status --porcelain --untracked-files=no
+     and gate3_run_manifest_clean_tree judges that. Untracked files are
+     ignored ON PURPOSE: D-47 cut the dirty-tree refusal because
+     experiments/results/ is TRACKED and the run dirties its own tree.
+     Asserting bare --porcelain empty would be the wrong gate.
+     tracked-modified entries      = 0  (expected 0)
+PASS  2a. Tree clean by the manifest's own definition (git_dirty would be false).
+     bare --porcelain entries      = 0  (the residue is gitignored, so
+                                      even the bare form reports nothing)
+     RESIDUE ENUMERATED (status --porcelain --untracked-files=all --ignored):
+       total entries               = 190   (all '!!' ignored: 190 ; '??' untracked: 0)
+       interpreter caches          = 141  __pycache__/*.pyc across 14 dirs
+                                   + 5  .pytest_cache/*
+       dry-run state artifacts     = 38  (.dryrun.tsv, .dryrun.failures.txt,
+                                      .dryrun.stagelogs/ -- 28-01's rehearsal)
+       editable-install metadata   = 6  src/aquacal.egg-info/* (see note)
+       matching experiments/results* = 0
+       unclassified                = 0
+     NOTE on src/aquacal.egg-info/: a THIRD category beyond the two the plan
+       enumerates. It is not run output and not a dry-run artifact: it is the
+       setuptools metadata that HANDOFF.md:49's own 'pip install -e ".[dev,bench]"'
+       writes, i.e. a product of the install step this phase's plan 28-01
+       mandated. It is gitignored, so it cannot affect git_dirty; it matches no
+       output-tree path; and moving it aside would damage the editable install
+       that assertion 6 depends on. Recorded rather than folded silently into
+       'interpreter caches', and ruled benign. NOTHING WAS DELETED OR MOVED.
+PASS  2b. Residue is 190 entries, every one classified, zero matching experiments/results*.
+
+-- 3. NO REAL STATE FILE (the D5 collision guard) ---------------------------
+     path  = /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/run_experiment_suite_state.7005a27.tsv
+     ls    = ls: cannot access '/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/run_experiment_suite_state.7005a27.tsv': No such file or directory
+     state files actually present:
+         run_experiment_suite_state.7005a27.dryrun.failures.txt
+         run_experiment_suite_state.7005a27.dryrun.stagelogs
+         run_experiment_suite_state.7005a27.dryrun.tsv
+     A file here carrying 20 complete-at-exit-0 lines makes a real run skip
+     all 20 stages and produce nothing while looking finished.
+PASS  3. Real state file ABSENT.
+
+-- 4. NO OUTPUT TREES --------------------------------------------------------
+     ls -d $CLONE/experiments/results* = ls: cannot access '/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results*': No such file or directory 
+     Absent is the state the tag ships. Present-and-empty turns one N/A into
+     two FAILs (results_e2_band); non-empty results/ triggers pre-flight
+     refusal 4, whose override --allow-nonempty-out must not be used.
+     28-01 moved pytest's empty results/ aside to
+       /home/tlancaster/AquaCal_prod_aside/2026-08-24-7005a27-pytest-created-results/
+     pytest was deliberately NOT re-run in this clone by 28-02.
+PASS  4a. $CLONE/experiments/results ABSENT.
+PASS  4b. $CLONE/experiments/results_e2_band ABSENT.
+
+-- 5. INTERPRETER (the launch shell must be ACTIVATED) ------------------------
+     which python   = /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/bin/python
+     CONDA_PREFIX   = /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod
+     python -V      = Python 3.11.15
+     ~25 stage invocation lines run bare 'python -u -m experiments.<mod>';
+     STAGE_PYTHON is the literal string 'python' (run_experiment_suite.sh:498),
+     so the launch shell must have the env ACTIVATED, not merely the gate
+     variable set.
+PASS  5. python resolves inside the production environment.
+
+-- 6. LIBRARY PROVENANCE, RE-ASSERTED AT LAUNCH TIME -------------------------
+     aquacal.__file__ = /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/__init__.py
+     required prefix  = /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/
+     The only control over the wrong-code-right-sha failure (T-28-01): two
+     trees can agree on the sha while the import comes from the other one.
+PASS  6. aquacal imports from INSIDE the production clone.
+
+-- 7. THE PIN ----------------------------------------------------------------
+     cv2.__version__            = 4.13.0   (required prefix 4.13.)
+     opencv-python dist version = 4.13.0.92
+PASS  7. OpenCV pin holds at 4.13.0.
+
+-- 8. THE EXTRAS -------------------------------------------------------------
+     import pytest, psutil -> pytest 9.1.1 psutil 7.2.2
+PASS  8. pytest and psutil both import (pytest 9.1.1 psutil 7.2.2).
+
+-- 9. GATE INTERPRETER (D-28) ------------------------------------------------
+     PRELAUNCH_GATE_PYTHON = /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/bin/python
+     expected              = /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/bin/python
+     test -x               = executable
+     $PRELAUNCH_GATE_PYTHON -V = Python 3.11.15
+     Set EXPLICITLY. Rung 2 of the chain is a PATH lookup that merely warned
+     during 29.1's rehearsal and happened to resolve correctly; D-28 exists so
+     interpreters_agree is true by construction rather than by luck.
+PASS  9. PRELAUNCH_GATE_PYTHON exported to the absolute env interpreter, and executable.
+
+-- 10. A CLEAN VARIABLE NAMESPACE (T-28-06) ----------------------------------
+     env | grep -c '^SUITE_'                        = 0   (required 0)
+     env | grep -c '^RUN_EXPERIMENT_SUITE_DRY_RUN'  = 0   (required 0)
+     env | grep '^SUITE_' -><-  (empty)
+     This emptiness is what MECHANICALLY enforces, in the launch shell:
+       D-12  SUITE_E2_RELEASE_CONFIG unset -> the Linux default
+             experiments/configs/e2_release_linux.yaml resolves (:397)
+       B1    SUITE_DISPATCH_LOG unset -> invocation parity with attempt 1
+       --    SUITE_WORKERS default 4 (:762-767), SUITE_THREAD_CAP default 2
+             (:798) -- NOT re-tuned
+       --    SUITE_OUT_DIR / SUITE_STATE_DIR unset -> no silent redirection
+       --    SUITE_SERIAL, SUITE_SMOKE unset; SUITE_STAGE_PYTHON left to the
+             driver to export (:498-500)
+       --    RUN_EXPERIMENT_SUITE_DRY_RUN unset -> the REAL state path, not
+             .dryrun.tsv (:287-292)
+     PRELAUNCH_GATE_PYTHON is outside both namespaces and is set by design (9).
+PASS  10. Both driver variable namespaces empty in the launch shell.
+
+-- 11. THE E2 FRAMESET (pre-flight refusal 3) --------------------------------
+     root                    = /home/tlancaster/PycharmProjects/AquaCal/aquacal_data/real-rig/real-rig/extrinsic
+     extrinsic directories   = 13   (required 13)
+     measured total bytes    = 3799100985
+     identity floor          = 3000000000   (suite_expectations.json ->
+                                preflight.frameset.cheap_check.min_total_bytes)
+     margin over floor       = 26.6%
+     Measured AT LAUNCH TIME, not trusted from research. Its override
+     (--skip-e2) would make the run synthetic-only and must not be used.
+PASS  11. 13 extrinsic directories present, 3799100985 bytes >= 3000000000.
+
+-- 12. DISK (pre-flight refusal 5) -------------------------------------------
+     filesystem holding the clone = /dev/nvme0n1p2  mounted at /
+     measured free                = 688631734272 bytes = 641.34 GiB
+     floor (free_space_floor_gib) = 20 GiB
+     headroom                     = 32.1x the floor
+     Its override (--allow-low-disk) must not be used.
+PASS  12. 641.34 GiB free >= 20 GiB floor.
+
+-- 13. ATTEMPT 1 IS UNTOUCHED ------------------------------------------------
+     /home/tlancaster/rerun-freeze-01-output.tar.gz
+         size = 31845719  (expected 31845719)   mode = -r--r--r--  (expected -r--r--r--)
+         mtime = 2026-08-20 09:28:32.624565119 -0400
+     /home/tlancaster/suite_run_freeze01.log.preserved
+         size = 425119  (expected 425119)     mode = -r--r--r--  (expected -r--r--r--)
+         mtime = 2026-08-20 09:28:32.951564122 -0400
+     Hard constraint 8: delete nothing; do not overwrite attempt 1's evidence.
+PASS  13. Both preserved artifacts unchanged in size and mode.
+
+================================================================================
+TALLY
+================================================================================
+  assertion lines : 15   (13 numbered items; 2 and 4 each carry two
+                     independently-measured sub-assertions)
+  PASS            : 15
+  FAIL            : 0
+
+WHAT THIS RECORD DOES NOT DO
+  It does not launch anything, and it does not authorise a launch. It is the
+  evidence the decision checkpoint in 28-03-PLAN.md is presented with. The
+  human authorisation for the production run has NOT been given as of the
+  timestamp at the head of this file.
+
+  RUN-02 remains PENDING. It is satisfied by plan 28-03, after that run's
+  roll-up is read -- not by this plan and not by 28-01.
+
+NO OVERRIDE FLAG WAS USED, IN ANY FORM, AND NOTHING WAS DELETED.
+  Not --allow-nonempty-out, --skip-e2, --allow-frameset-mismatch,
+  --allow-low-disk or --allow-gate-precheck-failure. None was needed: every
+  refusal this pre-flight will evaluate was measured green above.
+
+ALL PRELAUNCH ASSERTIONS PASSED

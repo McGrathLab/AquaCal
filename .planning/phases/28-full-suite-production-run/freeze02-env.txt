@@ -1,0 +1,4 @@
+/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/__init__.py
+/home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/bin/python
+cv2 4.13.0
+Linux EBB-MCGRATH-D04 6.8.0-136-generic #136~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul  3 16:29:11 UTC  x86_64 x86_64 x86_64 GNU/Linux
