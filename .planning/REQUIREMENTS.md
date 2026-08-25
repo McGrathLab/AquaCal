@@ -192,9 +192,19 @@ submission. POST follows it.
 - [ ] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
       number is traceable to this run
 - [ ] **RUN-05**: The Zenodo record is split into immutable inputs and a versioned results
-      package, and the results package matching this run's numbers is published **before** the
-      2026-08-21 submission, so the archive the paper cites agrees with the §3 it supports —
+      package, and the results package matching this run's numbers is published **before the
+      paper is submitted**, so the archive the paper cites agrees with the §3 it supports —
       todo `2026-08-15-repackage-and-reupload-the-zenodo-archive`
+
+      *Re-scoped 2026-08-25 (author's ruling): the original "before the 2026-08-21 submission"
+      wording was overtaken by the re-freeze; the deadline was extended and the gate is now the
+      submission event rather than a calendar date. See ROADMAP.md Phase 29 criterion 6.*
+
+      **Sequencing warning.** The design (todo, author decision 2026-08-15) staged Record A's
+      4.35 GB input upload *during Phase 28's run window, from the Windows box*. That window
+      closed 2026-08-25T06:48Z and there is no record in `.planning/` that the upload was made.
+      If it was not, this upload is Phase 29's critical path: Record B cannot be published as a
+      separate record until Record A exists, and the transfer is hours.
 
       *Re-timed 2026-08-15 (was POST-02).* Phase 29 commits new §3 numbers pre-submission, so
       leaving the archive until after the deadline would ship a paper citing record 21889922

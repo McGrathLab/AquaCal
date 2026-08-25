@@ -500,8 +500,17 @@ manuscript-facing number traceable to it.
   5. Every §3-facing number in the manuscript can be traced to a specific committed artifact
      from this run.
 
-  6. **The Zenodo results package is published before the 2026-08-21 submission** (RUN-05), so
-     the archive the paper cites agrees with the §3 it supports. The 4.35 GB input-package
+  6. **The Zenodo results package is published before the paper is submitted** (RUN-05), so
+     the archive the paper cites agrees with the §3 it supports.
+
+     **AMENDED 2026-08-25 — author's ruling.** This criterion read *"before the 2026-08-21
+     submission"*. That date passed while the re-freeze and re-run were in flight, which made the
+     criterion ungradeable as written; Phase 28's CONTEXT flagged it and declined to reinterpret
+     it silently. The author reports the deadline extended and submission due within days. The
+     criterion is therefore **re-scoped from a date to the event it always meant** — publication
+     must precede submission, whenever submission happens. Pinning it to a calendar date is what
+     broke it once and would break it again on any further slip. Nothing else about RUN-05
+     changes: the split, the ordering, and the reason are untouched. The 4.35 GB input-package
      re-upload that makes this possible is staged during Phase 28's run window, from the Windows
      box, while the Linux run is going.
 
