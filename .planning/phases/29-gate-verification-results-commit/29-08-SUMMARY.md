@@ -221,3 +221,11 @@ None for this plan. **Five actions remain outstanding and are deliberately not a
 ---
 *Phase: 29-gate-verification-results-commit*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+All nine claimed files exist on disk (`29-PHASE-RECORD.md`, `29-08-SUMMARY.md`, and the seven
+`2026-08-26-*` todos under `.planning/todos/pending/`), and all four claimed commits resolve in
+`git log --oneline --all` (`0bcf13d`, `9ea932e`, `da8312c`, `cbf56a3`). The record's fourteen
+load-bearing literals were re-grepped after the final edit and are all present.
+`git diff --quiet -- experiments/ src/ tests/` exits 0.
