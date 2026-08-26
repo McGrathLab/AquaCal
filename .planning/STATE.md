@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: Completed 29-04-PLAN.md
-last_updated: "2026-08-26T18:46:45.447Z"
+stopped_at: Completed 29-07-PLAN.md
+last_updated: "2026-08-26T19:19:14.077Z"
 last_activity: 2026-08-26
-last_activity_desc: 29-04 built Record A input-only and streamed it to an unpublished Zenodo draft
+last_activity_desc: 29-07 built Record B from this run's own outputs and streamed it to unpublished draft 22117061; Record A published at 10.5281/zenodo.22116461
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 63
-  completed_plans: 61
+  completed_plans: 62
   percent: 70
 ---
 
@@ -332,6 +332,9 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29]: Plan 29-06: _discover_json_files() gained the _is_tracked filter its CSV sibling always had, so a gitignored 2.1 MB calibration.json no longer reaches a rail scoped to committed artifacts. rglob was preserved -- only the filter changed -- so E4's nested e4_cells records stay discoverable. calibration.json was deliberately NOT added to any carve-out.
 - [Phase 29]: Plan 29-06: E1's band map text corrected from 'seeds 42-51' to 'seeds 42-45' per Ruling A1 of 2026-08-15, annotated in the project's dated '# CORRECTED <date> (plan NN).' style so the superseded ten-seed claim survives rather than being deleted.
 - [Phase ?]: 29-04: Record A's Zenodo archive uses a flat root (extrinsic/, intrinsic/, README.md) with no real-rig/ wrapper, unlike published record 21889922 — Phase 30's loader must strip no prefix
+- [Phase 29]: 29-07: Record B's isDerivedFrom points at Record A's VERSION DOI 10.5281/zenodo.22116461, not the concept DOI — Record B derives from those exact bytes, and a concept DOI follows the latest version, so it would silently re-point provenance if Record A were re-versioned
+- [Phase 29]: 29-07: author ruled 'sequential' A<->B linkage and published Record A (version 10.5281/zenodo.22116461, concept 10.5281/zenodo.22116460); the accepted cost is that Record A carries no structured isSourceOf back-link, which the author adds by hand in the Zenodo UI after Record B is published
+- [Phase 29]: 29-07: reference_outputs/diagnostics.json is sourced from experiments/results_e2_invocations/e2_classification/ — the only directory in this run holding both a diagnostics.json and a calibration.json byte-identical to the canonical one
 
 ### Blockers/Concerns
 
@@ -349,15 +352,16 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - ~~rerun-freeze-02 is cut and verified locally but NOT pushed.~~ RESOLVED 2026-08-24: the author approved 29.1-PREPUSH-AUDIT.md section 7 and the push ran (two ref creations, exit 0, no workflow fired). The v2.1 re-run is licensed. RUN-05 now waits only on that re-run's output.
 - Production zenodo.org unreachable (measured 2026-08-26): all six A records complete TLS with a valid cert, then the backend stalls ~25s or never answers; sandbox.zenodo.org 200 in 0.6s, github.com 200 in 0.16s, doi.org resolves then dies at Zenodo end. Not network/DNS/IPv6/firewall/bad-record-id. BLOCKS 29-04 — it must re-probe reachability before starting the 4.35 GB PUT.
 - OPEN, author decision, blocks 29-07: zenodo_metadata_b.json carries version 2.0.1, but run_manifest.json records git_describe v2.0.1-346-g7005a27 and 14 files in src/aquacal/ changed across that span (+1663/-67, incl. _optim_common.py, interface_estimation.py, refinement.py, pipeline.py, refractive_geometry.py). So 2.0.1 names an installable release that does NOT reproduce Record B numbers. src/ is byte-identical between 7005a277 and HEAD, so a release cut now would legitimately describe the code that ran. Field left untouched pending the ruling. Record A dataset version 1.0.0 is unaffected.
+- Record B (Zenodo deposition 22117061) is an unpublished draft; RUN-05 requires it PUBLISHED before paper submission. Author must publish at https://zenodo.org/deposit/22117061, then add Record A's isSourceOf back-link by hand at https://zenodo.org/records/22116461. Closes at plan 29-08.
 
 ## Session Continuity
 
 **Resume file:** None
 
-Last session: 2026-08-26T18:46:45.432Z
+Last session: 2026-08-26T19:18:39.742Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29-04-PLAN.md
+Stopped at: Completed 29-07-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -384,3 +388,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P01 | 104min | 4 tasks | 5 files |
 | Phase 29 P06 | 75min | 3 tasks | 3 files |
 | Phase 29 P04 | 48min | 2 tasks | 1 files |
+| Phase 29 P07 | 26min | 3 tasks | 2 files |
