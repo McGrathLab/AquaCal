@@ -1,0 +1,124 @@
+================================================================================
+RECORD B — VERSIONED RESULTS PACKAGE: BUILD AND PRODUCTION DRAFT
+Plan 29-07 (RUN-05) — evidence transcript
+================================================================================
+
+Host:   https://zenodo.org/api   (PRODUCTION — selected explicitly via --base-url)
+Tool:   scripts/zenodo_upload.py (built in plan 29-01, rehearsed on the test host,
+        run unchanged — this plan adds no code path to it)
+Ruling: .planning/phases/29-gate-verification-results-commit/29-RECORD-COMPOSITION.md
+        option `research-default`, ruled by the author 2026-08-26
+
+This record is UNPUBLISHED. No DOI is registered and no publish call is made anywhere
+in this plan. Publish is the author's act in the Zenodo web UI (D-29-01), and the
+automation token carries the `deposit:write` scope only, deliberately without
+`deposit:actions`, so the omission is enforced by the credential as well as by the code.
+
+No credential value appears in this file, in any command line, or in any log this plan
+produced. The token is read from the process environment by the tool alone (D-29-07).
+
+Every URL in this transcript is on the production host. (Stated rather than quoted:
+plan 29-04 recorded that quoting the forbidden test-host literal inside the assertion
+that forbids it makes the assertion match itself and fail.)
+
+
+================================================================================
+0. PRECONDITION GATES (D-29-05 — grading must pass BEFORE this package is built)
+================================================================================
+
+D-29-05 puts Record B strictly after RUN-03's gate verification and the E2 same-seed
+control, so the results package can never contain numbers a later check disowns. Both
+gates were re-read from the committed evidence files this session, not assumed:
+
+Gate verification (plan 29-02, re-run over the returned tree at the single sha)
+    29-gates-full.txt line 185      TOTAL: 176 PASS, 7 N/A, 0 FAIL
+    29-gates-full.txt line 208-209  measured == expected, AGREES            PASS
+
+E2 same-seed control (plan 29-03)
+    29-e2-control.txt  pass condition: worst-case relative drift < 1e-06
+    29-e2-control.txt  line 111 VERDICT block, line 131  RESULT: PASS       PASS
+    n_comparisons  7762 -> 7762  (seed 42 vs seed 42, integer field: EXACT EQUAL)
+
+Artifacts committed (plan 29-05)
+    Full production suite landed at commit 70e783f on results/rerun-freeze-02  PASS
+
+D-29-05 is SATISFIED. Record B may be built.
+
+
+================================================================================
+1. TASK 1 — THE A<->B LINKAGE RULING
+================================================================================
+
+--- 1.1  Record A's live state, measured this session (read-only) --------------
+
+GET https://zenodo.org/api/deposit/depositions/22116461      http 200
+
+    id                   22116461
+    title                AquaCal real-rig calibration inputs (Record A):
+                         13-camera ChArUco frameset
+    state                unsubmitted
+    submitted            false
+    doi                  null
+    doi_url              null
+    conceptdoi           null
+    links.html           https://zenodo.org/deposit/22116461
+    files                1  ->  real-rig-inputs.zip
+    file checksum        d95a1abc3f7089443ea2bc7ea12fb599   # pragma: allowlist secret
+    related_identifiers  1 entry, isSupplementTo -> the GitHub repository
+
+Record A's md5 round trip PASSED in plan 29-04: the server-returned checksum above
+equals the local digest of the exact 4,341,018,405 bytes uploaded. The draft is intact,
+unpublished, and carries NO cross-link to Record B — because Record B did not exist when
+it was created, and because D-29-03 forbids reserving a DOI.
+
+That absence is the chicken-and-egg this task exists to resolve.
+
+--- 1.2  `isNewVersionOf` is EXCLUDED under every option, and why --------------
+
+Under no option does either record assert the version relation (the `related_identifiers`
+relation naming a previous version) against record 21889922.
+
+Reason: Zenodo's versioning is a FIRST-CLASS mechanism — a `newversion` deposition action
+that produces a new version inside the SAME concept record, sharing a concept DOI. Records
+A and B are NEW concept records, not new versions of 21889922. Asserting a version
+relationship in `related_identifiers` against a different concept record would tell a
+reader, falsely, that following 21889922's concept DOI reaches these records. It does not
+and never will.
+
+What is asserted instead:
+  - `references` -> 10.5281/zenodo.21889922, which is true: these records reference that
+    one without claiming to be a version of it; and
+  - an explicit supersession sentence in prose, in BOTH Record B's Zenodo description and
+    the README inside its zip, so a reviewer who unzips the 4.35 GB historical bundle is
+    told plainly that its `reference_outputs/` are superseded.
+
+This is required by the folded todo (`2026-08-15-repackage-and-reupload-the-zenodo-archive.md`
+§ Do not: "Do not silently reuse the existing version DOI", "Do not delete the old
+version") and by threat register rows T-29-46 and T-29-49.
+
+Record 21889922 is not modified, deleted, re-versioned or withdrawn by this plan.
+
+--- 1.3  Options presented to the author -------------------------------------
+
+Presented 2026-08-26. Awaiting the author's ruling; nothing below is chosen by automation.
+
+  (a) `sequential`  — the author publishes Record A now, reports its minted DOI, and
+      Record B's draft is then built carrying `isDerivedFrom` -> that real DOI.
+      The only ordering that yields a real identifier in a draft the author reviews.
+
+  (b) `prose-only`  — both drafts staged now with the linkage in prose only; the
+      structured `related_identifiers` entry is added by the author in the web UI after
+      publication, because the automation token deliberately lacks `deposit:actions`.
+
+  (c) `author-other` — a different arrangement the author states.
+
+--- 1.4  RULING ---------------------------------------------------------------
+
+    PENDING — blocking checkpoint reached, execution stopped here.
+
+    Option id:            (awaiting author)
+    Ruling date:          (awaiting author)
+    Record A minted DOI:  (none exists; Record A is unpublished as measured in § 1.1)
+
+Task 2 (payload build) and Task 3 (draft creation) do not proceed until this section
+records the author's ruling.
