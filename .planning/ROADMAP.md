@@ -740,25 +740,32 @@ default conventional parser yields a **minor** bump to **2.1.0**.
 
   5. **RUN-05 closes**: the results package is published before the paper is submitted.
 
-**Plans**: 8 plans in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
+**Plans**: 1/8 plans executed in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
 above against the parser itself (measured 2026-08-26: **429** commits ahead, **47 `feat`**,
 **30 `fix`**, zero breaking-change markers — the minor bump to 2.1.0 is unaffected).
 
 Plans:
-- [ ] 29.2-01-PLAN.md — TRACER: pin the release toolchain, then rehearse the whole release end to
+
+- [x] 29.2-01-PLAN.md — TRACER: pin the release toolchain, then rehearse the whole release end to
       end in a throwaway `/tmp` clone; assert the bump string-equals `2.1.0` and the sdist's member
       list is clean
+
 - [ ] 29.2-02-PLAN.md — repair all three failing `pre-commit` hooks in `.pre-commit-config.yaml`,
       each with its rationale and its cost at the constant
+
 - [ ] 29.2-03-PLAN.md — convert the two drifting D4 assertions to documented ULP bounds; measure
       both suites and all seven `--smoke` invocations; amend the D4 todo
+
 - [ ] 29.2-04-PLAN.md — the whole-tree `pre-commit run --all-files` proof against four independent
       invariants, then open the PR and report the check board per job
+
 - [ ] 29.2-05-PLAN.md — pre-merge re-verification against the pins, end the stuck deployment, and
       the merge door (author-gated); verify the merge commit, tag and both version files
+
 - [ ] 29.2-06-PLAN.md — the PyPI door (author-gated); verify 2.1.0 is installable from the index
 - [ ] 29.2-07-PLAN.md — the Zenodo doors (author-gated): publish Record B, back-link Record A, and
       record that publication preceded submission
+
 - [ ] 29.2-08-PLAN.md — `29.2-PHASE-RECORD.md` with the D-29.2-10 superseding statement and the
       per-act approval trail; discharge the two `resolves_phase: 29.2` todos
 
@@ -827,5 +834,5 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
 | 29. Gate Verification & Results Commit | v2.1 | 8/8 | Complete (criteria 1-5; criterion 6 deferred to 29.2) | 2026-08-26 |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
-| 29.2. Merge, Release, and Publish | v2.1 | 0/0 | Pending     |  |
+| 29.2. Merge, Release, and Publish | v2.1 | 1/8 | In Progress|  |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

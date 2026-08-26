@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-current_phase: 29.1
-current_phase_name: Merge, Release, and Publish
-status: planning
-stopped_at: Phase 29.2 planned — 8 plans, verification passed
-last_updated: "2026-08-26T23:01:27.610Z"
+current_phase: 29.2
+current_phase_name: merge-release-and-publish
+status: executing
+stopped_at: Completed 29.2-01-PLAN.md
+last_updated: "2026-08-26T23:24:11.323Z"
 last_activity: 2026-08-26
-last_activity_desc: 29-08 closed Phase 29 against criteria 1-5 with 29-PHASE-RECORD.md and seven forward-carried todos; criterion 6 DEFERRED on the author's 2026-08-26 ruling because Record B cites v2.1.0, which does not exist yet. RUN-05 stays Pending; Phase 29.2 owns the release and the publication.
+last_activity_desc: 29.2-01 pinned the release toolchain (python-semantic-release==10.6.1, gitpython==3.1.59 -- release.yml could not run at all unpinned) and rehearsed the ENTIRE v2.1.0 release end to end in a throwaway /tmp clone against a local bare remote. `semantic-release version --print` output string-equals 2.1.0; PSR's own parser reports MAJOR = 0, settling D-29.2-20. Release commit, annotated v2.1.0 tag, both version files, a 1,219-line CHANGELOG section and a clean sdist all produced and inspected. Nothing irreversible touched.
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 71
-  completed_plans: 63
+  completed_plans: 64
   percent: 80
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 29 — Gate Verification & Results Commit
+**Current focus:** Phase 29.2 — merge-release-and-publish
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -35,11 +35,16 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.1 — Post-Run Fixes & Re-Freeze
+Phase: 29.2 (merge-release-and-publish) — EXECUTING (1/8 plans complete)
+Plan 29.2-01 COMPLETE 2026-08-26 — the phase tracer. Release toolchain pinned; the whole release
+rehearsed in /tmp and the 2.1.0 bump asserted by string equality. Evidence:
+`29.2-release-rehearsal.txt`, `29.2-sdist-listing.txt`. The scratch root
+`/tmp/aquacal-29.2-rehearsal` is deliberately LEFT IN PLACE — plan 29.2-05 must re-run against it
+(D-29.2-28b: the GitPython/PSR break is a live upstream situation).
 criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Ready to plan
+Status: Executing Phase 29.2
 
 **Phase 29 outcome — read
 `.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md` first**, and its
@@ -124,7 +129,7 @@ Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
 Do not reuse `~/aquacal-frozen-rerun-freeze-02` for anything that runs the suite (D5). The
 production clone `~/aquacal-frozen-rerun-freeze-02-prod` is on a detached HEAD at the tag with the
 run output untracked in it; it has no `results/*` branch and nothing has been pushed from it.
-Last activity: 2026-08-26 — Phase 29 complete, transitioned to Phase 29.1
+Last activity: 2026-08-26 — Phase 29.2 execution started
 
 **Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
 Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
@@ -365,6 +370,11 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29]: 29-07: Record B's isDerivedFrom points at Record A's VERSION DOI 10.5281/zenodo.22116461, not the concept DOI — Record B derives from those exact bytes, and a concept DOI follows the latest version, so it would silently re-point provenance if Record A were re-versioned
 - [Phase 29]: 29-07: author ruled 'sequential' A<->B linkage and published Record A (version 10.5281/zenodo.22116461, concept 10.5281/zenodo.22116460); the accepted cost is that Record A carries no structured isSourceOf back-link, which the author adds by hand in the Zenodo UI after Record B is published
 - [Phase 29]: 29-07: reference_outputs/diagnostics.json is sourced from experiments/results_e2_invocations/e2_classification/ — the only directory in this run holding both a diagnostics.json and a calibration.json byte-identical to the canonical one
+- [Phase 29.2]: 29.2-01: pin BOTH python-semantic-release==10.6.1 and gitpython==3.1.59 in release.yml — no released PSR works with the current GitPython, so bounding one package does not close the break
+- [Phase 29.2]: 29.2-01: `semantic-release --version` is NOT a valid smoke test for the GitPython break (exits 0 with the broken version); the detecting assertion is `semantic-release version --print` on a branch named main
+- [Phase 29.2]: 29.2-01: the v2.1.0 bump is measured, not assumed — `version --print` string-equals 2.1.0 and PSR's own parser reports MAJOR = 0, settling D-29.2-20 (fd78d77 needs no rewording)
+- [Phase 29.2]: 29.2-01: assert the sdist's member list, never its size — two builds of the identical tree 20s apart differ by 20 bytes with identical member lists (strengthens D-29.2-32)
+- [Phase 29.2]: 29.2-01: pin LC_ALL=C for every member-set comparison; the six-name sort order is collation-dependent and would false-alarm on an en_US.UTF-8 machine
 
 ### Blockers/Concerns
 
@@ -389,12 +399,12 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/29.2-merge-release-and-publish/29.2-01-PLAN.md
+**Resume file:** None
 
-Last session: 2026-08-26T23:01:27.596Z
+Last session: 2026-08-26T23:23:25.667Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 29.2 planned — 8 plans, verification passed
+Stopped at: Completed 29.2-01-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -423,3 +433,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P04 | 48min | 2 tasks | 1 files |
 | Phase 29 P07 | 26min | 3 tasks | 2 files |
 | Phase 29 P08 | 45min | 3 tasks | 8 files |
+| Phase 29.2 P01 | 20min | 3 tasks | 3 files |
