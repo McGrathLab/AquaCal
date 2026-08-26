@@ -22,6 +22,19 @@ from aquacal.config.schema import (
 )
 
 
+def _assert_max_ulp(actual, desired, maxulp, row):
+    """Bounded float comparison that keeps the offending row visible.
+
+    numpy's assertion names the observed step count but not which row produced it,
+    and this module's convention is that both are visible, so the two are joined.
+    Returns the per-element step-difference array in case a caller wants to record it.
+    """
+    try:
+        return np.testing.assert_array_max_ulp(actual, desired, maxulp=maxulp)
+    except AssertionError as exc:
+        raise AssertionError(f"{exc}\n{row}") from exc
+
+
 def _toy_cost(params, A):
     """Simple quadratic cost: residuals = A @ params.
 
@@ -1452,9 +1465,50 @@ class TestPerObservationDetailSinks:
     def test_detail_sink_recomputed_geometry_matches_projector(self):
         """h_q/h_c/r_q must be the projector's own quantities, not an approximation.
 
-        Recomputed here from `refractive_geometry.py:661,675,676-679` verbatim and
-        compared with `==`, never `pytest.approx` -- a tolerance would pass on a
-        sink that had drifted to a different (but nearby) formula.
+        Recomputed here from `refractive_geometry.py:661,675,676-679` verbatim.
+        `h_c_m` and `h_q_m` are compared with `==`. `r_q_m` and
+        `chord_incidence_deg` are compared against a hard bound of N representable
+        steps (`np.testing.assert_array_max_ulp`), never `pytest.approx` -- a
+        relative tolerance would pass on a sink that had drifted to a different
+        (but nearby) formula, and it cannot express a step count at all: one step
+        maps to a relative size anywhere across a factor-of-two range depending on
+        position within the binade, so any single `rtol` is up to 2x loose.
+
+        MEASURED, all 22 rows instrumented 2026-08-26. `h_c_m` and `h_q_m` agree
+        on 22 of 22 rows. `r_q_m` disagrees on 6 of 22, worst gap **1 step** -- a
+        sink value of 0.10681280743540097 against a recomputed
+        0.10681280743540099. `chord_incidence_deg` disagrees on 3 of 22, worst gap
+        **2 steps**.
+
+        THE MECHANISM, stated as a correction. The open D4 todo classifies this
+        test as one of three Windows-captured exact-equality anchors that fail on
+        Linux. That is wrong for this member: it has no captured anchor at all.
+        The library evaluates `r_q = np.sqrt(dx*dx + dy*dy)` VECTORIZED over N
+        points (`refractive_geometry.py:676`) while this test evaluates it SCALAR
+        on one element below, and numpy's array and scalar paths may differ by one
+        representable step ON THE SAME MACHINE. That is a dispatch asymmetry, not
+        a captured constant and not a platform pin -- it was invisible on Windows
+        only because that build dispatched differently. `chord_incidence_deg`
+        inherits that one step through `arctan2` and `degrees`, which is exactly
+        why its bound is larger: one inherited step plus at most one rounding in
+        each of the two calls.
+
+        WHY 4 AND 8, in orders of magnitude both ways. They are four times the
+        measured worst cases of 1 and 2. CI runs on runners whose numpy SIMD
+        dispatch this project does not control and the whole diagnosis is that the
+        gap IS a dispatch artifact, so a bound equal to this machine's maximum
+        would be pinned to this machine by construction. Downward, this is still
+        an extraordinarily tight assertion: at the measured magnitude 8 steps is
+        1.110e-16 absolute and 1.04e-15 relative, ~9 orders of magnitude tighter
+        than the `pytest.approx` default `rtol=1e-6` this comparison must never
+        become. A sink that had drifted to a different but nearby formula still
+        fails.
+
+        DO NOT widen these bounds to a relative tolerance. And do NOT "fix" a
+        future failure by making this test recompute `r_q` vectorized to match the
+        library: identical dispatch depends on array length and memory alignment,
+        so the test would pass by coincidence on one machine and could break on a
+        runner with a different vector width. That is more fragile, not less.
         """
         from aquacal.calibration._optim_common import compute_residuals
         from aquacal.core.camera import Camera
@@ -1493,10 +1547,16 @@ class TestPerObservationDetailSinks:
 
             assert row["h_c_m"] == h_c, row
             assert row["h_q_m"] == h_q, row
-            assert row["r_q_m"] == r_q, row
-            assert row["chord_incidence_deg"] == np.degrees(
-                np.arctan2(r_q, h_c + h_q)
-            ), row
+            # r_q_m: measured worst gap 1 step over 22 rows, bounded at 4.
+            _assert_max_ulp(row["r_q_m"], r_q, maxulp=4, row=row)
+            # chord_incidence_deg: measured worst gap 2 steps, bounded at 8 -- it
+            # inherits r_q's step through arctan2 and degrees.
+            _assert_max_ulp(
+                row["chord_incidence_deg"],
+                np.degrees(np.arctan2(r_q, h_c + h_q)),
+                maxulp=8,
+                row=row,
+            )
 
     # -- 5. the full-population depth sink ----------------------------------
 
