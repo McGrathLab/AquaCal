@@ -219,3 +219,11 @@ None. No new network endpoint, auth path, file-access pattern or schema change w
 ---
 *Phase: 29-gate-verification-results-commit*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+All six claimed artifacts exist on disk (`29-zenodo-record-b.txt`, `29-07-SUMMARY.md`,
+`scripts/zenodo_metadata_b.json`, `~/zenodo-record-b/README.md`, the zip and its `.md5`
+sidecar) and all seven claimed commits are present in git history (`67d0b9b`, `cc08fa5`,
+`00db4ac`, `edd9f1b`, `ca3f044`, `37717eb`, `c227048`). The zip's digest and byte size were
+freshly recomputed and agree with every figure quoted above. Nothing claimed here is unbacked.
