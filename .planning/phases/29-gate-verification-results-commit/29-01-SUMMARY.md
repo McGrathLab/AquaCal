@@ -49,7 +49,7 @@ patterns-established:
   - "Placeholder-then-substitute for cross-record identifiers: the committed metadata carries literal __RECORD_A_URL__ / __RECORD_B_URL__ because no DOI exists until Publish (D-29-03), and substitution happens at deposit time."
   - "Evidence transcripts append machine-written JSON records under hand-written prose section headers, so a reader gets both the raw response and why it was made."
 
-requirements-completed: [RUN-05]
+requirements-completed: []
 
 coverage:
   - id: D1

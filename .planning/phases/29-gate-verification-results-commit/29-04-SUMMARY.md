@@ -43,7 +43,7 @@ patterns-established:
   - "Prove arrival, never assume it: a transfer that completed without a matching digest is a failed transfer"
   - "Write self-referential assertions so they cannot match themselves — quoting a forbidden literal inside the check that forbids it makes the check always fail"
 
-requirements-completed: [RUN-05]
+requirements-completed: []
 
 coverage:
   - id: D1
