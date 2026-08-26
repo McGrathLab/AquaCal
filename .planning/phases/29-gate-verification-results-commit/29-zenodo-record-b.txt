@@ -412,3 +412,190 @@ in src/ was touched, including datasets/data/manifest.json, download.py and load
 resolves, and not modified).
 
 Task 2 is COMPLETE.
+
+
+================================================================================
+3. TASK 3 — RECORD B'S PRODUCTION DRAFT
+================================================================================
+
+--- 3.0  Metadata finalisation --------------------------------------------------
+
+scripts/zenodo_metadata_b.json, three edits and no others:
+
+  1. The description prose placeholder `Record A: <token> .` resolved to Record A's
+     minted VERSION DOI 10.5281/zenodo.22116461, with the concept DOI
+     10.5281/zenodo.22116460 noted in parentheses.
+  2. The `isDerivedFrom` related identifier repointed from the placeholder to
+     10.5281/zenodo.22116461, `scheme` moving from `url` to `doi`.
+  3. The description's "Produced by AquaCal 2.0.1" corrected to "2.1.0", so the prose
+     agrees with the `version` field. The version field itself is unchanged at 2.1.0.
+
+Verified rather than re-applied: creator ORCID 0000-0003-4074-7128 was already present
+(orchestrator commit cd83a99) in both metadata files; it was checked, not added again.
+
+Serialised metadata, asserted structurally:
+
+    upload_type       dataset
+    access_right      open
+    license           cc-by-4.0
+    publication_date  2026-08-26
+    version           2.1.0
+    creators          Lancaster, Tucker (Georgia Institute of Technology),
+                      ORCID 0000-0003-4074-7128
+    description       contains the literal 21889922 in the supersession sentence
+    related_identifiers
+        isDerivedFrom  -> 10.5281/zenodo.22116461              (doi)
+        references     -> 10.5281/zenodo.21889922              (doi)
+        isSupplementTo -> https://github.com/McGrathLab/AquaCal (url)
+
+    entries carrying the excluded version relation: 0
+    (checked structurally by iterating the related_identifiers array and comparing the
+    `relation` key, NOT by a text grep — so the prose in § 1.2 and § 1.7 explaining the
+    exclusion cannot invalidate the gate.)
+
+PLACEHOLDER-CLASS REVIEW OF THE DESCRIPTION. The description was RENDERED to plain text
+and read end to end, because plan 29-04's deposited Record A description carried
+"(linked below once Record B exists)" — prose that reads as unfinished to a human while
+containing no token, so a token-based grep returned a false all-clear and only the
+author's reading caught it. Record B's description was checked for the defect class:
+unresolved `__TOKEN__` forms, TBD, TODO, FIXME, XXX, "placeholder", "once ... exists",
+"linked below", "<insert", `{{ }}`, lorem. Zero matches, and the rendered prose reads as
+finished text throughout.
+
+--- 3.1  Production reachability re-probe, immediately before the first call ----
+
+Plan 29-01 Finding 1 measured production Zenodo as down or severely degraded earlier in
+the phase, so reachability is re-measured before each plan's first production call rather
+than inherited from an earlier probe.
+
+    GET https://zenodo.org/api/records/21889922, three samples:
+        sample1  http=200  time=0.502954s
+        sample2  http=200  time=0.463093s
+        sample3  http=200  time=0.446562s
+
+    Production healthy. Proceeding.                                           PASS
+
+--- 3.2  Draft creation (metadata only — no payload byte has moved yet) ---------
+
+Following plan 29-04's two-call shape: create the draft and commit its id, bucket and
+html URL to git BEFORE uploading, because a `deposit:write`-only token cannot discard,
+so an unrecorded draft id would be an unfindable draft.
+
+Command shape (the token is NOT an argument; the tool reads it from the environment):
+
+    python scripts/zenodo_upload.py \
+        --base-url https://zenodo.org/api \
+        --metadata scripts/zenodo_metadata_b.json \
+        --out <this file>
+
+Verbatim tool output follows.
+
+
+--------------------------------------------------------------------------------
+{
+  "action": "create_draft",
+  "base_url": "https://zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 22117061,
+  "deposition_response": {
+    "conceptrecid": "22117060",
+    "created": "2026-08-26T19:14:26.215678+00:00",
+    "files": [],
+    "id": 22117061,
+    "links": {
+      "badge": "https://zenodo.org/badge/doi/.svg",
+      "bucket": "https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c",
+      "discard": "https://zenodo.org/api/deposit/depositions/22117061/actions/discard",
+      "edit": "https://zenodo.org/api/deposit/depositions/22117061/actions/edit",
+      "files": "https://zenodo.org/api/deposit/depositions/22117061/files",
+      "html": "https://zenodo.org/deposit/22117061",
+      "latest_draft": "https://zenodo.org/api/deposit/depositions/22117061",
+      "latest_draft_html": "https://zenodo.org/deposit/22117061",
+      "newversion": "https://zenodo.org/api/deposit/depositions/22117061/actions/newversion",
+      "publish": "https://zenodo.org/api/deposit/depositions/22117061/actions/publish",
+      "self": "https://zenodo.org/api/deposit/depositions/22117061"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker",
+          "orcid": "0000-0003-4074-7128"
+        }
+      ],
+      "description": "<p><strong>Results package</strong> for the AquaCal 13-camera underwater production rig calibration: the configuration that produced the published numbers, the reference outputs themselves, the archived calibration comparison target, and the run manifest recording the exact software environment. A few megabytes, re-versioned whenever the results change.</p><p><strong>Contents:</strong></p><ul><li><code>config_paper.yaml</code> &mdash; the configuration behind the published results.</li><li><code>config_quickstart_not_paper.yaml</code> &mdash; the faster quickstart configuration, which does <em>not</em> reproduce the published numbers.</li><li><code>reference_calibration.json</code> &mdash; the archived calibration used as a comparison target.</li><li><code>reference_outputs/</code> &mdash; <code>calibration.json</code>, <code>diagnostics.json</code>, <code>exp2_spatial_errors.csv</code>, <code>interface_ablation_conditioning.npz</code>, <code>reconstruction_errors.csv</code>, <code>reprojection_residuals.csv</code>.</li><li><code>run_manifest.json</code> &mdash; interpreter, library versions, host and git revision for the run that produced the outputs above.</li></ul><p><strong>Supersession notice &mdash; please read before comparing numbers.</strong> This record supersedes the <code>reference_outputs/</code> contained in Zenodo record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a>. Record 21889922 is retained as the historical submitted package and still contains the <em>older</em> reference outputs, which do not match the current paper. Any comparison against the published numbers must use the <code>reference_outputs/</code> in <em>this</em> record, not the ones inside 21889922.</p><p><strong>Inputs.</strong> These results were computed from the calibration frames published as Record A: <a href=\"https://doi.org/10.5281/zenodo.22116461\">10.5281/zenodo.22116461</a> (concept DOI, version-independent: 10.5281/zenodo.22116460). Reproducing them requires both records: the frames from Record A and the configuration from this one.</p><p><strong>Provenance.</strong> Produced by AquaCal 2.1.0 at git revision 7005a2771aa115e4f4c1284cec7e145739586a4a, Python 3.11.15, NumPy 2.4.6, SciPy 1.17.1, OpenCV 4.13.0 (pinned to a single minor: ChArUco corner detection changes across OpenCV minor versions and moves the published error metrics).</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "reproducibility"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.22117061",
+        "recid": 22117061
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "10.5281/zenodo.22116461",
+          "relation": "isDerivedFrom",
+          "resource_type": "dataset",
+          "scheme": "doi"
+        },
+        {
+          "identifier": "10.5281/zenodo.21889922",
+          "relation": "references",
+          "resource_type": "dataset",
+          "scheme": "doi"
+        },
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+      "upload_type": "dataset",
+      "version": "2.1.0"
+    },
+    "modified": "2026-08-26T19:14:26.276573+00:00",
+    "owner": 1547073,
+    "record_id": 22117061,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest"
+  },
+  "links_html": "https://zenodo.org/deposit/22117061",
+  "metadata_file": "scripts/zenodo_metadata_b.json",
+  "metadata_title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+  "sandbox": false,
+  "state": "unsubmitted",
+  "submitted": false,
+  "utc": "2026-08-26T19:14:25Z"
+}
+
+--- 3.3  Draft handles — the repository's only way back to this draft -----------
+
+    deposition id   22117061
+    links.bucket    https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c
+    links.html      https://zenodo.org/deposit/22117061
+    owner           1547073
+    created         2026-08-26T19:14:25Z
+    state           unsubmitted
+    submitted       false
+    host            https://zenodo.org/api   (production)
+
+These three handles are committed to git BEFORE any payload byte moves. The automation
+token carries `deposit:write` only and cannot discard a deposition, so a draft whose id
+was never recorded would be a draft nobody can find or clean up.
+
+Every URL above is on the production host.
+
