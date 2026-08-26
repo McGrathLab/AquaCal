@@ -186,3 +186,229 @@ true, plus the supersession sentence in prose in both the Zenodo description and
 README inside the zip.
 
 Task 1 is COMPLETE. Tasks 2 and 3 are unblocked.
+
+
+================================================================================
+2. TASK 2 — RECORD B'S PAYLOAD, BUILT FROM THIS RUN'S OWN OUTPUTS
+================================================================================
+
+Date:  2026-08-26
+Built: ~/zenodo-record-b/            (OUTSIDE the repository, deliberately untracked)
+Zip:   ~/zenodo-record-b/real-rig-results-2.1.0.zip
+
+--- 2.1  Member list, asserted against the ruling ------------------------------
+
+29-RECORD-COMPOSITION.md § Record B, option `research-default`, assigns exactly five
+members. All five are present; none is missing; nothing outside the list was added
+except the README this plan is explicitly instructed to write.
+
+    ruled member                      origin     present   note
+    config_paper.yaml                 archive    yes
+    config_quickstart_not_paper.yaml  archive    yes
+    reference_calibration.json        archive    yes
+    reference_outputs/                run        yes       6 files, this run's
+    run_manifest.json                 run        yes
+
+    README.md                         written    yes       NOT a composition-ruling
+                                                           member. Mandated by plan
+                                                           29-07 Task 2, which requires
+                                                           a README carrying the
+                                                           `optimality` labelling
+                                                           sentence, the supersession
+                                                           statement, the provenance
+                                                           line and the Record A
+                                                           pointer. Recorded here
+                                                           explicitly so the "none
+                                                           extra" assertion is auditable
+                                                           rather than silently violated.
+
+--- 2.2  Which `diagnostics.json` — a resolution, recorded rather than guessed --
+
+The plan names six `reference_outputs/` filenames. FIVE of them are exactly the five
+files the git ignore rules exclude from `experiments/results/` — confirmed by
+`git check-ignore -v`, which named .gitignore lines 223, 237, 238, 239 and 247. Record B
+is precisely the payload those rules exclude, which is D-29-17's design working as
+intended.
+
+The sixth, `diagnostics.json`, is NOT in `experiments/results/`. RESEARCH says only that
+it "is written per-run" and does not pin a path, so the source was derived from evidence
+rather than assumed:
+
+  - The archived (old) `reference_outputs/diagnostics.json` reports
+    `reconstruction_num_comparisons = 7762` and `reprojection_rms = 0.927660749239319`,
+    identifying it as the E2 production calibration's diagnostics.
+  - Every `diagnostics.json` in this run was enumerated. Each candidate directory's
+    sibling `calibration.json` was md5-compared against the canonical
+    `experiments/results/calibration.json` (md5 b5e374da3b60a86d6f9be6d3fcbf631d).
+  - EXACTLY ONE directory in this run holds a byte-identical `calibration.json` AND a
+    `diagnostics.json`:
+
+        experiments/results_e2_invocations/e2_classification/
+
+    Its `diagnostics.json` reports `reconstruction_num_comparisons = 7762`,
+    `reconstruction_num_frames = 52`, `reprojection_num_obs = 19093` and
+    `reprojection_rms = 0.9276607463816985` — the archived value reproduced to a
+    relative drift of ~3.1e-09.
+
+  The match is unique, so the choice is forced rather than preferred: this is the
+  diagnostics file describing the calibration Record B actually ships, and no other
+  candidate can be.
+
+--- 2.3  Per-file md5, payload vs. this run's source ---------------------------
+
+Each payload file compared byte-for-byte against the artifact it was copied from.
+All digests are md5.                                          # pragma: allowlist secret
+
+  file                                          payload == source
+  reference_outputs/calibration.json            b5e374da3b60a86d6f9be6d3fcbf631d  IDENTICAL
+  reference_outputs/diagnostics.json            2aa478fa21af787abb274fb4e2accc3d  IDENTICAL
+  reference_outputs/exp2_spatial_errors.csv     28a0e8705ae06df0ad988620a5f31e4f  IDENTICAL
+  reference_outputs/interface_ablation_conditioning.npz
+                                                04a01a7a1714a4bd20d73efe3ebe7f60  IDENTICAL
+  reference_outputs/reconstruction_errors.csv   c7e23242e0e29a1e0d3a6d1c3d40a6f5  IDENTICAL
+  reference_outputs/reprojection_residuals.csv  f3b41309e1bb43f5bfaf43a1e6e2b572  IDENTICAL
+  run_manifest.json                             31ee8d2ae93b90fe6f22a917f748504a  IDENTICAL
+  config_paper.yaml                             0f1a3384c1b92b30b551211d5fa87612  IDENTICAL
+  config_quickstart_not_paper.yaml              6c39d12eab8090deccc8bc777112f883  IDENTICAL
+  reference_calibration.json                    0ac5dbd16938ebd2711c1a25fbeb217a  IDENTICAL
+
+Sources: `experiments/results/` for the run-side members, except `diagnostics.json`
+(§ 2.2), and `aquacal_data/real-rig/real-rig/` for the three archive-side members.
+
+--- 2.4  NEGATIVE ASSERTION — the archive's superseded outputs are NOT here ----
+
+Every shipped `reference_outputs/` file differs from the published archive's copy of the
+same name. This is the check that proves the supersession is real and not a relabelling.
+
+  file                                  shipped (this run)                archive (old)
+  calibration.json                      b5e374da3b60a86d6f9be6d3fcbf631d  0ac5dbd16938ebd2711c1a25fbeb217a
+  diagnostics.json                      2aa478fa21af787abb274fb4e2accc3d  ee0532c2c7c7c78d519877be0e963a90
+  exp2_spatial_errors.csv               28a0e8705ae06df0ad988620a5f31e4f  eb58014dfe75429632ce1f3ba7b0432f
+  interface_ablation_conditioning.npz   04a01a7a1714a4bd20d73efe3ebe7f60  54e6f71ccc970c5f274a363881a11046
+  reconstruction_errors.csv             c7e23242e0e29a1e0d3a6d1c3d40a6f5  f2838c7d30dbfc0d4347a882e672ff0e
+  reprojection_residuals.csv            f3b41309e1bb43f5bfaf43a1e6e2b572  e374d40d69e65371a7e01b3cfb212c9a
+
+  ALL SIX DIFFER. No archive output reached Record B.
+
+ONE APPARENT COLLISION, EXPLAINED — not a defect:
+`reference_calibration.json` carries md5 0ac5dbd16938ebd2711c1a25fbeb217a, which is the
+same digest as the archive's OLD `reference_outputs/calibration.json`. That is correct and
+intended. `reference_calibration.json` IS the archived calibration, retained deliberately
+as the comparison TARGET a regression check runs against — the composition ruling assigns
+it to Record B for exactly that reason ("the archived calibration comparison target is a
+*result*, not an input, so it travels with the results package it belongs to"). It is not
+a stale copy that leaked in; it is a ruled member doing its job, and Record B's README
+says so in the contents table so no reviewer misreads it as this run's output.
+
+--- 2.5  The README ------------------------------------------------------------
+
+~/zenodo-record-b/README.md, 7197 bytes. Carries all four required elements:
+
+  1. THE `optimality` LABELLING SENTENCE (ROADMAP Phase 29 criterion 6, added
+     2026-08-17, author's call: label at upload time, do not act earlier). Under the
+     heading "Reading `optimality_stage3_interface_optimization`", stating all three
+     measured properties:
+       - a REAL gradient, not solver noise — a central-difference Jacobian reproduces it
+         to five significant figures;
+       - VOLATILE at a fixed solution — a ~43x range at one converged point, because the
+         problem is severely ill-conditioned;
+       - NOT COMPARABLE ACROSS PARAMETER BLOCKS — it mixes Coleman-Li scalings of 1, ~700
+         and ~2e-12 — with RELIABILITY DEPENDING ON MAGNITUDE: large values trustworthy,
+         small ones not, a 44% disagreement measured at 0.001.
+     Same remedy FIX-04 applied to E7's vacuous nulls after MF-17: a number that reaches
+     the archive unaccompanied invites a wrong reading. Evidence:
+     .planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md.
+
+  2. THE SUPERSESSION STATEMENT, naming 21889922 in its own section, stating plainly
+     that the outputs in this record supersede those in 21889922, that 21889922 is
+     retained unmodified as the historical submitted package, and that a reviewer who
+     unzips 4.35 GB will otherwise meet numbers that disagree with the paper.
+
+  3. THE PROVENANCE LINE — tag rerun-freeze-02, sha
+     7005a2771aa115e4f4c1284cec7e145739586a4a, run 2026-08-25T00:47:07Z -> 06:48:28Z,
+     20/20 stages at exit 0, gate TOTAL: 176 PASS, 7 N/A, 0 FAIL, plus the full
+     interpreter/library/host block and the OpenCV minor-version caveat.
+
+  4. THE POINTER TO RECORD A, in the form Task 1 ruled: version DOI
+     10.5281/zenodo.22116461 as the citation, with the concept DOI noted in prose.
+
+PLACEHOLDER-CLASS SCAN. Plan 29-04 substituted a `__RECORD_B_URL__` token in Record A's
+deposited description with the prose "(linked below once Record B exists)", which reads
+as an unfinished placeholder to a human even though no token remains — a token-based grep
+gave a false all-clear and the author caught it by reading the record. The README was
+therefore scanned for the DEFECT CLASS, not the token: unresolved `__TOKEN__` forms, TBD,
+TODO, FIXME, XXX, "placeholder", "once ... exists", "linked below", "<insert", `{{ }}`,
+lorem. ZERO matches. The rendered prose was also read end to end.
+
+--- 2.6  Round-trip obligation — discharged by citation, not by re-running ------
+
+The folded todo (2026-08-15-repackage-and-reupload-the-zenodo-archive.md) asks that a
+fresh run off Record B's config_paper.yaml against Record A's frames reproduce the new §3
+numbers. D-29-08 forbids re-running any stage, and the check has ALREADY been made on
+this run's own artifacts by plan 29-03's E2 same-seed control.
+
+Cited evidence: 29-e2-control.txt
+
+    n_comparisons                     7762 -> 7762   integer field: EXACT EQUAL
+    mean_per_camera_reprojection_px   0.8240385366779744 -> 0.8240385407126619
+                                      rel = 4.8962e-09   (the §3 headline)
+    worst scalar field                inter_corner_rmse_mm = 2.5146e-08
+    worst field overall               reprojection_range_px[1] = 3.6317e-08
+    DRIFT_LIMIT                       1e-06
+    RESULT                            PASS
+
+    Comparison is seed 42 vs seed 42 throughout, and must stay that way: E2's SEED band
+    on mean_per_camera_reprojection_px spans 0.761 -> 0.910 px, so a cross-seed
+    comparison of a healthy run reads as catastrophic.
+
+No stage was re-run. E7's band was never invoked, with or without the force flag.
+
+--- 2.7  The archive ------------------------------------------------------------
+
+    path       ~/zenodo-record-b/real-rig-results-2.1.0.zip
+    size       9503394 bytes  (9.50 MB)
+    md5        f033538e1c9da165aa6267f4ae5d4f78   # pragma: allowlist secret
+    md5:f033538e1c9da165aa6267f4ae5d4f78          # pragma: allowlist secret
+    method     ZIP_DEFLATED (unlike Record A: this payload is JSON/CSV/YAML text, which
+               compresses ~2.3x — 22 MB on disk down to 9.5 MB)
+    entries    11
+    testzip()  None  (no CRC error in any member)
+    sidecar    ~/zenodo-record-b/real-rig-results-2.1.0.zip.md5, md5sum format
+
+    The zip was built to a path OUTSIDE the payload tree and moved in afterwards, so it
+    cannot contain itself.
+
+FULL MEMBER LISTING (uncompressed sizes, bytes):
+
+           7197  README.md
+           2466  config_paper.yaml
+           2342  config_quickstart_not_paper.yaml
+        2226567  reference_calibration.json
+        2110567  reference_outputs/calibration.json
+           4615  reference_outputs/diagnostics.json
+       13008842  reference_outputs/exp2_spatial_errors.csv
+        3306390  reference_outputs/interface_ablation_conditioning.npz
+         632384  reference_outputs/reconstruction_errors.csv
+        1235753  reference_outputs/reprojection_residuals.csv
+           1326  run_manifest.json
+
+Top-level member set:
+    ['README.md', 'config_paper.yaml', 'config_quickstart_not_paper.yaml',
+     'reference_calibration.json', 'reference_outputs', 'run_manifest.json']
+
+Archive root is FLAT — no `real-rig/` wrapper — matching Record A's layout (plan 29-04
+decision 1) and the composition ruling's relative paths. The consequence for
+`load_example('real-rig')` is already recorded as Phase 30 work in
+29-RECORD-COMPOSITION.md § Carried forward, item 1.
+
+--- 2.8  Frozen-tree assertion --------------------------------------------------
+
+    git diff --quiet -- src/ experiments/       exit 0
+    git status --porcelain experiments/ src/    empty
+
+Nothing under experiments/ was edited, regenerated or re-run; it was read only. No file
+in src/ was touched, including datasets/data/manifest.json, download.py and loader.py
+(loader.py was read at lines 40-115 to check the packaged layout against what a consumer
+resolves, and not modified).
+
+Task 2 is COMPLETE.
