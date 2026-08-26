@@ -1,0 +1,188 @@
+{
+  "accuracy": {
+    "reprojection_rms": 0.9276607463816985,
+    "validation_3d_error_mean": 0.0002581771773788176,
+    "validation_3d_error_std": 0.0005726278387202036
+  },
+  "discard_stats": {
+    "degenerate_observations_at_solution": 198,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 198,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 198,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_interface_optimization": 73975,
+    "observations_evaluated__stage3_intrinsic_pass": 73975,
+    "pnp_attempts_refractive": 3548,
+    "pnp_attempts_total": 3548,
+    "pnp_guard_rejected": 10,
+    "pose_discarded_by_consumer": 10
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 198,
+    "n_cameras": 13,
+    "n_frames_calibration": 200,
+    "n_frames_holdout": 52
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "interface_normal_fixed": false,
+    "loss_scale": 1.0,
+    "refine_intrinsics": true,
+    "robust_loss": "huber",
+    "seed": 42
+  },
+  "stages": {
+    "auxiliary_registration_e3v8250": {
+      "cost": 13417.383757579057,
+      "fd_reduction": null,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 1000,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": null,
+      "n_groups_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "n_params": null,
+      "n_params_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "n_residuals": null,
+      "n_residuals_reason": "register_auxiliary_camera uses dense 2-point FD; no column-grouping structure exists at this site",
+      "nfev": 21,
+      "njev": 16,
+      "optimality": 0.05675668625917751,
+      "optimality_by_block": null,
+      "optimality_by_block_reason": "call site supplied no parameter_labels, parameter_blocks, bounds; the packed-vector layout is unavailable at this site",
+      "parameters_at_bound": null,
+      "parameters_at_bound_reason": "call site supplied no parameter_labels, parameter_blocks, bounds; the packed-vector layout is unavailable at this site",
+      "seconds": null,
+      "seconds_reason": "per-camera wall time is not measured separately; see the auxiliary_registration aggregate boundary",
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_interface_optimization": {
+      "cost": 32429.426226537224,
+      "fd_reduction": 97.61538461538461,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 126900,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 1269,
+      "n_params_reason": null,
+      "n_residuals": 147950,
+      "n_residuals_reason": null,
+      "nfev": 42,
+      "njev": 34,
+      "optimality": 0.2776925553989713,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame221_rvec_x",
+          "max_scaled": 0.10845454863228099,
+          "max_unscaled": 0.10845454863228099,
+          "n_params": 1200
+        },
+        "extrinsics": {
+          "argmax_parameter": "e3v83f0_tvec_y",
+          "max_scaled": 0.2776925553989713,
+          "max_unscaled": 0.2776925553989713,
+          "n_params": 66
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 0.0041304495786690185,
+          "max_unscaled": 0.021421878209991974,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.2017409771685761,
+          "max_unscaled": 0.1996704762703061,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 878.1619044819381,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 20232.45623704263,
+      "fd_reduction": 77.47058823529412,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 131700,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 1317,
+      "n_params_reason": null,
+      "n_residuals": 147950,
+      "n_residuals_reason": null,
+      "nfev": 15,
+      "njev": 14,
+      "optimality": 18.3887203658648,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame12_tvec_x",
+          "max_scaled": 0.4394598511843242,
+          "max_unscaled": 0.4394598511843242,
+          "n_params": 1200
+        },
+        "extrinsics": {
+          "argmax_parameter": "e3v83f0_rvec_x",
+          "max_scaled": 18.3887203658648,
+          "max_unscaled": 18.3887203658648,
+          "n_params": 66
+        },
+        "intrinsics": {
+          "argmax_parameter": "e3v83f0_fx",
+          "max_scaled": 0.2997181101436629,
+          "max_unscaled": 0.00032775986981403715,
+          "n_params": 48
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 0.0032835413579633565,
+          "max_unscaled": 0.015412409255787907,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 3.0305635998757974,
+          "max_unscaled": 3.2721828984422814,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 389.2112664110027,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}

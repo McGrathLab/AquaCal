@@ -1,0 +1,93 @@
+[2026-08-25T00:47:09Z] >>> STAGE 4/20: e1 starting
+Experiment output directory: /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results
+Creating scenario 'realistic' (seed=42)...
+  Cameras: 12  Frames: 30
+
+Calibrating refractive model (n_water=1.333)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.2552e+04, final cost 3.6888e+03, first-order optimality 8.62e-04.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 3.6888e+03, final cost 3.6800e+03, first-order optimality 2.50e-02.
+  Reprojection RMS: 0.4990 px
+
+Calibrating non_refractive model (n_water=1.0)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 17, initial cost 1.2736e+05, final cost 2.6067e+04, first-order optimality 9.16e+01.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 2.6067e+04, final cost 1.5098e+04, first-order optimality 2.21e+02.
+  Reprojection RMS: 1.2669 px
+
+Evaluating depth sweep and anisotropy...
+Wrote /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_benchmark_refractive.json
+Wrote /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_benchmark_nonrefractive.json
+Wrote degeneracy breakdown sidecar to /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_degeneracy_breakdown.json
+
+E1 run complete.
+[2026-08-25T00:49:00Z] <<< STAGE 4/20: e1 finished exit=0
+----- GATE VERDICT: stage=e1 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[PASS] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E6  gate1_guard_count                             no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e6_configs
+[FAIL] E6  gate3_provenance                              no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e6_configs
+[FAIL] E6  gate4_optimality                              no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e6_configs
+[FAIL] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv not found
+[FAIL] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[N/A ] E2  gate_e2_band                                  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_band not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha matches every artifact (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] e1  completeness:exp1_parameter_errors.csv        exp1_parameter_errors.csv: 24 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/exp1_parameter_errors.csv, as expected.
+[PASS] e1  completeness:exp2_depth_generalization.csv    exp2_depth_generalization.csv: 16 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/exp2_depth_generalization.csv, as expected.
+[PASS] e1  completeness:exp3_xy_vs_z_anisotropy.csv      exp3_xy_vs_z_anisotropy.csv: 16 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/exp3_xy_vs_z_anisotropy.csv, as expected.
+[PASS] e1  completeness:exp2_spatial_errors.csv          exp2_spatial_errors.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/exp2_spatial_errors.csv; no row count is pinned for it (per-point frame whose length is a property of the draw, not of the design; existence only. Gitignored, so it is never committed.)
+[PASS] e1  completeness:e1_benchmark_refractive.json     e1_benchmark_refractive.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_benchmark_refractive.json; no row count is pinned for it (JSON benchmark record, not a table.)
+[PASS] e1  completeness:e1_benchmark_nonrefractive.json  e1_benchmark_nonrefractive.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_benchmark_nonrefractive.json; no row count is pinned for it (JSON benchmark record, not a table.)
+[PASS] e1  completeness:e1_degeneracy_breakdown.json     e1_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e1_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 sidecar: the raw discard_stats dict keyed by model label.)
+
+TOTAL: 18 PASS, 14 N/A, 25 FAIL
+----- END GATE VERDICT: stage=e1 exit=1 -----

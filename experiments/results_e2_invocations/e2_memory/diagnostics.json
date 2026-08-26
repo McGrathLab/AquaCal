@@ -1,0 +1,120 @@
+{
+  "summary": {
+    "reprojection_rms": 0.9276607305507352,
+    "reprojection_num_obs": 19093.0,
+    "reconstruction_mean": 0.000258177175368949,
+    "reconstruction_std": 0.000572627822386655,
+    "reconstruction_max": 0.016970310564661306,
+    "reconstruction_num_comparisons": 7762.0,
+    "reconstruction_signed_mean": 4.318901369794203e-05,
+    "reconstruction_rmse": 0.0006281385809300139,
+    "reconstruction_percent_error": 0.43029529228158175,
+    "reconstruction_num_frames": 52.0,
+    "water_z": 1.073840402979052,
+    "mean_camera_height": 1.0761775812060383,
+    "camera_height_spread": 0.06532495512732028
+  },
+  "recommendations": [
+    "Primary reprojection RMS (0.93 px) is good (<1.0 px)",
+    "Primary camera 'e3v83f0' has elevated error (2.08 px) - check lens/mounting",
+    "Auxiliary cameras have higher error (mean 14.86 px vs primary 0.82 px) - expected for post-hoc registered cameras",
+    "3D reconstruction error (0.26 mm) is excellent",
+    "Camera heights above water: mean 1076.2 mm, spread 65.3 mm",
+    "Camera height spread (65.3 mm) is large - check camera mounting"
+  ],
+  "reprojection": {
+    "rms": 0.9276607305507352,
+    "per_camera": {
+      "e3v829d": 0.5537182444808626,
+      "e3v82e0": 0.6993395637916078,
+      "e3v82f9": 0.6127228593859703,
+      "e3v831e": 0.7060847391892121,
+      "e3v832e": 0.5627526544384343,
+      "e3v8334": 0.6699186456717869,
+      "e3v83e9": 0.9380142067239621,
+      "e3v83eb": 0.9674563310557674,
+      "e3v83ee": 0.820372476194883,
+      "e3v83ef": 0.5561948965418441,
+      "e3v83f0": 2.08155068182585,
+      "e3v83f1": 0.7203371040440543
+    },
+    "num_observations": 19093
+  },
+  "reconstruction": {
+    "mean": 0.000258177175368949,
+    "std": 0.000572627822386655,
+    "max_error": 0.016970310564661306,
+    "num_comparisons": 7762,
+    "signed_mean": 4.318901369794203e-05,
+    "rmse": 0.0006281385809300139,
+    "percent_error": 0.43029529228158175,
+    "num_frames": 52
+  },
+  "camera_heights": {
+    "water_z": 1.073840402979052,
+    "per_camera_height": {
+      "e3v829d": 1.073840402979052,
+      "e3v82e0": 1.0802263069423363,
+      "e3v82f9": 1.08236274011455,
+      "e3v831e": 1.0713946127298324,
+      "e3v832e": 1.0720493028042264,
+      "e3v8334": 1.068078232176645,
+      "e3v83e9": 1.0572725729943628,
+      "e3v83eb": 1.0763196752721218,
+      "e3v83ee": 1.1125017293002863,
+      "e3v83ef": 1.068410409493946,
+      "e3v83f0": 1.047176774172966,
+      "e3v83f1": 1.1044982154921341,
+      "e3v8250": 1.0748174612776709
+    },
+    "mean_height": 1.076072956596164,
+    "height_spread": 0.06532495512732028
+  },
+  "auxiliary_cameras": {
+    "e3v8250": {
+      "reprojection_rms": 14.856381423017112
+    }
+  },
+  "timings": {
+    "seconds_per_stage": {
+      "stage1_intrinsics": 19.671199653996155,
+      "detection_underwater": 95.69816172099672,
+      "stage2_extrinsic_init": 79.3309411930386,
+      "stage3_interface_optimization": 619.6760045289993,
+      "stage3_intrinsic_pass": 272.73737781192176,
+      "auxiliary_registration": 28.665509504964575,
+      "validation": 12.787760749924928,
+      "diagnostics_generate": 0.030734059866517782
+    },
+    "total_seconds": 1128.5976892237086
+  },
+  "frame_rejection": {
+    "enabled": true,
+    "rejected_frames": [],
+    "num_rejected": 0,
+    "num_evaluated": 200,
+    "threshold_px": 5.0,
+    "median_rms_px": 0.9794451751191098,
+    "guardrail_triggered": false,
+    "rejected_frame_rms_px": {}
+  },
+  "discard_stats": {
+    "pnp_attempts_total": 3548,
+    "pnp_attempts_refractive": 3548,
+    "pnp_guard_rejected": 10,
+    "pose_discarded_by_consumer": 10,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 73975,
+    "degenerate_observations_at_solution": 198,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 198,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 198,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_intrinsic_pass": 73975
+  }
+}

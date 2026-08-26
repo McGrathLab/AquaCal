@@ -1,0 +1,36 @@
+{
+  "non_refractive": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949,
+    "observations_evaluated__stage3_intrinsic_pass": 14949,
+    "pnp_attempts_nonrefractive": 511,
+    "pnp_attempts_total": 511
+  },
+  "refractive": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949,
+    "observations_evaluated__stage3_intrinsic_pass": 14949,
+    "pnp_attempts_refractive": 511,
+    "pnp_attempts_total": 511
+  }
+}

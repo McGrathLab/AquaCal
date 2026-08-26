@@ -1,0 +1,11 @@
+{
+  "n": 3,
+  "scope": "This band varies the calibration/holdout split seed (config.seed, threaded to split_detections) on fixed real data. It bounds split variance, NOT measurement variance -- the underlying frames, detections, and camera videos are identical across every seed in this band (D-19.5-05).",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "source_config": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/configs/e2_release_linux.yaml",
+  "source_config_sha256": "ba9dc474f22968200c77fab54907ae8e425807a101c108bcfbaca1c568426b82"
+}

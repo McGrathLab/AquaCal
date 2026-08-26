@@ -1,0 +1,38 @@
+{
+  "n": 3,
+  "scope": "E2 is an explicitly multi-invocation stage (D-15). These three configs differ from the source config in exactly paths.output_dir and two internals keys. Timing and memory are two DISTINCT runs because internals.benchmark_memory costs 2.7-5.5% wall clock, so one run cannot honestly produce both numbers; and internals.log_all_observation_depths (an ~11 MB per-stage sidecar on the 13-camera rig) rides the classification run ONLY, never the timing run (D-16). Each variant writes its own output_dir so every artifact is attributable to its invocation.",
+  "source_config": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/configs/e2_release_linux.yaml",
+  "source_config_sha256": "ba9dc474f22968200c77fab54907ae8e425807a101c108bcfbaca1c568426b82",
+  "variants": [
+    {
+      "filename": "config_e2_classification.yaml",
+      "internals": {
+        "benchmark_memory": false,
+        "log_all_observation_depths": true
+      },
+      "name": "classification",
+      "output_dir": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_invocations/e2_classification",
+      "purpose": "Production / classification run. Carries Phase 25's per-observation h_q sidecar (D-16); carries NO memory instrumentation, because peak-RSS sampling perturbs the wall clock this run's artifacts are read alongside."
+    },
+    {
+      "filename": "config_e2_timing.yaml",
+      "internals": {
+        "benchmark_memory": false,
+        "log_all_observation_depths": false
+      },
+      "name": "timing",
+      "output_dir": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_invocations/e2_timing",
+      "purpose": "Timing run. Carries NEITHER perturbing internals key: benchmark_memory costs 2.7-5.5% wall clock (D-15) and log_all_observation_depths writes an ~11 MB per-stage sidecar on the 13-camera rig (D-16). A flag that perturbs the quantity being measured cannot ride along with it."
+    },
+    {
+      "filename": "config_e2_memory.yaml",
+      "internals": {
+        "benchmark_memory": true,
+        "log_all_observation_depths": false
+      },
+      "name": "memory",
+      "output_dir": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_invocations/e2_memory",
+      "purpose": "Memory run. Carries benchmark_memory only. This is a SEPARATE invocation from the timing run, inherited and non-negotiable (D-15): one run cannot honestly produce both numbers."
+    }
+  ]
+}

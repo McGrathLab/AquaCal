@@ -1,0 +1,167 @@
+{
+  "accuracy": {
+    "reprojection_rms_px": 1.2669003363755043,
+    "water_z_recovered_m": 1.0309999999990098
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 0,
+    "n_cameras": 12,
+    "n_frames_calibration": 30,
+    "n_frames_holdout": 0
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "ftol": 1e-08,
+    "gtol": 1e-08,
+    "loss_scale": 1.0,
+    "n_air": 1.0,
+    "n_water": 1.0,
+    "normal_fixed": false,
+    "refine_intrinsics": true,
+    "robust_loss": "huber",
+    "seed": 42,
+    "shared_interface": true,
+    "water_z_pin_mechanism": "degenerate bounds interval (lb = ub -/+ 1e-12) on the water_z slot, threaded from the experiment to build_bounds at BOTH stage-3 passes (interface_estimation.py and refinement.py); the parameter stays packed and is not removed from the problem",
+    "water_z_pin_reason": "at n_water=1.0 the refractive projector IS the pinhole projector (tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity, agreement to atol=1e-12), so water_z is an exact null direction in this arm -- sweeping it over 1.5 m leaves the cost constant to 13 significant figures while the domain-guard count climbs 0 -> 14,949 -- and pinning it is therefore a reparameterization of a null space, not a model change. measurement: .planning/MANUSCRIPT-FINDINGS.md:892-903",
+    "water_z_pinned_m": 1.031,
+    "xtol": 1e-08
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 26067.02061135811,
+      "fd_reduction": 19.153846153846153,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 24900,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 249,
+      "n_params_reason": null,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 17,
+      "njev": 12,
+      "optimality": 91.6045708545658,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame2_tvec_y",
+          "max_scaled": 38.617360322418335,
+          "max_unscaled": 38.617360322418335,
+          "n_params": 180
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam5_rvec_x",
+          "max_scaled": 91.6045708545658,
+          "max_unscaled": 91.6045708545658,
+          "n_params": 66
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 1.2655565067348225,
+          "max_unscaled": 6.241628944272634,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 1.4148015821061582e-13,
+          "max_unscaled": 13.556808251013793,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [
+        {
+          "bound": "lower",
+          "classification": "pinned",
+          "gap": 1.0436096431476471e-14,
+          "interval_width": 2.000177801164682e-12,
+          "parameter": "water_z"
+        }
+      ],
+      "parameters_at_bound_reason": null,
+      "seconds": 22.348607826046646,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 15097.612370612733,
+      "fd_reduction": 17.470588235294116,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 29700,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 297,
+      "n_params_reason": null,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 9,
+      "njev": 8,
+      "optimality": 221.47469342491894,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame2_tvec_y",
+          "max_scaled": 99.38817791298118,
+          "max_unscaled": 99.38817791298118,
+          "n_params": 180
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam5_rvec_x",
+          "max_scaled": 221.47469342491894,
+          "max_unscaled": 221.47469342491894,
+          "n_params": 66
+        },
+        "intrinsics": {
+          "argmax_parameter": "cam5_cy",
+          "max_scaled": 95.17721543829721,
+          "max_unscaled": 0.1605889722260745,
+          "n_params": 48
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 6.205675521751076,
+          "max_unscaled": 30.13834461876604,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 2.0304404542698838e-13,
+          "max_unscaled": 20.320646384995175,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [
+        {
+          "bound": "lower",
+          "classification": "pinned",
+          "gap": 9.992007221626409e-15,
+          "interval_width": 2.000177801164682e-12,
+          "parameter": "water_z"
+        }
+      ],
+      "parameters_at_bound_reason": null,
+      "seconds": 18.065469971159473,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}

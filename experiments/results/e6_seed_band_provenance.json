@@ -1,0 +1,57 @@
+{
+  "axes": [
+    "index",
+    "layout",
+    "cameras"
+  ],
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "experiment": "e6_seed_band",
+  "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
+  "include_cameras_axis": true,
+  "schema_version": 1,
+  "scope": "varies: seed (scenario/detection-generation randomness) across every index/layout/cameras axis configuration. bounds: seed-to-seed accuracy variance on this synthetic sweep only -- not a physical-rig or real-data claim (D-19.5-05).",
+  "seconds": 12960.531110626878,
+  "solver_config": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ]
+  },
+  "status_counts_by_seed": {
+    "42": {
+      "ok": 14
+    },
+    "43": {
+      "ok": 14
+    },
+    "44": {
+      "ok": 14
+    },
+    "45": {
+      "ok": 14
+    },
+    "46": {
+      "ok": 14
+    },
+    "47": {
+      "ok": 14
+    }
+  }
+}
