@@ -366,6 +366,9 @@ record rather than re-deriving anything.
 
 ### 1. Publish Record B — and read its rendered description first
 
+Filed as `.planning/todos/pending/2026-08-26-publish-record-b-and-add-record-a-back-link.md`,
+which also carries item 2 below and the v2.1.0 ordering constraint from item 4.
+
 `https://zenodo.org/deposit/22117061`. **Read the rendered description end to end before pressing
 Publish.** Record A shipped with placeholder-looking prose — `(linked below once Record B exists)` —
 that a token-based grep did **not** catch, because plan 29-04 had already substituted the token
@@ -378,7 +381,8 @@ verifies that a substitution ran, not that its result is finished text.*
 minted DOI, scheme `doi`. **Editing published metadata neither cuts a new version nor changes the
 DOI.** This is the accepted, ruled cost of the author's `sequential` linkage choice: **Record A
 currently carries NO structured A→B link.** The automation token cannot do it — `deposit:actions`
-is deliberately absent.
+is deliberately absent. Filed with item 1, in
+`.planning/todos/pending/2026-08-26-publish-record-b-and-add-record-a-back-link.md`.
 
 ### 3. Phase 29.2 owns the release and the publication — cross-reference it
 
@@ -441,7 +445,8 @@ submission (calendar dependency)"*. **That date has passed.** Phase 29's criteri
 away from that exact date on 2026-08-25 for exactly this reason; Phase 30 will mis-gate the same
 way until it gets the same treatment — re-scope the dependency from a **date** to the **submission
 event**. Recorded as a roadmap-hygiene item; not fixed here, because amending a phase's dependency
-is the author's ruling, as the 2026-08-25 amendment was.
+is the author's ruling, as the 2026-08-25 amendment was. Filed as
+`.planning/todos/pending/2026-08-26-phase-30-dependency-still-names-the-passed-2026-08-21-submission-date.md`.
 
 ### 8. The legacy Zenodo deposit API's deprecation posture — MEDIUM confidence
 
