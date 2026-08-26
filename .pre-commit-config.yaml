@@ -9,9 +9,84 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # Byte-integrity exclude, shared verbatim by the two rewriting hooks below.
+      # What it governs: the generated run artifacts committed by 70e783f
+      # "results(29): full production suite at rerun-freeze-02" -- 227 files, of
+      # which 143 deliberately end WITHOUT a final newline (measured:
+      # `git show 70e783f | grep -c '^.No newline at end of file'` == 143) and
+      # which carry 439 trailing-whitespace advisories in their own bytes. Those
+      # bytes ARE the record: plan 29-05 proved them byte-for-byte, so a hook
+      # that "fixes" them destroys the evidence rather than tidying it. Both
+      # hooks below rewrite in place, which is why this lives here and not in
+      # CI: a local `pre-commit run --all-files` is then armed identically to
+      # .github/workflows/test.yml, which runs exactly that command on push to
+      # `main` and on every pull_request into it. CI-only scoping was rejected
+      # for that reason (D-29.2-01).
+      #
+      # Measured 2026-08-26 over all 1,693 tracked files by re-implementing
+      # pre-commit-hooks v5.0.0's own fix_file()/_process_line(): end-of-file-fixer
+      # would rewrite 300 files and trailing-whitespace 19. This pattern leaves
+      # ZERO leftovers for either hook. Each arm, by name:
+      #
+      #   \.planning/    Needed by BOTH hooks, not only trailing-whitespace,
+      #                  which carried it alone before. eof-fixer would rewrite 5
+      #                  planning files, two of them .gitkeep placeholders that
+      #                  are exactly 1 byte -- a lone b'\n' -- and v5.0.0
+      #                  TRUNCATES an all-newline file to zero bytes rather than
+      #                  normalising it. Retires when .planning/ leaves the
+      #                  repository; not planned.
+      #   run_experiment_suite_state\.
+      #                  experiments/run_experiment_suite_state.7005a27.tsv has 40
+      #                  lines, every one 5 TAB-separated fields, and 20 of them
+      #                  END IN A TAB. That trailing tab IS the empty 5th column:
+      #                  the exit-code field, empty on the `start` rows. Stripping
+      #                  it makes those 20 lines 4-field while the other 20 stay
+      #                  5-field -- schema corruption, not whitespace. The prefix
+      #                  also covers the sibling .stagelogs/ directory, four scipy
+      #                  least_squares verbose tables whose column padding would be
+      #                  stripped on 185 of 723 lines in e2_band.log alone; that
+      #                  padding is the column structure. Retires when the
+      #                  driver-state files are purged with the run outputs they
+      #                  describe.
+      #   driver_state/  The same two artifact families at their archived path,
+      #                  where plan 29.1-06's archive-aside move relocated them
+      #                  byte-identically. Same files, same reason. Retires with
+      #                  Phase 2 of the archive-stale-outputs todo.
+      #   results[^/]*/  The committed results trees, same glob and same reasoning
+      #                  as the detect-secrets hook below -- see its block for why
+      #                  the sibling-sweep `[^/]*` form is there (D-19.3-20).
+      #   ((pre_rerun_baseline|freeze01_run_output)/)?
+      #                  The optional archive segment, exactly as in the
+      #                  detect-secrets block: the two archive-aside moves relocate
+      #                  these same trees byte-identically to a new path. Each
+      #                  archive's purge drops its own alternative -- Phase 30 /
+      #                  POST-03 for pre_rerun_baseline/, Phase 2 of the
+      #                  archive-stale-outputs todo for freeze01_run_output/.
+      #
+      # A correction worth keeping, because the wrong framing produced a pattern
+      # that protected nothing. The two md5 anchors this repo's gates rest on --
+      # experiments/results/real_rig_metrics.json = 57279708f6106f411d1fe03ed2698291
+      # and experiments/results/interface_ablation_band.csv =
+      # b6515ed77ed04268608b74217716020b, which gate3_git_sha_consistency and the
+      # interface-ablation band check are asserted against -- live under the
+      # committed results tree and were ALREADY covered by the results arm. They
+      # were never the bytes at risk from THESE two hooks. The bytes at risk are
+      # the driver-state TSV and the stage logs, which no results-shaped pattern
+      # reaches: mirroring the detect-secrets regex onto these hooks, as was first
+      # proposed, contributes exactly 0 coverage to trailing-whitespace (measured).
+      #
+      # Hook-level on purpose, and pre-commit takes exactly ONE exclude per hook,
+      # so trailing-whitespace's former `^\.planning/` is hand-alternated in above
+      # rather than added as a second key, which would silently drop one of them.
+      # A top-level exclude would COMBINE with rather than replace these and
+      # silently de-scope ruff, check-yaml and detect-secrets too; this file has
+      # none and must not gain one.
+      # None of these file types is a place a formatting fix belongs: their exact
+      # bytes are the record.
       - id: trailing-whitespace
-        exclude: ^\.planning/
+        exclude: ^(\.planning/|experiments/((pre_rerun_baseline|freeze01_run_output)/)?(driver_state/|results[^/]*/|run_experiment_suite_state\.))
       - id: end-of-file-fixer
+        exclude: ^(\.planning/|experiments/((pre_rerun_baseline|freeze01_run_output)/)?(driver_state/|results[^/]*/|run_experiment_suite_state\.))
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']
