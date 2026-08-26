@@ -59,3 +59,487 @@ AUTHOR'S STATED SELECTION (NOT a measured fact):
     environment variable names (T-29-04) keep a sandbox-intended run from
     silently reaching production.
 
+
+================================================================================
+2. TASK 3 — SANDBOX REHEARSAL TRANSCRIPT (D-29-06)
+================================================================================
+
+Date:      2026-08-26
+Host:      https://sandbox.zenodo.org/api   (SANDBOX — DOI prefix 10.5072, throwaway)
+Tool:      scripts/zenodo_upload.py
+Payload:   a 16,896-byte dummy file created OUTSIDE the repository, standing in for
+           Record A's real 4.35 GB archive. Sandbox has a documented history of
+           large-upload failures where production does not, and D-29-06's purpose is
+           metadata and linkage shape, not size. The size is proven on production in
+           plan 29-04.
+
+This transcript is SANDBOX ONLY. No production Zenodo call is made by plan 29-01.
+Any DOI appearing below carries the 10.5072 test prefix and is not citable.
+
+Rehearsal sequence (four calls, exercising create / PUT / create / update):
+  1. create draft A   from a copy of scripts/zenodo_metadata_a.json with the
+                      not-yet-existing Record B related_identifier dropped
+  2. PUT dummy file   into draft A's links.bucket, verifying the md5 round trip
+  3. create draft B   from a copy of scripts/zenodo_metadata_b.json with
+                      __RECORD_A_URL__ substituted for draft A's sandbox URL
+  4. update draft A   with __RECORD_B_URL__ substituted for draft B's sandbox URL
+
+The two committed metadata files carry literal __RECORD_A_URL__ / __RECORD_B_URL__
+placeholders because neither record has an identifier until the author publishes
+(D-29-03), and A must be created before B exists. Substitution is a rehearsal-time
+step here; plan 29-07 performs the same substitution with the real minted DOIs.
+
+--- step 1: create draft A ------------------------------------------------------
+
+--------------------------------------------------------------------------------
+{
+  "action": "create_draft",
+  "base_url": "https://sandbox.zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 592888,
+  "deposition_response": {
+    "conceptrecid": "592887",
+    "created": "2026-08-26T16:10:09.745150+00:00",
+    "files": [],
+    "id": 592888,
+    "links": {
+      "badge": "https://sandbox.zenodo.org/badge/doi/.svg",
+      "bucket": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c",
+      "discard": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/discard",
+      "edit": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/edit",
+      "files": "https://sandbox.zenodo.org/api/deposit/depositions/592888/files",
+      "html": "https://sandbox.zenodo.org/deposit/592888",
+      "latest_draft": "https://sandbox.zenodo.org/api/deposit/depositions/592888",
+      "latest_draft_html": "https://sandbox.zenodo.org/deposit/592888",
+      "newversion": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/newversion",
+      "publish": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/publish",
+      "self": "https://sandbox.zenodo.org/api/deposit/depositions/592888"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker"
+        }
+      ],
+      "description": "<p><strong>Calibration inputs only.</strong> This record holds the raw ChArUco board observations consumed by the AquaCal 13-camera underwater production rig calibration. It contains no calibration result, no configuration file and no run output; those are published separately as Record B.</p><p><strong>Contents</strong> (a single zip archive):</p><ul><li><code>extrinsic/</code> &mdash; 13 per-camera directories of losslessly encoded PNG frames of a ChArUco board moved through the shared working volume (12 primary cameras plus 1 auxiliary fisheye).</li><li><code>intrinsic/</code> &mdash; 13 per-camera directories of per-camera intrinsic calibration frames.</li><li><code>README.md</code> &mdash; the frameset's own description.</li></ul><p><strong>This record is immutable.</strong> It is re-versioned only if the capture itself changes. It exists so that the claim &quot;these are the frames the run consumed&quot; is verifiable against a fixed byte set: Zenodo publishes an MD5 for every file in the record.</p><p><strong>Results computed from these frames</strong> &mdash; the calibration outputs, the configuration that produced them, and the run manifest recording the exact software environment &mdash; are published as the AquaCal real-rig results package, Record B: (linked below once Record B exists) . Splitting inputs from results keeps this multi-gigabyte input record stable while the few megabytes of results are re-versioned independently.</p><p><strong>Relationship to record 21889922.</strong> The earlier record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a> bundled these same inputs together with calibration outputs in one archive. That bundling is the defect this two-record split corrects. Record 21889922 remains available as the historical submitted package and is not withdrawn.</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "dataset"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.592888",
+        "recid": 592888
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+      "upload_type": "dataset",
+      "version": "1.0.0"
+    },
+    "modified": "2026-08-26T16:10:09.867659+00:00",
+    "owner": 60508,
+    "record_id": 592888,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset"
+  },
+  "links_html": "https://sandbox.zenodo.org/deposit/592888",
+  "metadata_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/meta_a_pass1.json",
+  "metadata_title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+  "sandbox": true,
+  "state": "unsubmitted",
+  "submitted": false,
+  "utc": "2026-08-26T16:10:09Z"
+}
+
+--- step 2: PUT the dummy file into draft A's links.bucket ----------------------
+
+--------------------------------------------------------------------------------
+{
+  "action": "update_metadata",
+  "base_url": "https://sandbox.zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 592888,
+  "deposition_response": {
+    "conceptrecid": "592887",
+    "created": "2026-08-26T16:10:09.745150+00:00",
+    "files": [],
+    "id": 592888,
+    "links": {
+      "badge": "https://sandbox.zenodo.org/badge/doi/.svg",
+      "bucket": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c",
+      "discard": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/discard",
+      "edit": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/edit",
+      "files": "https://sandbox.zenodo.org/api/deposit/depositions/592888/files",
+      "html": "https://sandbox.zenodo.org/deposit/592888",
+      "latest_draft": "https://sandbox.zenodo.org/api/deposit/depositions/592888",
+      "latest_draft_html": "https://sandbox.zenodo.org/deposit/592888",
+      "newversion": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/newversion",
+      "publish": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/publish",
+      "self": "https://sandbox.zenodo.org/api/deposit/depositions/592888"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker"
+        }
+      ],
+      "description": "<p><strong>Calibration inputs only.</strong> This record holds the raw ChArUco board observations consumed by the AquaCal 13-camera underwater production rig calibration. It contains no calibration result, no configuration file and no run output; those are published separately as Record B.</p><p><strong>Contents</strong> (a single zip archive):</p><ul><li><code>extrinsic/</code> &mdash; 13 per-camera directories of losslessly encoded PNG frames of a ChArUco board moved through the shared working volume (12 primary cameras plus 1 auxiliary fisheye).</li><li><code>intrinsic/</code> &mdash; 13 per-camera directories of per-camera intrinsic calibration frames.</li><li><code>README.md</code> &mdash; the frameset's own description.</li></ul><p><strong>This record is immutable.</strong> It is re-versioned only if the capture itself changes. It exists so that the claim &quot;these are the frames the run consumed&quot; is verifiable against a fixed byte set: Zenodo publishes an MD5 for every file in the record.</p><p><strong>Results computed from these frames</strong> &mdash; the calibration outputs, the configuration that produced them, and the run manifest recording the exact software environment &mdash; are published as the AquaCal real-rig results package, Record B: (linked below once Record B exists) . Splitting inputs from results keeps this multi-gigabyte input record stable while the few megabytes of results are re-versioned independently.</p><p><strong>Relationship to record 21889922.</strong> The earlier record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a> bundled these same inputs together with calibration outputs in one archive. That bundling is the defect this two-record split corrects. Record 21889922 remains available as the historical submitted package and is not withdrawn.</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "dataset"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.592888",
+        "recid": 592888
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+      "upload_type": "dataset",
+      "version": "1.0.0"
+    },
+    "modified": "2026-08-26T16:10:34.932094+00:00",
+    "owner": 60508,
+    "record_id": 592888,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset"
+  },
+  "links_html": "https://sandbox.zenodo.org/deposit/592888",
+  "local_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/rehearsal-dummy.zip",
+  "local_md5": "md5:534db625b3b9e3ffa6d615abfb4772d3",
+  "metadata_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/meta_a_pass1.json",
+  "metadata_title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+  "round_trip_verified": true,
+  "sandbox": true,
+  "state": "unsubmitted",
+  "submitted": false,
+  "upload_response": {
+    "checksum": "md5:534db625b3b9e3ffa6d615abfb4772d3",
+    "created": "2026-08-26T16:10:35.411138+00:00",
+    "delete_marker": false,
+    "is_head": true,
+    "key": "real-rig-inputs.zip",
+    "links": {
+      "self": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c/real-rig-inputs.zip",
+      "uploads": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c/real-rig-inputs.zip?uploads=1",
+      "version": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c/real-rig-inputs.zip?version_id=5c6db2cc-4165-4955-9415-a1ff5e157100"
+    },
+    "mimetype": "application/zip",
+    "size": 16896,
+    "updated": "2026-08-26T16:10:35.630520+00:00",
+    "version_id": "5c6db2cc-4165-4955-9415-a1ff5e157100"
+  },
+  "utc": "2026-08-26T16:10:34Z"
+}
+
+--- step 3: create draft B, linked back to draft A ------------------------------
+
+--------------------------------------------------------------------------------
+{
+  "action": "create_draft",
+  "base_url": "https://sandbox.zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 592890,
+  "deposition_response": {
+    "conceptrecid": "592889",
+    "created": "2026-08-26T16:10:43.955671+00:00",
+    "files": [],
+    "id": 592890,
+    "links": {
+      "badge": "https://sandbox.zenodo.org/badge/doi/.svg",
+      "bucket": "https://sandbox.zenodo.org/api/files/13aa5c1f-8190-4fe7-9b78-bcf861d3047c",
+      "discard": "https://sandbox.zenodo.org/api/deposit/depositions/592890/actions/discard",
+      "edit": "https://sandbox.zenodo.org/api/deposit/depositions/592890/actions/edit",
+      "files": "https://sandbox.zenodo.org/api/deposit/depositions/592890/files",
+      "html": "https://sandbox.zenodo.org/deposit/592890",
+      "latest_draft": "https://sandbox.zenodo.org/api/deposit/depositions/592890",
+      "latest_draft_html": "https://sandbox.zenodo.org/deposit/592890",
+      "newversion": "https://sandbox.zenodo.org/api/deposit/depositions/592890/actions/newversion",
+      "publish": "https://sandbox.zenodo.org/api/deposit/depositions/592890/actions/publish",
+      "self": "https://sandbox.zenodo.org/api/deposit/depositions/592890"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker"
+        }
+      ],
+      "description": "<p><strong>Results package</strong> for the AquaCal 13-camera underwater production rig calibration: the configuration that produced the published numbers, the reference outputs themselves, the archived calibration comparison target, and the run manifest recording the exact software environment. A few megabytes, re-versioned whenever the results change.</p><p><strong>Contents:</strong></p><ul><li><code>config_paper.yaml</code> &mdash; the configuration behind the published results.</li><li><code>config_quickstart_not_paper.yaml</code> &mdash; the faster quickstart configuration, which does <em>not</em> reproduce the published numbers.</li><li><code>reference_calibration.json</code> &mdash; the archived calibration used as a comparison target.</li><li><code>reference_outputs/</code> &mdash; <code>calibration.json</code>, <code>diagnostics.json</code>, <code>exp2_spatial_errors.csv</code>, <code>interface_ablation_conditioning.npz</code>, <code>reconstruction_errors.csv</code>, <code>reprojection_residuals.csv</code>.</li><li><code>run_manifest.json</code> &mdash; interpreter, library versions, host and git revision for the run that produced the outputs above.</li></ul><p><strong>Supersession notice &mdash; please read before comparing numbers.</strong> This record supersedes the <code>reference_outputs/</code> contained in Zenodo record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a>. Record 21889922 is retained as the historical submitted package and still contains the <em>older</em> reference outputs, which do not match the current paper. Any comparison against the published numbers must use the <code>reference_outputs/</code> in <em>this</em> record, not the ones inside 21889922.</p><p><strong>Inputs.</strong> These results were computed from the calibration frames published as Record A: https://sandbox.zenodo.org/records/592888 . Reproducing them requires both records: the frames from Record A and the configuration from this one.</p><p><strong>Provenance.</strong> Produced by AquaCal 2.0.1 at git revision 7005a2771aa115e4f4c1284cec7e145739586a4a, Python 3.11.15, NumPy 2.4.6, SciPy 1.17.1, OpenCV 4.13.0 (pinned to a single minor: ChArUco corner detection changes across OpenCV minor versions and moves the published error metrics).</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "reproducibility"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.592890",
+        "recid": 592890
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "https://sandbox.zenodo.org/records/592888",
+          "relation": "isDerivedFrom",
+          "resource_type": "dataset",
+          "scheme": "url"
+        },
+        {
+          "identifier": "10.5281/zenodo.21889922",
+          "relation": "references",
+          "resource_type": "dataset",
+          "scheme": "doi"
+        },
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+      "upload_type": "dataset",
+      "version": "2.0.1"
+    },
+    "modified": "2026-08-26T16:10:44.111723+00:00",
+    "owner": 60508,
+    "record_id": 592890,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest"
+  },
+  "links_html": "https://sandbox.zenodo.org/deposit/592890",
+  "metadata_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/meta_b_pass1.json",
+  "metadata_title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+  "sandbox": true,
+  "state": "unsubmitted",
+  "submitted": false,
+  "utc": "2026-08-26T16:10:43Z"
+}
+
+--- step 4: update draft A with the forward link to draft B ---------------------
+
+--------------------------------------------------------------------------------
+{
+  "action": "update_metadata",
+  "base_url": "https://sandbox.zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 592888,
+  "deposition_response": {
+    "conceptrecid": "592887",
+    "created": "2026-08-26T16:10:09.745150+00:00",
+    "files": [
+      {
+        "checksum": "534db625b3b9e3ffa6d615abfb4772d3",  # pragma: allowlist secret
+        "filename": "real-rig-inputs.zip",
+        "filesize": 16896,
+        "id": "8aa495d0-a7e1-4963-a4ea-775d8014ea4e",
+        "links": {
+          "download": "https://sandbox.zenodo.org/api/records/592888/draft/files/real-rig-inputs.zip/content",
+          "self": "https://sandbox.zenodo.org/api/deposit/depositions/592888/files/8aa495d0-a7e1-4963-a4ea-775d8014ea4e"
+        }
+      }
+    ],
+    "id": 592888,
+    "links": {
+      "badge": "https://sandbox.zenodo.org/badge/doi/.svg",
+      "bucket": "https://sandbox.zenodo.org/api/files/a58ed10c-6526-4417-aadd-9895e848219c",
+      "discard": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/discard",
+      "edit": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/edit",
+      "files": "https://sandbox.zenodo.org/api/deposit/depositions/592888/files",
+      "html": "https://sandbox.zenodo.org/deposit/592888",
+      "latest_draft": "https://sandbox.zenodo.org/api/deposit/depositions/592888",
+      "latest_draft_html": "https://sandbox.zenodo.org/deposit/592888",
+      "newversion": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/newversion",
+      "publish": "https://sandbox.zenodo.org/api/deposit/depositions/592888/actions/publish",
+      "self": "https://sandbox.zenodo.org/api/deposit/depositions/592888"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker"
+        }
+      ],
+      "description": "<p><strong>Calibration inputs only.</strong> This record holds the raw ChArUco board observations consumed by the AquaCal 13-camera underwater production rig calibration. It contains no calibration result, no configuration file and no run output; those are published separately as Record B.</p><p><strong>Contents</strong> (a single zip archive):</p><ul><li><code>extrinsic/</code> &mdash; 13 per-camera directories of losslessly encoded PNG frames of a ChArUco board moved through the shared working volume (12 primary cameras plus 1 auxiliary fisheye).</li><li><code>intrinsic/</code> &mdash; 13 per-camera directories of per-camera intrinsic calibration frames.</li><li><code>README.md</code> &mdash; the frameset's own description.</li></ul><p><strong>This record is immutable.</strong> It is re-versioned only if the capture itself changes. It exists so that the claim &quot;these are the frames the run consumed&quot; is verifiable against a fixed byte set: Zenodo publishes an MD5 for every file in the record.</p><p><strong>Results computed from these frames</strong> &mdash; the calibration outputs, the configuration that produced them, and the run manifest recording the exact software environment &mdash; are published as the AquaCal real-rig results package, Record B: https://sandbox.zenodo.org/records/592890 . Splitting inputs from results keeps this multi-gigabyte input record stable while the few megabytes of results are re-versioned independently.</p><p><strong>Relationship to record 21889922.</strong> The earlier record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a> bundled these same inputs together with calibration outputs in one archive. That bundling is the defect this two-record split corrects. Record 21889922 remains available as the historical submitted package and is not withdrawn.</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "dataset"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.592888",
+        "recid": 592888
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "https://sandbox.zenodo.org/records/592890",
+          "relation": "isSourceOf",
+          "resource_type": "dataset",
+          "scheme": "url"
+        },
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+      "upload_type": "dataset",
+      "version": "1.0.0"
+    },
+    "modified": "2026-08-26T16:10:49.679272+00:00",
+    "owner": 60508,
+    "record_id": 592888,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset"
+  },
+  "links_html": "https://sandbox.zenodo.org/deposit/592888",
+  "metadata_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/meta_a_pass2.json",
+  "metadata_title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+  "sandbox": true,
+  "state": "unsubmitted",
+  "submitted": false,
+  "utc": "2026-08-26T16:10:49Z"
+}
+
+--- rehearsal result: read-back of both drafts (GET, read-only) -----------------
+
+Both drafts re-fetched from https://sandbox.zenodo.org/api after step 4:
+
+  RECORD A   id 592888   state unsubmitted   submitted False   doi None
+    web UI   https://sandbox.zenodo.org/deposit/592888
+    public   https://sandbox.zenodo.org/records/592888
+    title    AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset
+    version  1.0.0        license cc-by-4.0        access_right open
+    creators [{'name': 'Lancaster, Tucker',
+               'affiliation': 'Georgia Institute of Technology'}]
+    files    [('real-rig-inputs.zip', 16896, '534db625b3b9e3ffa6d615abfb4772d3')]  # pragma: allowlist secret
+    related  isSourceOf   -> https://sandbox.zenodo.org/records/592890  (Record B)
+             isSupplementTo -> https://github.com/McGrathLab/AquaCal
+    desc     names record 21889922: True | links to 592890: True | placeholder left: False
+
+  RECORD B   id 592890   state unsubmitted   submitted False   doi None
+    web UI   https://sandbox.zenodo.org/deposit/592890
+    public   https://sandbox.zenodo.org/records/592890
+    title    AquaCal real-rig calibration results package (Record B): configuration,
+             reference outputs and run manifest
+    version  2.0.1        license cc-by-4.0        access_right open
+    creators [{'name': 'Lancaster, Tucker',
+               'affiliation': 'Georgia Institute of Technology'}]
+    files    []   (metadata-only by design; Record B's payload uploads in plan 29-07)
+    related  isDerivedFrom -> https://sandbox.zenodo.org/records/592888  (Record A)
+             references    -> 10.5281/zenodo.21889922   (normalised by Zenodo from the
+                              https://doi.org/... URL supplied; scheme became "doi")
+             isSupplementTo -> https://github.com/McGrathLab/AquaCal
+    desc     names record 21889922: True | links to 592888: True | placeholder left: False
+
+MD5 ROUND TRIP — the proof the bytes arrived intact:
+
+    local  digest of the dummy payload     md5:534db625b3b9e3ffa6d615abfb4772d3
+    server checksum in the PUT response    md5:534db625b3b9e3ffa6d615abfb4772d3
+    equal                                  True
+
+  The full bucket response JSON is in the step-2 record above, carrying `key`,
+  `size`, `checksum` and `version_id`.
+
+NEITHER DRAFT IS PUBLISHED. Both report state "unsubmitted", submitted False, and a
+null top-level `doi`. No publish call was made; scripts/zenodo_upload.py contains no
+publish code path at all.
+
+DOI PREFIX — ONE THING THAT LOOKS WRONG AND IS NOT
+--------------------------------------------------
+The sandbox server volunteers an UNREQUESTED `metadata.prereserve_doi` field in its
+create-draft response, and on sandbox that field reads `10.5281/zenodo.592888` — the
+PRODUCTION prefix, not the 10.5072 test prefix the documentation describes. This is a
+sandbox quirk, not a production call and not a reserved identifier:
+
+  - The tool never asks for a reserved DOI (D-29-03). The field is the server's, not
+    ours; `grep -c 'prereserve' scripts/zenodo_upload.py` returns 0.
+  - The deposition's actual top-level `doi` is null on both drafts, and both are
+    unsubmitted. Zenodo's own documentation states a pre-reserved DOI is "not
+    registered with DataCite until you publish".
+  - The host is unambiguously sandbox.zenodo.org, a separate registration reached with
+    a separate token, and record ids 592888 / 592890 are sandbox ids.
+
+  So when checking item 4 of the Task 4 checklist ("neither draft shows a real
+  (10.5281) DOI"), a 10.5281-prefixed string in the sandbox UI's reserved-DOI box is
+  expected and harmless. What matters is that neither draft is published.
+
+METADATA ACCEPTED AS WRITTEN: Zenodo echoed back every field of both blocks unchanged
+(title, version, license, access_right, creators, publication_date, language,
+keywords, description, related_identifiers) except for normalising the 21889922 DOI
+identifier noted above. No validation error on either record.
+
+A NOTE ON THE `# pragma: allowlist secret` MARKER ABOVE
+-------------------------------------------------------
+Two lines of this transcript carry an inline `# pragma: allowlist secret` comment.
+Both annotate the dummy payload's MD5, and they are there for a linter, not because
+anything sensitive is present.
+
+Zenodo's deposition response repeats each file's digest as a BARE 32-character hex
+string (`"checksum": "534db6..."`), whereas the bucket PUT response uses the prefixed
+`"md5:534db6..."` form. detect-secrets' HexHighEntropyString plugin flags the bare
+form and not the prefixed one. The flagged value is the MD5 of a 16,896-byte dummy
+file that this transcript prints in full three times over — it is the round-trip
+evidence itself, and publishing it is the entire point.
+
+The marker is used in preference to widening `.secrets.baseline` or the hook's
+`exclude` pattern: a false positive is annotated where a reader can see the reasoning,
+and the repository's secret-scanning tripwire is left exactly as strict as it was.
+The same one-line annotation will be needed on plan 29-04's and plan 29-07's
+production transcripts, for the same reason.
