@@ -466,6 +466,12 @@ Plans:
 
 **Goal**: The returned run is graded and becomes the repo's committed evidence base, with every
 manuscript-facing number traceable to it.
+**Outcome (2026-08-26)**: **Complete against criteria 1-5.** Gate `TOTAL: 176 PASS, 7 N/A, 0 FAIL`
+on the single sha `7005a277…`; E2 same-seed control at 2.5146e-08; E7's published primary sign test
+**held** at 10/10, p = 0.00098, while the secondary refined pairing **moved** 8/10 → 7/10 (a FIX-02
+effect, byte-identical artifact across both run attempts — routed to POST-01, Phase 30); 227 files
+committed at `70e783f`. **Criterion 6 deferred — see its annotation below.** The phase record is
+`.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md`.
 **Depends on**: Phase 28
 **Requirements**: RUN-03, RUN-04, RUN-05
 **Success Criteria** (what must be TRUE):
@@ -525,7 +531,20 @@ manuscript-facing number traceable to it.
      This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
      unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
-**Plans**: 7/8 plans executed, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
+
+     **DEFERRED 2026-08-26 — author's ruling (`defer`, plan 29-08 Task 3).** Criterion 6 is
+     **OPEN, awaiting Publish**, and **Phase 29.2 owns what remains**. Record A is **published**
+     (version DOI `10.5281/zenodo.22116461`, concept DOI `10.5281/zenodo.22116460`); Record B is
+     built, uploaded and byte-verified but **unpublished** at deposition **22117061**
+     (`https://zenodo.org/deposit/22117061`). The reason for deferring: Record B's metadata and its
+     packaged README both cite **`2.1.0`**, and **v2.1.0 does not exist** — publishing today would
+     mint a permanent record naming a version nobody can install. **RUN-05 stays `Pending`.**
+     Phase 29 closed against criteria 1-5, all met and measured. The ordered sequence that finishes
+     the job is § *WHAT REMAINS* at the top of
+     `.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md`, and the todo
+     `.planning/todos/pending/2026-08-26-publish-record-b-and-add-record-a-back-link.md`.
+     Deferral is a legitimate outcome and does not fail the phase.
+**Plans**: 8/8 plans executed, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
 `sandbox.zenodo.org` with a dummy file — because that is the one architecturally unproven path in
 the phase; grading and committing were both reproduced end to end during research. Grading runs
 beside the tracer in wave 1, and Record A's 4.35 GB upload runs beside the E2/E7 analyses in wave 2,
@@ -554,7 +573,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 29-08-PLAN.md — phase record, forward-carried todos, and criterion 6 closed on the author's Publish confirmation (RUN-03, RUN-04, RUN-05) [wave 5, checkpoints]
+- [x] 29-08-PLAN.md — phase record, forward-carried todos, and criterion 6 **deferred** on the author's 2026-08-26 ruling (RUN-03, RUN-04, RUN-05) [wave 5, checkpoints]
 
 ### Phase 29.1: Post-Run Fixes & Re-Freeze (INSERTED)
 
@@ -786,7 +805,7 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 14/14 | Complete    | 2026-08-19 |
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
-| 29. Gate Verification & Results Commit | v2.1 | 7/8 | In Progress|  |
+| 29. Gate Verification & Results Commit | v2.1 | 8/8 | Complete (criteria 1-5; criterion 6 deferred to 29.2) | 2026-08-26 |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
 | 29.2. Merge, Release, and Publish | v2.1 | 0/0 | Pending     |  |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

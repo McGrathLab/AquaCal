@@ -5,16 +5,16 @@ milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: Completed 29-07-PLAN.md
-last_updated: "2026-08-26T19:19:14.077Z"
+stopped_at: Completed 29-08-PLAN.md
+last_updated: "2026-08-26T20:08:25.292Z"
 last_activity: 2026-08-26
-last_activity_desc: 29-07 built Record B from this run's own outputs and streamed it to unpublished draft 22117061; Record A published at 10.5281/zenodo.22116461
+last_activity_desc: "29-08 closed Phase 29 against criteria 1-5 with 29-PHASE-RECORD.md and seven forward-carried todos; criterion 6 DEFERRED on the author's 2026-08-26 ruling because Record B cites v2.1.0, which does not exist yet. RUN-05 stays Pending; Phase 29.2 owns the release and the publication."
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 63
-  completed_plans: 62
-  percent: 70
+  completed_plans: 63
+  percent: 80
 ---
 
 # Project State
@@ -35,10 +35,40 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29 (Gate Verification & Results Commit) — EXECUTING
+Phase: 29 (Gate Verification & Results Commit) — **COMPLETE (8/8), 2026-08-26**, against success
+criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Executing Phase 29
+Status: Phase 29 closed; **next is Phase 29.2 — Merge, Release, and Publish**
+
+**Phase 29 outcome — read
+`.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md` first**, and its
+§ *WHAT REMAINS* section before anything else. Measured: gate `TOTAL: 176 PASS, 7 N/A, 0 FAIL` at
+exit 0 over both the returned and the committed tree, `gate3_git_sha_consistency` PASS on the single
+sha `7005a2771aa115e4f4c1284cec7e145739586a4a`; E2 same-seed control (seed 42 vs seed 42) worst
+scalar drift **2.5146e-08**, §3 headline **4.8962e-09**, `n_comparisons` exact at **7762**; E7's
+published primary sign test **HELD** at 10/10, p = 0.00098; **227** artifacts committed at
+`70e783f` (147 under `experiments/results/`, a strict superset of attempt 1's 209, zero deletions),
+pushed; provenance rails **8 → 0** and the full suite **11 → 3** (D4's ruled anchors — three is the
+expected count, zero and four are both anomalies).
+
+**One published conclusion moved.** E7's *secondary refined* pairing went **8/10 (p = 0.05469) →
+7/10 (p = 0.17188)**, both figures published in supplement §14 / MF-05. The conclusion is unchanged
+(already non-significant, now more clearly so), and `interface_ablation_band.csv` is byte-identical
+between the two run attempts (md5 `b6515ed77ed04268608b74217716020b`), so it is a **FIX-02 effect,
+not a re-run artefact**. **Routed to POST-01, Phase 30.** §3 edits stay the author's; no manuscript
+file was touched.
+
+**Criterion 6 / RUN-05 — DEFERRED, author's ruling 2026-08-26.** Record A is **published** (version
+DOI `10.5281/zenodo.22116461`, concept DOI `10.5281/zenodo.22116460`). Record B is built, uploaded
+and byte-verified but **UNPUBLISHED** at deposition **22117061**
+(`https://zenodo.org/deposit/22117061`). Reason: Record B cites **`2.1.0`** and **v2.1.0 does not
+exist** — `origin/main` is 0 commits ahead of `results/rerun-freeze-02`, which is 406 ahead.
+**RUN-05 remains `Pending`.** What remains, in order: (1) cut v2.1.0 — fix CI's `pre-commit` job,
+PR into `main` with a **merge commit, never a squash**, confirm `secrets.RELEASE_TOKEN`, verify
+`release.yml` tags v2.1.0; (2) **read Record B's rendered description**, then Publish; (3) add
+Record A's `isSourceOf` back-link by hand at `https://zenodo.org/records/22116461`; (4) confirm
+publication preceded submission; (5) report both DOIs to the manuscript session (D-29-19).
 
 **Phase 28 outcome — attempt 2's run, at `rerun-freeze-02` / `7005a27`.** Ran
 2026-08-25T00:47:07Z → 06:48:28Z, **6 h 01 m 21 s** (attempt 1: 6 h 00 m 21 s). All three hard
@@ -353,15 +383,18 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - Production zenodo.org unreachable (measured 2026-08-26): all six A records complete TLS with a valid cert, then the backend stalls ~25s or never answers; sandbox.zenodo.org 200 in 0.6s, github.com 200 in 0.16s, doi.org resolves then dies at Zenodo end. Not network/DNS/IPv6/firewall/bad-record-id. BLOCKS 29-04 — it must re-probe reachability before starting the 4.35 GB PUT.
 - OPEN, author decision, blocks 29-07: zenodo_metadata_b.json carries version 2.0.1, but run_manifest.json records git_describe v2.0.1-346-g7005a27 and 14 files in src/aquacal/ changed across that span (+1663/-67, incl. _optim_common.py, interface_estimation.py, refinement.py, pipeline.py, refractive_geometry.py). So 2.0.1 names an installable release that does NOT reproduce Record B numbers. src/ is byte-identical between 7005a277 and HEAD, so a release cut now would legitimately describe the code that ran. Field left untouched pending the ruling. Record A dataset version 1.0.0 is unaffected.
 - Record B (Zenodo deposition 22117061) is an unpublished draft; RUN-05 requires it PUBLISHED before paper submission. Author must publish at https://zenodo.org/deposit/22117061, then add Record A's isSourceOf back-link by hand at https://zenodo.org/records/22116461. Closes at plan 29-08.
+- [Phase 29]: 29-08: criterion 6 / RUN-05 DEFERRED on the author's explicit 2026-08-26 ruling — Record B cites v2.1.0, which does not exist yet (origin/main is 0 commits ahead of results/rerun-freeze-02, which is 406 ahead), so publishing would mint a permanent record naming a version nobody can install. Phase 29.2 owns the release and the publication; RUN-05 stays Pending; the phase closed against criteria 1-5. Deferral is a legitimate outcome, not a failure.
+- [Phase 29]: 29-08: E7's secondary refined pairing moved 8/10 (p = 0.05469) to 7/10 (p = 0.17188), both published in supplement 14 / MF-05. interface_ablation_band.csv is byte-identical across both run attempts (md5 b6515ed77ed04268608b74217716020b), so it is a FIX-02 effect, not a re-run artefact. ROUTED TO POST-01, Phase 30; section 3 edits stay the author's and no manuscript file was touched.
+- [Phase 29]: 29-08: the src/aquacal/datasets manifest pin on Zenodo record 21889922 is scoped to Phase 30 / POST-01, not decided here — four of its ten affected sites are inside the frozen experiments/ tree, and the correct shape is to PROMOTE the dataset identity to a set of records rather than add a second id alongside a still-required first. The ten-site table travels with the todo.
 
 ## Session Continuity
 
 **Resume file:** None
 
-Last session: 2026-08-26T19:18:39.742Z
+Last session: 2026-08-26T20:08:25.277Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29-07-PLAN.md
+Stopped at: Completed 29-08-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -389,3 +422,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P06 | 75min | 3 tasks | 3 files |
 | Phase 29 P04 | 48min | 2 tasks | 1 files |
 | Phase 29 P07 | 26min | 3 tasks | 2 files |
+| Phase 29 P08 | 45min | 3 tasks | 8 files |
