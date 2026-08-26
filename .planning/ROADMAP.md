@@ -525,7 +525,7 @@ manuscript-facing number traceable to it.
      This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
      unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
-**Plans**: 2/8 plans executed, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
+**Plans**: 3/8 plans executed, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
 `sandbox.zenodo.org` with a dummy file — because that is the one architecturally unproven path in
 the phase; grading and committing were both reproduced end to end during research. Grading runs
 beside the tracer in wave 1, and Record A's 4.35 GB upload runs beside the E2/E7 analyses in wave 2,
@@ -545,7 +545,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 29-05-PLAN.md — commit the 227 artifacts on `results/rerun-freeze-02`, byte-integrity proven either side (RUN-04) [wave 3]
+- [x] 29-05-PLAN.md — commit the 227 artifacts on `results/rerun-freeze-02`, byte-integrity proven either side (RUN-04) [wave 3]
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -739,6 +739,6 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 14/14 | Complete    | 2026-08-19 |
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
-| 29. Gate Verification & Results Commit | v2.1 | 2/8 | In Progress|  |
+| 29. Gate Verification & Results Commit | v2.1 | 3/8 | In Progress|  |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

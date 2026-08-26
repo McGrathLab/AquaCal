@@ -36,15 +36,19 @@ submission. POST follows it.
       removed, so it is corroboration only. **Lands before FIX-02** in the non-refractive arm; the
       pinned-and-normal-free combination is unmeasured and its `water_z` is the first thing the
       implementation must emit.
+
 - [x] **FIX-02**: E1 and E7 solve with the interface normal free, matching the production
       pipeline's DOF count instead of inheriting the library signature default —
       todo `2026-08-15-e1-and-e7-run-with-the-interface-normal-fixed-unlike-everything-else`
+
 - [x] **FIX-03**: E6 reports signed, gauge-corrected Z error and emits the per-camera
       decomposition behind the collinear caveat, both landing in the same change —
       todo `2026-08-15-e6-z-error-reporting-and-per-camera-gauge-decomposition`
+
 - [x] **FIX-04**: E7's `fixed` rows are labelled vacuous-by-construction rather than reported as
       a measured `no_signature` verdict —
       todo `2026-08-15-e7-vacuous-fixed-rows-ship-as-measured-nulls`
+
 - [x] **FIX-05**: E4's aggregator resolves E2's benchmark row relative to the active output
       directory, so the real-rig row survives `--out` —
       todo `2026-08-13-e4-aggregator-hardcodes-e2-benchmark-path`
@@ -54,6 +58,7 @@ submission. POST follows it.
       cannot be the verification: 33 of its 35 columns already reproduce to 1e-6, while `exit_code`
       (hardcoded `None` at :1872) and `status_reason` can never match — red before the fix and red
       after. Consumes DRIVER-03's `--check` contract decision rather than inventing a local one.
+
 - [x] **FIX-06**: The stale provenance strings in `e2_real_rig.py` and `synthetic.py` describe what
       is actually true — todo
       `2026-08-15-correct-stale-strings-in-e2-and-the-synthetic-generator`
@@ -75,15 +80,19 @@ submission. POST follows it.
       *Scope narrowed 2026-08-17:* **E6's band already persists the column** (present on all 102
       rows). The gap is E5, E1 and E7 only. E1's 14,949 lives solely in
       `e1_benchmark_nonrefractive.json → problem_shape` and appears in no CSV.
+
 - [x] **DEGEN-02**: The counter is split by failure kind **and** by stage, so the re-run's
       artifacts can answer the degeneracy question without re-running anything —
       todo `2026-08-15-degeneracy-instrumentation-the-rerun-must-emit`
+
 - [x] **DEGEN-03**: The degenerate-observation warning is narrowed to the cases it actually
       applies to, and its cause list is corrected before it ships to users —
       todo `2026-08-15-narrow-the-degenerate-observation-warning`
+
 - [ ] **DEGEN-04**: The production rig's 198 unprojectable observations are classified, with the
       finding recorded so the manuscript can disclose the count and say what it is —
       todo `2026-08-15-classify-the-198-unprojectable-observations`
+
 - [x] **DEGEN-05**: The first-order optimality reported by each stage is decomposed by parameter
       block, so a reader can tell a residual concentrated in a pinned or bounded slot (benign)
       from one spread across extrinsics and board poses (a non-stationary solve) without
@@ -158,9 +167,11 @@ submission. POST follows it.
 - [ ] **DRIVER-01**: `rerun_19_3.sh` covers every invocation in the suite, including the band
       runs and E2, closing the coverage gap where the six-sha provenance spine fractured —
       todo `2026-08-15-make-the-suite-driver-cover-every-invocation`
+
 - [ ] **DRIVER-02**: The suite emits one run manifest capturing the execution environment, with
       `aquacal_version` and the OpenCV build recorded truthfully —
       todo `2026-08-15-emit-a-single-run-manifest-for-the-full-suite`
+
 - [ ] **DRIVER-03**: `--check` has a decided, documented meaning across a deliberate baseline
       re-base, with written expectations replacing the reproduction bar where schemas change —
       todo `2026-08-15-suspend-programmatic-check-for-reshaped-artifacts`
@@ -171,6 +182,7 @@ submission. POST follows it.
       must say what happens to columns that are artifacts of the checking path itself rather than
       of the run. FIX-05 (Phase 23) consumes this answer, so the decision cannot wait for Phase 26
       to begin — settle it early and let Phase 26 document it.
+
 - [ ] **DRIVER-04**: Every pre-re-run output tree is moved aside before the run, so no stale
       artifact can be mistaken for a fresh one — phase 1 of todo
       `2026-08-15-archive-stale-outputs-before-the-run-purge-them-after`
@@ -185,12 +197,16 @@ submission. POST follows it.
 
 - [ ] **RUN-01**: The library is frozen at one sha and packaged for the Linux machine, with the
       driver, gates, and environment requirements verified to run there before handoff
+
 - [ ] **RUN-02**: The full experiment suite — E1 through E7, the band runs, and **E2** — executes
       once end to end at that single sha
+
 - [ ] **RUN-03**: `check_rerun_gates.py` passes over the complete run, including Gate 3's
       single-sha assertion now that the previously-uncovered stages are inside the queue
-- [ ] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
+
+- [x] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
       number is traceable to this run
+
 - [ ] **RUN-05**: The Zenodo record is split into immutable inputs and a versioned results
       package, and the results package matching this run's numbers is published **before the
       paper is submitted**, so the archive the paper cites agrees with the §3 it supports —
@@ -219,11 +235,14 @@ submission. POST follows it.
 
 - [ ] **POST-01**: §3, the Zenodo archive's `reference_outputs/`, and the tutorial's
       expected-value table are re-cut as a matched set against the new E2 numbers
+
 - **POST-02** — *re-timed to **RUN-05** on 2026-08-15 and moved to Phase 29.* The Zenodo split
   must land before submission, not after it. ID retired; see RUN-05 above.
+
 - [ ] **POST-03**: Stale output trees are purged from the library, so the shipped package carries
       only the data the paper cites — phase 2 of todo
       `2026-08-15-archive-stale-outputs-before-the-run-purge-them-after`
+
 - [ ] **POST-04**: MF-19 is closed in `MANUSCRIPT-FINDINGS.md`, and any finding the re-run
       contradicts or newly raises is appended
 
@@ -237,14 +256,19 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
   library signatures default `True`. FIX-02 fixes this at the experiment level pre-run; the
   source-level fix waits until the suite is no longer the paper's evidence.
   Todo `2026-08-15-POST-SUBMISSION-reconcile-normal-fixed-defaults-between-config-and-library`
+
 - **Degeneracy-gate scope for real-rig runs** — blocked until DEGEN-04 reports what the 198 are.
   Todo `2026-08-15-decide-degeneracy-gate-scope-for-real-rig-runs`
+
 - **INDEX-01, INDEX-02, INDEX-03** — Phase 20 refractive index helper, deferred 2026-08-07 on
   MF-13 (the effect is ~5× below seed noise). Deferred, not dropped.
+
 - **DOCS-07** — manuscript C1 metadata cell and which DOI the paper cites. Manuscript-side, the
   author's work.
+
 - **CLEAN-01** — retire the `initial_distances` compat shim. Unblocked by DATA-02, still a
   breaking change for pre-v1.4 configs.
+
 - **`download_with_progress` HTTP Range/resume** — non-breaking to add, called a convenience.
 
 ## Out of Scope
@@ -253,6 +277,7 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
   preconditioning, an analytic Jacobian. Every experiment routes through that file, so touching
   it makes the fresh suite unattributable, which is the one thing the re-run exists to prevent.
   Todo `2026-07-23-reduce-memory-and-cpu-load-during-calibration`. Revisit after submission.
+
 - **Any change that only makes the library faster or cheaper** — fails the scope test.
 - **New calibration features** — this milestone changes what the suite records and claims, not
   what the library can do.
@@ -280,7 +305,7 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | RUN-01 | Phase 27 | Pending |
 | RUN-02 | Phase 28 | Pending |
 | RUN-03 | Phase 29 | Pending |
-| RUN-04 | Phase 29 | Pending |
+| RUN-04 | Phase 29 | Complete |
 | RUN-05 | Phase 29 | Pending |
 | POST-01 | Phase 30 | Pending |
 | POST-02 | — | Retired — re-timed to RUN-05 (2026-08-15) |
