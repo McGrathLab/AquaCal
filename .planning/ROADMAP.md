@@ -676,6 +676,53 @@ Plans:
 - [x] 29.1-07-PLAN.md — Phase 27 attempt 1's full verification bar, run locally (SC-6) [wave 5]
 - [x] 29.1-08-PLAN.md — cut, verify from a fresh clone, and push `rerun-freeze-02` (SC-5, SC-6) [wave 6, checkpoints]
 
+### Phase 29.2: Merge, Release, and Publish
+
+**Goal**: The library that produced the run is released as v2.1.0 and reaches `main`, and the two
+Zenodo records are published against it — so the archive the paper cites names a version that
+exists and actually reproduces its numbers.
+**Depends on**: Phase 29
+**Requirements**: Closes the publication half of **RUN-05**. No new REQUIREMENTS.md IDs — this
+phase performs work Phase 29 deliberately stopped short of.
+**Why inserted** (2026-08-26): the version cut was scoped to no phase, and could not simply be
+added to Phase 30, which does not start before submission. That ordering closes a loop: Phase 30
+waits for submission; submission waits for Record B to be published (RUN-05); Record B's
+publication waits for `2.1.0` to exist; `2.1.0` waits for the release cut. The release therefore
+has to land *before* submission, which puts it before Phase 30 begins, not inside it.
+
+Measured facts this phase rests on (2026-08-26): `origin/main` is **0 commits ahead** of
+`results/rerun-freeze-02`, which is **406 ahead** — every `src/aquacal/` change from Phases 23-26
+lives on the branch, not on main, so a release cut from main today would ship v2.0.1-era code.
+Across those 406 commits: **43 `feat`, 29 `fix`, and zero breaking-change markers**, so the
+default conventional parser yields a **minor** bump to **2.1.0**.
+
+**Success Criteria** (what must be TRUE):
+
+  1. **CI's `pre-commit` job passes on a PR carrying the run artifacts.** `test.yml` runs
+     `pre-commit run --all-files` on both `push: [main]` and `pull_request: [main]`, and 143 of
+     the committed artifacts deliberately lack a final newline (439 trailing-whitespace hits
+     besides). The job modifies the runner's checkout and exits non-zero — it cannot write back,
+     so this is a blocked merge, not data corruption. Resolve it by scoping the job to changed
+     files or excluding `experiments/results/`. `.pre-commit-config.yaml` is editable again here;
+     D-29-17's fence was Phase 29-scoped.
+
+  2. **`main` carries the 406 commits, merged with a MERGE COMMIT — never a squash.** A squash
+     collapses them into one message, and semantic-release would parse only that message; if it
+     reads as `docs:`, no release fires at all and the failure is silent.
+
+  3. **`release.yml` fires and semantic-release cuts `v2.1.0`**, bumping `pyproject.toml` and
+     `CITATION.cff` (both are in `version_toml` / `version_variables`) and tagging `v2.1.0`.
+     Confirm `secrets.RELEASE_TOKEN` exists before relying on this — the workflow needs it.
+
+  4. **Record A is published, then Record B.** Both drafts are built and verified by Phase 29 and
+     left unpublished by design (D-29-01: the irreversible act is a deliberate human one).
+     Record B cites `2.1.0`, so criterion 3 must complete first or the record names a version
+     that does not exist.
+
+  5. **RUN-05 closes**: the results package is published before the paper is submitted.
+
+**Plans**: TBD
+
 ### Phase 30: Post-Submission Reconciliation
 
 **Goal**: After the 2026-08-21 SoftwareX submission, the manuscript's evidence base and the
@@ -741,4 +788,5 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
 | 29. Gate Verification & Results Commit | v2.1 | 5/8 | In Progress|  |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
+| 29.2. Merge, Release, and Publish | v2.1 | 0/0 | Pending     |  |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |
