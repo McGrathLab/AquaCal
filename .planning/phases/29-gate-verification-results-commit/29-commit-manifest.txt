@@ -1,0 +1,441 @@
+29-commit-manifest — the exact file set plan 29-05 will commit
+==============================================================================
+
+  Phase   29 (Gate Verification & Results Commit), plan 29-02, Task 3
+  Branch  results/rerun-freeze-02          Clone  /home/tlancaster/aquacal-frozen-rerun-freeze-01
+  Run     rerun-freeze-02 / 7005a2771aa115e4f4c1284cec7e145739586a4a
+  Dated   2026-08-26
+
+  READ-ONLY INVENTORY. Nothing was staged and nothing was committed to produce
+  this file. The list below is derived from
+
+      git status --porcelain --untracked-files=all -- <the nine landed paths>
+
+  which is the enumeration git itself will act on, with .gitignore already
+  applied. Plan 29-05 owns the commit; this file makes that commit a mechanical
+  act against a number already proven rather than a discovery.
+
+  D-29-17 is in force: NO IGNORE-RULE CHANGES DURING THIS PHASE. Where a measured
+  count could have been moved by editing a rule, the measured value is recorded
+  instead. git diff --quiet -- .gitignore .pre-commit-config.yaml exits 0.
+
+------------------------------------------------------------------------------
+HEADLINE NUMBERS
+------------------------------------------------------------------------------
+
+  Admitted (will be committed)                        227      expected 227
+  On disk across the nine landed paths                461      expected 461
+  Ignored (archive + Zenodo Record B only)            234      expected 234
+  Total bytes of the admitted set                     1951128  (1.86 MiB)
+
+  Every status line was '??' (untracked). Modified/deleted tracked files in the
+  nine paths: 0. Nothing in this set overwrites anything already in git.
+
+------------------------------------------------------------------------------
+PER-PATH BREAKDOWN
+------------------------------------------------------------------------------
+
+  PATH                                                ADMITTED  ON DISK  IGNORED
+  --------------------------------------------------  --------  -------  -------
+  experiments/results/                                    147      152        5
+  experiments/results_e2_invocations/                      25      119       94
+  experiments/results_e2_band/                              7      136      129
+  experiments/results_e4_repeat/                            4        4        0
+  experiments/results_e2_timing/                            3        6        3
+  experiments/results_e2_memory/                            3        6        3
+  experiments/run_experiment_suite_state.7005a27.stagelogs/       36       36        0
+  experiments/run_experiment_suite_state.7005a27.tsv        1        1        0
+  experiments/run_experiment_suite_state.7005a27.failures.txt        1        1        0
+  -------------------------------------------------- --------  -------  -------
+  TOTAL                                                   227      461      234
+
+  Every one of these nine numbers matches 29-RESEARCH.md's measured table
+  exactly. The 147 under experiments/results/ also matches attempt 1's 147,
+  which is D-29-17's "match attempt 1's shape" anchor.
+
+  The stagelogs directory contributes 36 of 36: 18 *.log at its top level plus
+  18 *.done sentinels inside its .done/ subdirectory. Note for anyone counting
+  by hand: `find ... -name '*.done'` returns 19 because the .done/ DIRECTORY
+  matches the glob; with -type f it is 18. Both clones agree at 36 files.
+
+------------------------------------------------------------------------------
+SIZE CHECK — check-added-large-files IS NOT BINDING
+------------------------------------------------------------------------------
+
+  Largest admitted file anywhere in the set:
+
+      experiments/results/interface_ablation_band.csv                119406 bytes
+
+  Ten largest admitted files:
+
+        119406  experiments/results/interface_ablation_band.csv
+         98661  experiments/results/generalization_sweep_per_camera_band.csv
+         67680  experiments/results/exp1_parameter_band.csv
+         65251  experiments/results/interface_ablation_conditioning.json
+         50905  experiments/run_experiment_suite_state.7005a27.stagelogs/e6_band.log
+         50870  experiments/run_experiment_suite_state.7005a27.stagelogs/e2_band.log
+         46483  experiments/results/exp1_band.csv
+         35144  experiments/run_experiment_suite_state.7005a27.stagelogs/e5_band.log
+         32622  experiments/results/e7_seed_band_degeneracy_breakdown.json
+         28554  experiments/run_experiment_suite_state.7005a27.stagelogs/e2_production.log
+
+  Files in the admitted set exceeding 1000 KB (1024000 bytes):   0
+  Files in the admitted set exceeding 1000000 bytes:             0
+
+  The .pre-commit-config.yaml hook `check-added-large-files --maxkb=1000` is
+  therefore NOT BINDING on this commit. The whole admitted set is 1.86 MiB.
+
+  THE CITED TRIPWIRE IS ALREADY IGNORED. D-29-17 names the ~11 MB
+  all_observation_depths.csv as the reason committing all 461 files would trip
+  the hook. That file lives at
+
+      experiments/results_e2_invocations/e2_classification/all_observation_depths.csv
+      10,932,681 bytes
+
+  and is ALREADY EXCLUDED by .gitignore:478
+  `experiments/results_e2_invocations/*/all_observation_depths.csv`
+  (confirmed with `git check-ignore -v`). It never reaches the staged set.
+  D-29-17's DECISION is unaffected -- commit what the ignore rules allow -- only
+  its arithmetic needed the correction: the hook is not what is holding the file
+  back, the ignore rule is.
+
+------------------------------------------------------------------------------
+THE FIVE IGNORED FILES UNDER experiments/results/
+------------------------------------------------------------------------------
+
+  152 on disk, 147 admitted. The five that stay out, with their sizes:
+
+         2110567  experiments/results/calibration.json
+        13008842  experiments/results/exp2_spatial_errors.csv
+         3306390  experiments/results/interface_ablation_conditioning.npz
+          632384  experiments/results/reconstruction_errors.csv
+         1235753  experiments/results/reprojection_residuals.csv
+
+  These are the large or per-observation artifacts DATA-01b keeps out of git.
+  Their record is the read-only archive /home/tlancaster/rerun-freeze-02-output.tar.gz
+  (31,838,334 bytes, sha256 3b21b88323bd7c04e9712ae2742cc09d423f925620e729ea7bbe2d391c9f030e)
+  and, from RUN-05, Zenodo Record B.
+
+------------------------------------------------------------------------------
+COMPARISON AGAINST ATTEMPT 1 -- COMMIT 83da9b3, BOTH DIRECTIONS
+------------------------------------------------------------------------------
+
+  Reference: 83da9b3 "results(28): full production suite at rerun-freeze-01"
+             2026-08-20, on branch results/rerun-freeze-01, 209 files,
+             every one of them under experiments/.
+
+  Both path sets were normalised by rewriting the embedded run sha
+  (`run_experiment_suite_state.<sha>.` -> `run_experiment_suite_state.<SHA>.`)
+  so attempt 1's 3ab9c13 and attempt 2's 7005a27 compare path for path.
+
+      attempt 1 (83da9b3) total                     209
+      attempt 2 (this manifest) total               227
+      in BOTH                                       209
+      ADDED   in attempt 2, absent from attempt 1    18
+      LOST    in attempt 1, absent from attempt 2     0
+
+  BOTH DIRECTIONS ARE STATED DELIBERATELY. A silent loss would be the dangerous
+  failure -- evidence quietly dropped between attempts. A silent gain would read
+  later as ignore-rule drift or a leak. Neither happened: attempt 2's admitted
+  set is a STRICT SUPERSET of attempt 1's, identical on all 209 shared paths.
+
+  The 18 added paths, all of them stagelogs top-level *.log files:
+
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e1_band.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e1.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e2_band.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e2_memory.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e2_production.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e2_timing.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e3.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e4.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e4_repeat.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e5_band.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e5.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e6_band.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e6_repeat1.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e7_band.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e7_focal_standoff.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/e7.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/fd_jacobian.log
+      experiments/run_experiment_suite_state.<SHA>.stagelogs/reconstruction_bootstrap.log
+
+  These are admitted by .gitignore:507
+      !experiments/run_experiment_suite_state.*.stagelogs/*.log
+  a re-inclusion added DELIBERATELY in Phase 28 by commit f399615
+  "chore(28): commit the production queue's 18 per-stage logs", whose own comment
+  block in .gitignore reads: "18 files, 363 KB total, largest 50 KB (e6_band.log)
+  -- all far under check-added-large-files --maxkb=1000." Measured here: largest
+  is e6_band.log at 50,905 bytes. The rule is absent from git show 3ab9c13:.gitignore,
+  which is exactly why attempt 1 had 209 and attempt 2 has 227.
+
+  D-29-17's two clauses -- "commit what the existing ignore rules allow" and
+  "match attempt 1's shape" -- differ by precisely these 18 files. The ignore
+  rule is the newer and deliberate authority and D-29-17 forbids changing it, so
+  the admitted set is 227. SAY 227 IN THE COMMIT MESSAGE so the delta from
+  attempt 1's 209 is never read later as a leak.
+
+------------------------------------------------------------------------------
+TRACEABILITY UNDER D-29-19 -- THE THREE GENERATED LaTeX FRAGMENTS
+------------------------------------------------------------------------------
+
+  RUN-04's traceability obligation is discharged repo-side by committing the
+  generated fragments alongside the artifacts that produced them, at the frozen
+  sha, with gate3_git_sha_consistency supplying the single-sha proof. All three
+  are inside the 147 admitted under experiments/results/:
+
+      experiments/results/benchmark_grid.tex        ADMITTED     10438 bytes
+      experiments/results/cpr_derived_values.tex    ADMITTED       131 bytes
+      experiments/results/cpr_grouping.tex          ADMITTED       938 bytes
+
+  Section 3 of the manuscript \input{}s these rather than hand-copying numbers,
+  so committing the admitted set discharges D-29-19's mechanism by construction.
+  Building a manuscript-side mapping document is NOT this phase's job -- that is
+  POST-01, Phase 30.
+
+------------------------------------------------------------------------------
+PROHIBITIONS HONOURED
+------------------------------------------------------------------------------
+
+  git diff --quiet -- .gitignore .pre-commit-config.yaml      exit 0, unchanged
+  git status --porcelain --untracked-files=no                 nothing STAGED
+      (the single line reported is " M .planning/STATE.md" -- column 1 is a
+       space, i.e. an unstaged working-tree modification made by the GSD
+       workflow itself, not a staged change, and not under experiments/)
+  Files staged by this task                                   0
+  Files committed under experiments/results*/ by this plan    0
+  pre-commit installed or run                                 no
+  .git/hooks/ non-sample entries                              0
+
+==============================================================================
+THE ADMITTED SET -- 227 PATHS, SORTED
+Every line from here to the end is one path git will admit. Nothing else in
+this file starts at column 0 with "experiments/".
+==============================================================================
+experiments/results/benchmark_grid.csv
+experiments/results/benchmark_grid_repeat.csv
+experiments/results/benchmark_grid.tex
+experiments/results/benchmark.json
+experiments/results/camera_parameters.csv
+experiments/results/code_constants.csv
+experiments/results/cpr_derived_values.tex
+experiments/results/cpr_grouping.csv
+experiments/results/cpr_grouping.tex
+experiments/results/e1_benchmark_nonrefractive.json
+experiments/results/e1_benchmark_refractive.json
+experiments/results/e1_degeneracy_breakdown.json
+experiments/results/e1_seed_band_provenance.json
+experiments/results_e2_band/config_seed42.yaml
+experiments/results_e2_band/config_seed43.yaml
+experiments/results_e2_band/config_seed44.yaml
+experiments/results_e2_band/e2_band_scope.json
+experiments/results_e2_band/seed_42_e2_out/real_rig_metrics.json
+experiments/results_e2_band/seed_43_e2_out/real_rig_metrics.json
+experiments/results_e2_band/seed_44_e2_out/real_rig_metrics.json
+experiments/results_e2_invocations/config_e2_classification.yaml
+experiments/results_e2_invocations/config_e2_memory.yaml
+experiments/results_e2_invocations/config_e2_timing.yaml
+experiments/results_e2_invocations/e2_classification/benchmark.json
+experiments/results_e2_invocations/e2_classification/calibration_initial.json
+experiments/results_e2_invocations/e2_classification/degenerate_observations.csv
+experiments/results_e2_invocations/e2_classification/depth_errors.csv
+experiments/results_e2_invocations/e2_classification/diagnostics.json
+experiments/results_e2_invocations/e2_classification/internals/calibration_stage3_intrinsic_pass.json
+experiments/results_e2_invocations/e2_classification/internals/calibration_stage3.json
+experiments/results_e2_invocations/e2_invocation_scope.json
+experiments/results_e2_invocations/e2_memory/benchmark.json
+experiments/results_e2_invocations/e2_memory/calibration_initial.json
+experiments/results_e2_invocations/e2_memory/degenerate_observations.csv
+experiments/results_e2_invocations/e2_memory/depth_errors.csv
+experiments/results_e2_invocations/e2_memory/diagnostics.json
+experiments/results_e2_invocations/e2_memory/internals/calibration_stage3_intrinsic_pass.json
+experiments/results_e2_invocations/e2_memory/internals/calibration_stage3.json
+experiments/results_e2_invocations/e2_timing/benchmark.json
+experiments/results_e2_invocations/e2_timing/calibration_initial.json
+experiments/results_e2_invocations/e2_timing/degenerate_observations.csv
+experiments/results_e2_invocations/e2_timing/depth_errors.csv
+experiments/results_e2_invocations/e2_timing/diagnostics.json
+experiments/results_e2_invocations/e2_timing/internals/calibration_stage3_intrinsic_pass.json
+experiments/results_e2_invocations/e2_timing/internals/calibration_stage3.json
+experiments/results_e2_memory/benchmark.json
+experiments/results_e2_memory/camera_parameters.csv
+experiments/results_e2_memory/real_rig_metrics.json
+experiments/results_e2_timing/benchmark.json
+experiments/results_e2_timing/camera_parameters.csv
+experiments/results_e2_timing/real_rig_metrics.json
+experiments/results/e3_provenance.json
+experiments/results/e4_cells/cameras_12_frames_100/benchmark.json
+experiments/results/e4_cells/cameras_12_frames_200/benchmark.json
+experiments/results/e4_cells/cameras_12_frames_50/benchmark.json
+experiments/results/e4_cells/cameras_16_frames_100/benchmark.json
+experiments/results/e4_cells/cameras_16_frames_200/benchmark.json
+experiments/results/e4_cells/cameras_16_frames_50/benchmark.json
+experiments/results/e4_cells/cameras_8_frames_100/benchmark.json
+experiments/results/e4_cells/cameras_8_frames_200/benchmark.json
+experiments/results/e4_cells/cameras_8_frames_50/benchmark.json
+experiments/results_e4_repeat/e4_cells/cameras_12_frames_100/benchmark.json
+experiments/results_e4_repeat/e4_cells/cameras_16_frames_100/benchmark.json
+experiments/results_e4_repeat/e4_cells/cameras_8_frames_100/benchmark.json
+experiments/results_e4_repeat/repeat_stdout.log
+experiments/results/e5_degeneracy_breakdown.json
+experiments/results/e5_provenance.json
+experiments/results/e5_seed_band_degeneracy_breakdown.json
+experiments/results/e5_seed_band_provenance.json
+experiments/results/e6_band/seed_42/e6_configs/baseline.json
+experiments/results/e6_band/seed_42/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_42/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_42/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_42/e6_configs/layout_line.json
+experiments/results/e6_band/seed_42/e6_configs/layout_ring.json
+experiments/results/e6_band/seed_43/e6_configs/baseline.json
+experiments/results/e6_band/seed_43/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_43/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_43/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_43/e6_configs/layout_line.json
+experiments/results/e6_band/seed_43/e6_configs/layout_ring.json
+experiments/results/e6_band/seed_44/e6_configs/baseline.json
+experiments/results/e6_band/seed_44/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_44/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_44/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_44/e6_configs/layout_line.json
+experiments/results/e6_band/seed_44/e6_configs/layout_ring.json
+experiments/results/e6_band/seed_45/e6_configs/baseline.json
+experiments/results/e6_band/seed_45/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_45/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_45/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_45/e6_configs/layout_line.json
+experiments/results/e6_band/seed_45/e6_configs/layout_ring.json
+experiments/results/e6_band/seed_46/e6_configs/baseline.json
+experiments/results/e6_band/seed_46/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_46/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_46/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_46/e6_configs/layout_line.json
+experiments/results/e6_band/seed_46/e6_configs/layout_ring.json
+experiments/results/e6_band/seed_47/e6_configs/baseline.json
+experiments/results/e6_band/seed_47/e6_configs/cameras_16.json
+experiments/results/e6_band/seed_47/e6_configs/cameras_8.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.36.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.39.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.42.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.45.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.48.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.51.json
+experiments/results/e6_band/seed_47/e6_configs/index_1.55.json
+experiments/results/e6_band/seed_47/e6_configs/layout_line.json
+experiments/results/e6_band/seed_47/e6_configs/layout_ring.json
+experiments/results/e6_configs/baseline.json
+experiments/results/e6_configs/index_1.36.json
+experiments/results/e6_configs/index_1.39.json
+experiments/results/e6_configs/index_1.42.json
+experiments/results/e6_configs/index_1.45.json
+experiments/results/e6_configs/index_1.48.json
+experiments/results/e6_configs/index_1.51.json
+experiments/results/e6_configs/index_1.55.json
+experiments/results/e6_configs/layout_line.json
+experiments/results/e6_configs/layout_ring.json
+experiments/results/e6_configs/scale_double_scale.json
+experiments/results/e6_configs/scale_half_scale.json
+experiments/results/e6_provenance.json
+experiments/results/e6_seed_band_provenance.json
+experiments/results/e7_benchmark_percamera_fixed.json
+experiments/results/e7_benchmark_percamera_refined.json
+experiments/results/e7_benchmark_shared_fixed.json
+experiments/results/e7_benchmark_shared_refined.json
+experiments/results/e7_degeneracy_breakdown.json
+experiments/results/e7_focal_standoff.csv
+experiments/results/e7_seed_band_degeneracy_breakdown.json
+experiments/results/e7_seed_band_provenance.json
+experiments/results/e7_trace_percamera_fixed.csv
+experiments/results/e7_trace_percamera_refined.csv
+experiments/results/e7_trace_shared_fixed.csv
+experiments/results/e7_trace_shared_refined.csv
+experiments/results/environment_lock.txt
+experiments/results/exp1_band.csv
+experiments/results/exp1_parameter_band.csv
+experiments/results/exp1_parameter_errors.csv
+experiments/results/exp2_depth_generalization.csv
+experiments/results/exp3_xy_vs_z_anisotropy.csv
+experiments/results/fd_jacobian_accuracy.csv
+experiments/results/fd_jacobian_accuracy.json
+experiments/results/generalization_sweep_band.csv
+experiments/results/generalization_sweep.csv
+experiments/results/generalization_sweep_per_camera_band.csv
+experiments/results/generalization_sweep_per_camera.csv
+experiments/results/index_sensitivity.csv
+experiments/results/index_sensitivity_seed_band.csv
+experiments/results/interface_ablation_band.csv
+experiments/results/interface_ablation_conditioning.json
+experiments/results/interface_ablation.csv
+experiments/results/newton_iterations.csv
+experiments/results/real_rig_metrics.json
+experiments/results/reconstruction_bootstrap.json
+experiments/results/run_manifest.json
+experiments/results/structural_scaling.csv
+experiments/run_experiment_suite_state.7005a27.failures.txt
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e1_band.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e1.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e2_band.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e2_memory.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e2_production.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e2_timing.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e3.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e4.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e4_repeat.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e5_band.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e5.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e6_band.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e6_repeat1.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e7_band.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e7.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/e7_focal_standoff.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/fd_jacobian.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/.done/reconstruction_bootstrap.done
+experiments/run_experiment_suite_state.7005a27.stagelogs/e1_band.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e1.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e2_band.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e2_memory.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e2_production.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e2_timing.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e3.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e4.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e4_repeat.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e5_band.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e5.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e6_band.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e6_repeat1.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e7_band.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e7_focal_standoff.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/e7.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/fd_jacobian.log
+experiments/run_experiment_suite_state.7005a27.stagelogs/reconstruction_bootstrap.log
+experiments/run_experiment_suite_state.7005a27.tsv
