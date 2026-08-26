@@ -5,14 +5,14 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.1
 current_phase_name: Merge, Release, and Publish
 status: planning
-stopped_at: Phase 29.2 context gathered
-last_updated: "2026-08-26T21:40:25.076Z"
+stopped_at: Phase 29.2 planned — 8 plans, verification passed
+last_updated: "2026-08-26T23:01:27.610Z"
 last_activity: 2026-08-26
 last_activity_desc: 29-08 closed Phase 29 against criteria 1-5 with 29-PHASE-RECORD.md and seven forward-carried todos; criterion 6 DEFERRED on the author's 2026-08-26 ruling because Record B cites v2.1.0, which does not exist yet. RUN-05 stays Pending; Phase 29.2 owns the release and the publication.
 progress:
   total_phases: 10
   completed_phases: 8
-  total_plans: 63
+  total_plans: 71
   completed_plans: 63
   percent: 80
 ---
@@ -389,12 +389,12 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/29.2-merge-release-and-publish/29.2-CONTEXT.md
+**Resume file:** .planning/phases/29.2-merge-release-and-publish/29.2-01-PLAN.md
 
-Last session: 2026-08-26T21:40:25.063Z
+Last session: 2026-08-26T23:01:27.596Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Phase 29.2 context gathered
+Stopped at: Phase 29.2 planned — 8 plans, verification passed
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
