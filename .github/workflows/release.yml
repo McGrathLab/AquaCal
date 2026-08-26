@@ -24,7 +24,43 @@ jobs:
           python-version: '3.12'
 
       - name: Install python-semantic-release and build
-        run: pip install python-semantic-release build
+        # This line governs the entire release toolchain: the versions of
+        # python-semantic-release (PSR) and its GitPython dependency that will
+        # compute the bump, write pyproject.toml and CITATION.cff, commit, tag
+        # and push. It is pinned exactly, and it is the only pinned install in
+        # this repository.
+        #
+        # The cause is measured, not defensive. GitPython 3.1.60 (released
+        # 2026-08-25) removed the `Actor.name_email_regex` class attribute as
+        # ReDoS hardening (GitPython PR #2215). PSR reads that attribute
+        # unconditionally while loading its config, at
+        # semantic_release/cli/config.py:745, so EVERY `semantic-release`
+        # subcommand dies before it touches anything:
+        #     ::ERROR:: type object 'Actor' has no attribute 'name_email_regex'
+        # Measured 2026-08-26 in a scratch venv: gitpython 3.1.59 works;
+        # gitpython 3.1.60 raises that AttributeError immediately.
+        #
+        # Bounding only one of the two packages does not close this. PSR
+        # declares `gitpython~=3.0`, so an unpinned install resolves to the
+        # broken version; and PSR's own latest release (10.6.1, 2026-07-06)
+        # predates the removal, while its fix is still open and unmerged. There
+        # is therefore NO released python-semantic-release that works with the
+        # current GitPython -- the pin has to name both.
+        #
+        # Exact `==` rather than a floor or a ceiling: this workflow only runs
+        # on one-way-door days, and this phase exists because a floating
+        # dependency moved on one. Reproducibility beats freshness here. `build`
+        # stays unpinned because it is a build front-end with no part in the
+        # failure and the same bare idiom appears in publish.yml.
+        #
+        # DO NOT read this as house style. No other workflow in this repository
+        # pins anything -- all five use a bare `pip install`. This step
+        # deliberately diverges, and the divergence is the point.
+        #
+        # RETIREMENT: drop both pins once a released PSR version ships the fix
+        # (upstream issues 1475 and 1476, PR 1477); then this reverts to
+        # `pip install python-semantic-release build`.
+        run: pip install python-semantic-release==10.6.1 gitpython==3.1.59 build
 
       - name: Semantic release
         env:
