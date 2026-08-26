@@ -31,7 +31,7 @@
       "resource_type": "dataset"
     },
     {
-      "identifier": "https://doi.org/10.5281/zenodo.21889922",
+      "identifier": "10.5281/zenodo.21889922",
       "relation": "references",
       "scheme": "doi",
       "resource_type": "dataset"

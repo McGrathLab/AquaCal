@@ -543,3 +543,102 @@ The marker is used in preference to widening `.secrets.baseline` or the hook's
 and the repository's secret-scanning tripwire is left exactly as strict as it was.
 The same one-line annotation will be needed on plan 29-04's and plan 29-07's
 production transcripts, for the same reason.
+
+
+================================================================================
+3. TASK 4 — AUTHOR VERDICT (D-29-06 SANDBOX CONFIRMATION)
+================================================================================
+
+Date:  2026-08-26
+Gate:  plan 29-01 Task 4, "Author confirms both sandbox drafts render correctly"
+       (checkpoint:human-verify, gate blocking)
+Drafts reviewed:  sandbox 592888 (Record A) and 592890 (Record B)
+
+AUTHOR'S VERDICT, VERBATIM:
+
+    "I approve the rehearsal and continuing to the plans you can run."
+
+APPROVED. This is the confirmation D-29-06 requires before any production Zenodo
+call. Plan 29-04 Task 2 asserts this verdict is present before making its first
+production call.
+
+Three findings surfaced during this checkpoint are recorded below because later
+plans depend on them.
+
+
+FINDING 1 — PRODUCTION ZENODO IS DOWN OR SEVERELY DEGRADED (measured 2026-08-26)
+--------------------------------------------------------------------------------
+The author reported that the 10.5281/zenodo.21889922 link in the draft descriptions
+timed out, and that zenodo.org was unreachable in a browser. Measured:
+
+  zenodo.org           all six A records: TCP 443 opens, TLS handshake completes
+                       with a valid certificate, then the backend takes ~25 s or
+                       never answers.
+  sandbox.zenodo.org   HTTP 200 in ~0.6 s on all three IPs.
+  github.com           HTTP 200 in 0.16 s.
+  doi.org/10.5281/zenodo.21889922
+                       resolves correctly (302 -> zenodo.org/doi/...) and then dies
+                       at Zenodo's end.
+
+So this is NOT the local network, NOT DNS, NOT IPv6, NOT a firewall, and NOT a bad
+record id. Record 21889922 is pinned identically in five places in this repository:
+src/aquacal/datasets/data/manifest.json, experiments/e2_real_rig.py,
+experiments/suite_expectations.json, experiments/FROZEN-ROWS.md and
+linux32gb_scope.json.
+
+  CONSEQUENCE FOR PLAN 29-04: do not re-diagnose this. Re-probe production
+  reachability before starting the 4.35 GB transfer. Starting a multi-hour PUT
+  against a degraded backend is how a transfer dies at 90%. Note also that this
+  outage is the reason the sandbox rehearsal is the ONLY end-to-end evidence
+  available at the close of plan 29-01 -- production has not been contacted at all.
+
+  It also explains why the D-29-06 rehearsal was worth doing when it was: the
+  sandbox instance was reachable and the shape got proven while production was not.
+
+
+FINDING 2 — METADATA CORRECTION APPLIED (Record B's DOI scheme)
+--------------------------------------------------------------------------------
+In scripts/zenodo_metadata_b.json the related_identifiers entry pointing at the
+superseded record was written with a URL identifier under the `doi` scheme:
+
+    BEFORE   "identifier": "https://doi.org/10.5281/zenodo.21889922",
+             "relation": "references", "scheme": "doi"
+
+    AFTER    "identifier": "10.5281/zenodo.21889922",
+             "relation": "references", "scheme": "doi"
+
+Zenodo's `doi` scheme expects a BARE DOI, not a URL. Sandbox accepted the URL form
+and normalised it to the bare form in its response (visible in the step-3 record
+above), but a permanent published record should not depend on that normalisation.
+
+The rehearsal was NOT re-run for this: the author had already approved, and
+production is down (Finding 1). Plan 29-07 uses the corrected file.
+
+The `<a href="https://doi.org/10.5281/zenodo.21889922">` links inside the
+description PROSE are correct as URLs and were deliberately left unchanged.
+
+
+FINDING 3 — OPEN ITEM BLOCKING PLAN 29-07's `version` FIELD (not decided here)
+--------------------------------------------------------------------------------
+scripts/zenodo_metadata_b.json currently carries version "2.0.1", taken from the run
+manifest's `aquacal_version_declared`. That is measurably misleading:
+
+  run_manifest.json git_describe   v2.0.1-346-g7005a27
+
+The run sha is 346 commits past the v2.0.1 tag, and 14 files in the PACKAGED library
+src/aquacal/ changed across that span (+1663/-67), including _optim_common.py,
+interface_estimation.py, refinement.py, pipeline.py and refractive_geometry.py.
+So `version: "2.0.1"` names an installable release that does NOT reproduce this
+record's numbers -- precisely the class of discrepancy the supersession notice above
+exists to prevent.
+
+src/ is byte-identical between 7005a277 and current HEAD, so a release cut now would
+legitimately describe the code that ran. The author is deciding between cutting
+v2.1.0 and alternatives.
+
+  STATUS: OPEN. The decision is the author's and was NOT made in plan 29-01.
+  zenodo_metadata_b.json's `version` value is left untouched at "2.0.1" pending it.
+  Plan 29-07 must not create Record B's production draft until this is ruled on.
+
+  Record A is unaffected: its version "1.0.0" is a dataset version, independent of
+  the software release that read the frames.
