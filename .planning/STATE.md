@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: "Completed 29-05-PLAN.md — the run is committed: 70e783f results(29), 227 files (147 under experiments/results/), pushed to origin/results/rerun-freeze-02. Post-commit gate 176 PASS, 7 N/A, 0 FAIL on single sha 7005a277; both md5 anchors unchanged. test_experiments_provenance.py now 8 failures (documented D1 flip) — 29-06's job. Next: 29-06."
-last_updated: "2026-08-26T15:51:02.132Z"
+stopped_at: "Completed 29-01-PLAN.md — Zenodo tooling built and rehearsed on sandbox (drafts 592888/592890, md5 round trip verified, author approved). BLOCKER: production zenodo.org measured unreachable 2026-08-26 (TLS completes, backend stalls ~25s) — 29-04 must re-probe before starting the 4.35 GB PUT. OPEN (author's): Record B's version 2.0.1 names a release 346 commits behind the run sha with 14 src/aquacal/ files changed; blocks 29-07. Next: 29-06."
+last_updated: "2026-08-26T17:06:11.592Z"
 last_activity: 2026-08-26
 last_activity_desc: Phase 29 execution started
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 63
-  completed_plans: 58
+  completed_plans: 59
   percent: 78
 ---
 
@@ -323,6 +323,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 29-05: Committed 227 files, not attempt 1's 209 — the 18-file delta is .gitignore:507's deliberate Phase 28 widening (commit f399615), and the commit message carries the arithmetic so it cannot be misread as drift.
 - [Phase ?]: 29-05: Used git commit --no-verify and stated the reason in the message — end-of-file-fixer and trailing-whitespace would rewrite 147 of the 227 artifacts. Only check-added-large-files, detect-secrets and check-yaml were run, each --files-scoped.
 - [Phase ?]: 29-05: The 8 test_experiments_provenance.py failures are recorded as the documented D1 flip and repaired by nothing — plan 29-06 owns them in a separate fix(29): commit, which keeps 70e783f artifact-pure.
+- [Phase 29]: 29-01: D-29-01a (2026-08-26, author): Record A = extrinsic/ + intrinsic/ + README.md (~4.1 GB); Record B = config_paper.yaml + config_quickstart_not_paper.yaml + reference_calibration.json + this run own reference_outputs/ + run_manifest.json (~21 MB). Option research-default. Record A must be a complete self-contained input set; the archived calibration is a result, so it travels with the results package. Ruling at 29-RECORD-COMPOSITION.md — nothing else authorises a byte into either record.
+- [Phase 29]: 29-01: scripts/zenodo_upload.py has NO publish and NO discard code path at all — enforced by grep gates in the acceptance criteria and independently by a deposit:write-only token that omits the publish-actions scope, so a publish call fails at Zenodo rather than at code review (D-29-01). The token is read from os.environ only, never a CLI argument, never a file.
+- [Phase 29]: 29-01: A<->B cross-link uses isSourceOf (on A) / isDerivedFrom (on B), never isNewVersionOf against record 21889922 — Zenodo versioning is a first-class mechanism and asserting it against a different concept record misrepresents the relationship. Supersession of 21889922 is prose in Record B description plus a bare-DOI references related_identifier.
+- [Phase 29]: 29-01: RUN-05 left UNMARKED. This plan makes no production Zenodo call and publishes nothing — it drives RUN-05 only to tooling-proven-on-sandbox. RUN-05 completes at published-before-submission, an event Phase 29 cannot observe; 29-04 and 29-07 create the production drafts and 29-08 closes the ordering half by explicit human confirmation.
 
 ### Blockers/Concerns
 
@@ -338,15 +342,17 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - 8 pre-existing failures in tests/unit/test_experiments_provenance.py (not caused by 29.1-01; verified at branch base). They will meet the D-14 full-suite bar in plan 29.1-08 -- resolve there or rule expected-by-construction. Details: .planning/phases/29.1-post-run-fixes-re-freeze/deferred-items.md
 - 29.1-08 BLOCKING (deferred-items D4): three exact-equality anchor tests fail on the Linux run machine, so D-14's full-suite bar is not met. 29.1-08 must resolve them or record an explicit ruling in 29.1-PREPUSH-AUDIT.md; it must not record 'full test suite: 0 failed'.
 - ~~rerun-freeze-02 is cut and verified locally but NOT pushed.~~ RESOLVED 2026-08-24: the author approved 29.1-PREPUSH-AUDIT.md section 7 and the push ran (two ref creations, exit 0, no workflow fired). The v2.1 re-run is licensed. RUN-05 now waits only on that re-run's output.
+- Production zenodo.org unreachable (measured 2026-08-26): all six A records complete TLS with a valid cert, then the backend stalls ~25s or never answers; sandbox.zenodo.org 200 in 0.6s, github.com 200 in 0.16s, doi.org resolves then dies at Zenodo end. Not network/DNS/IPv6/firewall/bad-record-id. BLOCKS 29-04 — it must re-probe reachability before starting the 4.35 GB PUT.
+- OPEN, author decision, blocks 29-07: zenodo_metadata_b.json carries version 2.0.1, but run_manifest.json records git_describe v2.0.1-346-g7005a27 and 14 files in src/aquacal/ changed across that span (+1663/-67, incl. _optim_common.py, interface_estimation.py, refinement.py, pipeline.py, refractive_geometry.py). So 2.0.1 names an installable release that does NOT reproduce Record B numbers. src/ is byte-identical between 7005a277 and HEAD, so a release cut now would legitimately describe the code that ran. Field left untouched pending the ruling. Record A dataset version 1.0.0 is unaffected.
 
 ## Session Continuity
 
 **Resume file:** None
 
-Last session: 2026-08-26T15:50:50.207Z
+Last session: 2026-08-26T17:05:59.903Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29-05-PLAN.md — the run is committed: 70e783f results(29), 227 files (147 under experiments/results/), pushed to origin/results/rerun-freeze-02. Post-commit gate 176 PASS, 7 N/A, 0 FAIL on single sha 7005a277; both md5 anchors unchanged. test_experiments_provenance.py now 8 failures (documented D1 flip) — 29-06's job. Next: 29-06.
+Stopped at: Completed 29-01-PLAN.md — Zenodo tooling built and rehearsed on sandbox (drafts 592888/592890, md5 round trip verified, author approved). BLOCKER: production zenodo.org measured unreachable 2026-08-26 (TLS completes, backend stalls ~25s) — 29-04 must re-probe before starting the 4.35 GB PUT. OPEN (author's): Record B's version 2.0.1 names a release 346 commits behind the run sha with 14 src/aquacal/ files changed; blocks 29-07. Next: 29-06.
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -370,3 +376,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P02 | 13min | 3 tasks | 2 files |
 | Phase 29 P03 | 25min | 2 tasks | 5 files |
 | Phase 29 P05 | 12min | 3 tasks | 228 files |
+| Phase 29 P01 | 104min | 4 tasks | 5 files |
