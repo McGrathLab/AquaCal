@@ -525,7 +525,23 @@ manuscript-facing number traceable to it.
      This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
      unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
-**Plans**: TBD
+**Plans**: 8 plans, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
+`sandbox.zenodo.org` with a dummy file — because that is the one architecturally unproven path in
+the phase; grading and committing were both reproduced end to end during research. Grading runs
+beside the tracer in wave 1, and Record A's 4.35 GB upload runs beside the E2/E7 analyses in wave 2,
+which is what D-29-04's "in parallel with all grading work" means in practice. The list below is
+ordered by wave.
+
+Plans:
+
+- [ ] 29-01-PLAN.md — Zenodo tooling + full A/B rehearsal on sandbox; opens with the Record A composition ruling and the token gate (RUN-05) [wave 1, tracer, checkpoints]
+- [ ] 29-02-PLAN.md — land the returned run in the working clone, grade it at `--profile full`, inventory the 227 admitted files (RUN-03, RUN-04) [wave 1]
+- [ ] 29-03-PLAN.md — E2 same-seed control and E7 before/after sign test, with evidence files (RUN-03) [wave 2]
+- [ ] 29-04-PLAN.md — build Record A's input-only archive and stream it into an unpublished production draft (RUN-05) [wave 2]
+- [ ] 29-05-PLAN.md — commit the 227 artifacts on `results/rerun-freeze-02`, byte-integrity proven either side (RUN-04) [wave 3]
+- [ ] 29-06-PLAN.md — repair the eight provenance-rail assertions; full suite to its ruled count of three (RUN-03) [wave 4]
+- [ ] 29-07-PLAN.md — build Record B from this run's own outputs and stage its draft with the ruled A/B linkage (RUN-05) [wave 4, checkpoint]
+- [ ] 29-08-PLAN.md — phase record, forward-carried todos, and criterion 6 closed on the author's Publish confirmation (RUN-03, RUN-04, RUN-05) [wave 5, checkpoints]
 
 ### Phase 29.1: Post-Run Fixes & Re-Freeze (INSERTED)
 
