@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
-current_phase: 29
-current_phase_name: Gate Verification & Results Commit
-status: executing
+current_phase: 29.2
+current_phase_name: Merge, Release, and Publish
+status: planning
 stopped_at: Completed 29-08-PLAN.md
-last_updated: "2026-08-26T20:08:25.292Z"
+last_updated: "2026-08-26T20:17:22.325Z"
 last_activity: 2026-08-26
-last_activity_desc: "29-08 closed Phase 29 against criteria 1-5 with 29-PHASE-RECORD.md and seven forward-carried todos; criterion 6 DEFERRED on the author's 2026-08-26 ruling because Record B cites v2.1.0, which does not exist yet. RUN-05 stays Pending; Phase 29.2 owns the release and the publication."
+last_activity_desc: 29-08 closed Phase 29 against criteria 1-5 with 29-PHASE-RECORD.md and seven forward-carried todos; criterion 6 DEFERRED on the author's 2026-08-26 ruling because Record B cites v2.1.0, which does not exist yet. RUN-05 stays Pending; Phase 29.2 owns the release and the publication.
 progress:
   total_phases: 10
   completed_phases: 8
@@ -35,11 +35,11 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29 (Gate Verification & Results Commit) — **COMPLETE (8/8), 2026-08-26**, against success
+Phase: 29.1 — Post-Run Fixes & Re-Freeze
 criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Phase 29 closed; **next is Phase 29.2 — Merge, Release, and Publish**
+Status: Ready to plan
 
 **Phase 29 outcome — read
 `.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md` first**, and its
@@ -124,7 +124,7 @@ Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
 Do not reuse `~/aquacal-frozen-rerun-freeze-02` for anything that runs the suite (D5). The
 production clone `~/aquacal-frozen-rerun-freeze-02-prod` is on a detached HEAD at the tag with the
 run output untracked in it; it has no `results/*` branch and nothing has been pushed from it.
-Last activity: 2026-08-26 — Phase 29 execution started
+Last activity: 2026-08-26 — Phase 29 complete, transitioned to Phase 29.1
 
 **Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
 Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
