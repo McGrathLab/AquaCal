@@ -1,0 +1,155 @@
+=== (0) ROADMAP criterion 3 / D-29-16 -- E7 before/after sign test ===
+
+Question: did FIX-02's two extra free parameters per interface soften
+E7's published 10-of-10, p = 0.00098 fixed-intrinsics sign test?
+
+Pure re-analysis of two already-written CSVs. No stage was executed;
+E7's band was NOT run by hand (a manual --force band run fires the
+known benchmark-overwrite hazard).
+
+  METRIC = camera_height_drift_mm
+  PAIRS  = [('shared_fixed', 'percamera_fixed'), ('shared_refined', 'percamera_refined')]
+  statistic: one-tailed exact sign test on the PAIRED per-seed
+  difference (percamera - shared) in mean |METRIC|; >0 means shared
+  is better. Transferred verbatim from
+  .planning/phases/19.2-.../analyze_e7_spread.py, the script that
+  produced the published number.
+
+=== (1) The three trees' artifacts, by md5 ===
+
+  pre_rerun_baseline     bf1f9c52339e746764c86b4550132d40  experiments/pre_rerun_baseline/results/interface_ablation_band.csv
+  freeze01_run_output    b6515ed77ed04268608b74217716020b  experiments/freeze01_run_output/results/interface_ablation_band.csv
+  freeze-02 (this run)   b6515ed77ed04268608b74217716020b  experiments/results/interface_ablation_band.csv
+
+  attempt 1 and attempt 2 byte-identical on this artifact: True
+
+=== (2) BEFORE -- pre_rerun_baseline ===
+
+  tree : pre_rerun_baseline (before)
+  file : experiments/pre_rerun_baseline/results/interface_ablation_band.csv
+  md5  : bf1f9c52339e746764c86b4550132d40
+
+  shared_fixed vs percamera_fixed
+     seeds present: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]  (n = 10, derived from len(per.columns), not hard-coded)
+     seed 42: percamera   1.6435  shared   0.7151  diff  +0.9285
+     seed 43: percamera   1.7702  shared   0.8173  diff  +0.9529
+     seed 44: percamera   1.4837  shared   0.5083  diff  +0.9753
+     seed 45: percamera   1.9557  shared   1.0367  diff  +0.9190
+     seed 46: percamera   1.7009  shared   0.3062  diff  +1.3947
+     seed 47: percamera   2.0503  shared   1.0924  diff  +0.9579
+     seed 48: percamera   1.4431  shared   0.0391  diff  +1.4040
+     seed 49: percamera   2.2539  shared   0.3747  diff  +1.8792
+     seed 50: percamera   1.4190  shared   0.1410  diff  +1.2780
+     seed 51: percamera   2.1541  shared   0.7555  diff  +1.3986
+     shared better in 10/10 seeds; diff crosses zero: False
+     paired diff: mean +1.2088  range [+0.9190, +1.8792]
+     exact sign test (one-tailed): p = 0.00098  = 1/1024  = 0.0009765625
+     between-arm correlation across seeds: r = +0.5567
+
+  shared_refined vs percamera_refined
+     seeds present: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]  (n = 10, derived from len(per.columns), not hard-coded)
+     seed 42: percamera   7.2404  shared   7.0495  diff  +0.1909
+     seed 43: percamera   4.3994  shared   3.3472  diff  +1.0522
+     seed 44: percamera   2.0587  shared   0.8598  diff  +1.1990
+     seed 45: percamera   3.6676  shared   1.9166  diff  +1.7510
+     seed 46: percamera   3.0157  shared   0.4914  diff  +2.5243
+     seed 47: percamera   2.3182  shared   2.3044  diff  +0.0138
+     seed 48: percamera   2.4007  shared   2.8643  diff  -0.4636
+     seed 49: percamera   4.8394  shared   4.7100  diff  +0.1294
+     seed 50: percamera   4.2411  shared   4.7119  diff  -0.4707
+     seed 51: percamera   3.7560  shared   1.2464  diff  +2.5097
+     shared better in 8/10 seeds; diff crosses zero: True
+     paired diff: mean +0.8436  range [-0.4707, +2.5243]
+     exact sign test (one-tailed): p = 0.05469  = 56/1024  = 0.0546875
+     between-arm correlation across seeds: r = +0.8372
+       -> spread is largely COMMON-MODE; marginal ranges overstate
+          the uncertainty in the DIFFERENCE.
+
+=== (3) AFTER -- freeze-02, this run ===
+
+  tree : freeze-02 (after)
+  file : experiments/results/interface_ablation_band.csv
+  md5  : b6515ed77ed04268608b74217716020b
+
+  shared_fixed vs percamera_fixed
+     seeds present: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]  (n = 10, derived from len(per.columns), not hard-coded)
+     seed 42: percamera   1.9826  shared   0.7589  diff  +1.2236
+     seed 43: percamera   1.9434  shared   0.9312  diff  +1.0122
+     seed 44: percamera   1.5677  shared   0.7378  diff  +0.8298
+     seed 45: percamera   1.9265  shared   1.1388  diff  +0.7878
+     seed 46: percamera   1.6622  shared   0.3715  diff  +1.2908
+     seed 47: percamera   2.0725  shared   1.1204  diff  +0.9521
+     seed 48: percamera   1.6298  shared   0.1603  diff  +1.4695
+     seed 49: percamera   2.2243  shared   0.4229  diff  +1.8014
+     seed 50: percamera   1.3908  shared   0.2048  diff  +1.1860
+     seed 51: percamera   2.0811  shared   0.6292  diff  +1.4518
+     shared better in 10/10 seeds; diff crosses zero: False
+     paired diff: mean +1.2005  range [+0.7878, +1.8014]
+     exact sign test (one-tailed): p = 0.00098  = 1/1024  = 0.0009765625
+     between-arm correlation across seeds: r = +0.5059
+
+  shared_refined vs percamera_refined
+     seeds present: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]  (n = 10, derived from len(per.columns), not hard-coded)
+     seed 42: percamera   6.8839  shared   6.7497  diff  +0.1342
+     seed 43: percamera   4.7334  shared   3.7142  diff  +1.0192
+     seed 44: percamera   2.0934  shared   1.5717  diff  +0.5216
+     seed 45: percamera   3.5500  shared   2.0873  diff  +1.4627
+     seed 46: percamera   3.1411  shared   0.7103  diff  +2.4308
+     seed 47: percamera   2.1514  shared   2.1159  diff  +0.0355
+     seed 48: percamera   2.5894  shared   2.8541  diff  -0.2648
+     seed 49: percamera   5.3305  shared   5.4249  diff  -0.0943
+     seed 50: percamera   4.7341  shared   5.2761  diff  -0.5419
+     seed 51: percamera   3.8867  shared   1.3533  diff  +2.5335
+     shared better in 7/10 seeds; diff crosses zero: True
+     paired diff: mean +0.7236  range [-0.5419, +2.5335]
+     exact sign test (one-tailed): p = 0.17188  = 176/1024  = 0.171875
+     between-arm correlation across seeds: r = +0.8435
+       -> spread is largely COMMON-MODE; marginal ranges overstate
+          the uncertainty in the DIFFERENCE.
+
+=== (4) Summary -- two pairings x two trees ===
+
+  pre_rerun_base       shared_fixed vs percamera_fixed          10/10  crosses=False  p=0.00098 =   1/1024  r=+0.5567
+  pre_rerun_base       shared_refined vs percamera_refined       8/10  crosses=True   p=0.05469 =  56/1024  r=+0.8372
+  freeze-02            shared_fixed vs percamera_fixed          10/10  crosses=False  p=0.00098 =   1/1024  r=+0.5059
+  freeze-02            shared_refined vs percamera_refined       7/10  crosses=True   p=0.17188 = 176/1024  r=+0.8435
+
+=== VERDICT ===
+
+  (1) THE PUBLISHED PRIMARY CONCLUSION HELD.
+      shared_fixed vs percamera_fixed: 10/10 (p = 1/1024 = 0.00098) -> 10/10 (p = 1/1024 = 0.00098)
+      identical before and after: True
+      FIX-02's two extra free parameters per interface did NOT
+      soften the fixed-intrinsics arm. Under D-29-16 this is a
+      line in the record, not an author escalation.
+
+  (2) THE SECONDARY REFINED PAIRING MOVED.
+      shared_refined vs percamera_refined: 8/10 (p = 56/1024 = 0.05469) -> 7/10 (p = 176/1024 = 0.17188)
+      moved: True
+      Both figures are PUBLISHED, in supplement section 14 / MF-05.
+      The CONCLUSION is unchanged -- the refined arm was already
+      non-significant and is now more clearly so -- but the
+      digits moved.
+
+      *** THIS IS THE CASE D-29-16 REQUIRES BE FLAGGED TO THE
+      AUTHOR. *** It is raised here explicitly rather than being
+      discovered later during manuscript re-verification, which
+      is the reason ROADMAP criterion 3 exists.
+
+  (3) THE MOVE IS NOT A RE-RUN ARTEFACT.
+      attempt 1 and attempt 2 carry the same md5 (b6515ed77ed04268608b74217716020b): byte-identical: True.
+      The refined pairing's move therefore landed BEFORE attempt 1,
+      i.e. it is a Phase 23-26 (FIX-02) effect, not something this
+      run introduced. Do not attribute it to the re-run.
+
+  (4) SECTION 3 EDITS STAY THE AUTHOR'S.
+      Per D-29-16 and D-29-19, this script reports the numbers and
+      flags the move. It does not open, read for editing, or write
+      any manuscript file, and no manuscript change is implied or
+      made here. Any such change is the author's to decide.
+
+CAVEAT: n = 10 seeds before and n = 10 after, derived from the seed
+columns present in each CSV. This measures scenario-generator seed
+variation only, on one metric (camera_height_drift_mm). It is not a
+bound on real-data variation, and a sign test on n seeds cannot
+resolve an effect smaller than one seed's worth of flips.
