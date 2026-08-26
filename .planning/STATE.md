@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 29
-current_phase_name: gate-verification-results-commit
+current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: "Phase 28 COMPLETE (5/5). Production run finished 2026-08-25T06:48:28Z, 20/20 stages at exit 0, roll-up 176 PASS / 7 N/A / 0 FAIL. Output archived read-only and checksummed; 28-RUN-RECORD.md written. Next is Phase 29 (grade the run, commit results/rerun-freeze-02)."
-last_updated: "2026-08-26T13:58:04.092Z"
-last_activity: 2026-08-25
-last_activity_desc: "Phase 28 complete: the v2.1 production run executed, verdict read from the three hard signals, output preserved and checksummed, run record written"
+stopped_at: "Completed 29-02-PLAN.md — run landed (461 files, uncommitted), gate re-derived 176/7/0, 227-file commit set enumerated. Next: 29-03 (E2 same-seed control)."
+last_updated: "2026-08-26T15:30:40.877Z"
+last_activity: 2026-08-26
+last_activity_desc: Phase 29 execution started
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 63
-  completed_plans: 55
+  completed_plans: 56
   percent: 78
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-15)
 observations — researchers can `pip install aquacal`, point it at their videos, and get a
 calibration result they trust.
 
-**Current focus:** Phase 28 — full-suite-production-run
+**Current focus:** Phase 29 — Gate Verification & Results Commit
 experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
 hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
 single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
@@ -35,10 +35,10 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29 (gate-verification-results-commit) — READY TO PLAN
+Phase: 29 (Gate Verification & Results Commit) — EXECUTING
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Ready to execute
+Status: Executing Phase 29
 
 **Phase 28 outcome — attempt 2's run, at `rerun-freeze-02` / `7005a27`.** Ran
 2026-08-25T00:47:07Z → 06:48:28Z, **6 h 01 m 21 s** (attempt 1: 6 h 00 m 21 s). All three hard
@@ -94,7 +94,7 @@ Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
 Do not reuse `~/aquacal-frozen-rerun-freeze-02` for anything that runs the suite (D5). The
 production clone `~/aquacal-frozen-rerun-freeze-02-prod` is on a detached HEAD at the tag with the
 run output untracked in it; it has no `results/*` branch and nothing has been pushed from it.
-Last activity: 2026-08-25 — Phase 28 complete; the v2.1 production run is in hand
+Last activity: 2026-08-26 — Phase 29 execution started
 
 **Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
 Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
@@ -312,6 +312,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase ?]: 28-02: the residue enumeration used --untracked-files=all --ignored, because every residue entry in this clone is gitignored and the bare form reports an EMPTY residue -- an enumeration that shows nothing proves nothing. 190 entries, 0 unclassified, 0 matching experiments/results*
 - [Phase ?]: 28-02: a third residue category (src/aquacal.egg-info/, 6 files) was found outside the plan's permitted set; recorded on the record and ruled benign (it is what HANDOFF.md:49's own editable install writes; gitignored; moving it aside would damage the install assertion 6 depends on) rather than halted on or silently absorbed
 - [Phase ?]: 28-02: pre-launch assertion record written at /home/tlancaster/freeze02-prelaunch-assertions.txt -- 15 PASS / 0 FAIL, every line carrying its measured value, all-passed line emitted conditionally on the FAIL count. NOTHING LAUNCHED; RUN-02 deliberately left Pending
+- [Phase 29]: 29-02: the returned run is landed in the working clone but deliberately left uncommitted — plan 29-05 owns the results commit, which is what keeps that commit byte-pure
+- [Phase 29]: 29-02: ROADMAP criterion 1 demonstrated in the real working clone — TOTAL: 176 PASS, 7 N/A, 0 FAIL at exit 0, gate3_git_sha_consistency green on the single sha 7005a277…, path-normalised diff against 28's freeze02-gates-full.txt empty
+- [Phase 29]: 29-02: the admitted commit set is exactly 227 files (147 under experiments/results/), a strict superset of attempt 1's 209 — 18 added stagelogs, 0 lost; say 227 in 29-05's commit message
+- [Phase 29]: 29-02: RUN-03/RUN-04 left unmarked — RUN-04's commit is 29-05's and RUN-03's E2 control is 29-03's; 29-08 closes them
 
 ### Blockers/Concerns
 
@@ -332,10 +336,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-25T00:00:14.394Z
+Last session: 2026-08-26T15:30:40.861Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 28-02-PLAN.md -- pre-launch assertions all PASS; NOTHING LAUNCHED; awaiting human authorisation for 28-03
+Stopped at: Completed 29-02-PLAN.md — run landed (461 files, uncommitted), gate re-derived 176/7/0, 227-file commit set enumerated. Next: 29-03 (E2 same-seed control).
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -356,3 +360,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.1 P08 | 65m | 3 tasks | 6 files |
 | Phase 28 P01 | 31m | 3 tasks | 7 files |
 | Phase 28 P02 | 5m | 1 tasks | 1 files |
+| Phase 29 P02 | 13min | 3 tasks | 2 files |

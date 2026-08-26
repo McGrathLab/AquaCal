@@ -525,7 +525,7 @@ manuscript-facing number traceable to it.
      This is the same shape as MF-17, where E7's vacuous `no_signature` nulls reached the archive
      unaccompanied; FIX-04 fixed that by labelling, and the same remedy applies here. Evidence:
      `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
-**Plans**: 8 plans, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
+**Plans**: 1/8 plans executed, 5 waves. Wave 1 leads with a tracer — the Zenodo A/B split driven end to end on
 `sandbox.zenodo.org` with a dummy file — because that is the one architecturally unproven path in
 the phase; grading and committing were both reproduced end to end during research. Grading runs
 beside the tracer in wave 1, and Record A's 4.35 GB upload runs beside the E2/E7 analyses in wave 2,
@@ -536,7 +536,7 @@ Plans:
 **Wave 1**
 
 - [ ] 29-01-PLAN.md — Zenodo tooling + full A/B rehearsal on sandbox; opens with the Record A composition ruling and the token gate (RUN-05) [wave 1, tracer, checkpoints]
-- [ ] 29-02-PLAN.md — land the returned run in the working clone, grade it at `--profile full`, inventory the 227 admitted files (RUN-03, RUN-04) [wave 1]
+- [x] 29-02-PLAN.md — land the returned run in the working clone, grade it at `--profile full`, inventory the 227 admitted files (RUN-03, RUN-04) [wave 1]
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -739,6 +739,6 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 26. Full-Suite Driver & Handoff Readiness | v2.1 | 14/14 | Complete    | 2026-08-19 |
 | 27. Frozen Single-Sha Handoff Package | v2.1 | 0/13 | Planned | - |
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
-| 29. Gate Verification & Results Commit | v2.1 | 0/TBD | Not started | - |
+| 29. Gate Verification & Results Commit | v2.1 | 1/8 | In Progress|  |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |
