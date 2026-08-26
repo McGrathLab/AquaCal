@@ -313,3 +313,285 @@ RECORD A'S PRODUCTION DRAFT — CAPTURED BEFORE THE TRANSFER STARTED
 
 These three lines are the repository's only handle on the service-side draft, which is
 why they were committed before a payload byte moved.
+
+--------------------------------------------------------------------------------
+{
+  "action": "update_metadata",
+  "base_url": "https://zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 22116461,
+  "deposition_response": {
+    "conceptrecid": "22116460",
+    "created": "2026-08-26T18:14:19.921215+00:00",
+    "files": [],
+    "id": 22116461,
+    "links": {
+      "badge": "https://zenodo.org/badge/doi/.svg",
+      "bucket": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9",
+      "discard": "https://zenodo.org/api/deposit/depositions/22116461/actions/discard",
+      "edit": "https://zenodo.org/api/deposit/depositions/22116461/actions/edit",
+      "files": "https://zenodo.org/api/deposit/depositions/22116461/files",
+      "html": "https://zenodo.org/deposit/22116461",
+      "latest_draft": "https://zenodo.org/api/deposit/depositions/22116461",
+      "latest_draft_html": "https://zenodo.org/deposit/22116461",
+      "newversion": "https://zenodo.org/api/deposit/depositions/22116461/actions/newversion",
+      "publish": "https://zenodo.org/api/deposit/depositions/22116461/actions/publish",
+      "self": "https://zenodo.org/api/deposit/depositions/22116461"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker"
+        }
+      ],
+      "description": "<p><strong>Calibration inputs only.</strong> This record holds the raw ChArUco board observations consumed by the AquaCal 13-camera underwater production rig calibration. It contains no calibration result, no configuration file and no run output; those are published separately as Record B.</p><p><strong>Contents</strong> (a single zip archive):</p><ul><li><code>extrinsic/</code> &mdash; 13 per-camera directories of losslessly encoded PNG frames of a ChArUco board moved through the shared working volume (12 primary cameras plus 1 auxiliary fisheye).</li><li><code>intrinsic/</code> &mdash; 13 per-camera directories of per-camera intrinsic calibration frames.</li><li><code>README.md</code> &mdash; the frameset's own description.</li></ul><p><strong>This record is immutable.</strong> It is re-versioned only if the capture itself changes. It exists so that the claim &quot;these are the frames the run consumed&quot; is verifiable against a fixed byte set: Zenodo publishes an MD5 for every file in the record.</p><p><strong>Results computed from these frames</strong> &mdash; the calibration outputs, the configuration that produced them, and the run manifest recording the exact software environment &mdash; are published as the AquaCal real-rig results package, Record B: (linked below once Record B exists) . Splitting inputs from results keeps this multi-gigabyte input record stable while the few megabytes of results are re-versioned independently.</p><p><strong>Relationship to record 21889922.</strong> The earlier record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a> bundled these same inputs together with calibration outputs in one archive. That bundling is the defect this two-record split corrects. Record 21889922 remains available as the historical submitted package and is not withdrawn.</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "dataset"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.22116461",
+        "recid": 22116461
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+      "upload_type": "dataset",
+      "version": "1.0.0"
+    },
+    "modified": "2026-08-26T18:14:46.817874+00:00",
+    "owner": 1547073,
+    "record_id": 22116461,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset"
+  },
+  "links_html": "https://zenodo.org/deposit/22116461",
+  "local_file": "/home/tlancaster/zenodo-record-a/real-rig-inputs.zip",
+  "local_md5": "md5:d95a1abc3f7089443ea2bc7ea12fb599",
+  "metadata_file": "/tmp/claude-1028/-home-tlancaster-aquacal-frozen-rerun-freeze-01/471a9524-1d5b-48c2-a148-f3b03f317e1f/scratchpad/meta_a_prod.json",
+  "metadata_title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+  "round_trip_verified": true,
+  "sandbox": false,
+  "state": "unsubmitted",
+  "submitted": false,
+  "upload_response": {
+    "checksum": "md5:d95a1abc3f7089443ea2bc7ea12fb599",
+    "created": "2026-08-26T18:14:51.490578+00:00",
+    "delete_marker": false,
+    "is_head": true,
+    "key": "real-rig-inputs.zip",
+    "links": {
+      "self": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip",
+      "uploads": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip?uploads=1",
+      "version": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip?version_id=e8f8d567-9428-4896-94c0-b85b1625ef20"
+    },
+    "mimetype": "application/zip",
+    "size": 4341018405,
+    "updated": "2026-08-26T18:42:45.423190+00:00",
+    "version_id": "e8f8d567-9428-4896-94c0-b85b1625ef20"
+  },
+  "utc": "2026-08-26T18:14:46Z"
+}
+
+
+--- step 2: the transfer ------------------------------------------------------
+
+Run DETACHED under `nohup`, with the tool's own tqdm progress bar writing to
+~/zenodo-record-a/upload.log, so a dropped SSH session could not kill an hours-long
+transfer. The transfer was never interrupted to "check on it" — the log was read
+instead. Invocation shape (token NOT on the command line; the tool reads ZENODO_TOKEN
+from the process environment):
+
+    python3 scripts/zenodo_upload.py \
+      --base-url https://zenodo.org/api \
+      --metadata <deposit-time metadata copy, outside the repo> \
+      --deposition-id 22116461 \
+      --file /home/tlancaster/zenodo-record-a/real-rig-inputs.zip \
+      --name real-rig-inputs.zip \
+      --out .planning/.../29-zenodo-record-a.txt
+
+    started    2026-08-26 14:14:45 EDT
+    finished   2026-08-26 18:42:45 UTC   (bucket object `updated` timestamp)
+    duration   ~28 minutes wall
+    throughput varied 0.6 - 4.7 MB/s
+    retries    0        (grep -c "Retrying" upload.log == 0)
+
+The transfer completed on its FIRST attempt. No resume machinery exists or was added:
+under D-29-07 the sanctioned shape is a plain streaming PUT whose retry loop reopens the
+file per attempt, because retrying against a consumed file handle silently uploads zero
+bytes. That property was not exercised here and remains untested against production by
+design — it is a safety net, not a step.
+
+--- step 3: ROUND-TRIP PROOF --------------------------------------------------
+
+    local  digest of the exact bytes uploaded   md5:d95a1abc3f7089443ea2bc7ea12fb599  # pragma: allowlist secret
+    server returned `checksum`                  md5:d95a1abc3f7089443ea2bc7ea12fb599  # pragma: allowlist secret
+    MATCH                                       True   (tool field round_trip_verified)
+
+    local  size    4341018405 bytes
+    server `size`  4341018405 bytes
+    MATCH          True
+
+A transfer that "completed" without a matching digest is a failed transfer; this one
+matched on both digest and length, so the bytes on Zenodo are the bytes that were built
+and audited in Task 1.
+
+--- step 4: full bucket response JSON -----------------------------------------
+
+    {
+      "checksum": "md5:d95a1abc3f7089443ea2bc7ea12fb599",   # pragma: allowlist secret
+      "created": "2026-08-26T18:14:51.490578+00:00",
+      "delete_marker": false,
+      "is_head": true,
+      "key": "real-rig-inputs.zip",
+      "links": {
+        "self": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip",
+        "uploads": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip?uploads=1",
+        "version": "https://zenodo.org/api/files/66ec592f-a5a0-4b1d-a3a7-f826fdbc6aa9/real-rig-inputs.zip?version_id=e8f8d567-9428-4896-94c0-b85b1625ef20"
+      },
+      "mimetype": "application/zip",
+      "size": 4341018405,
+      "updated": "2026-08-26T18:42:45.423190+00:00",
+      "version_id": "e8f8d567-9428-4896-94c0-b85b1625ef20"
+    }
+
+    key          real-rig-inputs.zip     (the stable key the record publishes under)
+    size         4341018405
+    checksum     md5:d95a1abc3f7089443ea2bc7ea12fb599   # pragma: allowlist secret
+    version_id   e8f8d567-9428-4896-94c0-b85b1625ef20
+
+That JSON IS the round-trip proof and the only repository-side record that the bytes
+arrived intact. The verbatim tool-appended transcript records follow at the end of this
+file.
+
+--- step 5: THE DRAFT IS UNPUBLISHED — asserted with measured values ----------
+
+Re-read of GET https://zenodo.org/api/deposit/depositions/22116461 at 2026-08-26
+18:43:09Z (read-only; no action endpoint touched):
+
+    state         "unsubmitted"    -> NOT published
+    submitted     false            -> NOT published
+    doi           null             -> no DOI registered
+    doi_url       null             -> no DOI registered
+    conceptdoi    null             -> no concept DOI registered
+    links.record  null             -> no public record exists yet
+    links.html    https://zenodo.org/deposit/22116461
+
+    files listing (draft holds exactly one file):
+      filename  real-rig-inputs.zip
+      filesize  4341018405
+      checksum  d95a1abc3f7089443ea2bc7ea12fb599   # pragma: allowlist secret
+      id        894a8365-1b30-4347-8e5b-3e54a12359aa
+
+    related_identifiers on the draft:
+      https://github.com/McGrathLab/AquaCal  (isSupplementTo, scheme url)
+    The A->B cross-link is deliberately absent: Record B does not exist yet and D-29-03
+    forbids reserving a DOI. Plan 29-07 Task 1 rules on the final linkage.
+
+WHAT THIS PLAN DID NOT DO
+    - Did not publish. No deposition action endpoint was called, scripted, or manually
+      triggered. Minting a DOI is permanent and can never be undone, only superseded,
+      so under D-29-01 it stays a deliberate human act performed by the author in the
+      Zenodo web UI.
+    - Did not reserve a DOI (D-29-03). `prereserve_doi` was never requested; the draft's
+      top-level `doi` is null.
+    - Did not add a publish path to the tool to satisfy this task:
+          grep -v '^\s*#' scripts/zenodo_upload.py | grep -c '/actions/'   == 0
+      scripts/zenodo_upload.py is byte-for-byte unmodified by this plan.
+    - Did not touch published record 21889922. It was read once (GET /api/records/
+      21889922, the reachability probe) and is neither modified, deleted, re-versioned
+      nor withdrawn.
+    - Did not upload to sandbox. Asserted by counting occurrences of the sandbox
+      API hostname in this transcript: ZERO. The check is deliberately described
+      rather than quoted, because writing the literal hostname here would make the
+      assertion match itself and always fail. Every URL recorded above is on the
+      production host; the sandbox rehearsal of plan 29-01 used a 16,896-byte dummy
+      file and lives in its own transcript, 29-zenodo-sandbox-rehearsal.txt.
+    - Did not write, log, echo or pass the access token anywhere. It was read from the
+      process environment by the tool alone (D-29-07); no header, argument or file in
+      this plan carries it.
+    - Did not build multipart or resume machinery (D-29-07).
+
+--- immutability re-assertions after the transfer -----------------------------
+
+    aquacal_data/downloads/real-rig-calib.zip   4350418046 bytes   UNCHANGED
+    git status --porcelain experiments/ src/     (empty)
+    git status --porcelain aquacal_data/         (empty)
+    branch                                       results/rerun-freeze-02   (unchanged)
+
+--- what the author does next -------------------------------------------------
+
+Review the draft at https://zenodo.org/deposit/22116461 and press Publish there, at the
+point plan 29-08 Task 4's blocking human checkpoint reaches it. Publishing is what mints
+Record A's permanent DOI over exactly these 4,341,018,405 bytes. Nothing in this
+repository can do it: the automation token carries `deposit:write` only.
+
+
+================================================================================
+VERBATIM TOOL TRANSCRIPT RECORDS
+================================================================================
+
+scripts/zenodo_upload.py appends its own result JSON to this file at the moment each
+call returns, so the two production call records sit INLINE ABOVE, in the order they
+were made and each immediately after the narrative that introduces it:
+
+    record 1  "action": "create_draft"      -- step 1, in section 2 above
+    record 2  "action": "update_metadata"   -- step 2/3, carrying upload_response,
+                                               local_md5 and round_trip_verified
+
+Both were written by the tool, not transcribed by hand. The read-only re-read that
+backs section 2 step 5 follows.
+
+--------------------------------------------------------------------------------
+{
+  "action": "re_read_deposition",
+  "base_url": "https://zenodo.org/api",
+  "conceptdoi": null,
+  "deposition_id": 22116461,
+  "doi": null,
+  "doi_url": null,
+  "files": [
+    {
+      "checksum": "d95a1abc3f7089443ea2bc7ea12fb599",
+      "filename": "real-rig-inputs.zip",
+      "filesize": 4341018405,
+      "id": "894a8365-1b30-4347-8e5b-3e54a12359aa",
+      "links": {
+        "download": "https://zenodo.org/api/records/22116461/draft/files/real-rig-inputs.zip/content",
+        "self": "https://zenodo.org/api/deposit/depositions/22116461/files/894a8365-1b30-4347-8e5b-3e54a12359aa"
+      }
+    }
+  ],
+  "links_html": "https://zenodo.org/deposit/22116461",
+  "record_url": null,
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/McGrathLab/AquaCal",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "state": "unsubmitted",
+  "submitted": false,
+  "title": "AquaCal real-rig calibration inputs (Record A): 13-camera ChArUco frameset",
+  "utc": "2026-08-26T18:43:09Z"
+}
+--------------------------------------------------------------------------------
