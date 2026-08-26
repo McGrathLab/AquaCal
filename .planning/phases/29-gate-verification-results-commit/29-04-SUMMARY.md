@@ -134,6 +134,17 @@ None — plan executed as written. Two clarifications resolved inside the plan's
 - The archive-root question above, resolved toward the explicit acceptance criterion and documented.
 - The plan's Task 2 acceptance criterion requires `grep -c 'sandbox.zenodo.org' 29-zenodo-record-a.txt` to return `0`, and an early draft of the evidence file quoted that command verbatim in its prohibitions list — which made the assertion match itself and fail. The line was rewritten to describe the check rather than quote the forbidden literal. The underlying fact was always true: every URL in the transcript is on the production host.
 
+### State-update correction (Rule 1 — bug)
+
+**RUN-05 was NOT marked complete, despite this plan's `requirements: [RUN-05]` frontmatter.**
+The standard state update marked it `[x]` / `Complete` in `REQUIREMENTS.md`; that edit was
+reverted on inspection, because it would have been a false claim. RUN-05 reads: *"The Zenodo
+record is split into immutable inputs and a versioned results package, and the results package
+matching this run's numbers is **published** before the paper is submitted."* This plan built and
+uploaded the **inputs half only**, and published nothing. RUN-05 is shared by plans 29-01, 29-04,
+29-07 and 29-08; it is 29-08's to close, after Record B exists and the author has published both.
+`REQUIREMENTS.md` is unchanged by this plan and RUN-05 remains `Pending`.
+
 ## Issues Encountered
 
 **Production Zenodo's earlier outage.** Plan 29-01 closed with production unreachable, which is why its sandbox rehearsal was the only end-to-end evidence available. Rather than trusting the orchestrator's earlier probe, reachability was re-measured immediately before the first production call (3 × HTTP 200, ~0.5 s) and the result recorded as a gate in the evidence file. Production had recovered and stayed healthy for the full 28-minute transfer.
@@ -180,3 +191,10 @@ None. No new network endpoint, auth path, file-access pattern or schema change w
 ---
 *Phase: 29-gate-verification-results-commit*
 *Completed: 2026-08-26*
+
+## Self-Check: PASSED
+
+All four artifacts exist on disk (`29-zenodo-record-a.txt`, `29-04-SUMMARY.md`,
+`~/zenodo-record-a/real-rig-inputs.zip`, `~/zenodo-record-a/real-rig-inputs.zip.md5`)
+and all four commits are present in git history (`f15f1ba`, `b71ffe5`, `b6bec8d`,
+`886bbda`). Nothing claimed above is unbacked.

@@ -5,16 +5,16 @@ milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: Completed 29-06-PLAN.md
-last_updated: "2026-08-26T18:05:50.930Z"
+stopped_at: Completed 29-04-PLAN.md
+last_updated: "2026-08-26T18:46:45.447Z"
 last_activity: 2026-08-26
-last_activity_desc: 29-06 repaired the eight D1 provenance rails; suite at the ruled 3
+last_activity_desc: 29-04 built Record A input-only and streamed it to an unpublished Zenodo draft
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 7
   total_plans: 63
-  completed_plans: 60
-  percent: 78
+  completed_plans: 61
+  percent: 70
 ---
 
 # Project State
@@ -331,6 +331,7 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29]: Plan 29-06: run_manifest.json is DRIVER-02's flat SUITE-level manifest (schema owner experiments/_run_manifest.py:82), not an assemble_benchmark_record, so it is carved out of the benchmark-record rails via a new SUITE_LEVEL_MANIFEST_JSON frozenset rather than being made to satisfy a schema it never claimed.
 - [Phase 29]: Plan 29-06: _discover_json_files() gained the _is_tracked filter its CSV sibling always had, so a gitignored 2.1 MB calibration.json no longer reaches a rail scoped to committed artifacts. rglob was preserved -- only the filter changed -- so E4's nested e4_cells records stay discoverable. calibration.json was deliberately NOT added to any carve-out.
 - [Phase 29]: Plan 29-06: E1's band map text corrected from 'seeds 42-51' to 'seeds 42-45' per Ruling A1 of 2026-08-15, annotated in the project's dated '# CORRECTED <date> (plan NN).' style so the superseded ten-seed claim survives rather than being deleted.
+- [Phase ?]: 29-04: Record A's Zenodo archive uses a flat root (extrinsic/, intrinsic/, README.md) with no real-rig/ wrapper, unlike published record 21889922 — Phase 30's loader must strip no prefix
 
 ### Blockers/Concerns
 
@@ -353,10 +354,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-26T18:05:27.314Z
+Last session: 2026-08-26T18:46:45.432Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29-06-PLAN.md
+Stopped at: Completed 29-04-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -382,3 +383,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P05 | 12min | 3 tasks | 228 files |
 | Phase 29 P01 | 104min | 4 tasks | 5 files |
 | Phase 29 P06 | 75min | 3 tasks | 3 files |
+| Phase 29 P04 | 48min | 2 tasks | 1 files |
