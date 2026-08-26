@@ -1,0 +1,341 @@
+================================================================================
+29.2-sdist-listing.txt -- the member list of the sdist that would reach PyPI as
+aquacal 2.1.0, asserted as a POSITIVE WHITELIST before any upload path exists.
+Plan 29.2-01, task 3. Reads with 29.2-release-rehearsal.txt, which built it.
+================================================================================
+
+Question:       Does the sdist python-semantic-release' own build_command
+                produces for 2.1.0 contain the library and its metadata AND
+                NOTHING ELSE -- no experiments/, no .planning/, no tests/, none
+                of the 227 committed run artifacts?
+
+Pass condition: the DISTINCT TOP-LEVEL MEMBER SET, stripped of the
+                `aquacal-2.1.0/` prefix, STRING-EQUALS exactly:
+                    LICENSE, PKG-INFO, README.md, pyproject.toml, setup.cfg, src
+                A whitelist of what IS there, not a blacklist of what is not --
+                a blacklist only ever finds the leaks somebody thought of.
+                THE SIZE IS NOT A PASS CONDITION (D-29.2-32). It is recorded
+                below as corroboration, with its explanation.
+
+--------------------------------------------------------------------------------
+PROVENANCE
+--------------------------------------------------------------------------------
+
+Measured      : 2026-08-26
+Artifact      : /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz
+Built by      : semantic-release's own build_command
+                (`python -m build`, pyproject.toml [tool.semantic_release]),
+                run during the task-2 rehearsal -- so this IS the artifact PSR
+                itself would build on the runner, not a hand-rolled stand-in.
+In            : /tmp/aquacal-29.2-rehearsal/repo, a --no-hardlinks --no-local
+                clone whose origin points at a local bare repository.
+At            : the release commit b411449 "chore(release): 2.1.0", tagged
+                v2.1.0, on a branch named main carrying merge commit 5399d2b.
+Toolchain     : build 1.5.0; setuptools resolved inside build isolation
+                (latest available today: 84.0.0). RESEARCH Q4a measured with
+                setuptools 80.10.2.
+Locale        : every sort in this file pins LC_ALL=C. See the locale note.
+
+--------------------------------------------------------------------------------
+RESULT: PASS
+--------------------------------------------------------------------------------
+
+The distinct top-level member set string-equals the six expected names. The
+sdist carries src/ plus five metadata files and nothing else.
+
+--------------------------------------------------------------------------------
+MEASURED BESIDE EXPECTED
+--------------------------------------------------------------------------------
+
+                                        MEASURED                  EXPECTED
+  distinct top-level members  LICENSE,PKG-INFO,README.md,   the same six,
+                              pyproject.toml,setup.cfg,src  by string equality
+  member count                            72                72 = 66 + 6
+  entries under src/                      66                66 (RESEARCH Q4a)
+  entries matching experiments/,
+    .planning/, /tests/, /docs/            0                0
+  wheel top-level entries       aquacal, aquacal-2.1.0.dist-info
+  sdist bytes                        200,871                (NOT a criterion)
+  wheel bytes                        222,107                (NOT a criterion)
+  sdist bytes, uncompressed          901,120                (NOT a criterion)
+
+  No number above was adjusted toward its expectation.
+
+--------------------------------------------------------------------------------
+THE SIZE SERIES, WITH ITS EXPLANATION -- READ THIS AS CONTEXT, NOT AS A FINDING
+--------------------------------------------------------------------------------
+
+  1.8.0   120,434 B   PyPI (the current published latest)
+  2.0.1   174,448 B   TestPyPI only; never reached PyPI
+  2.1.0   200,871 B   built here, this session
+          200,937 B   built by RESEARCH Q4d earlier the same day
+
+The growth is monotonic and it is real src/aquacal/ growth across phases 23-26.
+It is NOT artifact leakage -- and the member list above proves that
+independently, which is the entire point of asserting the list rather than the
+size.
+
+D-29.2-17 asks that the sdist's size be checked as "in line with 1.8.0's".
+TAKEN LITERALLY THAT CHECK WOULD HAVE RAISED A FALSE ALARM ON A PERFECTLY
+HEALTHY ARTIFACT: 2.1.0's sdist is 1.67x 1.8.0's. D-29.2-32 supersedes the
+instruction, and this file implements the superseding form -- the member list is
+the assertion, the size is corroboration.
+
+TWO MEASUREMENTS MAKE THAT RULING STRONGER THAN THE DECISION CLAIMED, and both
+are recorded here because neither was known when the plan was written:
+
+  1. THE SDIST IS NOT BYTE-REPRODUCIBLE. Two builds from the IDENTICAL tree with
+     the IDENTICAL toolchain, taken about twenty seconds apart, produced
+     200,871 B and 200,891 B -- a 20-byte difference -- while their member lists
+     diffed clean. setuptools stamps build times into the tar headers and gzip
+     compresses those differing bytes differently. A size assertion tight enough
+     to catch a leak would therefore fail on consecutive builds of the same
+     source.
+
+  2. THE 66-BYTE GAP FROM RESEARCH'S FIGURE IS THE SAME PHENOMENON, PLUS A
+     TOOLCHAIN DRIFT. 200,871 here against 200,937 there is 0.03%. The member
+     lists and the 66 src/ entries are identical between the two runs, so the
+     difference lives in generated metadata and compression framing, not in
+     content; and build isolation resolves its own setuptools at build time, so
+     the two runs did not necessarily use the same one (RESEARCH recorded
+     80.10.2; the latest today is 84.0.0). BOTH NUMBERS ARE PRINTED. The
+     rehearsal's own figure was not quietly replaced with the more familiar one.
+
+--------------------------------------------------------------------------------
+WHY THE SDIST IS CLEAN -- recorded at the check, so a future contributor knows
+what they would be turning on
+--------------------------------------------------------------------------------
+
+There is NO `MANIFEST.in` in this repository (`ls` -> No such file or directory),
+and `[build-system] requires = ["setuptools>=77.0.0", "wheel"]` names NO
+file-finder plugin -- no setuptools-scm, no setuptools-git, nothing else
+providing a `setuptools.file_finders` entry point.
+
+That absence is the whole reason the sdist is clean. It is not luck and it is not
+a .gitignore effect. setuptools' DEFAULT sdist walk is deliberately narrow: the
+packages found by `[tool.setuptools.packages.find] where = ["src"]`, whatever
+`[tool.setuptools.package-data]` matches, pyproject.toml/setup.cfg, the readme
+and license named in [project], and the generated PKG-INFO/*.egg-info. It does
+not walk arbitrary top-level directories, so experiments/ and .planning/ cannot
+reach it.
+
+A file-finder plugin REPLACES that narrow walk with "every file tracked by git".
+This repository tracks 1,706 files, including the 227 committed run artifacts and
+the entire .planning/ tree. So:
+
+  DO NOT add setuptools-scm (or any other file-finder plugin) for version
+  management without also adding an explicit MANIFEST.in prune or an sdist
+  exclude. Doing the first without the second would silently publish the run
+  artifacts and the planning tree to PyPI, permanently, at the next release.
+
+An explicit MANIFEST.in / sdist exclude that would make the file set enforced
+rather than merely observed is a GOOD idea and is deliberately OUT OF SCOPE here
+(CONTEXT § Deferred Ideas). D-29.2-17's caution is honoured by verifying, once,
+against the property itself.
+
+--------------------------------------------------------------------------------
+A LOCALE TRAP WORTH THE THREE LINES IT COSTS TO CLOSE
+--------------------------------------------------------------------------------
+
+`sort` is collation-dependent. This machine's default (LANG=en_US.UTF-8) orders
+the six names LICENSE, PKG-INFO, pyproject.toml, README.md, setup.cfg, src --
+case-insensitively, so pyproject.toml precedes README.md. Under LC_ALL=C the
+order is LICENSE, PKG-INFO, README.md, pyproject.toml, setup.cfg, src, because C
+collation compares bytes and 'R' (0x52) precedes 'p' (0x70).
+
+The expected string is the C-collation one. Every comparison in this file
+therefore pins LC_ALL=C. An unpinned sort passes on a POSIX-locale machine and
+FAILS on an en_US.UTF-8 one against an identical, healthy artifact -- a false
+alarm on whichever machine happens to run it next.
+
+================================================================================
+TRANSCRIPT -- every command verbatim, its raw output, and its exit code
+================================================================================
+
+--------------------------------------------------------------------------------
+1. THE ASSERTION -- A POSITIVE WHITELIST OF TOP-LEVEL MEMBERS (D-29.2-32)
+--------------------------------------------------------------------------------
+
+  $ tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | sed 's#^aquacal-2\.1\.0/##' | cut -d/ -f1 | grep -v '^$' | LC_ALL=C sort -u
+  LICENSE
+  PKG-INFO
+  README.md
+  pyproject.toml
+  setup.cfg
+  src
+  (exit code 0)
+
+  $ [ "$(tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | sed 's#^aquacal-2\.1\.0/##' | cut -d/ -f1 | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ',')" = 'LICENSE,PKG-INFO,README.md,pyproject.toml,setup.cfg,src,' ] && echo 'ASSERT OK (string equality): the distinct top-level member set is EXACTLY the six expected names.'
+  ASSERT OK (string equality): the distinct top-level member set is EXACTLY the six expected names.
+  (exit code 0)
+
+  $ echo "LANG=$LANG LC_ALL=${LC_ALL:-unset}"; tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | sed 's#^aquacal-2\.1\.0/##' | cut -d/ -f1 | grep -v '^$' | sort -u | tr '\n' ','; echo '  <- the SAME set under this machine default locale, in a DIFFERENT order'
+  LANG=en_US.UTF-8 LC_ALL=unset
+  LICENSE,PKG-INFO,pyproject.toml,README.md,setup.cfg,src,  <- the SAME set under this machine default locale, in a DIFFERENT order
+  (exit code 0)
+
+  LOCALE NOTE, recorded because it silently breaks the assertion. `sort` is
+  collation-dependent: under en_US.UTF-8 it yields
+  LICENSE,PKG-INFO,pyproject.toml,README.md,setup.cfg,src -- case-insensitive, so
+  `pyproject.toml` sorts before `README.md`. Under LC_ALL=C it yields
+  LICENSE,PKG-INFO,README.md,pyproject.toml,setup.cfg,src, because C collation is
+  by byte and uppercase R (0x52) precedes lowercase p (0x70). The expected string
+  is the C-collation one, so EVERY comparison in this file pins LC_ALL=C. An
+  unpinned sort would fail this assertion on a en_US.UTF-8 machine and pass on a
+  POSIX one, which is a false alarm waiting to happen on whichever machine runs
+  it next.
+
+  $ tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | wc -l
+  72
+  (exit code 0)
+
+  $ tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | sed 's#^aquacal-2\.1\.0/##' | grep -c '^src/'
+  66
+  (exit code 0)
+
+  $ tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | sed 's#^aquacal-2\.1\.0/##' | grep '^src/' | cut -d/ -f1-3 | LC_ALL=C sort -u | head -20
+  src/
+  src/aquacal.egg-info/
+  src/aquacal.egg-info/PKG-INFO
+  src/aquacal.egg-info/SOURCES.txt
+  src/aquacal.egg-info/dependency_links.txt
+  src/aquacal.egg-info/entry_points.txt
+  src/aquacal.egg-info/requires.txt
+  src/aquacal.egg-info/top_level.txt
+  src/aquacal/
+  src/aquacal/__init__.py
+  src/aquacal/__main__.py
+  src/aquacal/calibration
+  src/aquacal/cli.py
+  src/aquacal/config
+  src/aquacal/core
+  src/aquacal/datasets
+  src/aquacal/io
+  src/aquacal/py.typed
+  src/aquacal/triangulation
+  src/aquacal/utils
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+2. THE BLACKLIST, KEPT ONLY AS CORROBORATION (the whitelist above is the assertion)
+--------------------------------------------------------------------------------
+
+  $ tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | grep -E 'experiments/|\.planning/|/tests/|/docs/'; echo "grep found nothing (its exit was 1). experiments/, .planning/, tests/ and docs/ are all absent."
+  grep found nothing (its exit was 1). experiments/, .planning/, tests/ and docs/ are all absent.
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/python -m zipfile -l /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0-py3-none-any.whl | awk 'NR>1{print $1}' | cut -d/ -f1 | grep -v '^$' | LC_ALL=C sort -u
+  aquacal
+  aquacal-2.1.0.dist-info
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+3. THE SIZE SERIES -- CORROBORATION ONLY, NEVER THE ASSERTION (D-29.2-32)
+--------------------------------------------------------------------------------
+
+  $ stat -c'%n  %s bytes' /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0-py3-none-any.whl
+  /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz  200871 bytes
+  /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0-py3-none-any.whl  222107 bytes
+  (exit code 0)
+
+  $ gzip -lv /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz 2>/dev/null | tail -1
+  defla 35e704b5 Aug 26 19:15              200871              901120  77.7% /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar
+  (exit code 0)
+
+  $ stat -c%s /tmp/aquacal-29.2-rehearsal/dist-recheck/aquacal-2.1.0.tar.gz; echo '^^ a SECOND sdist, built from the IDENTICAL tree with the IDENTICAL toolchain ~20 seconds after the first'
+  200891
+  ^^ a SECOND sdist, built from the IDENTICAL tree with the IDENTICAL toolchain ~20 seconds after the first
+  (exit code 0)
+
+  $ echo "first: $(stat -c%s /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz)  second: $(stat -c%s /tmp/aquacal-29.2-rehearsal/dist-recheck/aquacal-2.1.0.tar.gz)  delta: $(( $(stat -c%s /tmp/aquacal-29.2-rehearsal/dist-recheck/aquacal-2.1.0.tar.gz) - $(stat -c%s /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz) )) bytes"
+  first: 200871  second: 200891  delta: 20 bytes
+  (exit code 0)
+
+  $ diff <(tar -tzf /tmp/aquacal-29.2-rehearsal/repo/dist/aquacal-2.1.0.tar.gz | LC_ALL=C sort) <(tar -tzf /tmp/aquacal-29.2-rehearsal/dist-recheck/aquacal-2.1.0.tar.gz | LC_ALL=C sort) >/dev/null && echo 'ASSERT OK: the two builds have IDENTICAL member lists. The size differs; the contents do not.'
+  ASSERT OK: the two builds have IDENTICAL member lists. The size differs; the contents do not.
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/pip index versions setuptools 2>&1 | sed -n '1p'; echo '^^ RESEARCH Q4a built with setuptools 80.10.2; build isolation resolves the LATEST at build time'
+  setuptools (84.0.0)
+  ^^ RESEARCH Q4a built with setuptools 80.10.2; build isolation resolves the LATEST at build time
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+4. WHY THE SDIST IS CLEAN -- recorded AT THE CHECK, not in a doc
+--------------------------------------------------------------------------------
+
+  $ ls /home/tlancaster/aquacal-frozen-rerun-freeze-01/MANIFEST.in 2>&1 | tail -1
+  ls: cannot access '/home/tlancaster/aquacal-frozen-rerun-freeze-01/MANIFEST.in': No such file or directory
+  (exit code 0)
+
+  $ sed -n '1,3p' /home/tlancaster/aquacal-frozen-rerun-freeze-01/pyproject.toml
+  [build-system]
+  requires = ["setuptools>=77.0.0", "wheel"]
+  build-backend = "setuptools.build_meta"
+  (exit code 0)
+
+  $ sed -n '80,89p' /home/tlancaster/aquacal-frozen-rerun-freeze-01/pyproject.toml
+  [tool.setuptools.packages.find]
+  where = ["src"]
+  
+  [tool.setuptools.package-data]
+  aquacal = [
+      "datasets/data/**/*.json",
+      "py.typed",
+  ]
+  
+  [tool.pytest.ini_options]
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 ls-files | wc -l; echo '^^ tracked files in this repository -- what a git-based file-finder plugin would sweep into the sdist'
+  1706
+  ^^ tracked files in this repository -- what a git-based file-finder plugin would sweep into the sdist
+  (exit code 0)
+
+
+================================================================================
+PROHIBITIONS HONOURED
+================================================================================
+
+  The build ran in the clone, never in the project tree.
+      /home/tlancaster/aquacal-frozen-rerun-freeze-01/dist does not exist.
+      Both distributions live under /tmp/aquacal-29.2-rehearsal/.
+
+  Nothing was uploaded anywhere.
+      No twine, no `gh release`, no PyPI or TestPyPI request was made by this
+      task. PyPI's 1.8.0 and TestPyPI's 2.0.1 figures above are quoted from
+      RESEARCH Q4d, which read them from the public JSON APIs; this task
+      contacted neither index.
+
+  No packaging configuration was changed.
+      pyproject.toml is unmodified: `git diff --quiet -- pyproject.toml` exits 0
+      in the working repository (transcribed in 29.2-release-rehearsal.txt § 10).
+      No MANIFEST.in was created. No sdist exclude was added -- that stays
+      deferred (CONTEXT § Deferred Ideas), and this file says why it would be
+      worth doing rather than quietly doing it.
+
+  The assertion is on the property, not on a proxy for it.
+      The member list IS the file set that would be uploaded. The size is
+      recorded beside it and is explicitly not a pass condition -- which the
+      20-byte run-to-run variance above shows is not pedantry.
+
+  No irreversible act was performed (D-29.2-24).
+      Everything this file establishes lives in a directory that can be deleted
+      with `rm -rf`. The author still presses every button.
+
+================================================================================
+SCOPE -- what this listing does NOT establish
+================================================================================
+
+  * It does not prove the artifact INSTALLS or IMPORTS. It enumerates what is in
+    the archive; it does not `pip install` it into a clean environment and import
+    aquacal. Nothing in this phase's criteria asks for that.
+  * It does not prove PyPI will ACCEPT it. Name/version collision, metadata
+    validation and the required-reviewer gate on the `pypi` environment are all
+    plan 29.2-06's subject.
+  * It does not pin the file set for the future. It observes today's set. Until
+    a MANIFEST.in or an sdist exclude exists, a future dependency change can
+    alter it silently and only a repeat of this check would notice.
+  * It is valid for THIS build. Per D-29.2-28b the rehearsal is re-run
+    immediately before the merge; this listing should be re-derived from that
+    run's artifact, not carried forward from this one.
