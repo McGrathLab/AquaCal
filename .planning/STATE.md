@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: Gate Verification & Results Commit
 status: executing
-stopped_at: "Completed 29-01-PLAN.md — Zenodo tooling built and rehearsed on sandbox (drafts 592888/592890, md5 round trip verified, author approved). BLOCKER: production zenodo.org measured unreachable 2026-08-26 (TLS completes, backend stalls ~25s) — 29-04 must re-probe before starting the 4.35 GB PUT. OPEN (author's): Record B's version 2.0.1 names a release 346 commits behind the run sha with 14 src/aquacal/ files changed; blocks 29-07. Next: 29-06."
-last_updated: "2026-08-26T17:06:11.592Z"
+stopped_at: Completed 29-06-PLAN.md
+last_updated: "2026-08-26T18:05:50.930Z"
 last_activity: 2026-08-26
-last_activity_desc: Phase 29 execution started
+last_activity_desc: 29-06 repaired the eight D1 provenance rails; suite at the ruled 3
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 63
-  completed_plans: 59
+  completed_plans: 60
   percent: 78
 ---
 
@@ -327,6 +327,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29]: 29-01: scripts/zenodo_upload.py has NO publish and NO discard code path at all — enforced by grep gates in the acceptance criteria and independently by a deposit:write-only token that omits the publish-actions scope, so a publish call fails at Zenodo rather than at code review (D-29-01). The token is read from os.environ only, never a CLI argument, never a file.
 - [Phase 29]: 29-01: A<->B cross-link uses isSourceOf (on A) / isDerivedFrom (on B), never isNewVersionOf against record 21889922 — Zenodo versioning is a first-class mechanism and asserting it against a different concept record misrepresents the relationship. Supersession of 21889922 is prose in Record B description plus a bare-DOI references related_identifier.
 - [Phase 29]: 29-01: RUN-05 left UNMARKED. This plan makes no production Zenodo call and publishes nothing — it drives RUN-05 only to tooling-proven-on-sandbox. RUN-05 completes at published-before-submission, an event Phase 29 cannot observe; 29-04 and 29-07 create the production drafts and 29-08 closes the ordering half by explicit human confirmation.
+- [Phase 29]: Plan 29-06: the eight D1 provenance-rail failures were repaired by correcting assertions, never artifacts (D-29-13). Provenance module 8 failed -> 0; full suite 11 failed -> 3, the three being D4's ruled exact-equality anchors. Nothing deselected, xfailed, skipped or loosened.
+- [Phase 29]: Plan 29-06: run_manifest.json is DRIVER-02's flat SUITE-level manifest (schema owner experiments/_run_manifest.py:82), not an assemble_benchmark_record, so it is carved out of the benchmark-record rails via a new SUITE_LEVEL_MANIFEST_JSON frozenset rather than being made to satisfy a schema it never claimed.
+- [Phase 29]: Plan 29-06: _discover_json_files() gained the _is_tracked filter its CSV sibling always had, so a gitignored 2.1 MB calibration.json no longer reaches a rail scoped to committed artifacts. rglob was preserved -- only the filter changed -- so E4's nested e4_cells records stay discoverable. calibration.json was deliberately NOT added to any carve-out.
+- [Phase 29]: Plan 29-06: E1's band map text corrected from 'seeds 42-51' to 'seeds 42-45' per Ruling A1 of 2026-08-15, annotated in the project's dated '# CORRECTED <date> (plan NN).' style so the superseded ten-seed claim survives rather than being deleted.
 
 ### Blockers/Concerns
 
@@ -349,10 +353,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-26T17:05:59.903Z
+Last session: 2026-08-26T18:05:27.314Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29-01-PLAN.md — Zenodo tooling built and rehearsed on sandbox (drafts 592888/592890, md5 round trip verified, author approved). BLOCKER: production zenodo.org measured unreachable 2026-08-26 (TLS completes, backend stalls ~25s) — 29-04 must re-probe before starting the 4.35 GB PUT. OPEN (author's): Record B's version 2.0.1 names a release 346 commits behind the run sha with 14 src/aquacal/ files changed; blocks 29-07. Next: 29-06.
+Stopped at: Completed 29-06-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -377,3 +381,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P03 | 25min | 2 tasks | 5 files |
 | Phase 29 P05 | 12min | 3 tasks | 228 files |
 | Phase 29 P01 | 104min | 4 tasks | 5 files |
+| Phase 29 P06 | 75min | 3 tasks | 3 files |

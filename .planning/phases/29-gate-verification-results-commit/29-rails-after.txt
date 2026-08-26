@@ -1,0 +1,205 @@
+================================================================================
+29-rails-after.txt -- the D1 provenance rails and the full suite MEASURED after
+the eight assertion repairs (plan 29-06, task 3). Reads with
+29-rails-before.txt, which is the same measurement taken before any edit.
+================================================================================
+
+Measured        : 2026-08-26
+Branch          : results/rerun-freeze-02
+Repairs commit  : 5799b14 fix(29): repair eight provenance-rail assertions the
+                  returned tree exposed  (one file:
+                  tests/unit/test_experiments_provenance.py)
+Interpreter     : ~/anaconda3/envs/aquacal-freeze02-cleanenv/bin/python
+                  (Python 3.11.15, pytest 9.1.1) -- the SAME interpreter every
+                  figure in 29-rails-before.txt was taken on, so the deltas
+                  below compare like with like.
+
+--------------------------------------------------------------------------------
+1. BOTH DELTAS, IN ONE PLACE
+--------------------------------------------------------------------------------
+
+                                              BEFORE          AFTER
+  tests/unit/test_experiments_provenance.py   8 failed   ->   0 failed
+  pytest tests/                              11 failed   ->   3 failed
+
+THREE IS THE EXPECTED FULL-SUITE COUNT. ZERO AND FOUR ARE BOTH ANOMALIES
+(D-29-15). A zero would mean D4's three ruled exact-equality anchors had been
+silenced; a four would mean something new had broken. Neither was adjusted
+toward three -- the number below is what the suite reported.
+
+--------------------------------------------------------------------------------
+2. THE PROVENANCE MODULE -- 0 failed
+--------------------------------------------------------------------------------
+
+  $ python -m pytest tests/unit/test_experiments_provenance.py -q -p no:cacheprovider
+  287 passed, 20 skipped in 34.54s
+  (exit code 0)
+
+Before: 8 failed, 279 passed, 20 skipped (307 collected).
+After : 287 passed, 20 skipped            (307 collected).
+
+The collected total is UNCHANGED at 307, and that is the arithmetic worth
+checking rather than the pass count:
+
+  -2  run_manifest.json leaves _SCHEMA_JSON_FILES, so its two parametrized
+      cases (one on the environment rail, one on the seed rail) no longer exist
+  +2  TestSuiteLevelManifestCarveOut's two tests, which hold the new carve-out
+      to the same standard the module holds SEEDLESS_LEGACY_RECORDS and
+      SELF_DESCRIBING_JSON to
+  ---
+   0  net
+
+So of the eight, SIX now PASS that previously failed (279 + 6 + 2 = 287) and
+two ceased to be asked of a file that never claimed the schema they asserted.
+Nothing was deselected, xfailed, skipped, or loosened to reach this: the skip
+count is unchanged at 20, and the diff introduces no pytest.skip, no
+pytest.mark.skip, no xfail and no deselect (asserted below).
+
+--------------------------------------------------------------------------------
+3. THE FULL SUITE -- exactly 3 failed, and they are D4's three
+--------------------------------------------------------------------------------
+
+  $ python -m pytest tests/ -q -p no:cacheprovider
+  FAILED tests/unit/test_discard_accounting.py::test_matches_frozen_anchor
+  FAILED tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector
+  FAILED tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+  3 failed, 2394 passed, 21 skipped, 30 warnings in 1830.93s (0:30:30)
+
+The three node ids are IDENTICAL, character for character, to the three
+recorded as D4 in 29-rails-before.txt section 4 and in
+29.1-PREPUSH-AUDIT.md section 1. There is no fourth, and none of the three is
+missing.
+
+They are pre-existing exact-equality anchor misses (1 ULP to 1.4e-9), proven by
+byte-identity of every input to rerun-freeze-01, and are the first Linux
+evaluation of anchors captured on Windows. They are ruled on in the
+rerun-freeze-02 tag annotation. Plan 29-06 does not repair them and did not
+touch them.
+
+--------------------------------------------------------------------------------
+4. TWO MEASURED DIFFERENCES FROM THE PLAN'S PROSE, REPORTED RATHER THAN SMOOTHED
+--------------------------------------------------------------------------------
+
+D-29-12's rule is that the count is measured and any difference is information.
+Two differences exist, and neither touches the gated quantity:
+
+(a) PASS/SKIP TOTALS. 29-06-PLAN.md task 3 wrote "exactly `3 failed` ... against
+    `2407 passed, 26 skipped`". Measured: 2394 passed, 21 skipped. The FAILURE
+    count -- the only quantity any acceptance criterion gates on -- is exactly
+    3, and the three node ids are exactly the ruled three. The passed/skipped
+    figures in the plan were prose, not a measurement carried forward from
+    research, and they are 13 and 5 high respectively. Collected totals
+    reconcile cleanly:
+        3 + 2394 + 21 = 2418 after
+    and, since this plan's net effect on collection is zero (see section 2),
+        11 + 2386 + 21 = 2418 before
+    i.e. the same 2418 tests before and after, with 8 of them moving from
+    failing to passing-or-retired. Nothing was dropped from the suite.
+    The 21 skips are the provenance module's 20 plus one elsewhere.
+
+(b) THE FULL-SUITE "BEFORE" FIGURE OF 11 IS COMPOSED, NOT A SINGLE RUN.
+    A full-suite run was started against the committed tree before any edit,
+    but the suite takes ~30-90 minutes serially (pytest-xdist is not installed;
+    see .planning/todos/pending/2026-08-17-parallelize-the-test-suite.md) and it
+    was still running when the repairs landed on disk. pytest reads source from
+    disk to RENDER a failure, so that run would have printed post-repair source
+    under pre-repair node ids -- misleading evidence in a file whose whole
+    purpose is honest measurement. It was killed rather than quoted. This is
+    disclosed here rather than omitted.
+
+    The 11 is therefore composed from two clean, pre-edit measurements taken in
+    this session and recorded in 29-rails-before.txt:
+        8   tests/unit/test_experiments_provenance.py   (section 2 there)
+      + 3   D4's three anchors                          (section 4 there)
+      = 11
+    and it is corroborated three ways:
+      - 29-RESEARCH measured the full suite at 11 independently, on the probe
+        clone, with the same 8 + 3 decomposition;
+      - the five tree-keyed control modules reported 245 passed before the
+        repairs, so no other tree-sensitive module was contributing a failure;
+      - THE AFTER RUN ITSELF is the strongest corroboration: with the eight
+        repaired, the entire suite reports exactly the three D4 nodes. Since
+        this plan changed one test file and nothing else, the only failures the
+        suite could have held before are those three plus the eight measured
+        directly. 11 is forced, not assumed.
+
+--------------------------------------------------------------------------------
+5. THE CONTROL MODULES -- 245 passed, unchanged
+--------------------------------------------------------------------------------
+
+  $ python -m pytest tests/unit/test_baseline_paths.py tests/unit/test_expectations.py \
+      tests/unit/test_experiments_e3.py tests/unit/test_experiments_e5.py \
+      tests/unit/test_experiments_io.py -q -p no:cacheprovider
+  245 passed in 30.07s
+  (exit code 0)
+
+Re-run after the repairs, not carried over. Identical to the before figure
+(245 passed in 29.76s). These five are the modules that would reveal a
+repopulation problem beyond D1; they were green before the repairs and are
+green after, so nothing here was achieved by moving a problem sideways.
+
+--------------------------------------------------------------------------------
+6. NOTHING WAS SILENCED -- ASSERTED, NOT CLAIMED
+--------------------------------------------------------------------------------
+
+  $ git diff HEAD~1 HEAD -- tests/unit/test_experiments_provenance.py \
+      | grep -cE '^\+.*(xfail|mark\.skip|deselect)'
+  0
+  $ git diff HEAD~1 HEAD -- tests/unit/test_experiments_provenance.py \
+      | grep -cE '^\+.*pytest\.skip'
+  0
+  $ git diff HEAD~1 HEAD --name-only
+  tests/unit/test_experiments_provenance.py          <- exactly one file
+  $ git status --porcelain experiments/
+                                                     <- empty; the frozen tree
+                                                        is byte-untouched
+  $ git diff HEAD~1 HEAD -- tests/unit/_baseline_paths.py ; echo $?
+  0                                                  <- resolve_results_dir()
+                                                        re-aiming from archive
+                                                        to live is the module
+                                                        working, not breaking
+
+No `-k`, no `--deselect`, no tolerance widened anywhere. Every repair states
+what the artifacts ACTUALLY are.
+
+  $ ruff check tests/unit/test_experiments_provenance.py
+  All checks passed!                                 (ruff 0.15.1, the version
+  $ ruff format --check tests/unit/test_experiments_provenance.py
+  1 file already formatted                            pinned by
+                                                      .pre-commit-config.yaml;
+                                                      cross-checked on 0.16.4)
+
+`pre-commit run --all-files` was NOT run, deliberately: 143 of the committed
+artifacts lack a final newline on purpose, and `end-of-file-fixer` would
+rewrite them and destroy the byte-for-byte property plan 29-05 proved. Hook
+runs were scoped to the one modified file.
+
+--------------------------------------------------------------------------------
+7. D-29-14 FALL-THROUGH -- residual findings for plan 29-08 to file
+--------------------------------------------------------------------------------
+
+D-29-14 says anything neither assertion-wrong nor cheaply fixable becomes a
+post-submission todo naming what fails and what would fix it, rather than being
+forced.
+
+  RESIDUAL 1 -- D4's three exact-equality anchors.
+    What fails: the three node ids in section 3.
+    Why not repaired here: they are already RULED, in the rerun-freeze-02 tag
+      annotation and 29.1-PREPUSH-AUDIT.md section 1, and D-29-15 names three as
+      the expected count. Repairing them here would be the over-correction that
+      decision exists to forbid.
+    What would fix it: re-capturing the three anchors on Linux, or converting
+      the three exact-equality assertions to a documented ULP-scale comparison
+      with the cross-platform reason stated at the constant. Either is a
+      deliberate decision about what an anchor means across platforms, not a
+      repair -- it belongs to the author, post-submission.
+
+  RESIDUAL 2 -- the suite runs serially and costs 30-90 minutes.
+    What fails: nothing; it is a wall-clock cost, not a defect.
+    Already filed: .planning/todos/pending/
+      2026-08-17-parallelize-the-test-suite.md (and its -with-pytest-xdist
+      twin). Noted only because it is why the before-run in section 4(b) could
+      not be completed inside this plan.
+
+  No other residual. All eight D1 failures were assertion-wrong and all eight
+  were repaired; none had to be deferred.

@@ -201,7 +201,7 @@ submission. POST follows it.
 - [ ] **RUN-02**: The full experiment suite — E1 through E7, the band runs, and **E2** — executes
       once end to end at that single sha
 
-- [ ] **RUN-03**: `check_rerun_gates.py` passes over the complete run, including Gate 3's
+- [x] **RUN-03**: `check_rerun_gates.py` passes over the complete run, including Gate 3's
       single-sha assertion now that the previously-uncovered stages are inside the queue
 
 - [x] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
@@ -304,7 +304,7 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | DRIVER-04 | Phase 26 | Pending |
 | RUN-01 | Phase 27 | Pending |
 | RUN-02 | Phase 28 | Pending |
-| RUN-03 | Phase 29 | Pending |
+| RUN-03 | Phase 29 | Complete |
 | RUN-04 | Phase 29 | Complete |
 | RUN-05 | Phase 29 | Pending |
 | POST-01 | Phase 30 | Pending |
