@@ -126,7 +126,34 @@ repos:
         # Each archive's purge drops its own alternative: Phase 30 / POST-03 for
         # pre_rerun_baseline/, and Phase 2 of the archive-stale-outputs todo for
         # freeze01_run_output/.
-        exclude: ^(docs/tutorials/.*\.ipynb|experiments/(pre_rerun_baseline/|freeze01_run_output/)?results[^/]*/.*|tests/fixtures/.*\.json)$
+        # The `.planning/` arm, added 2026-08-26, is the same species of finding
+        # one tree over. Measured: this hook exits 123 with 10 findings on
+        # `--all-files`, every one under .planning/ -- nine Hex High Entropy
+        # String hits that are the 40-hex frozen commit SHAs (7005a27..., 3ab9c13...)
+        # quoted inside plan prose, plus one Basic Auth Credentials hit on a row
+        # of an audit table that *documents* the credential form it is inventorying
+        # (`| URL with inline credentials (https://user:pass@...) | 0 |`) -- a
+        # finding whose own count is zero. The reasoning above applies unchanged:
+        # high-entropy by design, and a new value on every legitimate regeneration.
+        # Why the baseline cannot hold, in the same shape as above: every phase
+        # lands new commit SHAs into new plan documents, so a baseline entry would
+        # have to be re-pinned every phase. .secrets.baseline is
+        # generated_at 2026-07-28T19:55:27Z, names 6 files, and holds ZERO
+        # .planning/ entries -- it predates phases 28, 29 and 29.1 entirely. The
+        # author ruled 2026-08-26 (D-29.2-27) to extend this exclude rather than
+        # regenerate the baseline, the same one-shape-one-reasoning move the
+        # byte-integrity arms above make.
+        # THE COST, stated plainly: the planning tree stops being secret-scanned.
+        # A real credential pasted into a plan document will not be caught here.
+        # That is accepted deliberately, against the lesson this file already
+        # records at the bottom for the removed pytest hook: a gate that cries
+        # wolf gets bypassed wholesale -- with --no-verify, which skips every other
+        # hook too -- and that costs the whole scan, not one tree. A permanently
+        # red detect-secrets is the same failure mode, one step earlier.
+        # Retires when .planning/ leaves the repository, or if detect-secrets
+        # gains a way to exempt a finding *type* per path prefix, at which point
+        # the Hex High Entropy arm can be narrowed to that type alone.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/(pre_rerun_baseline/|freeze01_run_output/)?results[^/]*/.*|tests/fixtures/.*\.json|\.planning/.*)$
 
   - repo: local
     hooks:
