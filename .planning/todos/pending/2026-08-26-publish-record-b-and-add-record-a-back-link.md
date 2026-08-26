@@ -28,11 +28,46 @@ publish code path at all** — not dead code, not commented scaffolding.
 
 Both md5 round trips were verified against the server's returned checksum at upload time.
 
+## The author's ruling — `defer`, 2026-08-26
+
+At plan 29-08's Task 3 `checkpoint:decision` the author chose **`defer`** over `publish-now`, for
+the reason in Step 0 below. **Deferral is a legitimate outcome, not a failure** — Phase 29 closed
+against its criteria 1-5, and RUN-05 stays `Pending` until the steps below are done.
+
+## Do these five things, in this order
+
+1. **Cut v2.1.0** (Step 0) — fix CI's `pre-commit` job, PR into `main` with a **merge commit, never
+   a squash**, confirm `secrets.RELEASE_TOKEN`, verify `release.yml` tags `v2.1.0`.
+2. **Read Record B's rendered description** (Step 1), then **Publish** it.
+3. **Then** add Record A's `isSourceOf` back-link by hand (Step 2).
+4. **Confirm publication preceded submission** (Step 3) — this closes RUN-05 and criterion 6.
+5. **Report both DOIs to the manuscript session** (Step 3).
+
 ## Step 0 — v2.1.0 must exist first
 
 **Record B's metadata `version` field and its packaged README both cite `2.1.0`, and that version
 has not been released.** Publishing before Phase 29.2 criterion 3 completes mints a permanent record
 naming a version that does not exist. Cut the release first.
+
+Measured 2026-08-26: `origin/main` is **0 commits ahead** of `results/rerun-freeze-02`, which is
+**406 ahead**. Every `src/aquacal/` change from Phases 23-26 lives on the branch, not on main, so a
+release cut from main today would ship v2.0.1-era code.
+
+What the cut requires — all of it Phase 29.2's, all of it before Step 1:
+
+- **Fix CI's `pre-commit` job first.** `.github/workflows/test.yml` runs
+  `pre-commit run --all-files` on **both** `push: [main]` **and** `pull_request: [main]`, and 143
+  committed artifacts deliberately lack a final newline (plus 439 trailing-whitespace hits). Scope
+  the job to changed files, or exclude `experiments/results/`. `.pre-commit-config.yaml` is editable
+  again there — D-29-17's fence was Phase-29-scoped. See
+  `2026-08-26-no-pull-request-into-main-until-ci-pre-commit-is-scoped.md`.
+- **Merge with a MERGE COMMIT — NEVER A SQUASH.** A squash collapses the 406 commits into one
+  message, and semantic-release parses only that message; if it reads as `docs:`, **no release fires
+  at all and the failure is silent.**
+- **Confirm `secrets.RELEASE_TOKEN` exists** before relying on `release.yml`.
+- **Verify `release.yml` tags `v2.1.0`** and bumps `pyproject.toml` and `CITATION.cff` (both are in
+  `version_toml` / `version_variables`). 43 `feat`, 29 `fix`, zero breaking-change markers across the
+  406 commits yields a **minor** bump to 2.1.0.
 
 ## Step 1 — read Record B's rendered description before pressing Publish
 

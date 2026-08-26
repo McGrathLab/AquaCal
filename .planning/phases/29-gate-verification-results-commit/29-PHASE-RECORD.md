@@ -21,7 +21,7 @@ note**, never rewritten. That is this project's standing rule.
 | **Artifacts commit** | `70e783f` — `results(29): full production suite at rerun-freeze-02`, 227 files, 40,497 insertions, zero deletions, pushed to `origin` |
 | **Rails-repair commit** | `5799b14` — `fix(29):`, exactly one file (`tests/unit/test_experiments_provenance.py`) |
 | **Second independent copy of the run** | `~/aquacal-frozen-rerun-freeze-02-prod`, detached at `7005a277…`, verified unmutated before and after all bulk reads |
-| **Zenodo Record A (inputs)** | deposition **22116461** — `https://zenodo.org/deposit/22116461` → **PUBLISHED** at `https://zenodo.org/records/22116461` |
+| **Zenodo Record A (inputs)** | deposition **22116461** — `https://zenodo.org/deposit/22116461` → **PUBLISHED BY THE AUTHOR, BY HAND**, at `https://zenodo.org/records/22116461` |
 | **Zenodo Record B (results)** | deposition **22117061** — `https://zenodo.org/deposit/22117061` → **STAGED, UNPUBLISHED** |
 
 ### Evidence files this record is derived from
@@ -51,8 +51,66 @@ a closure it cannot evidence.
 D-29-10's three-item stop list — the phase's actual publication gate — was evaluated in full and
 **not one item fired**. Under D-29-09 the outputs are scientifically valid and are to be published.
 
+**Criterion 6 was deferred on the author's explicit ruling, 2026-08-26** — option **`defer`** at
+plan 29-08's Task 3 checkpoint. Record B's metadata and its packaged README both cite **`2.1.0`**,
+and **v2.1.0 does not exist**: `origin/main` is 0 commits ahead of `results/rerun-freeze-02`, which
+is 406 ahead, so the release has not been cut. Publishing today would mint a permanent record naming
+a version nobody can install. **Phase 29.2's criterion 4 exists to enforce exactly this ordering.**
+Deferral is a legitimate outcome and **not a failure** — the phase closes against criteria 1-5,
+which are all met and measured. **RUN-05 remains `Pending`.**
+
 One published conclusion moved. It is raised in its own section below, and it is **not** in §3's
 primary claim. See *The E7 refined-pairing move*.
+
+---
+
+## WHAT REMAINS — do these five things, in this order
+
+**Read this section first if you are returning to this work.** Everything needed to finish is here
+or one link away; nothing below needs to be reconstructed from the reasoning that produced it.
+Steps 1 and 2 are owned by **Phase 29.2**; step 5 is the manuscript session's.
+
+**1. Cut v2.1.0.** (Phase 29.2, criteria 1-3.)
+   - **Fix CI's `pre-commit` job first.** `.github/workflows/test.yml` runs
+     `pre-commit run --all-files` on **both** `push: [main]` **and** `pull_request: [main]`, and
+     **143** committed artifacts deliberately lack a final newline (plus 439 trailing-whitespace
+     hits). Scope the job to changed files, or exclude `experiments/results/`.
+     `.pre-commit-config.yaml` is editable again there — **D-29-17's fence was Phase-29-scoped.**
+   - **Open the PR into `main` and merge it with a MERGE COMMIT — NEVER A SQUASH.** A squash
+     collapses **406** commits into one message, and semantic-release parses only that message; if
+     it reads as `docs:`, **no release fires at all and the failure is silent.**
+   - **Confirm `secrets.RELEASE_TOKEN` exists** before relying on `release.yml`.
+   - **Verify `release.yml` tags `v2.1.0`** and bumps `pyproject.toml` and `CITATION.cff` (both are
+     in `version_toml` / `version_variables`). 43 `feat`, 29 `fix`, zero breaking-change markers
+     across the 406 commits ⇒ a **minor** bump to 2.1.0.
+
+**2. Read Record B's RENDERED description, then publish it.**
+   `https://zenodo.org/deposit/22117061` — deposition **22117061**.
+   **Read it as rendered, end to end. Do not rely on a grep.** Record A shipped
+   `(linked below once Record B exists)` past a clean token grep, because the token had already been
+   substituted away; only the author reading the record caught it. *A token-based check verifies
+   that a substitution ran, not that its result is finished text.* Then press **Publish** — this
+   mints a permanent DOI and cannot be undone.
+
+**3. THEN add Record A's back-link by hand.**
+   `https://zenodo.org/records/22116461` → **Edit** → **Related identifiers** → **`isSourceOf`** →
+   Record B's newly minted DOI, scheme **`doi`**. **Record A currently has NO structured A→B
+   link** — the relationship is expressed only from B's side. This is the accepted, author-ruled
+   cost of the `sequential` linkage choice. Editing published metadata **neither cuts a new version
+   nor changes the DOI**. The automation cannot do it: `deposit:actions` is deliberately absent from
+   the token.
+
+**4. Confirm publication preceded submission.** That, and only that, closes **RUN-05** and
+   **ROADMAP criterion 6**. The criterion is about **ordering**, not a date (amended 2026-08-25). If
+   the paper is not yet submitted when Record B is published, that satisfies it too.
+
+**5. Report both records' DOIs to the manuscript session.** Record A: version
+   `10.5281/zenodo.22116461`, concept `10.5281/zenodo.22116460`. Record B: minted at step 2. The
+   paper's DOI citation and its data-availability wording are **that session's edits (D-29-19)**,
+   never this repository's.
+
+Filed as a single todo so it is findable outside this document:
+`.planning/todos/pending/2026-08-26-publish-record-b-and-add-record-a-back-link.md`.
 
 ---
 
@@ -65,7 +123,7 @@ primary claim. See *The E7 refined-pairing move*.
 | 3 | E7's ablation conclusion compared before and after, explicitly | fixed-intrinsics pairing **HELD** at `10/10`, p = 1/1024 = **0.00098** in both trees; refined pairing **MOVED** `8/10` (p = 56/1024 = 0.05469) → `7/10` (p = 176/1024 = 0.17188) | `29-e7-before-after.txt` | **DISCHARGED — and flagged to the author** |
 | 4 | The returned results are committed with provenance intact | `70e783f`: **227** files, **147** under `experiments/results/`, a strict superset of attempt 1's **209** by exactly 18 stage logs with zero paths lost; 40,497 insertions, zero deletions; largest admitted file **119,406** bytes; both md5 anchors unchanged across the commit | `29-commit-manifest.txt`, `29-gates-committed.txt` | **PASS** |
 | 5 | Every §3-facing number traceable to this run | all three generated LaTeX fragments (`benchmark_grid.tex`, `cpr_derived_values.tex`, `cpr_grouping.tex`) are inside the committed 147, at the frozen sha, with `gate3_git_sha_consistency` supplying the single-sha proof | `29-commit-manifest.txt`, `29-gates-committed.txt` | **PASS, repo-side (D-29-19)** |
-| 6 | The Zenodo results package is published before the paper is submitted | Record A **published**, version DOI `10.5281/zenodo.22116461`, concept DOI `10.5281/zenodo.22116460`. Record B **built, uploaded, verified, UNPUBLISHED** at deposition 22117061 | `29-zenodo-record-a.txt`, `29-zenodo-record-b.txt` | **OPEN — awaiting Publish** |
+| 6 | The Zenodo results package is published before the paper is submitted | Record A **published**, version DOI `10.5281/zenodo.22116461`, concept DOI `10.5281/zenodo.22116460`. Record B **built, uploaded, verified, UNPUBLISHED** at deposition 22117061 | `29-zenodo-record-a.txt`, `29-zenodo-record-b.txt` | **OPEN — deferred 2026-08-26 on the author's ruling; awaiting Publish** |
 
 ---
 
@@ -168,7 +226,14 @@ byte-identical. The 8→7 move therefore landed **before attempt 1**, which make
 
 **What Phase 29 did about it: nothing, deliberately.** No manuscript file was opened, read for
 editing, or written. `main.tex` is not in this repository. **§3 edits stay the author's** (D-29-16,
-D-29-19), and the manuscript-side half belongs to **POST-01, Phase 30**.
+D-29-19).
+
+**Routed to: POST-01, Phase 30 — as a manuscript-side item.** POST-01 reads *"§3, the Zenodo
+archive's `reference_outputs/`, and the tutorial's expected-value table are re-cut as a matched set
+against the new E2 numbers."* **The refined pairing's published digits in supplement §14 / MF-05 are
+part of that matched set**, and this is the one finding in Phase 29 that reaches toward §3. The
+artifact and this record agree with each other; it is the *manuscript* that now carries a superseded
+digit. Phase 30 decides what to do about it. **Phase 29 reports it and stops.**
 
 **Caveat carried with the number:** n = 10 seeds before and after. This measures scenario-generator
 seed variation only, on one metric (`camera_height_drift_mm`). It is not a bound on real-data
@@ -287,10 +352,14 @@ supersession is real rather than a relabelling.
 
 ### The A↔B linkage ruling
 
-The author ruled **`sequential`**: publish A, then build B against A's minted DOI. The accepted
-cost is that **Record A carries no structured `isSourceOf` back-link to Record B** — adding one
-requires `deposit:actions`, which the automation token deliberately does not hold. This is a named
-manual UI task, carried forward below, not a defect.
+The author ruled **`sequential`**: publish A, then build B against A's minted DOI. **Record A was
+published by the author, by hand, in the Zenodo web UI, between plan 29-07's Task 1 checkpoint and
+that plan's completion.** No automation published anything, at any point in this phase — the tool
+contains no publish code path and the token carries `deposit:write` only.
+
+The accepted cost of `sequential` is that **Record A carries no structured `isSourceOf` back-link to
+Record B** — adding one requires `deposit:actions`, which the automation token deliberately does not
+hold. This is a named manual UI task, carried forward below, not a defect.
 
 ### Status of criterion 6 as of this record
 
@@ -305,11 +374,37 @@ manual UI task, carried forward below, not a defect.
 4. The author confirms the ordering against submission.
 
 **Both of items 1 and 2 are owned by Phase 29.2** (see *Phase 29.2 owns the release and the
-publication*, below). Criterion 6 closes on the author's explicit, dated confirmation — never on
-an inference by this phase.
+publication*, below, and § *WHAT REMAINS* at the top of this record for the full ordered sequence).
+Criterion 6 closes on the author's explicit, dated confirmation — never on an inference by this
+phase.
 
-> **Ruling on Task 3's one-way door:** *(to be recorded here with its option id and date when the
-> author rules — this record is written before that checkpoint resolves.)*
+### Ruling on Task 3's one-way door — `defer`, 2026-08-26
+
+**Option chosen: `defer`. Ruled by the author, 2026-08-26**, at plan 29-08's Task 3
+`checkpoint:decision`.
+
+**Reason, as recorded:** Record B's metadata and its packaged README both cite `2.1.0`, and v2.1.0
+does not exist — `origin/main` is 0 commits ahead of `results/rerun-freeze-02`, which is 406 ahead,
+so the release has not been cut. **Publishing today would mint a permanent record naming a version
+nobody can install.** Phase 29.2's criterion 4 exists to enforce exactly this ordering.
+
+**Consequences of the ruling, recorded here so none of them is inferred later:**
+
+- **Criterion 6 is OPEN, awaiting Publish**, with what remains named above and in § *WHAT REMAINS*.
+- **Task 4 of plan 29-08 — the human-verify publication gate — was SKIPPED**, because the
+  publication it verifies is not happening in this phase.
+- **RUN-05 stays `Pending`** in `.planning/REQUIREMENTS.md`. It was **not** marked complete. Plans
+  29-04 and 29-07 each had to avoid a premature completion of this same requirement; this is the
+  third refusal, and it is deliberate.
+- **The phase closes against criteria 1-5**, all met and measured.
+- **Deferral is a legitimate outcome and not a failure.** The plan says so, RESEARCH § Open
+  Questions #5 anticipated it, and the phase was built to close this way rather than to fabricate a
+  closure it cannot evidence.
+- **Both drafts stay findable from this repository**: Record A published at
+  `https://zenodo.org/records/22116461` (version DOI `10.5281/zenodo.22116461`, concept DOI
+  `10.5281/zenodo.22116460`); Record B staged at deposition **22117061**,
+  `https://zenodo.org/deposit/22117061`.
+- **No publish call was made by automation under this option, or under any other.**
 
 ---
 
