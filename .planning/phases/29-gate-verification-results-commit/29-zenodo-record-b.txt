@@ -112,13 +112,77 @@ Presented 2026-08-26. Awaiting the author's ruling; nothing below is chosen by a
 
   (c) `author-other` — a different arrangement the author states.
 
---- 1.4  RULING ---------------------------------------------------------------
+--- 1.4  RULING (author, 2026-08-26) ------------------------------------------
 
-    PENDING — blocking checkpoint reached, execution stopped here.
+    Option id:     sequential
+    Ruling date:   2026-08-26
+    Ruled by:      author (tlancaster), via plan 29-07 Task 1
+                   (checkpoint:decision, gate blocking)
 
-    Option id:            (awaiting author)
-    Ruling date:          (awaiting author)
-    Record A minted DOI:  (none exists; Record A is unpublished as measured in § 1.1)
+RECORD A IS PUBLISHED. The author reviewed the draft and pressed Publish in the Zenodo
+web UI. No automation made that call; the token carries no publish scope.
 
-Task 2 (payload build) and Task 3 (draft creation) do not proceed until this section
-records the author's ruling.
+    Version DOI    10.5281/zenodo.22116461
+    Concept DOI    10.5281/zenodo.22116460   (version-independent, minted automatically)
+    Landing page   https://zenodo.org/records/22116461
+    version        1.0.0
+    license        cc-by-4.0
+    creator        Lancaster, Tucker  (ORCID 0000-0003-4074-7128)
+    file           real-rig-inputs.zip, 4341018405 bytes,
+                   md5:d95a1abc3f7089443ea2bc7ea12fb599   # pragma: allowlist secret
+                   — equal to plan 29-04's local digest, so the published bytes are the
+                   bytes that were built and verified.
+
+DOI resolution, measured this session:
+
+    HEAD https://doi.org/10.5281/zenodo.22116461
+        -> https://zenodo.org/records/22116461      http 200
+    HEAD https://doi.org/10.5281/zenodo.22116460
+        -> https://zenodo.org/records/22116461      http 200
+        (the concept DOI resolves to the sole version, as expected with one version)
+
+--- 1.5  Which DOI Record B's structured relation points at -------------------
+
+Record B's `isDerivedFrom` points at the VERSION DOI 10.5281/zenodo.22116461, not the
+concept DOI. Record B derives from THOSE EXACT BYTES — the 4,341,018,405-byte frameset
+whose md5 is recorded above — not from "the inputs in general". A concept DOI is a
+moving target by design: it follows the latest version, so if Record A were ever
+re-versioned, a concept-DOI relation would silently re-point Record B's provenance at
+frames its numbers were never computed from. The version DOI pins it.
+
+The concept DOI is recorded here and may be mentioned in prose, but it is not the
+structured relation's target.
+
+--- 1.6  ACCEPTED CONSEQUENCE — Record A carries no structured A->B link -------
+
+This is a consequence of the `sequential` ruling, accepted knowingly by the author. It is
+recorded rather than worked around.
+
+Record A was published BEFORE Record B existed, so its `related_identifiers` holds one
+entry only — `isSupplementTo` -> the GitHub repository — and no `isSourceOf` pointing at
+Record B. That is the exact inverse relation the research recommends, and it is absent.
+
+Adding it requires a Zenodo EDIT action on a published record, which needs the
+`deposit:actions` scope. The automation token deliberately carries `deposit:write` only,
+so this repository structurally cannot make that call.
+
+    OUTSTANDING HUMAN ACTION (the author's, in the Zenodo web UI):
+    After Record B is published, edit Record A at https://zenodo.org/records/22116461
+    and add a related identifier:
+        relation    isSourceOf
+        identifier  Record B's minted version DOI
+        scheme      doi
+    Editing a published record's metadata does NOT cut a new version and does NOT change
+    Record A's DOI. Plan 29-08 carries this forward as a todo so it is not forgotten.
+
+Automation must NOT attempt this edit.
+
+--- 1.7  `isNewVersionOf` — the exclusion holds under the chosen option --------
+
+The ruling chosen is `sequential`; the exclusion recorded in § 1.2 is option-independent
+and therefore still binds. Record B's serialised metadata carries no version relation
+against record 21889922. It carries `references` -> 10.5281/zenodo.21889922, which is
+true, plus the supersession sentence in prose in both the Zenodo description and the
+README inside the zip.
+
+Task 1 is COMPLETE. Tasks 2 and 3 are unblocked.
