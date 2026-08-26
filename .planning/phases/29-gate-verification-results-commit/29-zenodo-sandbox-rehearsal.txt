@@ -1,0 +1,61 @@
+================================================================================
+Phase 29 / plan 29-01 — Zenodo rehearsal evidence
+================================================================================
+
+This file is the evidence trail for plan 29-01. It records, in order:
+
+  1. the Task 2 credential gate (presence only — no token value is ever written
+     here, or anywhere else on disk),
+  2. the Task 3 sandbox rehearsal transcript (draft ids, links.html, the bucket
+     PUT response JSON, and the md5 round trip),
+  3. the Task 4 author verdict (D-29-06 confirmation).
+
+NO ZENODO ACCESS TOKEN APPEARS IN THIS FILE. Per D-29-07 the tokens are read
+from the process environment only; every Authorization header is scrubbed before
+it can reach a log line, an exception message, or this transcript.
+
+
+================================================================================
+1. TASK 2 — CREDENTIAL GATE (checkpoint:human-action, gate: blocking)
+================================================================================
+
+Date satisfied:  2026-08-26
+Gate:            Task 2, "Mint the two Zenodo access tokens"
+
+MEASURED FACTS (verified in the process environment that runs this phase's work;
+values were neither printed, echoed, logged, nor recorded):
+
+    env | grep -c '^ZENODO_SANDBOX_TOKEN='   ->  1
+    env | grep -c '^ZENODO_TOKEN='           ->  1
+    env | grep -c '^ZENODO_'                 ->  2
+
+    ZENODO_SANDBOX_TOKEN   present, 60 characters
+    ZENODO_TOKEN           present, 60 characters
+
+    git grep -c -I -e 'ZENODO_TOKEN=' -e 'ZENODO_SANDBOX_TOKEN=' \
+        -- . ':(exclude).planning'            ->  no match (exit 1)
+
+    Neither token value exists in any tracked file. Neither was written to disk.
+
+AUTHOR'S STATED SELECTION (NOT a measured fact):
+
+    Scope for both tokens: `deposit:write` ONLY, deliberately WITHOUT
+    `deposit:actions`.
+
+    This is recorded as the author's stated selection because it is not locally
+    verifiable. Zenodo's API exposes no scope-introspection endpoint; the scope
+    is provable only by observing a production upload succeed while a publish
+    attempt fails at Zenodo's end. Plan 29-01 makes no production call and never
+    attempts a publish, so this plan produces no evidence either way.
+
+    Why the omitted scope matters: with `deposit:actions` withheld, D-29-01's
+    "the author publishes by hand" is enforced by the credential rather than by
+    code review. Even if a publish call were somehow reached, it would be
+    rejected by Zenodo. The `grep` gates in Task 3's acceptance criteria are the
+    second, independent layer: no publish code path exists in the tool at all.
+
+    Accounts are separate: sandbox.zenodo.org registration is distinct from
+    zenodo.org, so the two tokens are not interchangeable and the distinct
+    environment variable names (T-29-04) keep a sandbox-intended run from
+    silently reaching production.
+
