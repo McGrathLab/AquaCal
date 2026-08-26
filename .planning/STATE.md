@@ -4,15 +4,15 @@ milestone: v2.1
 milestone_name: Clean Experimental Suite
 current_phase: 29
 current_phase_name: gate-verification-results-commit
-status: ready_to_plan
-stopped_at: Phase 28 COMPLETE (5/5). Production run finished 2026-08-25T06:48:28Z, 20/20 stages at exit 0, roll-up 176 PASS / 7 N/A / 0 FAIL. Output archived read-only and checksummed; 28-RUN-RECORD.md written. Next is Phase 29 (grade the run, commit results/rerun-freeze-02).
-last_updated: "2026-08-25T15:10:00.000Z"
+status: executing
+stopped_at: "Phase 28 COMPLETE (5/5). Production run finished 2026-08-25T06:48:28Z, 20/20 stages at exit 0, roll-up 176 PASS / 7 N/A / 0 FAIL. Output archived read-only and checksummed; 28-RUN-RECORD.md written. Next is Phase 29 (grade the run, commit results/rerun-freeze-02)."
+last_updated: "2026-08-26T13:58:04.092Z"
 last_activity: 2026-08-25
 last_activity_desc: "Phase 28 complete: the v2.1 production run executed, verdict read from the three hard signals, output preserved and checksummed, run record written"
 progress:
   total_phases: 9
   completed_phases: 7
-  total_plans: 55
+  total_plans: 63
   completed_plans: 55
   percent: 78
 ---
@@ -38,7 +38,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 Phase: 29 (gate-verification-results-commit) — READY TO PLAN
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
-Status: Ready to plan
+Status: Ready to execute
 
 **Phase 28 outcome — attempt 2's run, at `rerun-freeze-02` / `7005a27`.** Ran
 2026-08-25T00:47:07Z → 06:48:28Z, **6 h 01 m 21 s** (attempt 1: 6 h 00 m 21 s). All three hard
@@ -77,12 +77,15 @@ Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
 1. **D1's 8 `test_experiments_provenance.py` failures should now reappear.** They went dormant
    only because 29.1-06 emptied `experiments/results/`; that tree is repopulated as of this run.
    Predicted in 29.1-VERIFICATION-BAR, not caused by the run.
+
 2. **D4's 3 exact-equality anchor failures stand as ruled on.** `pytest tests/` reports
    `3 failed, 2407 passed, 26 skipped`. **Three is the expected count — zero or four are both
    anomalies.**
+
 3. **Phase 29's success criterion 6 is unsatisfiable as written.** It requires the Zenodo package
    published *"before the 2026-08-21 submission"*; that date has passed and this run finished
    2026-08-25. Needs re-dating or re-scoping by the author before Phase 29 can close against it.
+
 4. **The two attempts' environments are NOT byte-identical.** Five dev-tooling packages drifted
    (`filelock`, `packaging`, `platformdirs`, `python-discovery`, `ruff`). The numerical stack is
    identical — numpy 2.4.6, scipy 1.17.1, opencv-python 4.13.0.92 — which is what licenses

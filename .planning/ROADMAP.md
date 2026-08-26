@@ -533,14 +533,27 @@ which is what D-29-04's "in parallel with all grading work" means in practice. T
 ordered by wave.
 
 Plans:
+**Wave 1**
 
 - [ ] 29-01-PLAN.md — Zenodo tooling + full A/B rehearsal on sandbox; opens with the Record A composition ruling and the token gate (RUN-05) [wave 1, tracer, checkpoints]
 - [ ] 29-02-PLAN.md — land the returned run in the working clone, grade it at `--profile full`, inventory the 227 admitted files (RUN-03, RUN-04) [wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 29-03-PLAN.md — E2 same-seed control and E7 before/after sign test, with evidence files (RUN-03) [wave 2]
 - [ ] 29-04-PLAN.md — build Record A's input-only archive and stream it into an unpublished production draft (RUN-05) [wave 2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 29-05-PLAN.md — commit the 227 artifacts on `results/rerun-freeze-02`, byte-integrity proven either side (RUN-04) [wave 3]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 29-06-PLAN.md — repair the eight provenance-rail assertions; full suite to its ruled count of three (RUN-03) [wave 4]
 - [ ] 29-07-PLAN.md — build Record B from this run's own outputs and stage its draft with the ruled A/B linkage (RUN-05) [wave 4, checkpoint]
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 29-08-PLAN.md — phase record, forward-carried todos, and criterion 6 closed on the author's Publish confirmation (RUN-03, RUN-04, RUN-05) [wave 5, checkpoints]
 
 ### Phase 29.1: Post-Run Fixes & Re-Freeze (INSERTED)
