@@ -740,7 +740,7 @@ default conventional parser yields a **minor** bump to **2.1.0**.
 
   5. **RUN-05 closes**: the results package is published before the paper is submitted.
 
-**Plans**: 1/8 plans executed in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
+**Plans**: 2/8 plans executed in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
 above against the parser itself (measured 2026-08-26: **429** commits ahead, **47 `feat`**,
 **30 `fix`**, zero breaking-change markers — the minor bump to 2.1.0 is unaffected).
 
@@ -750,7 +750,7 @@ Plans:
       end in a throwaway `/tmp` clone; assert the bump string-equals `2.1.0` and the sdist's member
       list is clean
 
-- [ ] 29.2-02-PLAN.md — repair all three failing `pre-commit` hooks in `.pre-commit-config.yaml`,
+- [x] 29.2-02-PLAN.md — repair all three failing `pre-commit` hooks in `.pre-commit-config.yaml`,
       each with its rationale and its cost at the constant
 
 - [ ] 29.2-03-PLAN.md — convert the two drifting D4 assertions to documented ULP bounds; measure
@@ -834,5 +834,5 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
 | 29. Gate Verification & Results Commit | v2.1 | 8/8 | Complete (criteria 1-5; criterion 6 deferred to 29.2) | 2026-08-26 |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
-| 29.2. Merge, Release, and Publish | v2.1 | 1/8 | In Progress|  |
+| 29.2. Merge, Release, and Publish | v2.1 | 2/8 | In Progress|  |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |

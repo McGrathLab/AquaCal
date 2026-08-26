@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.2
 current_phase_name: merge-release-and-publish
 status: executing
-stopped_at: Completed 29.2-01-PLAN.md
-last_updated: "2026-08-26T23:24:11.323Z"
+stopped_at: Completed 29.2-02-PLAN.md
+last_updated: "2026-08-26T23:29:41.579Z"
 last_activity: 2026-08-26
 last_activity_desc: 29.2-01 pinned the release toolchain (python-semantic-release==10.6.1, gitpython==3.1.59 -- release.yml could not run at all unpinned) and rehearsed the ENTIRE v2.1.0 release end to end in a throwaway /tmp clone against a local bare remote. `semantic-release version --print` output string-equals 2.1.0; PSR's own parser reports MAJOR = 0, settling D-29.2-20. Release commit, annotated v2.1.0 tag, both version files, a 1,219-line CHANGELOG section and a clean sdist all produced and inspected. Nothing irreversible touched.
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 71
-  completed_plans: 64
+  completed_plans: 65
   percent: 80
 ---
 
@@ -35,12 +35,17 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.2 (merge-release-and-publish) — EXECUTING (1/8 plans complete)
+Phase: 29.2 (merge-release-and-publish) — EXECUTING (2/8 plans complete)
 Plan 29.2-01 COMPLETE 2026-08-26 — the phase tracer. Release toolchain pinned; the whole release
 rehearsed in /tmp and the 2.1.0 bump asserted by string equality. Evidence:
 `29.2-release-rehearsal.txt`, `29.2-sdist-listing.txt`. The scratch root
 `/tmp/aquacal-29.2-rehearsal` is deliberately LEFT IN PLACE — plan 29.2-05 must re-run against it
 (D-29.2-28b: the GitPython/PSR break is a live upstream situation).
+Plan 29.2-02 COMPLETE 2026-08-26 — all three hooks that would fail CI's `pre-commit run --all-files`
+are repaired in `.pre-commit-config.yaml`: both formatting hooks now share D-29.2-02b's corrected
+exclude (the superseded mirrored pattern covered NONE of the ten files `trailing-whitespace` would
+have rewritten), and `detect-secrets` gained a `.planning/` arm whose cost — the planning tree stops
+being secret-scanned — is written at the constant. No hook was run; the whole-tree proof is 29.2-04.
 criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
@@ -375,6 +380,7 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29.2]: 29.2-01: the v2.1.0 bump is measured, not assumed — `version --print` string-equals 2.1.0 and PSR's own parser reports MAJOR = 0, settling D-29.2-20 (fd78d77 needs no rewording)
 - [Phase 29.2]: 29.2-01: assert the sdist's member list, never its size — two builds of the identical tree 20s apart differ by 20 bytes with identical member lists (strengthens D-29.2-32)
 - [Phase 29.2]: 29.2-01: pin LC_ALL=C for every member-set comparison; the six-name sort order is collation-dependent and would false-alarm on an en_US.UTF-8 machine
+- [Phase 29.2]: 29.2-02: implemented D-29.2-02b's corrected exclude on both formatting hooks, not the superseded mirrored pattern; extended detect-secrets with a .planning/ arm and recorded that the planning tree stops being secret-scanned
 
 ### Blockers/Concerns
 
@@ -401,10 +407,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-26T23:23:25.667Z
+Last session: 2026-08-26T23:29:41.565Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.2-01-PLAN.md
+Stopped at: Completed 29.2-02-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -434,3 +440,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P07 | 26min | 3 tasks | 2 files |
 | Phase 29 P08 | 45min | 3 tasks | 8 files |
 | Phase 29.2 P01 | 20min | 3 tasks | 3 files |
+| Phase 29.2 P02 | 25m | 3 tasks | 1 files |
