@@ -1,0 +1,184 @@
+================================================================================
+RECORD A — IMMUTABLE INPUT PACKAGE: BUILD AND PRODUCTION DRAFT
+Plan 29-04 (RUN-05) — evidence transcript
+================================================================================
+
+Host:   https://zenodo.org/api   (PRODUCTION — selected explicitly via --base-url)
+Tool:   scripts/zenodo_upload.py (built and rehearsed in plan 29-01, run unchanged)
+Ruling: .planning/phases/29-gate-verification-results-commit/29-RECORD-COMPOSITION.md
+        option `research-default`, ruled by the author 2026-08-26
+
+This record is UNPUBLISHED. No DOI is registered and no publish call is made anywhere
+in this plan. Publish is the author's act in the Zenodo web UI (D-29-01), and the
+automation token carries the `deposit:write` scope only, deliberately without
+`deposit:actions`, so the omission is enforced by the credential as well as the code.
+
+No credential value appears in this file, in any command line, or in any log this plan
+produced. The token is read from the process environment by the tool alone (D-29-07).
+
+
+================================================================================
+0. PRECONDITION GATES
+================================================================================
+
+Composition ruling present
+    29-RECORD-COMPOSITION.md exists and carries the author's 2026-08-26 ruling,
+    option `research-default`, taken at plan 29-01 Task 1 (checkpoint:decision,
+    gate blocking).                                                          PASS
+
+Sandbox rehearsal verdict present
+    29-zenodo-sandbox-rehearsal.txt § 3 "TASK 4 — AUTHOR VERDICT" carries the
+    author's verbatim approval, dated 2026-08-26:
+        "I approve the rehearsal and continuing to the plans you can run."
+    This is the D-29-06 confirmation required before any production call.     PASS
+
+Extracted input cache present
+    aquacal_data/real-rig/real-rig/ exists (its parent carries a .gitignore of
+    `*`, so nothing under it can reach git).                                  PASS
+
+Free disk space
+    686,968,180,736 bytes (687.0 GB) free on the build target, against a
+    ~4.34 GB archive. Requirement was 10 GB.                                  PASS
+
+PRODUCTION REACHABILITY RE-PROBE (required by plan 29-01 Finding 1)
+    Plan 29-01 measured production zenodo.org as down or severely degraded on
+    2026-08-26 (TLS completes, backend takes ~25 s or never answers). Starting a
+    multi-hour PUT against a degraded backend is how a transfer dies at 90%, so
+    reachability was re-probed immediately before this plan's first production
+    call, NOT assumed from the orchestrator's earlier probe.
+
+    GET https://zenodo.org/api/records/21889922, three samples:
+        sample1  http=200  time=0.454541s
+        sample2  http=200  time=0.509290s
+        sample3  http=200  time=0.496194s
+
+    Production has RECOVERED. Proceeding.                                     PASS
+
+
+================================================================================
+1. TASK 1 — RECORD A'S ARCHIVE, BUILT FROM THE EXTRACTED CACHE
+================================================================================
+
+Date:   2026-08-26
+Source: aquacal_data/real-rig/real-rig/  (extracted cache of published record 21889922)
+Built:  ~/zenodo-record-a/real-rig-inputs.zip   (OUTSIDE the repository, untracked)
+Method: python zipfile, ZIP_STORED (no deflate — the payload is 3,967 PNGs, already
+        compressed), ZIP64 enabled, members walked in sorted order.
+
+The archive is BUILT, never reused. aquacal_data/downloads/real-rig-calib.zip is the
+published 4,350,418,046-byte bundle that mixes inputs and outputs together, and that
+mixing is the defect RUN-05 exists to repair. It was read for its top-level layout only
+and is byte-for-byte unmodified (re-measured below).
+
+--- archive identity ---------------------------------------------------------
+
+    path        ~/zenodo-record-a/real-rig-inputs.zip
+    size        4341018405 bytes  (4.341 GB / 4.043 GiB)
+    md5         d95a1abc3f7089443ea2bc7ea12fb599  # pragma: allowlist secret
+
+The digest above is recorded verbatim in the `md5:<hex>` shape the repository already
+uses, because it is (a) the round-trip target Task 2 compares the server's returned
+`checksum` against, and (b) the value Phase 30 will need if the dataset pin in
+`src/aquacal/datasets/data/manifest.json` is ever repointed. That repointing is
+explicitly deferred out of Phase 29; manifest.json was read for its conventions only
+and is unmodified.
+
+    md5:d95a1abc3f7089443ea2bc7ea12fb599  # pragma: allowlist secret
+
+Sidecar `~/zenodo-record-a/real-rig-inputs.zip.md5` holds the same digest in `md5sum`
+format, and a freshly computed `md5sum` of the archive agrees with it exactly.
+
+--- composition, asserted against the ruling ----------------------------------
+
+Ruled member list (29-RECORD-COMPOSITION.md § Record A, option `research-default`),
+paths relative to aquacal_data/real-rig/real-rig/:
+
+    extrinsic/     3.6 GB    ruled
+    intrinsic/     518 MB    ruled
+    README.md      3.5 KB    ruled
+
+Archive top-level member set, measured by listing the archive:
+
+    ['README.md', 'extrinsic', 'intrinsic']
+
+IDENTICAL to the ruled list. No extra top-level member, none missing.
+
+    total entries          3996   (3968 files + 28 directory entries)
+    extrinsic/             3406 files   across 13 camera directories
+    intrinsic/              561 files   across 13 camera directories
+    README.md                 1 file
+    file extensions        3967 .png + 1 .md   (no other extension present)
+
+Per-camera file counts:
+
+    extrinsic/e3v8250  262      intrinsic/e3v8250  116
+    extrinsic/e3v829d  262      intrinsic/e3v829d   50
+    extrinsic/e3v82e0  262      intrinsic/e3v82e0   41
+    extrinsic/e3v82f9  262      intrinsic/e3v82f9   34
+    extrinsic/e3v831e  262      intrinsic/e3v831e   34
+    extrinsic/e3v832e  262      intrinsic/e3v832e   44
+    extrinsic/e3v8334  262      intrinsic/e3v8334   35
+    extrinsic/e3v83e9  262      intrinsic/e3v83e9   34
+    extrinsic/e3v83eb  262      intrinsic/e3v83eb   38
+    extrinsic/e3v83ee  262      intrinsic/e3v83ee   31
+    extrinsic/e3v83ef  262      intrinsic/e3v83ef   37
+    extrinsic/e3v83f0  262      intrinsic/e3v83f0   33
+    extrinsic/e3v83f1  262      intrinsic/e3v83f1   34
+
+13 camera directories under each of extrinsic/ and intrinsic/, matching the metadata
+description's "13 per-camera directories" claim in both places.
+
+--- exclusion assertions ------------------------------------------------------
+
+    entries whose path contains "reference_outputs"                        0
+    .json entries at the archive root (beyond any the ruling assigned)     0
+      (the ruling assigned none; the only root-level file is README.md)
+    entries named config_paper.yaml                                        0
+    entries named config_quickstart_not_paper.yaml                         0
+    entries named reference_calibration.json                               0
+
+Those four are Record B's members under the same ruling and are deliberately absent
+here. Record A is inputs ONLY: no calibration result, no configuration, no run output.
+The archive was also not chunked per camera — considered and rejected 2026-08-15,
+because no consumer wants one camera without the others and upload reliability belongs
+to the client, not to the published artifact's shape.
+
+--- Zenodo quota headroom -----------------------------------------------------
+
+    per-file limit     50 GB      this file    4.341 GB     11.5x headroom
+    per-record limit   50 GB      this record  4.341 GB     11.5x headroom
+    per-record files   100 cap    this record  1 file
+
+No quota request is needed.
+
+--- ARCHIVE ROOT LAYOUT: A DELIBERATE DIFFERENCE FROM 21889922 ----------------
+
+Recorded here because it is a real difference a Phase 30 reader must not discover by
+surprise.
+
+The published archive real-rig-calib.zip wraps everything in a single top-level
+`real-rig/` directory (its first entries are `real-rig/`, `real-rig/extrinsic/`,
+`real-rig/intrinsic/`, `real-rig/reference_outputs/`, ...), which is why extracting it
+into aquacal_data/real-rig/ produces the doubled path aquacal_data/real-rig/real-rig/.
+
+Record A's archive has NO such wrapper: its root is `extrinsic/`, `intrinsic/`,
+`README.md` directly. That is what the composition ruling specifies (its paths are
+given relative to aquacal_data/real-rig/real-rig/) and what this plan's acceptance
+criterion requires (the top-level member set must equal the ruled list).
+
+CONSEQUENCE FOR PHASE 30: the loader cannot simply unzip Record A where it unzips
+21889922 today. It already could not — 29-RECORD-COMPOSITION.md § "Carried forward"
+item 1 records that splitting one record into two means `load_example('real-rig')` must
+fetch two records and merge them into one cache layout, or the pin stays on 21889922 by
+explicit decision. New extraction logic is required under any split; the flat root does
+not add that requirement, it only fixes which prefix that logic must strip. Repointing
+the pin remains explicitly deferred out of Phase 29.
+
+--- immutability re-assertions ------------------------------------------------
+
+    aquacal_data/downloads/real-rig-calib.zip   4350418046 bytes   UNCHANGED
+    git status --porcelain                       (empty)
+    nothing written under experiments/, src/ or aquacal_data/
+
+Nothing built by this task is committed. The archive and its sidecar live outside the
+repository at ~/zenodo-record-a/ and are upload artifacts, not repo artifacts.
