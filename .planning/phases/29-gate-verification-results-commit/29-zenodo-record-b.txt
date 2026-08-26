@@ -599,3 +599,256 @@ was never recorded would be a draft nobody can find or clean up.
 
 Every URL above is on the production host.
 
+
+--- 3.4  Payload upload ---------------------------------------------------------
+
+    local file   ~/zenodo-record-b/real-rig-results-2.1.0.zip
+    local size   9503394 bytes
+    local md5    f033538e1c9da165aa6267f4ae5d4f78   # pragma: allowlist secret
+    key          real-rig-results-2.1.0.zip
+
+The round-trip target is the digest above, computed over the exact bytes on disk before
+the transfer starts. A transfer that completed without a matching digest is a failed
+transfer.
+
+Verbatim tool output follows.
+
+
+--------------------------------------------------------------------------------
+{
+  "action": "update_metadata",
+  "base_url": "https://zenodo.org/api",
+  "bucket_url_present": true,
+  "deposition_id": 22117061,
+  "deposition_response": {
+    "conceptrecid": "22117060",
+    "created": "2026-08-26T19:14:26.215678+00:00",
+    "files": [],
+    "id": 22117061,
+    "links": {
+      "badge": "https://zenodo.org/badge/doi/.svg",
+      "bucket": "https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c",
+      "discard": "https://zenodo.org/api/deposit/depositions/22117061/actions/discard",
+      "edit": "https://zenodo.org/api/deposit/depositions/22117061/actions/edit",
+      "files": "https://zenodo.org/api/deposit/depositions/22117061/files",
+      "html": "https://zenodo.org/deposit/22117061",
+      "latest_draft": "https://zenodo.org/api/deposit/depositions/22117061",
+      "latest_draft_html": "https://zenodo.org/deposit/22117061",
+      "newversion": "https://zenodo.org/api/deposit/depositions/22117061/actions/newversion",
+      "publish": "https://zenodo.org/api/deposit/depositions/22117061/actions/publish",
+      "self": "https://zenodo.org/api/deposit/depositions/22117061"
+    },
+    "metadata": {
+      "access_right": "open",
+      "creators": [
+        {
+          "affiliation": "Georgia Institute of Technology",
+          "name": "Lancaster, Tucker",
+          "orcid": "0000-0003-4074-7128"
+        }
+      ],
+      "description": "<p><strong>Results package</strong> for the AquaCal 13-camera underwater production rig calibration: the configuration that produced the published numbers, the reference outputs themselves, the archived calibration comparison target, and the run manifest recording the exact software environment. A few megabytes, re-versioned whenever the results change.</p><p><strong>Contents:</strong></p><ul><li><code>config_paper.yaml</code> &mdash; the configuration behind the published results.</li><li><code>config_quickstart_not_paper.yaml</code> &mdash; the faster quickstart configuration, which does <em>not</em> reproduce the published numbers.</li><li><code>reference_calibration.json</code> &mdash; the archived calibration used as a comparison target.</li><li><code>reference_outputs/</code> &mdash; <code>calibration.json</code>, <code>diagnostics.json</code>, <code>exp2_spatial_errors.csv</code>, <code>interface_ablation_conditioning.npz</code>, <code>reconstruction_errors.csv</code>, <code>reprojection_residuals.csv</code>.</li><li><code>run_manifest.json</code> &mdash; interpreter, library versions, host and git revision for the run that produced the outputs above.</li></ul><p><strong>Supersession notice &mdash; please read before comparing numbers.</strong> This record supersedes the <code>reference_outputs/</code> contained in Zenodo record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a>. Record 21889922 is retained as the historical submitted package and still contains the <em>older</em> reference outputs, which do not match the current paper. Any comparison against the published numbers must use the <code>reference_outputs/</code> in <em>this</em> record, not the ones inside 21889922.</p><p><strong>Inputs.</strong> These results were computed from the calibration frames published as Record A: <a href=\"https://doi.org/10.5281/zenodo.22116461\">10.5281/zenodo.22116461</a> (concept DOI, version-independent: 10.5281/zenodo.22116460). Reproducing them requires both records: the frames from Record A and the configuration from this one.</p><p><strong>Provenance.</strong> Produced by AquaCal 2.1.0 at git revision 7005a2771aa115e4f4c1284cec7e145739586a4a, Python 3.11.15, NumPy 2.4.6, SciPy 1.17.1, OpenCV 4.13.0 (pinned to a single minor: ChArUco corner detection changes across OpenCV minor versions and moves the published error metrics).</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+      "imprint_publisher": "Zenodo",
+      "keywords": [
+        "calibration",
+        "multi-camera",
+        "underwater",
+        "refraction",
+        "computer-vision",
+        "charuco",
+        "snell-law",
+        "reproducibility"
+      ],
+      "language": "eng",
+      "license": "cc-by-4.0",
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.22117061",
+        "recid": 22117061
+      },
+      "publication_date": "2026-08-26",
+      "related_identifiers": [
+        {
+          "identifier": "10.5281/zenodo.22116461",
+          "relation": "isDerivedFrom",
+          "resource_type": "dataset",
+          "scheme": "doi"
+        },
+        {
+          "identifier": "10.5281/zenodo.21889922",
+          "relation": "references",
+          "resource_type": "dataset",
+          "scheme": "doi"
+        },
+        {
+          "identifier": "https://github.com/McGrathLab/AquaCal",
+          "relation": "isSupplementTo",
+          "scheme": "url"
+        }
+      ],
+      "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+      "upload_type": "dataset",
+      "version": "2.1.0"
+    },
+    "modified": "2026-08-26T19:14:53.997678+00:00",
+    "owner": 1547073,
+    "record_id": 22117061,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest"
+  },
+  "links_html": "https://zenodo.org/deposit/22117061",
+  "local_file": "/home/tlancaster/zenodo-record-b/real-rig-results-2.1.0.zip",
+  "local_md5": "md5:f033538e1c9da165aa6267f4ae5d4f78",
+  "metadata_file": "scripts/zenodo_metadata_b.json",
+  "metadata_title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+  "round_trip_verified": true,
+  "sandbox": false,
+  "state": "unsubmitted",
+  "submitted": false,
+  "upload_response": {
+    "checksum": "md5:f033538e1c9da165aa6267f4ae5d4f78",
+    "created": "2026-08-26T19:14:54.470160+00:00",
+    "delete_marker": false,
+    "is_head": true,
+    "key": "real-rig-results-2.1.0.zip",
+    "links": {
+      "self": "https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c/real-rig-results-2.1.0.zip",
+      "uploads": "https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c/real-rig-results-2.1.0.zip?uploads=1",
+      "version": "https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c/real-rig-results-2.1.0.zip?version_id=f82ee9f1-f44b-4c71-9da4-865c903d62cb"
+    },
+    "mimetype": "application/zip",
+    "size": 9503394,
+    "updated": "2026-08-26T19:14:55.594262+00:00",
+    "version_id": "f82ee9f1-f44b-4c71-9da4-865c903d62cb"
+  },
+  "utc": "2026-08-26T19:14:53Z"
+}
+
+--- 3.5  ROUND-TRIP PROOF -------------------------------------------------------
+
+The server's returned digest is compared against a digest computed locally over the exact
+bytes uploaded. This is the assertion that proves ARRIVAL rather than assuming it.
+
+    local  md5   f033538e1c9da165aa6267f4ae5d4f78    # pragma: allowlist secret
+    server md5   f033538e1c9da165aa6267f4ae5d4f78    # pragma: allowlist secret
+    MATCH
+
+    local  size  9503394 bytes
+    server size  9503394 bytes
+    MATCH
+
+Corroborating fields from the bucket PUT response (full JSON appended verbatim above):
+
+    key           real-rig-results-2.1.0.zip
+    checksum      md5:f033538e1c9da165aa6267f4ae5d4f78   # pragma: allowlist secret
+    size          9503394
+    mimetype      application/zip
+    version_id    f82ee9f1-f44b-4c71-9da4-865c903d62cb
+    is_head       true
+    delete_marker false
+    created       2026-08-26T19:14:54Z
+    bucket        https://zenodo.org/api/files/60566e09-72c6-4423-9aee-1bf99ed0899c
+
+    Transfer completed in ~1.5 s at ~6.0 MB/s, first attempt, zero retries.
+
+ROUND TRIP VERIFIED. The bytes on Zenodo are the bytes that were built, and those bytes
+are this run's own outputs (§ 2.3) and not the archive's superseded ones (§ 2.4).
+
+--- 3.6  UNPUBLISHED ASSERTION — measured, not asserted -------------------------
+
+An independent read-only GET at 2026-08-26T19:15:10Z, after the upload:
+
+    GET https://zenodo.org/api/deposit/depositions/22117061      http 200
+
+    state          "unsubmitted"      <- NOT published
+    submitted      false              <- NOT published
+    doi            null               <- NO DOI registered
+    doi_url        null               <- NO DOI registered
+    conceptdoi     null               <- NO concept DOI registered
+    links.record   null               <- no public record exists
+    conceptrecid   "22117060"         <- a reserved concept RECORD ID, not a DOI. Zenodo
+                                         allocates this at draft creation; it is not a
+                                         registered identifier and resolves to nothing
+                                         until Publish. D-29-03 forbids reserving a DOI,
+                                         and no DOI was reserved.
+
+    files          1
+        filename   real-rig-results-2.1.0.zip
+        filesize   9503394
+        checksum   f033538e1c9da165aa6267f4ae5d4f78   # pragma: allowlist secret
+
+    version        2.1.0
+    upload_type    dataset
+    access_right   open
+    license        cc-by-4.0
+
+    related_identifiers, as the server holds them:
+        isDerivedFrom  -> 10.5281/zenodo.22116461               (doi)
+        references     -> 10.5281/zenodo.21889922               (doi)
+        isSupplementTo -> https://github.com/McGrathLab/AquaCal (url)
+        entries carrying the excluded version relation: 0
+
+RECORD B IS AN UNPUBLISHED DRAFT WITH NO REGISTERED DOI. Nothing irreversible happened.
+
+--- 3.7  Publish path — asserted absent from the tool ---------------------------
+
+    grep -v '^\s*#' scripts/zenodo_upload.py | grep -c '/actions/'      ->  0
+
+scripts/zenodo_upload.py was run UNCHANGED and still contains no deposition-action code
+path. The tool prints, on every invocation:
+
+    "This tool does not publish. Press Publish yourself in the Zenodo web UI."
+
+The `deposit:write`-only token makes the omission structural as well as textual: even if
+the call existed, the credential could not authorise it.
+
+--- 3.8  Record A's upload did NOT fail — the fallback was not taken ------------
+
+Plan 29-07 Task 3 documents a fallback for the case where Record A's upload failed. It
+did not. Plan 29-04 reports a matching md5 round trip on the first attempt, and Record A
+is now PUBLISHED at 10.5281/zenodo.22116461 with its file intact (§ 1.4). The fallback is
+recorded here as NOT TAKEN so a later reader does not have to infer it from silence.
+
+--- 3.9  Dataset pin — deliberately untouched -----------------------------------
+
+src/aquacal/datasets/data/manifest.json still pins record 21889922. Nothing in this phase
+needs that to move: Record B is unpublished and has no DOI, and four of the ten sites
+referencing 21889922 are inside the frozen experiments/ tree. The repoint is carried
+forward as Phase 30 / POST-01 work and is recorded in plan 29-08. download.py and
+loader.py are likewise unmodified.
+
+    git diff --quiet -- src/ experiments/      exit 0
+
+================================================================================
+4. OUTSTANDING HUMAN ACTIONS (the author's, in the Zenodo web UI)
+================================================================================
+
+Automation must not perform any of these. The token cannot, and D-29-01 says it should
+not.
+
+  1. REVIEW AND PUBLISH RECORD B.
+         https://zenodo.org/deposit/22117061
+     Publishing mints Record B's permanent DOI over exactly the 9,503,394 bytes whose
+     digest is recorded in § 3.5. This reaches its blocking checkpoint at plan 29-08.
+
+  2. AFTER PUBLISHING RECORD B, ADD RECORD A'S BACK-LINK BY HAND.
+         https://zenodo.org/records/22116461  ->  Edit  ->  Related identifiers
+             relation    isSourceOf
+             identifier  Record B's minted version DOI
+             scheme      doi
+     Record A was published before Record B existed, so it carries no structured A->B
+     link (§ 1.6). Editing a published record's metadata does NOT cut a new version and
+     does NOT change Record A's DOI. This is the accepted, ruled consequence of the
+     `sequential` option, not a defect. Plan 29-08 carries it forward as a todo.
+
+  3. REPORT BOTH DOIs TO THE MANUSCRIPT SESSION.
+     The paper's DOI citation and data-availability wording are the manuscript session's
+     edits (D-29-19), not this repository's. Nothing here touches main.tex.
+
+RUN-05 IS NOT COMPLETE and is not marked complete by this plan. It reads: "the results
+package matching this run's numbers is PUBLISHED before the paper is submitted." Record B
+is built, uploaded and byte-verified, but it is UNPUBLISHED. RUN-05 closes at plan 29-08,
+on the author's confirmation, and stays Pending until then. Plan 29-04 had to revert a
+premature completion of exactly this requirement; the mistake is not repeated here.
+
+Task 3 is COMPLETE.
