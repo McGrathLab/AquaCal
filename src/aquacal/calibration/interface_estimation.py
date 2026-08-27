@@ -58,9 +58,11 @@ from aquacal.utils.transforms import (
 #: is untouched by this constant -- no threshold, no tolerance.
 #:
 #: Justified by two measurements, quoted rather than paraphrased:
-#:   - the production rig is **198 / 73,975 = 0.268%**;
-#:   - E1's degenerate arm logged **14,949** against a scenario with observations
-#:     in the tens of thousands, i.e. tens of percent.
+#:
+#: - the production rig is **198 / 73,975 = 0.268%**;
+#: - E1's degenerate arm logged **14,949** against a scenario with observations
+#:   in the tens of thousands, i.e. tens of percent.
+#:
 #: Two orders of magnitude apart, so the value is not delicate. 1% is roughly 4x
 #: the measured rig value and errs toward staying loud -- a rig that degraded to
 #: 1% would still shout.

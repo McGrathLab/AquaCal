@@ -890,6 +890,7 @@ def save_diagnostic_report(
     Save diagnostic report to disk.
 
     Creates:
+
     - diagnostics.json: Summary statistics and recommendations
     - spatial_error_{cam}.png: Per-camera error heatmaps (if save_images=True)
     - camera_rig.png: 3D camera rig visualization (if save_images=True)
