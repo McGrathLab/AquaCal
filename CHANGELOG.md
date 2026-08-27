@@ -2,6 +2,1285 @@
 
 <!-- version list -->
 
+## v2.1.0 (2026-08-27)
+
+### Bug Fixes
+
+- **23**: Correct four stale provenance strings and supersede the E2 frameset doc (FIX-06)
+  ([`3f867c2`](https://github.com/McGrathLab/AquaCal/commit/3f867c213233677c565b7437f6269d9b8a1fe16a))
+
+- **23-02**: Named --check exclusion contract, plus the always-red-gate finding
+  ([`2a5c18d`](https://github.com/McGrathLab/AquaCal/commit/2a5c18d5a6f2286f69e52cad15164d3e89239c8c))
+
+- **23-02**: Resolve E2 real-rig record relative to --out at both call sites
+  ([`e89e1fb`](https://github.com/McGrathLab/AquaCal/commit/e89e1fb34d8d7a1d74c3294f3d2b7d3937a83cbe))
+
+- **24**: Close three review warnings on the degeneracy instrumentation
+  ([`dfbbfe7`](https://github.com/McGrathLab/AquaCal/commit/dfbbfe7b773a52df5455bd34de32d62494ccfcbb))
+
+- **24**: Collapse E7 degeneracy counts per seed before summing (CR-01)
+  ([`bc8cbf7`](https://github.com/McGrathLab/AquaCal/commit/bc8cbf7433f1585f239634f0b790fae99f4a8126))
+
+- **24**: Correct DISCARD_KEYS base count from 15 to 14 in plan 24-01
+  ([`e0be0fa`](https://github.com/McGrathLab/AquaCal/commit/e0be0fa57ed9d635454690b2ea4d316a92664dcc))
+
+- **24**: Restore the guarded 'unreliable' wording in DegenerateObservationWarning
+  ([`12f8a50`](https://github.com/McGrathLab/AquaCal/commit/12f8a507a79e3c4dc8bad502cd47d8c4994e2a23))
+
+- **24**: Thread discard_stage through E7's two solver calls (CR-02)
+  ([`9f42c0e`](https://github.com/McGrathLab/AquaCal/commit/9f42c0ee15b573c1392081d6fb0822e035b5b768))
+
+- **26-12**: Record an absent E2 record instead of crashing on it
+  ([`a033726`](https://github.com/McGrathLab/AquaCal/commit/a0337262fbf49952f636747194b92a94d3948548))
+
+- **26-12**: Schedule e3 after the stage that writes the record it reads
+  ([`2f76efb`](https://github.com/McGrathLab/AquaCal/commit/2f76efbb34ee2f09feb22e2a9867cfa5a40febea))
+
+- **26-13**: Stamp a seed on E1's and E7's benchmark records
+  ([`56e1ae5`](https://github.com/McGrathLab/AquaCal/commit/56e1ae5488bd6156b8633d47b9507c7a07166a5a))
+
+- **27-02**: Make is_stage_complete read the exit-code column (D-22)
+  ([`1b8afa3`](https://github.com/McGrathLab/AquaCal/commit/1b8afa3bcca2e1e7cb0d845f98e0825584271a32))
+
+- **27-02**: Make the frameset pre-flight path-kind agnostic (D-10)
+  ([`6dddbaa`](https://github.com/McGrathLab/AquaCal/commit/6dddbaabbc705f5cbb1259513a22a2b44f3af89c))
+
+- **27-03**: Retag the three smoke-unwritable artifacts as full-only (D-20 class 1)
+  ([`090244e`](https://github.com/McGrathLab/AquaCal/commit/090244ef80991f37df4e75b9c43a5533c67b957a))
+
+- **27-03**: Thread profile into the E4/E5/E6 checkers (D-20 classes 2 and 3)
+  ([`cd7c658`](https://github.com/McGrathLab/AquaCal/commit/cd7c65849205a53eac2cbc3f73a7b421bc89e468))
+
+- **27-04**: Resolve real_rig_metrics.json from --out, not a hardcode (D-23)
+  ([`131f16a`](https://github.com/McGrathLab/AquaCal/commit/131f16a3b628f92aee5d2d1cee6570c290374cea))
+
+- **27-08**: Neither Windows literal is reachable as a default (D-12, D-29)
+  ([`bb5a4ae`](https://github.com/McGrathLab/AquaCal/commit/bb5a4ae77c381bc34290e545a60853f2b77970f6))
+
+- **29**: Repair eight provenance-rail assertions the returned tree exposed
+  ([`5799b14`](https://github.com/McGrathLab/AquaCal/commit/5799b145ef7aca2e67c442955c945a19b5a017dc))
+
+- **29**: Revert a false RUN-05 completion written by `phase complete`
+  ([`2205eeb`](https://github.com/McGrathLab/AquaCal/commit/2205eeb2c4d3faa3be6d6e12f04fcff5a6bfb54b))
+
+- **29.1**: Stop the E7 overwrite hazard auto-closing as resolved
+  ([`8d1576e`](https://github.com/McGrathLab/AquaCal/commit/8d1576e7ce085eb1506602a78523bc82d9088dc9))
+
+- **29.1-01**: Publish E2's guard count on E4's real-rig row and exempt it from gate 1
+  ([`290ed75`](https://github.com/McGrathLab/AquaCal/commit/290ed757da22cb9a38c6da2a6fdf887e52b165ca))
+
+- **29.1-02**: Derive the band's scope field from the run, and close the three E1 todos
+  ([`424c1e4`](https://github.com/McGrathLab/AquaCal/commit/424c1e453f4410d012279f33125f809856cfbc89))
+
+- **29.1-02**: Enforce the band's no-overwrite policy at the call and branch its log
+  ([`c80490e`](https://github.com/McGrathLab/AquaCal/commit/c80490e407a1e430cbe306bc20b1bec47b63f780))
+
+- **29.1-02**: Restore the two axis literals and the Phase 28 fact in E1's docstring
+  ([`8698ab2`](https://github.com/McGrathLab/AquaCal/commit/8698ab2a74a56a8ba27e399d0540f48d491a6b28))
+
+- **29.1-02**: Unclaim e1_seed_band_degeneracy_breakdown.json from all three manifests
+  ([`fb1e9f7`](https://github.com/McGrathLab/AquaCal/commit/fb1e9f70197c3a94c7e846504cff073e3cadb44f))
+
+- **29.1-03**: Correct 11 unattributed annotations and pin them with a gate
+  ([`df8b3c8`](https://github.com/McGrathLab/AquaCal/commit/df8b3c88c99f746d667d8083d493ebb2ca4593f2))
+
+- **29.1-09**: Point the two conditional artifacts at the directory their writer uses
+  ([`4e5a37c`](https://github.com/McGrathLab/AquaCal/commit/4e5a37cb06cbfa12018cbb70a47bd5cbd61af623))
+
+- **29.2-02**: Add a .planning/ arm to detect-secrets, and write its cost down
+  ([`d9e8f49`](https://github.com/McGrathLab/AquaCal/commit/d9e8f496aef27e8f53a61b01bc3f0dc676e316a7))
+
+- **29.2-02**: Scope both formatting hooks off the byte-sensitive artifacts
+  ([`e671074`](https://github.com/McGrathLab/AquaCal/commit/e671074d07d8164c5552f5a4a96858b67fb2b616))
+
+- **29.2-03**: Bound the two drifting D4 assertions in representable steps
+  ([`3026813`](https://github.com/McGrathLab/AquaCal/commit/30268135febb0a007d0a77946c75364e7bd3029b))
+
+- **deps**: Pin opencv-python to 4.13.* and name it in reproduction claims
+  ([`fa9ec3a`](https://github.com/McGrathLab/AquaCal/commit/fa9ec3a99b3a698079824f55a4c459b5e6693ebd))
+
+- **provenance**: Gate and record editable-install version drift
+  ([`25e65c0`](https://github.com/McGrathLab/AquaCal/commit/25e65c070056e02e3386fc3cfe6e03d6c63f497f))
+
+- **state**: Restore status executing after record-session flipped it
+  ([`723e9d6`](https://github.com/McGrathLab/AquaCal/commit/723e9d61df61591c8af60074ff8499e717f19d93))
+
+### Chores
+
+- Archive v2.0 Publication Prep milestone
+  ([`d550cdc`](https://github.com/McGrathLab/AquaCal/commit/d550cdcfe3debdbd43012e1d7a3a51e1395dead5))
+
+- Drop the pytest pre-push hook, keep the ruff ones
+  ([`cc56eea`](https://github.com/McGrathLab/AquaCal/commit/cc56eea2e3778d2db1956e5adab837963c04f527))
+
+- Remove REQUIREMENTS.md at v2.0 milestone close
+  ([`5126667`](https://github.com/McGrathLab/AquaCal/commit/51266674f9a9b79becdba32c7fa5ec67298aa78d))
+
+- **24**: Raise executor to opus for phase 24, with revert todo
+  ([`4deaa0b`](https://github.com/McGrathLab/AquaCal/commit/4deaa0bf16a0b9946953e0d100082878b6c46e6a))
+
+- **25-05**: Ignore the Huber-knee probe's raw per-arm outputs (D-19)
+  ([`011f9b1`](https://github.com/McGrathLab/AquaCal/commit/011f9b135ac557753d71a7f30cb74f911adf7016))
+
+- **26**: Mark phase 26 execution started
+  ([`d0bbe09`](https://github.com/McGrathLab/AquaCal/commit/d0bbe09c29fb8da29c7a214f36b10ed8ff312b3e))
+
+- **26**: Record waves 1-6 complete (9/10 plans)
+  ([`14ed743`](https://github.com/McGrathLab/AquaCal/commit/14ed7435a47f44bf551fa4eb059e093bc17e6f91))
+
+- **26-01**: Archive every pre-re-run output tree into experiments/pre_rerun_baseline/
+  ([`048c14f`](https://github.com/McGrathLab/AquaCal/commit/048c14fdce8b5ebc0492075d448719258b8d038d))
+
+- **28**: Commit the production queue's 18 per-stage logs
+  ([`f399615`](https://github.com/McGrathLab/AquaCal/commit/f39961597985e7315c86d6d8d93cc5ef11ca2f88))
+
+- **28**: Extend DATA-01b ignores to the three ungoverned E2 trees
+  ([`672be71`](https://github.com/McGrathLab/AquaCal/commit/672be7163f0b08dd7b335c80812753fe44821765))
+
+- **28-01**: Assert environment provenance before the burn (T-28-01)
+  ([`79106d8`](https://github.com/McGrathLab/AquaCal/commit/79106d821a42f30f1bf058f6fa2b501b3a321306))
+
+- **28-01**: Build production clone, env and dry-run venue
+  ([`baa0523`](https://github.com/McGrathLab/AquaCal/commit/baa05230a323622a0100e7c05ead68418a480f5c))
+
+- **28-01**: Confirm the D4 three-failure state before launch (T-28-04)
+  ([`701b257`](https://github.com/McGrathLab/AquaCal/commit/701b257d595c155eedd3d36e539b7f2e5907fba9))
+
+- **28-02**: Run the pre-launch assertion checklist and write the record
+  ([`623fca4`](https://github.com/McGrathLab/AquaCal/commit/623fca438f4dfa0f718dcf1d5a37d50fc948a76f))
+
+- **29.1**: Disable worktree isolation for this branch
+  ([`a6e7841`](https://github.com/McGrathLab/AquaCal/commit/a6e7841d830ab2b9f822c4bac44cde590f631641))
+
+- **experiments**: Commit E1's 10-seed parameter-level band
+  ([`15fd4aa`](https://github.com/McGrathLab/AquaCal/commit/15fd4aada4d48d558a2f74806ce4918fe9a010c8))
+
+- **experiments**: Commit the 32 GB Linux re-run of E4 and E2
+  ([`1af0650`](https://github.com/McGrathLab/AquaCal/commit/1af06508db120daacce8618b8387c7a7213b1fbe))
+
+- **experiments**: Confirm the OpenCV attribution with a single-variable control
+  ([`27c80e7`](https://github.com/McGrathLab/AquaCal/commit/27c80e77578b833dc99dcfd2791052d5080beadd))
+
+- **experiments**: Emit exp1_parameter_band.csv from E1's band mode
+  ([`5ae6683`](https://github.com/McGrathLab/AquaCal/commit/5ae6683868af88353e453c1508e23577c893f7c8))
+
+- **roadmap**: Track Phase 29.2's phase directory
+  ([`0a5d095`](https://github.com/McGrathLab/AquaCal/commit/0a5d09514b659f934513aec8f9c65e993faf496f))
+
+- **todos**: Close three verified-complete todos
+  ([`d5eba65`](https://github.com/McGrathLab/AquaCal/commit/d5eba65e1211f901940845dbd1885d9898e7fb4e))
+
+- **todos**: Close verify-non-refractive-baseline; its residue has owners
+  ([`e0d0f2b`](https://github.com/McGrathLab/AquaCal/commit/e0d0f2bec24e1849bdecab50e3859af049d75664))
+
+- **todos**: Re-scope pre/post-submission directives for the full re-run
+  ([`3ffcc01`](https://github.com/McGrathLab/AquaCal/commit/3ffcc01d38835231d3bce1cef76a001a4b4a9c03))
+
+- **todos**: Restructure the fix-milestone backlog and reconcile it
+  ([`7cd34c2`](https://github.com/McGrathLab/AquaCal/commit/7cd34c2504861d397160efdcbedf5f10e2a43849))
+
+### Continuous Integration
+
+- **29.2**: Give CI's test job the tags and psutil its manifest tests assert on
+  ([`edfaa5a`](https://github.com/McGrathLab/AquaCal/commit/edfaa5a27cf886718758f7266a6de760e768bc7e))
+
+- **29.2-01**: Pin the release toolchain to a verified-working PSR/GitPython pair
+  ([`7ab969e`](https://github.com/McGrathLab/AquaCal/commit/7ab969e2cc5479cb300630697244b534fd06357a))
+
+### Documentation
+
+- Add todo to parallelize the test suite before the next phase
+  ([`1f02ed9`](https://github.com/McGrathLab/AquaCal/commit/1f02ed9c70b25da557e7fb1c5aa8022e332c5508))
+
+- Correct four Phase 23 roadmap findings from pre-planning recon
+  ([`870151c`](https://github.com/McGrathLab/AquaCal/commit/870151c635380fc93452f39573b488055061e61a))
+
+- Create milestone v2.1 roadmap (8 phases)
+  ([`a0e1fb5`](https://github.com/McGrathLab/AquaCal/commit/a0e1fb5978930e25c18e3d8c8ea9c336c4465006))
+
+- Define milestone v2.1 requirements
+  ([`fe864c1`](https://github.com/McGrathLab/AquaCal/commit/fe864c1d7394db9e16f019a4f8f35c47accb0aea))
+
+- Fold optimality probe results into DEGEN-05, Phases 25/29, knowledge base
+  ([`419f363`](https://github.com/McGrathLab/AquaCal/commit/419f363fbc9e325b086e7f18029e999e88519945))
+
+- Incorporate external roadmap review into v2.1 (Zenodo pulled pre-submission, three new gates)
+  ([`76ca847`](https://github.com/McGrathLab/AquaCal/commit/76ca84769d67b9e2d32df9e8d267d148295cdb8f))
+
+- Mark HANDOFF.json milestone-complete for v2.0
+  ([`519037f`](https://github.com/McGrathLab/AquaCal/commit/519037f178da2ae38a53e629627525ee9a1ceb12))
+
+- Start milestone v2.1 Clean Experimental Suite
+  ([`38a6f78`](https://github.com/McGrathLab/AquaCal/commit/38a6f78bfe04db3a494af4590c11e295bab27734))
+
+- Sync todo counts after closing three at milestone close
+  ([`46614b3`](https://github.com/McGrathLab/AquaCal/commit/46614b33b2f53c0ca7f240b74292a94f15346e9b))
+
+- Tag 16 pending todos with resolves_phase after milestone v2.1 roadmap
+  ([`941b9f6`](https://github.com/McGrathLab/AquaCal/commit/941b9f68c31102e1d8c71294e36b06a64bc8ba29))
+
+- Write the next milestone's scope boundary before planning starts
+  ([`56ecdb8`](https://github.com/McGrathLab/AquaCal/commit/56ecdb808e290ce1cee2aaa22dba6e375889a49f))
+
+- **21**: Close phase 21 -- roadmap, state and handoff
+  ([`f7dd4c1`](https://github.com/McGrathLab/AquaCal/commit/f7dd4c123e9082147137ad769ddf68a742c124f4))
+
+- **21**: Record the CI matrix green
+  ([`7ccae5a`](https://github.com/McGrathLab/AquaCal/commit/7ccae5ad64f1a217219a5ec108965ab0ed1a2f66))
+
+- **21**: Summaries for plans 09, 10 and 11
+  ([`6213be6`](https://github.com/McGrathLab/AquaCal/commit/6213be6eb304980a36d216f75e82f860d32dfca7))
+
+- **23**: Add validation strategy and D-02 probe research
+  ([`d16fe60`](https://github.com/McGrathLab/AquaCal/commit/d16fe604cb02c7e5d3decd26e688fa32e11a9327))
+
+- **23**: Capture phase context
+  ([`6a0b772`](https://github.com/McGrathLab/AquaCal/commit/6a0b772ac5d27e173ed8364956b4b6d1837d3a9f))
+
+- **23**: Correct the falsified optimality mechanism in four phase artifacts
+  ([`02fe224`](https://github.com/McGrathLab/AquaCal/commit/02fe224ea596811b9467383ca15fa465440118e3))
+
+- **23**: Create phase plan -- 4 plans in 1 wave
+  ([`f02ec0d`](https://github.com/McGrathLab/AquaCal/commit/f02ec0d9c7d2658ae056ef05c769dccee818507e))
+
+- **23**: Mark phase 23 execution started
+  ([`a720c56`](https://github.com/McGrathLab/AquaCal/commit/a720c565279bbecff2d1fd6b78de6c21f6d01448))
+
+- **23-01**: Record plan 23-01 SUMMARY (Tasks 1-2 complete, Tasks 3-4 outstanding)
+  ([`292b6d6`](https://github.com/McGrathLab/AquaCal/commit/292b6d6441154d78e628e717d801a86683c81e95))
+
+- **23-01**: Record Task 3/4 evidence in 23-01-SUMMARY.md
+  ([`4128cf4`](https://github.com/McGrathLab/AquaCal/commit/4128cf4e73a2b96e3f1739bd8f91c4c3467baaa4))
+
+- **23-02**: Complete E4 --out-relative resolution and --check exclusion plan
+  ([`4dc9ec3`](https://github.com/McGrathLab/AquaCal/commit/4dc9ec385aea71adf500132387d42d00a27de177))
+
+- **23-03**: Confirm test_e7_band_mode.py verification completed clean
+  ([`7d467a6`](https://github.com/McGrathLab/AquaCal/commit/7d467a61b5f445c00995175ee2f4ece2fa8587e2))
+
+- **23-03**: Record reproducible derivation of MF-12's four quantities
+  ([`0d9d457`](https://github.com/McGrathLab/AquaCal/commit/0d9d4571bdf1c2d7f6ea2622a5eef083df58705b))
+
+- **23-04**: Add plan summary for FIX-06 stale provenance strings
+  ([`defc75a`](https://github.com/McGrathLab/AquaCal/commit/defc75a63f908aeedba78fcb9d21ad5a17229e83))
+
+- **23-04**: Append self-check results to plan summary
+  ([`a88a397`](https://github.com/McGrathLab/AquaCal/commit/a88a397917938055f93f516dd4dcc746eceafb91))
+
+- **24**: Add code review report with resolution log
+  ([`8187ebf`](https://github.com/McGrathLab/AquaCal/commit/8187ebffda957bacd29c1a52096113c7e6399fad))
+
+- **24**: Add phase verification report and track the seven open review warnings
+  ([`68a79bb`](https://github.com/McGrathLab/AquaCal/commit/68a79bbbca89883afac131a8efed26343ef79264))
+
+- **24**: Apply plan-checker fixes and record planning completion
+  ([`8add0aa`](https://github.com/McGrathLab/AquaCal/commit/8add0aa1edf08b495a942e3dd47bcafae759933c))
+
+- **24**: Capture phase context
+  ([`df5a352`](https://github.com/McGrathLab/AquaCal/commit/df5a352755c6a90d9a06e5e07300f79a9f7f39f3))
+
+- **24**: Correct roadmap's 24-01 description after the D-06 reversal
+  ([`09cd079`](https://github.com/McGrathLab/AquaCal/commit/09cd0790d8e31e95ee6b864f31e877a0285c8000))
+
+- **24**: Create phase plans for degeneracy instrumentation
+  ([`3300b6d`](https://github.com/McGrathLab/AquaCal/commit/3300b6d671003a3a0c4f28eda48af8565da29ad7))
+
+- **24**: Finalize verification with first-hand real-solve test evidence
+  ([`05bf985`](https://github.com/McGrathLab/AquaCal/commit/05bf9853887bd7ca2e336a8b7ffe06f7d2b27ae5))
+
+- **24**: Mark phase 24 execution start in STATE
+  ([`a25fae2`](https://github.com/McGrathLab/AquaCal/commit/a25fae2a4e445341853becd6a3174fd50fde939a))
+
+- **24**: Reconcile phase context with the 2026-08-17 optimality probes
+  ([`909a723`](https://github.com/McGrathLab/AquaCal/commit/909a7239f12ae05683a5fa43c09b25fa6264532d))
+
+- **24**: Revise D-09 to two axes, reword D-20, flag stale PATTERNS passages
+  ([`9d86282`](https://github.com/McGrathLab/AquaCal/commit/9d86282b3509b863f8265a67202d60a7a38f70e2))
+
+- **24**: Revise plan 24-01 to plumb the NaN reason out of the projector
+  ([`a01ff16`](https://github.com/McGrathLab/AquaCal/commit/a01ff167f5a52fb514dc3fdde04670823ddb66c2))
+
+- **24**: Revise plans for D-09 two-axis CSV, D-20 rewording, and line-scoped reads
+  ([`b03cbec`](https://github.com/McGrathLab/AquaCal/commit/b03cbece088f656542daec7aa3d9b13c428e858f))
+
+- **24-01**: Complete the degeneracy instrumentation core plan
+  ([`577887b`](https://github.com/McGrathLab/AquaCal/commit/577887bef48286aaed6c0d96f26952e71633aaf0))
+
+- **24-02**: Complete degeneracy artifact persistence plan
+  ([`4fde653`](https://github.com/McGrathLab/AquaCal/commit/4fde653e40281f8a52a6968d4536a55d2f93d2de))
+
+- **25**: Add summaries for the two orchestrator-run plans (25-06, 25-08)
+  ([`0f5b17e`](https://github.com/McGrathLab/AquaCal/commit/0f5b17ee7518db4558e326ebabfdd1b8b36e33bd))
+
+- **25**: Add validation strategy
+  ([`0ce962b`](https://github.com/McGrathLab/AquaCal/commit/0ce962bfcbbbed6eaeaeb6403be1d545a6d22f35))
+
+- **25**: Capture phase context
+  ([`f3ccbad`](https://github.com/McGrathLab/AquaCal/commit/f3ccbadd57a7e6fe02fd449438bed058610bdc02))
+
+- **25**: Carry D-21 rescope into ROADMAP criterion 3 and the validation strategy
+  ([`a7714e6`](https://github.com/McGrathLab/AquaCal/commit/a7714e613cc8ee15cd84a2fdff69084789575b61))
+
+- **25**: Close phase 25 — 8/8 plans, full gate green
+  ([`5569fbf`](https://github.com/McGrathLab/AquaCal/commit/5569fbf6ad6c98b42a584a390d490d36899b0734))
+
+- **25**: Close plan-checker warnings (open questions, deps, validation sign-off)
+  ([`e89804f`](https://github.com/McGrathLab/AquaCal/commit/e89804fddf71643228bcc983a1b14a704b8bd4b3))
+
+- **25**: Close the Huber-knee objection by measurement
+  ([`2a6aed2`](https://github.com/McGrathLab/AquaCal/commit/2a6aed2f68ece53a00734ee0c2d7c1c7a95a5af6))
+
+- **25**: Correct 25-04 prose still attributing the 7 h band to plan 25-08
+  ([`4d2be36`](https://github.com/McGrathLab/AquaCal/commit/4d2be36c4c5792d97aecfbb5fc5b3a6c1b4278a7))
+
+- **25**: Create phase plan
+  ([`19e74f2`](https://github.com/McGrathLab/AquaCal/commit/19e74f2da1be64891c1e3531063b2cf7209d2ae3))
+
+- **25**: Map patterns and correct two test routings
+  ([`549e6e5`](https://github.com/McGrathLab/AquaCal/commit/549e6e5bf88c9f7a2e3ba2a68e8be2d92104ddc0))
+
+- **25**: Record D-21 — E1 noise axis is a probe here, band of record is Phase 28
+  ([`edaa0b6`](https://github.com/McGrathLab/AquaCal/commit/edaa0b68c0160645c5b0a88cc5c200540baa7710))
+
+- **25**: Record planning completion and annotate roadmap waves
+  ([`c4d6088`](https://github.com/McGrathLab/AquaCal/commit/c4d60882050d93c6bf5f5558dde84a637cf41dfb))
+
+- **25**: Rescope 25-08's noise run to a two-seed probe (D-21)
+  ([`785e639`](https://github.com/McGrathLab/AquaCal/commit/785e6398b7bff3a3eb8eefa843ef7e5649656656))
+
+- **25**: Research phase domain
+  ([`86b9fdb`](https://github.com/McGrathLab/AquaCal/commit/86b9fdb2542fc388aa10d022a2dab8d5bb4be8cd))
+
+- **25**: Verification passed — 4/4 success criteria
+  ([`724a81e`](https://github.com/McGrathLab/AquaCal/commit/724a81e2615f70a3296d83b5ad54c3028e0b5c02))
+
+- **25-01**: Complete per-observation degeneracy detail sinks plan
+  ([`839e44f`](https://github.com/McGrathLab/AquaCal/commit/839e44fb09cb113ecef8010f02cafe03291bb354))
+
+- **25-02**: Complete the config flag and degeneracy sidecar plan
+  ([`0da1b5a`](https://github.com/McGrathLab/AquaCal/commit/0da1b5a1d99872b4d9442ac2f934e63dfb2fb57a))
+
+- **25-03**: Complete the offline classifier plan (DEGEN-04)
+  ([`0d46e6b`](https://github.com/McGrathLab/AquaCal/commit/0d46e6ba4c6fd0565d348d24bc2c9b33d6f070a5))
+
+- **25-04**: Complete E1 noise_std band axis plan (BAND-01)
+  ([`a551357`](https://github.com/McGrathLab/AquaCal/commit/a5513573bcfe173548083ec830e60328a3449947))
+
+- **25-04**: Record the 46-test verification result and self-check
+  ([`c90dbc9`](https://github.com/McGrathLab/AquaCal/commit/c90dbc9bb03a945d5fd660897d70f27a4ce2dd0f))
+
+- **25-04**: State E1's accuracy-claim domain beside the demotion note (D-14)
+  ([`dd794fb`](https://github.com/McGrathLab/AquaCal/commit/dd794fb4cca3253cf8b6fedaaa2947c2b5d1a062))
+
+- **25-05**: Complete the optimality-caveat and DEGEN-05-verdict plan
+  ([`cf26d2b`](https://github.com/McGrathLab/AquaCal/commit/cf26d2bbe3bf1d45471f8bddeb874f368940de69))
+
+- **25-05**: Label optimality where the number ships (D-17)
+  ([`ad21137`](https://github.com/McGrathLab/AquaCal/commit/ad211377d312558078907f9e8034a0d0225375fe))
+
+- **25-05**: Record MF-21 -- the optimality caveat and the DEGEN-05 verdict
+  ([`8a1d447`](https://github.com/McGrathLab/AquaCal/commit/8a1d4472481c7c66c1b7c62f232ccfeca32b1f3c))
+
+- **25-06**: Add the instrumented config copy as committed provenance (DEGEN-04)
+  ([`7118e0b`](https://github.com/McGrathLab/AquaCal/commit/7118e0bcef20a53701f31778f045694c540787a4))
+
+- **25-06**: Classify the 198 unprojectable observations (DEGEN-04)
+  ([`42d9efb`](https://github.com/McGrathLab/AquaCal/commit/42d9efb78ec9bcc812db9230811b47a5aad65f8a))
+
+- **25-07**: Carry the gate-scope rationale onto both harness guards and resolve the todo (DEGEN-04)
+  ([`54d8586`](https://github.com/McGrathLab/AquaCal/commit/54d858617719af913ffbe904753ea405106746c9))
+
+- **25-07**: Complete the degeneracy-gate scope plan (DEGEN-04)
+  ([`61d45f6`](https://github.com/McGrathLab/AquaCal/commit/61d45f60fe45761a254b426fd886d12af4c70516))
+
+- **25-07**: Record the synthetic-only gate-scope rationale beside the degeneracy vocabularies
+  (DEGEN-04)
+  ([`5925bb3`](https://github.com/McGrathLab/AquaCal/commit/5925bb3daef4359025e7797346ac5591901da000))
+
+- **25-08**: Measure the noise axis with a two-seed probe and record MF-22 (BAND-01)
+  ([`7c94281`](https://github.com/McGrathLab/AquaCal/commit/7c94281161477b68ed76134e81f0297553909e33))
+
+- **25-08**: Register Phase 25's artifact expectations and the Phase 28 band shape
+  ([`211214c`](https://github.com/McGrathLab/AquaCal/commit/211214ce7640b33b6631a8ee964c8664fb64f6ad))
+
+- **26**: Add gap-closure plan 26-11 — driver reduced-scale path
+  ([`6cab6c4`](https://github.com/McGrathLab/AquaCal/commit/6cab6c41111e0c9faca31fd3495d64f9e99e4d83))
+
+- **26**: Add gap-closure plans 26-12 and 26-13 with their summaries
+  ([`00b8d41`](https://github.com/McGrathLab/AquaCal/commit/00b8d41429aa6b323410530137b013c9ef265eae))
+
+- **26**: Add validation strategy
+  ([`08a17fd`](https://github.com/McGrathLab/AquaCal/commit/08a17fd6f3b3a328aab5f417089fd4a8ffead0cd))
+
+- **26**: Amend context with measured runtime, grid cuts, and de-scoping
+  ([`45b19dc`](https://github.com/McGrathLab/AquaCal/commit/45b19dcfe23543ce15e7cfd368ad52d8e90c0bf8))
+
+- **26**: Capture phase context
+  ([`15d3060`](https://github.com/McGrathLab/AquaCal/commit/15d3060eb8a13530a3cad14aa8db460da95907ea))
+
+- **26**: Close phase 26 -- driver proven at reduced scale, three gaps closed
+  ([`80a2a34`](https://github.com/McGrathLab/AquaCal/commit/80a2a343e4c6b828be516bb7274c7a7e74780586))
+
+- **26**: Concurrency probe — correct the runtime estimate and adopt selective parallelism
+  ([`529f404`](https://github.com/McGrathLab/AquaCal/commit/529f40484e2113dd3790d7c5509850593daf106f))
+
+- **26**: Create phase 26 plans — full-suite driver and handoff readiness
+  ([`0a3e8a9`](https://github.com/McGrathLab/AquaCal/commit/0a3e8a9ea6e510a790393616b8bddf600f270d57))
+
+- **26**: E7_band stays an acknowledged uncertainty, not a scheduled probe
+  ([`e1a202a`](https://github.com/McGrathLab/AquaCal/commit/e1a202a76fdb43efc74539ebafd640f5447e4fde))
+
+- **26**: Research the full-suite driver, gates, and output trees
+  ([`af85b40`](https://github.com/McGrathLab/AquaCal/commit/af85b4064575806f92ace221acf577815233af75))
+
+- **26**: Revise plans after checker — wave graph, ordering test, decision coverage
+  ([`92da9af`](https://github.com/McGrathLab/AquaCal/commit/92da9affb8495c44bb74b53e4054af8b580d8721))
+
+- **26-01**: Summarize the archive-aside, test repair, and gate probe
+  ([`13bb3ce`](https://github.com/McGrathLab/AquaCal/commit/13bb3ce3a04e91ee1d2c9ae9a27575e2520c2caf))
+
+- **26-02**: Complete the run-manifest and Gate 3 extension plan
+  ([`fcba392`](https://github.com/McGrathLab/AquaCal/commit/fcba39291700f8cc5e1aa9592722cba4f6e8e906))
+
+- **26-03**: Complete the expectation manifest and completeness gate plan
+  ([`aee8ee8`](https://github.com/McGrathLab/AquaCal/commit/aee8ee8cbdb88a6ee6476262d5e97e9e2ebcf383))
+
+- **26-04**: Complete --baseline-dir and missing-baseline N/A guard plan
+  ([`fdd2fc0`](https://github.com/McGrathLab/AquaCal/commit/fdd2fc00f63f5490ac673575111d6d1c9e59773e))
+
+- **26-05**: Complete the E6 --axes selector plan
+  ([`ca92c7e`](https://github.com/McGrathLab/AquaCal/commit/ca92c7ee105bfe2a5e13757e210e45ceb152599a))
+
+- **26-06**: Complete E2 invocation-config and check-verdict plan
+  ([`0aa06bd`](https://github.com/McGrathLab/AquaCal/commit/0aa06bd3b524c99afb45d84eeb2c9fe43c9fc329))
+
+- **26-07**: Complete the one-driver plan
+  ([`d0de5e3`](https://github.com/McGrathLab/AquaCal/commit/d0de5e3e3a3640b8ecfdd8efd29dce1dc4bc9ac2))
+
+- **26-08**: Complete the driver safety-rails and concurrency plan
+  ([`40e7400`](https://github.com/McGrathLab/AquaCal/commit/40e74003feb211634217848a6a62fd38b5714d95))
+
+- **26-09**: Complete handoff-documentation plan
+  ([`a7130c3`](https://github.com/McGrathLab/AquaCal/commit/a7130c340bc5f4f96544877e7c9ff809356300e3))
+
+- **26-09**: Record MF-23 and archive the two superseded drivers (DRIVER-04)
+  ([`bd055e1`](https://github.com/McGrathLab/AquaCal/commit/bd055e1dc2812181ddb6c5dcef7db0867df3e4c8))
+
+- **26-09**: Rewrite experiments/README.md to one row per invocation
+  ([`df3ed29`](https://github.com/McGrathLab/AquaCal/commit/df3ed29eec2d3b92e192824198bfdc40d6e6192c))
+
+- **26-11**: Complete the driver reduced-scale path plan
+  ([`46d4ae1`](https://github.com/McGrathLab/AquaCal/commit/46d4ae14e6b0eb58cd262ddd7b9818bebf63e0df))
+
+- **260813-clj**: Quick task plan, summary and state
+  ([`f55dd51`](https://github.com/McGrathLab/AquaCal/commit/f55dd516c375932d6916fa7292df51f0f66df281))
+
+- **27**: Capture phase context
+  ([`78b4599`](https://github.com/McGrathLab/AquaCal/commit/78b45991359e177e15d9c2cfe1aec40080389ab4))
+
+- **27**: Close Phase 27 -- freeze verified on target, production run launched
+  ([`d49a837`](https://github.com/McGrathLab/AquaCal/commit/d49a83757b58fa483432a9bb0b86d7aa01be5ffc))
+
+- **27**: Correct the dry-run seam name inherited from phase 26
+  ([`3d781c4`](https://github.com/McGrathLab/AquaCal/commit/3d781c4d34388e12200a17d3b60553c7492ce0b9))
+
+- **27**: Fix context inconsistencies and de-scope three overengineered decisions
+  ([`d37001f`](https://github.com/McGrathLab/AquaCal/commit/d37001fe94d1c48a40004c44174a01965b0553a1))
+
+- **27**: Plan the frozen single-sha handoff package -- 13 plans in 6 waves
+  ([`80c8e19`](https://github.com/McGrathLab/AquaCal/commit/80c8e19e8aa6ec63939912eed7b2f43daad03618))
+
+- **27**: Record planning completion and close phase 26 bookkeeping
+  ([`c618e7f`](https://github.com/McGrathLab/AquaCal/commit/c618e7f5f100ff700aa25d758bd088c7a360128e))
+
+- **27**: Record target access and three findings that bind wave 5
+  ([`4f6e1f5`](https://github.com/McGrathLab/AquaCal/commit/4f6e1f5e42bf93616e6b359ce90ff83bd4a52490))
+
+- **27**: Record the post-discussion review in the discussion log
+  ([`fc083d9`](https://github.com/McGrathLab/AquaCal/commit/fc083d9d370be26dfaa43d49ae2372555f1aef01))
+
+- **27**: Record waves 1-2 merged and the post-merge gate result
+  ([`9ac6a6d`](https://github.com/McGrathLab/AquaCal/commit/9ac6a6dc6b95c9dc649c6386abc447242d761966))
+
+- **27**: Supersede D-12's GATE_PYTHON rung and require an interpreter record
+  ([`fdd0f3c`](https://github.com/McGrathLab/AquaCal/commit/fdd0f3c8ecedf1d04131a2c02dc1a22f501327aa))
+
+- **27-01**: Complete target-measurement plan
+  ([`6dc29b9`](https://github.com/McGrathLab/AquaCal/commit/6dc29b969258c0daedef2a1804c008b9a9774cc2))
+
+- **27-01**: Measure the Linux run machine before the freeze
+  ([`7f04941`](https://github.com/McGrathLab/AquaCal/commit/7f0494148cab1bc67e66dadc960e4b210b155c98))
+
+- **27-02**: Summarise the D-10 and D-22 driver fixes
+  ([`b00da51`](https://github.com/McGrathLab/AquaCal/commit/b00da51632dd2d76d6640b07bfa1158e47d912af))
+
+- **27-03**: Record the smoke-profile truthfulness plan and D-24 finding
+  ([`d680bae`](https://github.com/McGrathLab/AquaCal/commit/d680baef2889a4ab03893d9e0b0bbaa7b2741977))
+
+- **27-04**: Complete the --out-relative real_rig_metrics resolution plan
+  ([`2182fbf`](https://github.com/McGrathLab/AquaCal/commit/2182fbf0d9139ec84b1647e37f06df59690383b5))
+
+- **27-05**: Complete the environment-provenance plan
+  ([`acf7e13`](https://github.com/McGrathLab/AquaCal/commit/acf7e13678a1662d16ac89cc2770b3aee7156beb))
+
+- **27-06**: Apply the author's three rulings and 27-07's sha finding
+  ([`20db9ac`](https://github.com/McGrathLab/AquaCal/commit/20db9acfc617917cd4f90470558c6b5939d99522))
+
+- **27-06**: Record the emitter-coverage walk and its checkpoint
+  ([`9270ea8`](https://github.com/McGrathLab/AquaCal/commit/9270ea83f36eeb0eb86321bdad592d2d824f7e17))
+
+- **27-06**: Record the gate as approved and close the plan
+  ([`6024c9e`](https://github.com/McGrathLab/AquaCal/commit/6024c9e5ac2a2121ee787ec089d38ddaf4604e59))
+
+- **27-06**: Walk all 27 ledger artifacts to their emitters
+  ([`c1f3af2`](https://github.com/McGrathLab/AquaCal/commit/c1f3af21bd228315d417efc1af102d51a5c54855))
+
+- **27-07**: Add RL-guard-frac to the by-construction group (author ruling)
+  ([`4c9a37f`](https://github.com/McGrathLab/AquaCal/commit/4c9a37fe0491fa59b823f9eb79576f5bfd619ac7))
+
+- **27-07**: Classify every ledger row this run will not regenerate
+  ([`c5646da`](https://github.com/McGrathLab/AquaCal/commit/c5646daf6576f2cdf03bd012b038e9edf09a6506))
+
+- **27-07**: Complete the frozen-ledger-rows classification plan
+  ([`464e0c9`](https://github.com/McGrathLab/AquaCal/commit/464e0c9ddf6e04330ae91b256246520f01cc2b7c))
+
+- **27-07**: Record the RL-guard-frac addition and the 22 -> 23 total
+  ([`c92cafc`](https://github.com/McGrathLab/AquaCal/commit/c92cafc0a6a98268339d9d5384593377c64c3873))
+
+- **27-08**: Complete the driver-portability plan
+  ([`d0dd8c6`](https://github.com/McGrathLab/AquaCal/commit/d0dd8c653785ee02a9b04861bd651fb5136f7fab))
+
+- **27-09**: Complete the frozen handoff note plan
+  ([`5e752fe`](https://github.com/McGrathLab/AquaCal/commit/5e752fe2cb8c529099173819a71be61b94fa4d9b))
+
+- **27-09**: Correct three stale or misleading points in the handoff note
+  ([`3ab9c13`](https://github.com/McGrathLab/AquaCal/commit/3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c))
+
+- **27-09**: Document the dry run and the thread cap in the handoff note
+  ([`e2b2377`](https://github.com/McGrathLab/AquaCal/commit/e2b2377efbaa024ee7ccc2f9c842eeb5919cdf78))
+
+- **27-09**: Write the handoff note's environment requirements (criterion 3)
+  ([`900d835`](https://github.com/McGrathLab/AquaCal/commit/900d835aec6123c1203f3e36e9881c35e9286b27))
+
+- **27-09**: Write the run procedure and the declared gaps (D-21)
+  ([`801eb81`](https://github.com/McGrathLab/AquaCal/commit/801eb818a5c04786215ae4304195203f9990a697))
+
+- **27-10**: Record the smoke acceptance pass and the pre-push audit
+  ([`6d47d4f`](https://github.com/McGrathLab/AquaCal/commit/6d47d4f13b366fc215cc5977579242fc8407758d))
+
+- **27-11**: Cut the freeze at 3ab9c13, tagged rerun-freeze-01
+  ([`4b5e8ce`](https://github.com/McGrathLab/AquaCal/commit/4b5e8ce036dc4c01cc0055a51e4bce5e015746c2))
+
+- **27-12**: Correct the baseline-archive size before it fails a clone check
+  ([`a77e3c7`](https://github.com/McGrathLab/AquaCal/commit/a77e3c7ad28a27f30ed3528dbe31199267fe3e27))
+
+- **28**: Add phase context and repoint state at the rerun
+  ([`687f969`](https://github.com/McGrathLab/AquaCal/commit/687f969d7b9ff6f3bc4637434eb72f55ac2b1cab))
+
+- **28**: Add read_first to the launch authorisation gate; deduplicate threat ids
+  ([`f1ecae9`](https://github.com/McGrathLab/AquaCal/commit/f1ecae9519e2698c56a4d39f3df1bd592bcaa842))
+
+- **28**: Close phase 28 in project state
+  ([`8d26b5b`](https://github.com/McGrathLab/AquaCal/commit/8d26b5bb34be15b9718e8005f3324e0ab01f227c))
+
+- **28**: Close phase-28 planning -- gates, wave annotations, state
+  ([`a7efb3b`](https://github.com/McGrathLab/AquaCal/commit/a7efb3b97100c85ef75b8edeb13d7a3865c6bf8f))
+
+- **28**: Create phase plan — 5 plans, 5 waves, tracer-led production runbook
+  ([`c3596f2`](https://github.com/McGrathLab/AquaCal/commit/c3596f26f1303183192eb9b11ec974bc89199ddd))
+
+- **28**: File the four defects the production run surfaced
+  ([`8c9243c`](https://github.com/McGrathLab/AquaCal/commit/8c9243c61ff3e56b700e4b0a6ca96d0da05da374))
+
+- **28**: Freeze02 run evidence and run record
+  ([`1140dd5`](https://github.com/McGrathLab/AquaCal/commit/1140dd58fb2c29ff67f369cdf1c4a6cec1d98e51))
+
+- **28**: Mark RESEARCH.md's open questions resolved
+  ([`b001904`](https://github.com/McGrathLab/AquaCal/commit/b001904f9052733944c44b01c33d2d59fbdaab1e))
+
+- **28**: Research phase domain
+  ([`b0fcef1`](https://github.com/McGrathLab/AquaCal/commit/b0fcef10f43ee2f8931f50e62339ada485ddb88b))
+
+- **28**: Run verdict, gate output, and environment capture
+  ([`97135a2`](https://github.com/McGrathLab/AquaCal/commit/97135a232e44d55ea7f4ab5d3241315ab383470e))
+
+- **28-01**: Complete production-venue plan
+  ([`99c2c4c`](https://github.com/McGrathLab/AquaCal/commit/99c2c4c34e92921bc3523892d7384b0d4dc420c1))
+
+- **28-01**: Record self-check result
+  ([`be34637`](https://github.com/McGrathLab/AquaCal/commit/be346378741c2ff2e13b7a564a65128a52553bf8))
+
+- **28-01**: Summarise the production venue build
+  ([`055225c`](https://github.com/McGrathLab/AquaCal/commit/055225c8f6dacfaf28ceb3368050ef46271df20a))
+
+- **28-02**: Complete pre-flight and launch authorisation plan
+  ([`1eabd29`](https://github.com/McGrathLab/AquaCal/commit/1eabd29e868ae3c9c4d9e923f501bd67ab39ba15))
+
+- **29**: Add ORCID and remove a placeholder from Record A's description
+  ([`cd83a99`](https://github.com/McGrathLab/AquaCal/commit/cd83a990cecfc515ac4a4e76a5cb61a64a36ba4b))
+
+- **29**: Add the missing action block to the sandbox-confirmation checkpoint
+  ([`7dc2bcd`](https://github.com/McGrathLab/AquaCal/commit/7dc2bcdb0afb789824522f5791a2a885d8fdb2db))
+
+- **29**: Capture phase context from discussion
+  ([`c19ecec`](https://github.com/McGrathLab/AquaCal/commit/c19ececaafa40ca8d6e248a125f12af987017cf4))
+
+- **29**: Correct two stale requirements-completed claims in SUMMARY frontmatter
+  ([`899095a`](https://github.com/McGrathLab/AquaCal/commit/899095a4a933ffb4bd98d5de4a6415cb53d78078))
+
+- **29**: Create phase plan
+  ([`9c0ed09`](https://github.com/McGrathLab/AquaCal/commit/9c0ed09a4cc73fea055fe349905b055dffb25876))
+
+- **29**: Create phase plan
+  ([`da0f02f`](https://github.com/McGrathLab/AquaCal/commit/da0f02ffac464c3ff206835f16555bee55352dde))
+
+- **29**: Move the Zenodo upload work to the Linux box
+  ([`149d89b`](https://github.com/McGrathLab/AquaCal/commit/149d89b07a2377f6df1367c544181a66867aac29))
+
+- **29**: Re-scope RUN-05 from a date to the submission event
+  ([`60ea40d`](https://github.com/McGrathLab/AquaCal/commit/60ea40ded9167e1edc07dd6fb16ad1e7cf0a4b76))
+
+- **29**: Research the gate, the commit set, and the Zenodo API
+  ([`99db4cd`](https://github.com/McGrathLab/AquaCal/commit/99db4cdad7cc565514aa90011400adf3df3a0607))
+
+- **29**: Return handoff -- preserve, verify, and commit the freeze-01 run on the Linux box
+  ([`a33e21c`](https://github.com/McGrathLab/AquaCal/commit/a33e21c0eb8c97c6f0f92b1b5779af04e0ef3982))
+
+- **29**: Set Record B's version to 2.1.0 per author ruling
+  ([`9fdd884`](https://github.com/McGrathLab/AquaCal/commit/9fdd884e3968e5f4130ea37fb32e40adf4e79904))
+
+- **29-01**: Complete zenodo-tooling-and-sandbox-rehearsal plan
+  ([`9559ea8`](https://github.com/McGrathLab/AquaCal/commit/9559ea80f531e303b7ee0c190e953ab98bbcd413))
+
+- **29-01**: Record the author's sandbox approval and three findings
+  ([`0b56022`](https://github.com/McGrathLab/AquaCal/commit/0b56022e2fa2d6bbe30322894c0b67c336401771))
+
+- **29-01**: Record the Zenodo credential gate as satisfied
+  ([`75a33cb`](https://github.com/McGrathLab/AquaCal/commit/75a33cb1d2daed4c93b58c8ba59747dda67d3054))
+
+- **29-01**: Rule the Record A / Record B payload split
+  ([`a96da07`](https://github.com/McGrathLab/AquaCal/commit/a96da0772cb9f082ec3963cc4b798be095a6f754))
+
+- **29-01**: Update state and roadmap for the zenodo tooling plan
+  ([`51ebbcc`](https://github.com/McGrathLab/AquaCal/commit/51ebbcccfe200db6e5316e2cc2f418151be7b5aa))
+
+- **29-02**: Complete land-and-grade-the-returned-run plan
+  ([`e290f63`](https://github.com/McGrathLab/AquaCal/commit/e290f632ce455985f4130f3a54ad158aa2103794))
+
+- **29-02**: Grade the returned run with the frozen gate
+  ([`224c229`](https://github.com/McGrathLab/AquaCal/commit/224c2297fe857fd2db7357e28db7c3fc65017129))
+
+- **29-02**: Inventory the 227 files the ignore rules admit
+  ([`7632402`](https://github.com/McGrathLab/AquaCal/commit/7632402b893ab3b79c6738e3a4c9ff2e8da44c14))
+
+- **29-03**: Complete e2-control-and-e7-before-after plan
+  ([`fa9ed24`](https://github.com/McGrathLab/AquaCal/commit/fa9ed24ecfbd5b647194fb1997be531788e32209))
+
+- **29-03**: Complete e2-control-and-e7-before-after plan
+  ([`1b540d5`](https://github.com/McGrathLab/AquaCal/commit/1b540d58e686f35cdcfed083a451fc3f6ee8c90a))
+
+- **29-04**: Build Record A's input-only archive and record its digest
+  ([`f15f1ba`](https://github.com/McGrathLab/AquaCal/commit/f15f1ba06c1f50953299b81af1b7b02a9913f54e))
+
+- **29-04**: Complete record-a-build-and-production-draft plan
+  ([`b95762f`](https://github.com/McGrathLab/AquaCal/commit/b95762fb0468bbd5fa17b716cc34ec0e04425d62))
+
+- **29-04**: Complete record-a-build-and-production-draft plan
+  ([`886bbda`](https://github.com/McGrathLab/AquaCal/commit/886bbda78facd385320e41b47ca81e7fa686c6ee))
+
+- **29-04**: Create Record A's production draft and record its handles
+  ([`b71ffe5`](https://github.com/McGrathLab/AquaCal/commit/b71ffe5dfd69cef6e77166219d1611ef5dd6be2b))
+
+- **29-05**: Complete commit-the-returned-run plan
+  ([`088b876`](https://github.com/McGrathLab/AquaCal/commit/088b8761b92097b9525b516dc3214b9936030ed9))
+
+- **29-05**: Record the post-commit gate re-run and byte anchors
+  ([`da86892`](https://github.com/McGrathLab/AquaCal/commit/da86892f134c3fa6e0d92539dbf6da010479202b))
+
+- **29-06**: Complete repair-the-provenance-rails plan
+  ([`dc2de72`](https://github.com/McGrathLab/AquaCal/commit/dc2de72523d4185e026938ed948cd303dc67d8cc))
+
+- **29-06**: Measure the D1 provenance rails against the committed tree
+  ([`4256e82`](https://github.com/McGrathLab/AquaCal/commit/4256e8247df5d004bedeb959956e93270c00f853))
+
+- **29-07**: Append the summary self-check result
+  ([`b75a066`](https://github.com/McGrathLab/AquaCal/commit/b75a066f7336a3f1579f48d6a5fd00b872eda4b1))
+
+- **29-07**: Complete record-b-build-and-production-draft plan
+  ([`ec06b7e`](https://github.com/McGrathLab/AquaCal/commit/ec06b7edd26f2b0532aa100897256d1887999c24))
+
+- **29-07**: Record Record B's draft handles before any payload byte moves
+  ([`ca3f044`](https://github.com/McGrathLab/AquaCal/commit/ca3f0449972572caf195d3e0f91e78fea7522051))
+
+- **29-07**: Record the A<->B linkage options and Record A's live draft state
+  ([`67d0b9b`](https://github.com/McGrathLab/AquaCal/commit/67d0b9bc786f2ed12a4aa2914e7f2b1559c2e2e2))
+
+- **29-07**: Record the sequential linkage ruling and Record A's minted DOIs
+  ([`cc08fa5`](https://github.com/McGrathLab/AquaCal/commit/cc08fa506bd612618a8f4b542e3365b629445470))
+
+- **29-07**: Summarise Record B's build and production draft
+  ([`c227048`](https://github.com/McGrathLab/AquaCal/commit/c227048cbb5e799fcdb8af19a654f442d6d5a42a))
+
+- **29-08**: Append the self-check result
+  ([`862eb99`](https://github.com/McGrathLab/AquaCal/commit/862eb998cbdb0da6f8bc7f140b7760096f48ee2f))
+
+- **29-08**: Complete the phase-close plan
+  ([`66c70fb`](https://github.com/McGrathLab/AquaCal/commit/66c70fbc815e745e568c029241cf5c8ddc495d28))
+
+- **29-08**: File the forward-carried items with their blast radius attached
+  ([`9ea932e`](https://github.com/McGrathLab/AquaCal/commit/9ea932e4f4938c247d941cd322c5b835f00c66e0))
+
+- **29-08**: Record the author's `defer` ruling and make the handoff unmissable
+  ([`da8312c`](https://github.com/McGrathLab/AquaCal/commit/da8312c748be61b78cd2a945ada7d5d66be431f2))
+
+- **29-08**: Summarise the phase-close plan
+  ([`cbf56a3`](https://github.com/McGrathLab/AquaCal/commit/cbf56a3df84769b657ff3c8d7bd2d49c17d18bb4))
+
+- **29-08**: Write the phase record — six criteria, measured values, named evidence
+  ([`0bcf13d`](https://github.com/McGrathLab/AquaCal/commit/0bcf13d641b469149403d1f89efe3e4f0d24c6f4))
+
+- **29.1**: Capture phase context
+  ([`cfba57f`](https://github.com/McGrathLab/AquaCal/commit/cfba57f694a0def0162be85d6cceee074371433d))
+
+- **29.1**: Correct the SC-3 mechanism and record the 198 evidence table
+  ([`e399056`](https://github.com/McGrathLab/AquaCal/commit/e3990566b4057a96864a90430bdac099b6d0c813))
+
+- **29.1**: Create phase plans -- 8 plans, 6 waves, tracer-first
+  ([`153eb48`](https://github.com/McGrathLab/AquaCal/commit/153eb485fd501bcd6b6d5598f422caaab9c70a1b))
+
+- **29.1**: Fold SC-7 in as plan 09, cite the 198 evidence table, correct the SC-3 mechanism
+  ([`c629a65`](https://github.com/McGrathLab/AquaCal/commit/c629a65b8060f29bc9f7872aa93776592c16d78c))
+
+- **29.1**: Fold the conditional-artifact mis-scoring in as criterion 7
+  ([`b077ef0`](https://github.com/McGrathLab/AquaCal/commit/b077ef063f81183bf259f0eacf9d596a9ea1d0bf))
+
+- **29.1**: Insert Post-Run Fixes & Re-Freeze between Phases 29 and 30
+  ([`6209f70`](https://github.com/McGrathLab/AquaCal/commit/6209f705a5bd793672610d31c3340bc18b14b1e9))
+
+- **29.1**: Record that the 198 are settled -- above-water board corners
+  ([`84b6550`](https://github.com/McGrathLab/AquaCal/commit/84b655060afab4986eb8545a8783dd22cb4d1f9c))
+
+- **29.1-01**: Close the real-rig guard-count todo with its resolution
+  ([`3ab2a65`](https://github.com/McGrathLab/AquaCal/commit/3ab2a65edfe11e2a54758ea3781bea2e7fdcfbb4))
+
+- **29.1-01**: Complete E4 real-rig guard count plan
+  ([`85f7bcf`](https://github.com/McGrathLab/AquaCal/commit/85f7bcf624b48db50f7a79e25ee49814c48525e0))
+
+- **29.1-01**: Complete E4 real-rig guard count plan
+  ([`54f3699`](https://github.com/McGrathLab/AquaCal/commit/54f3699f58e49b7df10c63a7478071ceab2aeabc))
+
+- **29.1-01**: Log 8 pre-existing provenance-test failures as a deferred item
+  ([`4e5cf4e`](https://github.com/McGrathLab/AquaCal/commit/4e5cf4e8babde086e39984ee4bf480fc9779ecef))
+
+- **29.1-01**: Replace the stale D-26 rationale and make the pipeline exemption explicit
+  ([`85ec38c`](https://github.com/McGrathLab/AquaCal/commit/85ec38c16cca6f2712f41014776000e568d240fd))
+
+- **29.1-02**: Append self-check result to the plan summary
+  ([`ad1a99f`](https://github.com/McGrathLab/AquaCal/commit/ad1a99f192bc31c25c07cc0e21cc0dbf117a7cbd))
+
+- **29.1-02**: Complete E1 band defects plan
+  ([`65252f7`](https://github.com/McGrathLab/AquaCal/commit/65252f7163b7f1a67f042b25d68e856979e1ae5e))
+
+- **29.1-02**: Record plan 02 completion in project state
+  ([`3157bcb`](https://github.com/McGrathLab/AquaCal/commit/3157bcb0b4f0102c5e49f72ea971753db6b61db6))
+
+- **29.1-03**: Annotate three todos with what the bounded pass covered
+  ([`82bb0bc`](https://github.com/McGrathLab/AquaCal/commit/82bb0bc8975dd1a964e2ed424d4b67886df26585))
+
+- **29.1-03**: Complete bounded stale-string sweep plan
+  ([`bd4019c`](https://github.com/McGrathLab/AquaCal/commit/bd4019cc7dd573ec2abc6c2933084fbdd89d5fbb))
+
+- **29.1-03**: Enumerate and classify the bounded stale-string sweep
+  ([`f983d21`](https://github.com/McGrathLab/AquaCal/commit/f983d21edaebe824af7f11633a900eaa37d66c50))
+
+- **29.1-03**: Record the bounded stale-string sweep summary
+  ([`0612725`](https://github.com/McGrathLab/AquaCal/commit/06127254c7937d69f93739dd965519845ac4f0b0))
+
+- **29.1-03**: Record the summary self-check result
+  ([`4480138`](https://github.com/McGrathLab/AquaCal/commit/44801384f56e3a457e01b617d3f79d80398065e9))
+
+- **29.1-04**: Complete the install-instruction correction plan
+  ([`bbdb3bc`](https://github.com/McGrathLab/AquaCal/commit/bbdb3bc8ce1df37db270e5d6d1b0055b18d92669))
+
+- **29.1-04**: Correct HANDOFF §1.2 install command and rule on every install site
+  ([`4633009`](https://github.com/McGrathLab/AquaCal/commit/46330099d11d56678d758c35dedfa8acd1568304))
+
+- **29.1-04**: Prove the corrected install by building an environment from it
+  ([`5debda6`](https://github.com/McGrathLab/AquaCal/commit/5debda6976f720a3fd744b9aca558bac463c93b9))
+
+- **29.1-04**: Record plan 04 completion in project state
+  ([`51b3d08`](https://github.com/McGrathLab/AquaCal/commit/51b3d08f8870dff1a43b88aa2d8011b9649def7e))
+
+- **29.1-05**: Complete the folded-todo discharge plan
+  ([`bafc005`](https://github.com/McGrathLab/AquaCal/commit/bafc005ed7cd076d83b4a117c461b75f0914ab7f))
+
+- **29.1-05**: Confirm the E4 aggregator path defect is fixed, then close it
+  ([`dd92fbd`](https://github.com/McGrathLab/AquaCal/commit/dd92fbd5a08f5cb6f1d9a64ef17cec693296f6c0))
+
+- **29.1-05**: Record plan 05 completion in project state
+  ([`ffbe1a4`](https://github.com/McGrathLab/AquaCal/commit/ffbe1a41571b35095e5f9b031af2cf7d5c1f12ba))
+
+- **29.1-05**: Settle the 198 unprojectable observations as above-water board corners
+  ([`65294c5`](https://github.com/McGrathLab/AquaCal/commit/65294c5a85774906624008ca67ca2492a0f250d1))
+
+- **29.1-06**: Complete the archive-aside plan
+  ([`a833a15`](https://github.com/McGrathLab/AquaCal/commit/a833a1553b8fa004c7bffeff89b01c3e93a7c7af))
+
+- **29.1-06**: Reconcile every reference to the moved output tree
+  ([`63d3cb5`](https://github.com/McGrathLab/AquaCal/commit/63d3cb5882ce22a691ee5528b05e9b81ae9289b8))
+
+- **29.1-06**: Record the archive-aside plan's completion
+  ([`646cf08`](https://github.com/McGrathLab/AquaCal/commit/646cf08dceece0054c864ddb8ede400d6cba78ea))
+
+- **29.1-06**: Record the gate before/after while the tree is still at the default path
+  ([`b1adb3f`](https://github.com/McGrathLab/AquaCal/commit/b1adb3f3ec66ee91149207da38a955d862d7d9cf))
+
+- **29.1-06**: Record the summary self-check result
+  ([`ad5ba1c`](https://github.com/McGrathLab/AquaCal/commit/ad5ba1ca0156212506af1ef4b8af0f55f761be0c))
+
+- **29.1-07**: Record attempt 1's verification bar re-run, including the three failures it found
+  ([`98c942b`](https://github.com/McGrathLab/AquaCal/commit/98c942b1e3e8767a55b40817b598e2762b2c334a))
+
+- **29.1-07**: Record the summary self-check result
+  ([`3719d30`](https://github.com/McGrathLab/AquaCal/commit/3719d303e40f785dbd5e95dbdf705f1e64a205a1))
+
+- **29.1-07**: Record the verification-bar plan's completion
+  ([`4cc85b0`](https://github.com/McGrathLab/AquaCal/commit/4cc85b047e9ff572ba5b70d04ba2e6eb6e5a2f6f))
+
+- **29.1-07**: Record verification-bar completion in project state
+  ([`7005a27`](https://github.com/McGrathLab/AquaCal/commit/7005a2771aa115e4f4c1284cec7e145739586a4a))
+
+- **29.1-08**: Append attempt 2 to the numbered freeze attempt log
+  ([`e7448a9`](https://github.com/McGrathLab/AquaCal/commit/e7448a96df6705fb8582bc8070ca6912596b9d3e))
+
+- **29.1-08**: Close out D4, D5 and D6 in the deferred-items ledger
+  ([`3fd92bf`](https://github.com/McGrathLab/AquaCal/commit/3fd92bf9eddf75efa7f1d1704779cf9c9f4e2f71))
+
+- **29.1-08**: Close the plan -- rerun-freeze-02 pushed, phase 29.1 done
+  ([`92901ac`](https://github.com/McGrathLab/AquaCal/commit/92901ac57d6d5d863e58548c81039b428669952b))
+
+- **29.1-08**: Complete the rerun-freeze-02 freeze plan up to the push gate
+  ([`ffbd647`](https://github.com/McGrathLab/AquaCal/commit/ffbd64731709ec54c8539dac629c57bb31a4a90a))
+
+- **29.1-08**: Correct a stale PENDING reference in the summary
+  ([`0898c53`](https://github.com/McGrathLab/AquaCal/commit/0898c53a2fdaf757593cf7ebb6eb184b897ae135))
+
+- **29.1-08**: Record the approved push and the post-push assertions
+  ([`fff7f2e`](https://github.com/McGrathLab/AquaCal/commit/fff7f2e1f4c86fa1372cf335d905ee063d8febda))
+
+- **29.1-08**: Record the pre-push exposure audit and the D4 ruling
+  ([`54542c6`](https://github.com/McGrathLab/AquaCal/commit/54542c6e01860b72a999be50ef407e0feec78849))
+
+- **29.1-08**: Record the rerun-freeze-02 freeze
+  ([`ea11a81`](https://github.com/McGrathLab/AquaCal/commit/ea11a812f03eeb73b63101ff93aa9a1895067f43))
+
+- **29.1-08**: Record the summary self-check result
+  ([`59fa146`](https://github.com/McGrathLab/AquaCal/commit/59fa1468f09709c82cd96e83e8529a62c74eb89a))
+
+- **29.1-08**: Register the three D4 anchor failures in the windows ledger
+  ([`03333d7`](https://github.com/McGrathLab/AquaCal/commit/03333d7082ee1f2913b46067b1efa656997a6b7f))
+
+- **29.1-08**: Summarise the rerun-freeze-02 freeze plan
+  ([`01ee83d`](https://github.com/McGrathLab/AquaCal/commit/01ee83d9abad54652217099e38cc733e8c685367))
+
+- **29.1-09**: Record plan 09 completion in project state
+  ([`7f1d91f`](https://github.com/McGrathLab/AquaCal/commit/7f1d91f8093e2c2ee20782690eb946240b72c1a1))
+
+- **29.1-09**: Record the conditional-artifact gate summary
+  ([`3d0c598`](https://github.com/McGrathLab/AquaCal/commit/3d0c5989c7f84d60d2542bc45b67de05a9e9d880))
+
+- **29.1-09**: Record the summary self-check result
+  ([`37a8b14`](https://github.com/McGrathLab/AquaCal/commit/37a8b145cbabd02837474aaebe04bbe2b3dc6f7e))
+
+- **29.1-09**: Surface the predicate in the sheet and record the mechanism chosen
+  ([`911cb94`](https://github.com/McGrathLab/AquaCal/commit/911cb9483276a0eb13a82522870232815762ce14))
+
+- **29.2**: Capture phase context
+  ([`45efc98`](https://github.com/McGrathLab/AquaCal/commit/45efc98bd70e6d78c8cd8553b805efcdf995122b))
+
+- **29.2**: Correct CONTEXT decisions research invalidated
+  ([`bb4083a`](https://github.com/McGrathLab/AquaCal/commit/bb4083a2612b30651b0afd5f056c834cc042550d))
+
+- **29.2**: Create phase plan
+  ([`7b6f1f2`](https://github.com/McGrathLab/AquaCal/commit/7b6f1f2e2e78eb438c9b9b3f5d766b2b25fe2beb))
+
+- **29.2**: Research phase domain
+  ([`beeaf92`](https://github.com/McGrathLab/AquaCal/commit/beeaf9294ce4f0f45e786b616dc341736bcfda8d))
+
+- **29.2-01**: Assert the 2.1.0 sdist's member list, record the size series
+  ([`55f3bcc`](https://github.com/McGrathLab/AquaCal/commit/55f3bcc3d6066ab9e5aaf0b956d53480ba376204))
+
+- **29.2-01**: Complete the release-rehearsal tracer plan
+  ([`fe9c433`](https://github.com/McGrathLab/AquaCal/commit/fe9c433137491a556b6d974782959d1cc2bba580))
+
+- **29.2-01**: Rehearse the whole v2.1.0 release end to end in a throwaway clone
+  ([`efcc7bc`](https://github.com/McGrathLab/AquaCal/commit/efcc7bc2384180b98d9924e6630f17ca3239a249))
+
+- **29.2-02**: Complete the pre-commit hook repair plan
+  ([`80ae46e`](https://github.com/McGrathLab/AquaCal/commit/80ae46ec7a1785da3753c313e2435d25979f8974))
+
+- **29.2-03**: Amend the D4 todo to the two members it still owns
+  ([`ae90117`](https://github.com/McGrathLab/AquaCal/commit/ae90117db1fe7b288b465033889be64d1b674308))
+
+- **29.2-03**: Complete the D4 step-bound and CI pre-measurement plan
+  ([`dc3d1f7`](https://github.com/McGrathLab/AquaCal/commit/dc3d1f703cd789875776bb229dafae82322c8e69))
+
+- **29.2-03**: File this plan's two deviations in the windows ledger
+  ([`12291c6`](https://github.com/McGrathLab/AquaCal/commit/12291c695a65b91ae2563361f8cfa0759536b9d5))
+
+- **29.2-03**: Record both suite counts and all seven smoke invocations
+  ([`3c831b1`](https://github.com/McGrathLab/AquaCal/commit/3c831b12affa802a0c21db2b78156fb5a9616c3a))
+
+- **29.2-04**: Complete the hook-proof, pull-request and check-board plan
+  ([`d561021`](https://github.com/McGrathLab/AquaCal/commit/d56102172e929da0980991a4478d53fe5d490598))
+
+- **29.2-04**: Fix the four docutils faults that fail CI's build-docs job
+  ([`3ffebe3`](https://github.com/McGrathLab/AquaCal/commit/3ffebe39279a2c2d9064c05793a939ba5711123f))
+
+- **29.2-04**: Open PR #3 into main and record it, unmerged
+  ([`f5b9e10`](https://github.com/McGrathLab/AquaCal/commit/f5b9e1085befc31cee13f7724465d4f37b9f73bc))
+
+- **29.2-04**: Prove CI's whole-tree hook sweep moves not a byte
+  ([`ff9d5d1`](https://github.com/McGrathLab/AquaCal/commit/ff9d5d1667ab2d09a3e69c87cd893a671e1b315c))
+
+- **29.2-04**: Record the credential-scope gate blocking the pull request
+  ([`cf14d0e`](https://github.com/McGrathLab/AquaCal/commit/cf14d0e6fb9b79167c57930455817a1a42985ca6))
+
+- **29.2-04**: Record the seventh board row, the build-docs failure, and the re-proof
+  ([`f300c55`](https://github.com/McGrathLab/AquaCal/commit/f300c55d8cf261db4ef95365d71a8131966e7a21))
+
+- **29.2-04**: Rule the check board NOT GREEN, with all seven rows behind it
+  ([`64f83aa`](https://github.com/McGrathLab/AquaCal/commit/64f83aa3d9b28972e73d52ede5574dc66d28f887))
+
+- **29.2-04**: Summarise the hook proof, PR #3, and the not-green board
+  ([`6046665`](https://github.com/McGrathLab/AquaCal/commit/6046665c3206d286761ab3d2a0d08061472d9d04))
+
+- **experiments**: Distinguish results_linux32gb/ and file the E4 aggregator defect
+  ([`3eb1f4a`](https://github.com/McGrathLab/AquaCal/commit/3eb1f4a7ede0ffca3d1ffb44cb0a5651b3a78c26))
+
+- **findings**: Correct MF-08's determinism figure from 8/308 to 16/308
+  ([`ae8479b`](https://github.com/McGrathLab/AquaCal/commit/ae8479bf1b16d3bcaff64a97c6ba176d99dd594a))
+
+- **phase-23**: Complete phase execution
+  ([`a7f0f25`](https://github.com/McGrathLab/AquaCal/commit/a7f0f25a4a571d906d3de127fe0bbe4b6ba941ae))
+
+- **phase-23**: Update tracking after wave 1
+  ([`7ff7265`](https://github.com/McGrathLab/AquaCal/commit/7ff7265ef3fc5edfd5df7b3d907b880d65a7ae7f))
+
+- **phase-24**: Auto-close 3 todo(s) resolved by this phase
+  ([`8772122`](https://github.com/McGrathLab/AquaCal/commit/877212206b2c10ea7a274e85eebd5e6165ce2a2b))
+
+- **phase-24**: Complete phase execution
+  ([`d25e896`](https://github.com/McGrathLab/AquaCal/commit/d25e896e8be34250396efd2fa61ea9211b010650))
+
+- **phase-24**: Evolve PROJECT.md after phase completion
+  ([`01bead1`](https://github.com/McGrathLab/AquaCal/commit/01bead1718179d8641cc209f2d3d15628f28ff61))
+
+- **phase-24**: Update requirements traceability
+  ([`ee36e23`](https://github.com/McGrathLab/AquaCal/commit/ee36e23fdd3677c8aabf0c0835219572d33ff446))
+
+- **phase-24**: Update tracking after wave 2
+  ([`faaaf8a`](https://github.com/McGrathLab/AquaCal/commit/faaaf8aa9f721bfc06f6fa50cad687f42fa7364e))
+
+- **phase-28**: Add validation strategy
+  ([`4672f4a`](https://github.com/McGrathLab/AquaCal/commit/4672f4a376007fec1036ca0e43a6efc4f3e53388))
+
+- **phase-29**: Add validation strategy
+  ([`34e268b`](https://github.com/McGrathLab/AquaCal/commit/34e268b1af69f4b8b57dac25f97bb8a4475f95eb))
+
+- **phase-29.1**: Begin phase execution tracking
+  ([`4543a29`](https://github.com/McGrathLab/AquaCal/commit/4543a290a16369797efcdf6e8e4648e2548bf1b2))
+
+- **phase-29.1**: Complete phase execution
+  ([`7edda2e`](https://github.com/McGrathLab/AquaCal/commit/7edda2e07f5d62a498bd163716e467b40804dc32))
+
+- **phase-29.2**: Add validation strategy
+  ([`8d9f819`](https://github.com/McGrathLab/AquaCal/commit/8d9f819beeaab5b4f46c62fcf628cb3d92788f67))
+
+- **roadmap**: Add DEGEN-05 per-block optimality decomposition to Phase 24
+  ([`30f5486`](https://github.com/McGrathLab/AquaCal/commit/30f548600e287a8465f769892b352740b6e0fcb1))
+
+- **roadmap**: Insert Phase 29.2 — Merge, Release, and Publish
+  ([`fd78d77`](https://github.com/McGrathLab/AquaCal/commit/fd78d77443176e730321eb091814abc8a9ffe8ea))
+
+- **state**: Record phase 23 context session
+  ([`7da1194`](https://github.com/McGrathLab/AquaCal/commit/7da1194e28a5997ad0dfc61ed63f59166367612c))
+
+- **state**: Record phase 24 context session
+  ([`6276792`](https://github.com/McGrathLab/AquaCal/commit/6276792b5f751b5bfc2b06e77584e1c645148c28))
+
+- **state**: Record phase 25 context session
+  ([`054d753`](https://github.com/McGrathLab/AquaCal/commit/054d7539582c27096b7868298e136a5f2c02951b))
+
+- **state**: Record phase 26 context session
+  ([`c214d09`](https://github.com/McGrathLab/AquaCal/commit/c214d0982a419f02b96e77d3d0450a70c974626b))
+
+- **state**: Record phase 27 context session
+  ([`9889e37`](https://github.com/McGrathLab/AquaCal/commit/9889e376b65facc359937f047fc5f641fbcc8f32))
+
+- **state**: Record phase 29.1 context session
+  ([`6f515e5`](https://github.com/McGrathLab/AquaCal/commit/6f515e5fa14bc59397acbf2ccfe65564d8e5ef55))
+
+- **state**: Record phase 29.1 planning completion
+  ([`89c2092`](https://github.com/McGrathLab/AquaCal/commit/89c20923e098ec3f521a1d4e31272ebe24ae56ea))
+
+- **state**: Record phase 29.2 context session
+  ([`1baa971`](https://github.com/McGrathLab/AquaCal/commit/1baa9712f1a34b9bf44d17f863691a16d1a48d92))
+
+- **state**: Record phase 29.2 planning session
+  ([`c61500b`](https://github.com/McGrathLab/AquaCal/commit/c61500b82bc2589c374837f1edc2957d820749c5))
+
+- **state**: Rename the work branch to results/rerun-freeze-02
+  ([`1e2550c`](https://github.com/McGrathLab/AquaCal/commit/1e2550c89a602bcef20d7765c07fde42abd55fb0))
+
+- **state**: Repair frontmatter and advance position to phase 27
+  ([`c25bcef`](https://github.com/McGrathLab/AquaCal/commit/c25bcef60e54514dc57efa8bb6a5cc1382876bfa))
+
+- **todo**: Capture pytest-xdist suite parallelization
+  ([`3761044`](https://github.com/McGrathLab/AquaCal/commit/376104464dfbb4264428437de4b54dbfc3b7e0f0))
+
+- **todo**: File the decision-coverage gate's dotted-phase blindness
+  ([`a7a3d41`](https://github.com/McGrathLab/AquaCal/commit/a7a3d41a8987280fdb3fc786b1b621e4ff059c00))
+
+- **todo**: Record the first pytest-xdist attempt failing at collection
+  ([`10f7c4e`](https://github.com/McGrathLab/AquaCal/commit/10f7c4e7bc884cc3e4bf7e423b75f7600721738f))
+
+### Features
+
+- **23-01**: E1 and E7 solve with the interface normal free (FIX-02)
+  ([`57ac430`](https://github.com/McGrathLab/AquaCal/commit/57ac430dad6e6e55843ca80a7cda9515a9ec0585))
+
+- **23-01**: Pin water_z in E1 non-refractive arm via bounds override (FIX-01)
+  ([`fb33db4`](https://github.com/McGrathLab/AquaCal/commit/fb33db48d63de8bd6d1fc9fa0dc39880c234020e))
+
+- **23-03**: FIX-03 -- E6 signed/gauge-corrected Z error plus per-camera decomposition
+  ([`bbcdbde`](https://github.com/McGrathLab/AquaCal/commit/bbcdbdedb3cb1b5182a109b392197cbd78c4418f))
+
+- **23-03**: FIX-04 -- label E7's fixed rows vacuous-by-construction
+  ([`0633ff3`](https://github.com/McGrathLab/AquaCal/commit/0633ff3e9c69980099c7a4e445490e387bf8d966))
+
+- **24-01**: Add the bound-hit detector, pinned vs traveled (D-16)
+  ([`25d1dad`](https://github.com/McGrathLab/AquaCal/commit/25d1dad815c612511f2c294aeeda5b76509f9e1b))
+
+- **24-01**: Decompose optimality by parameter block (DEGEN-05)
+  ([`ba59f84`](https://github.com/McGrathLab/AquaCal/commit/ba59f8491cf8bb020747e06f1ae1bd9d8b3e154b))
+
+- **24-01**: Narrow the degenerate-observation warning by cause and fraction (DEGEN-03)
+  ([`d6b55ed`](https://github.com/McGrathLab/AquaCal/commit/d6b55edb491c74b578e3e7e1f11ed267fbf6dd8b))
+
+- **24-01**: Plumb the NaN reason out of the batch projector (DEGEN-02)
+  ([`220a403`](https://github.com/McGrathLab/AquaCal/commit/220a403fb220f099678ca0f3f4045b300e45faf3))
+
+- **24-01**: Split the degeneracy counter on cause and fate axes (DEGEN-02)
+  ([`d48e669`](https://github.com/McGrathLab/AquaCal/commit/d48e6690a79d446cf455716dab275ed36e2ebecc))
+
+- **24-01**: Thread discard_stage through both solver entry points (DEGEN-02)
+  ([`21e398a`](https://github.com/McGrathLab/AquaCal/commit/21e398aa16ef574b5f7e8418abe697dfc8131c3e))
+
+- **24-02**: Carry the whole discard_stats dict into benchmark.json (DEGEN-01)
+  ([`6c76986`](https://github.com/McGrathLab/AquaCal/commit/6c76986ded1b4830719139755dcc969f46891c24))
+
+- **24-02**: Publish both degeneracy axes in E1/E5/E7 plus a JSON sidecar
+  ([`a55c6f1`](https://github.com/McGrathLab/AquaCal/commit/a55c6f134d2e8234cc256dca1d264e9c2db1afc7))
+
+- **24-02**: Teach the re-run gate the split and hand Phase 26 the inventory
+  ([`a381453`](https://github.com/McGrathLab/AquaCal/commit/a3814539061ee4c973a39c1d1346e6117f853f15))
+
+- **25-01**: Add per-observation degeneracy detail sinks to compute_residuals
+  ([`a1ca422`](https://github.com/McGrathLab/AquaCal/commit/a1ca4227b17c6e0b66268ac9c6f8a5f122d6d99b))
+
+- **25-01**: Thread the detail sinks through both post-solve call sites (DEGEN-04)
+  ([`34b4354`](https://github.com/McGrathLab/AquaCal/commit/34b4354066989f6c7c301f1c0c713f5572a34c7f))
+
+- **25-02**: Add log_all_observation_depths config flag (D-09)
+  ([`fdb78a6`](https://github.com/McGrathLab/AquaCal/commit/fdb78a65a5f76e768a19bf189e261a64335f1471))
+
+- **25-02**: Thread the per-observation sinks through both stage-3 calls
+  ([`ab62613`](https://github.com/McGrathLab/AquaCal/commit/ab62613f00d40769d4b8795c01002475a18732f0))
+
+- **25-02**: Write the degenerate_observations.csv sidecar (D-08)
+  ([`a212d5a`](https://github.com/McGrathLab/AquaCal/commit/a212d5a4cb4a86e53de974c75a2d02d5e9dd3163))
+
+- **25-03**: Add the offline bucket vocabulary and classifier (DEGEN-04)
+  ([`56bfbfe`](https://github.com/McGrathLab/AquaCal/commit/56bfbfeb2e21ab29ca1d376f0a6860f21a5bdace))
+
+- **25-03**: Write the classification table with its in-body provenance stamp (DEGEN-04)
+  ([`2f07dab`](https://github.com/McGrathLab/AquaCal/commit/2f07dabdc7016bf5c5d5a2d49599779c0da34ede))
+
+- **25-04**: Nest E1's noise_std band axis and correct both band key lists
+  ([`cc088b1`](https://github.com/McGrathLab/AquaCal/commit/cc088b11e7fee04d90e3d09496019297d6acc11d))
+
+- **26-02**: Emit one suite-level run manifest at pre-flight (DRIVER-02)
+  ([`24e547a`](https://github.com/McGrathLab/AquaCal/commit/24e547a876d0aed14c17aa7b80598d11f2bae627))
+
+- **26-02**: Extend Gate 3 over the run manifest, all hard FAIL (D-21)
+  ([`c8444fc`](https://github.com/McGrathLab/AquaCal/commit/c8444fc82e4bd4e18921d377ec8aff92e8206b86))
+
+- **26-03**: Author suite_expectations.json, the single expectation manifest
+  ([`8d00c69`](https://github.com/McGrathLab/AquaCal/commit/8d00c69dbd7ae5a866aa47178c15cc4c00ca4f23))
+
+- **26-03**: Implement the completeness gate and its optional CLI selector
+  ([`8c0c538`](https://github.com/McGrathLab/AquaCal/commit/8c0c538b2891fc8bb3d40797319199b9e7004ac5))
+
+- **26-04**: Add --baseline-dir helpers and the missing-baseline N/A guard
+  ([`375f895`](https://github.com/McGrathLab/AquaCal/commit/375f89501734d4c1a4cd3c30a87b2e9a7a28f688))
+
+- **26-04**: Thread --baseline-dir through E3's --check
+  ([`18f448a`](https://github.com/McGrathLab/AquaCal/commit/18f448afa034ad80024101c0c7a7ab031421ce34))
+
+- **26-05**: Add an --axes selector to E6 so D-40 can drop the scale axis
+  ([`02a4c82`](https://github.com/McGrathLab/AquaCal/commit/02a4c821981e63b99ec07113514ae1447c2da509))
+
+- **26-06**: Emit E2's classification/timing/memory invocation configs (D-15/D-16)
+  ([`64f0dc6`](https://github.com/McGrathLab/AquaCal/commit/64f0dc63ae2f196b4fd28aab0a50f53ece04f322))
+
+- **26-07**: Populate the full stage list — every invocation in the suite
+  ([`a9b12b4`](https://github.com/McGrathLab/AquaCal/commit/a9b12b4bcfb3a3ed150cd2530603fe2b68b5ae3e))
+
+- **26-08**: Pre-flight refusals, the sticky exit and D-52's concurrency pool
+  ([`edf6f49`](https://github.com/McGrathLab/AquaCal/commit/edf6f49d7835732712a0d0494f0e692f3a9d6c18))
+
+- **26-09**: Render experiments/EXPECTATIONS.md from the manifest (D-05/D-08)
+  ([`5497d4e`](https://github.com/McGrathLab/AquaCal/commit/5497d4edeec0c34933f28b051a3354cc19558480))
+
+- **26-11**: Add the driver's reduced-scale (--smoke) path
+  ([`5c0faee`](https://github.com/McGrathLab/AquaCal/commit/5c0faee956fbdf7e900dc96a4c2a0fe780d1a32f))
+
+- **27-05**: Emit the environment lockfile as a run artifact (D-13)
+  ([`bc2cc25`](https://github.com/McGrathLab/AquaCal/commit/bc2cc25fdb1343339f19122f8acdeee2ecfd83c1))
+
+- **27-05**: Record both BLAS thread regimes in the run manifest (D-14)
+  ([`cd958c9`](https://github.com/McGrathLab/AquaCal/commit/cd958c939d294b7fadd831d79f6abe47d9e46d05))
+
+- **27-08**: Commit E2's exact release inputs inside the frozen sha (D-11)
+  ([`ce9154a`](https://github.com/McGrathLab/AquaCal/commit/ce9154afd8b79bc93b43d74227f1668bedb78bd7))
+
+- **27-08**: Record both interpreters in the run manifest (D-30)
+  ([`fdd1ce4`](https://github.com/McGrathLab/AquaCal/commit/fdd1ce4cebb121e522fae5c6412a65dc42f81e86))
+
+- **27-08**: Two-regime BLAS pin, the lockfile call site, and the re-derived byte floor (D-14, D-13,
+  D-10)
+  ([`d2b026b`](https://github.com/McGrathLab/AquaCal/commit/d2b026b276aac94a02a59c05773d562531ecc804))
+
+- **29-01**: Zenodo upload tooling, rehearsed end to end on sandbox
+  ([`240ed00`](https://github.com/McGrathLab/AquaCal/commit/240ed007b612c19010cd4da91166fe01519f02a1))
+
+- **29-03**: E2 same-seed control script and evidence
+  ([`8e34c6b`](https://github.com/McGrathLab/AquaCal/commit/8e34c6b23c4ea1b4d2eeb7e749359fe16893d6f0))
+
+- **29-03**: E7 before/after sign test script and evidence
+  ([`9b94f51`](https://github.com/McGrathLab/AquaCal/commit/9b94f51946ddee8aa74144d6394118a63d14bae4))
+
+- **29-04**: Stream Record A into its production bucket, byte-verified
+  ([`b6bec8d`](https://github.com/McGrathLab/AquaCal/commit/b6bec8db44e6e1cd5d1ac1947308729fa610675d))
+
+- **29-07**: Build Record B's payload from this run's own fresh outputs
+  ([`00db4ac`](https://github.com/McGrathLab/AquaCal/commit/00db4ac587b76d3bdf14e90c537c7d3a6925ceec))
+
+- **29-07**: Finalise Record B's metadata with the ruled linkage
+  ([`edd9f1b`](https://github.com/McGrathLab/AquaCal/commit/edd9f1b5da81f2324bf107dcebf817b8c9c6a819))
+
+- **29-07**: Stream Record B into the draft and prove the round trip
+  ([`37717eb`](https://github.com/McGrathLab/AquaCal/commit/37717eb695bf824d701984290bee680550098adb))
+
+- **29.1-06**: Archive the 2026-08-20 run output aside so the new tag ships an empty output tree
+  ([`24bf414`](https://github.com/McGrathLab/AquaCal/commit/24bf414282a62800d378093d73c2f964d51f75da))
+
+- **29.1-09**: Evaluate the condition instead of excusing the absence
+  ([`f22e853`](https://github.com/McGrathLab/AquaCal/commit/f22e8536701f5d172bb00d9cfcff7fdb410b1536))
+
+### Refactoring
+
+- **26-07**: Git mv rerun_19_3.sh -> run_experiment_suite.sh (D-25)
+  ([`0402960`](https://github.com/McGrathLab/AquaCal/commit/0402960b37dd246eacef29979157133bbaed07af))
+
+- **26-07**: Lift 19.5's machinery and write the one-driver header
+  ([`bdd9dcc`](https://github.com/McGrathLab/AquaCal/commit/bdd9dcc329e0f2ab405808756004dd220481af75))
+
+### Testing
+
+- **24-02**: Add failing tests for the benchmark.json discard_stats block
+  ([`9102b7c`](https://github.com/McGrathLab/AquaCal/commit/9102b7c65c12f0cfea8c0d0510cd39c4260715bb))
+
+- **25-04**: Pin the 640/960 band shape, key uniqueness and the fixed contracts
+  ([`ab1539a`](https://github.com/McGrathLab/AquaCal/commit/ab1539ad0f5eeacb08c2da42a225c5d82ca0bb09))
+
+- **25-07**: Pin the gate-scope rationale and the count > 0 predicate (DEGEN-04)
+  ([`dee5b64`](https://github.com/McGrathLab/AquaCal/commit/dee5b646fa0fd3171925c9c5294bf30da54a53e2))
+
+- **26-01**: Repoint the committed-baseline reads at the pre-re-run archive
+  ([`e3a7bf3`](https://github.com/McGrathLab/AquaCal/commit/e3a7bf35d4dce37ec0d340864da4e390228ef15d))
+
+- **26-02**: Add failing TestRunManifestGate for Gate 3's manifest check
+  ([`2dc19ef`](https://github.com/McGrathLab/AquaCal/commit/2dc19efb15a119007d33afbb33663adc7feddfd7))
+
+- **26-02**: Add failing tests for the suite run-manifest emitter
+  ([`1674883`](https://github.com/McGrathLab/AquaCal/commit/16748831df206b19119f6ef4b14e5bbfcbc57cee))
+
+- **26-03**: Add failing tests for the completeness gate
+  ([`872754f`](https://github.com/McGrathLab/AquaCal/commit/872754f6a566b441dfe74309be34e4084aa727aa))
+
+- **26-03**: Add the forbidden-row-literal tripwire and the manifest couplings
+  ([`db9f0ba`](https://github.com/McGrathLab/AquaCal/commit/db9f0bac12feae40e908fb462270c74517c44c98))
+
+- **26-04**: Add failing E3 --baseline-dir plumbing tests
+  ([`7f0fe8a`](https://github.com/McGrathLab/AquaCal/commit/7f0fe8a63e5cbc8708d1718af5fc02d3ffc795a4))
+
+- **26-04**: Add failing TestBaselineDir for --baseline-dir helpers
+  ([`7bd9905`](https://github.com/McGrathLab/AquaCal/commit/7bd9905b81b3824c9f93ae9b14f654751b1ac146))
+
+- **26-05**: Add failing tests for E6's --axes selector (D-40)
+  ([`59d6249`](https://github.com/McGrathLab/AquaCal/commit/59d62492778abd7d9836e7a219c680ef8ffef551))
+
+- **26-06**: Add failing tests for E2 invocation configs and --check N/A guard
+  ([`d1bc006`](https://github.com/McGrathLab/AquaCal/commit/d1bc006f7732ce9d0eae17c2fd75e00e689d6a0f))
+
+- **26-07**: Couple the driver's stage list to the expectation manifest
+  ([`35de34f`](https://github.com/McGrathLab/AquaCal/commit/35de34f2e5bafaaaa4cdf4aa7c659566d41ed80b))
+
+- **26-08**: The suite driver's first automated test, ever
+  ([`7fcc413`](https://github.com/McGrathLab/AquaCal/commit/7fcc4138b0d487205939a4ea6a0811f9dad3bc54))
+
+- **26-09**: Failing freshness test for the expectation sheet (D-08)
+  ([`adee237`](https://github.com/McGrathLab/AquaCal/commit/adee237d370311b1a8e58654f861b0665c483631))
+
+- **26-11**: Cover the reduced-scale path and freeze the full-scale one
+  ([`cc3c28d`](https://github.com/McGrathLab/AquaCal/commit/cc3c28d3302c3b6f4e605965ecacd48c380d8f90))
+
+- **26-14**: Re-aim the baseline rails at the tree the frozen run writes
+  ([`88512b7`](https://github.com/McGrathLab/AquaCal/commit/88512b78d38d3b4c5d05aa3f5175a8ca28e1da34))
+
+- **27-02**: Add a failing resume test for a stage that completed non-zero (D-22)
+  ([`03ee55b`](https://github.com/McGrathLab/AquaCal/commit/03ee55b94204e58f7b43568fd2ca88ea66cedd26))
+
+- **27-02**: Add failing pre-flight tests for a directory frameset (D-09)
+  ([`61d9a86`](https://github.com/McGrathLab/AquaCal/commit/61d9a86b33a85e3beb3fc1836a520989492e2a7f))
+
+- **27-03**: Add failing tests for profile-aware E4/E5/E6 checkers (D-20)
+  ([`2582ec7`](https://github.com/McGrathLab/AquaCal/commit/2582ec75748fbfed230389d9dc90c83f40cf45cb))
+
+- **27-04**: Add failing tests for --out-relative real_rig_metrics resolution
+  ([`f4ea3ff`](https://github.com/McGrathLab/AquaCal/commit/f4ea3ffb9a3f6c2e6a17e165fee0eacd3820b477))
+
+- **27-05**: Add failing tests for the environment lockfile emitter (D-13)
+  ([`2c25829`](https://github.com/McGrathLab/AquaCal/commit/2c25829525caf5d8d70ca2cabe931b6323721218))
+
+- **27-05**: Add failing tests for the two-regime thread record (D-14)
+  ([`38c0560`](https://github.com/McGrathLab/AquaCal/commit/38c0560cd6c91eec8b73d3e0f573556704e42dd7))
+
+- **29.1-01**: Pin both halves of the real-rig guard-count fix
+  ([`5fa6bd2`](https://github.com/McGrathLab/AquaCal/commit/5fa6bd22f615bf85588e604115060d5182f18de2))
+
+- **29.1-02**: Add failing tests for the band's benchmark write policy
+  ([`b14bd9d`](https://github.com/McGrathLab/AquaCal/commit/b14bd9dd107ec6e7eb7cf8b93f20fe734435163f))
+
+- **29.1-09**: Failing tests for the conditional predicate and the misplacement search
+  ([`dc7e6a2`](https://github.com/McGrathLab/AquaCal/commit/dc7e6a2d23b77c954823c5ce363e5744670e387c))
+
+- **benchmark**: Guard the psutil peak-wset assertion on psutil being installed
+  ([`d27bda7`](https://github.com/McGrathLab/AquaCal/commit/d27bda76fe7c765b3c975b2052ca1f8f7b286068))
+
+
 ## v2.0.1 (2026-08-11)
 
 ### Bug Fixes
