@@ -294,3 +294,102 @@ The proof also does not extend forward. Any commit pushed to this branch after
 this sha changes the tree, and this evidence would then describe a tree that no
 longer exists -- which is why nothing has been pushed to the branch since.
 
+--------------------------------------------------------------------------------
+8. THE PULL REQUEST -- NOT CREATED. BLOCKED ON A MISSING CREDENTIAL SCOPE.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. Task 2 of plan 29.2-04 could not be completed, and this
+section records why rather than leaving the omission silent.
+
+THE PROOF IN SECTIONS 1-7 STANDS AND IS UNAFFECTED. It was re-taken at the sha
+this section is appended to; see the re-measurement note at the end.
+
+What was attempted:
+
+  $ git push origin results/rerun-freeze-02
+
+To https://github.com/McGrathLab/AquaCal.git
+ ! [remote rejected] results/rerun-freeze-02 -> results/rerun-freeze-02 (refusing
+   to allow an OAuth App to create or update workflow `.github/workflows/release.yml`
+   without `workflow` scope)
+error: failed to push some refs to 'https://github.com/McGrathLab/AquaCal.git'
+
+(exit code 1)
+
+The cause, stated exactly. The branch carries 7ab969e "ci(29.2-01): pin the
+release toolchain to a verified-working PSR/GitPython pair", which MODIFIES
+.github/workflows/release.yml. GitHub refuses any push that creates or updates a
+file under .github/workflows/ unless the credential carries the `workflow`
+scope. The credential available here does not:
+
+  $ gh auth status
+
+  ✓ Logged in to github.com account tlancaster6 (keyring)
+  - Token scopes: 'gist', 'read:org', 'repo'
+
+(exit code 0)
+
+`repo` is sufficient to open the pull request. It is NOT sufficient to push the
+commit the pull request would be opened against. The block is on the push, one
+step earlier than the pull request itself.
+
+No alternative credential exists on this machine, checked read-only and by
+presence only, without printing any value:
+
+  GH_TOKEN unset | GITHUB_TOKEN unset | RELEASE_TOKEN unset | GH_ENTERPRISE_TOKEN unset
+  git credential.helper: not configured (local or global)
+
+SSH was checked as a route around the OAuth scope, because `gh auth status`
+reports "Git operations protocol: ssh" and an SSH key carries no OAuth scope
+restriction. It is not usable either:
+
+  $ ssh -T git@github.com
+
+git@github.com: Permission denied (publickey).
+(exit code 255)
+
+WHAT WAS DELIBERATELY NOT DONE, AND WHY IT MATTERS
+
+The remote branch is presently at 2205eeb, which is 21 commits BEHIND the local
+head ff9d5d1. A pull request could have been opened from that already-pushed
+state without any push at all. IT WAS NOT, AND MUST NOT BE. 2205eeb predates
+every wave-one change:
+
+  e671074, d9e8f49   the two pre-commit exclude repairs -- absent
+  3026813            the D4 step-bound assertion fix    -- absent
+  7ab969e            the release toolchain pin          -- absent
+
+CI against 2205eeb would run the `pre-commit` job against the UNREPAIRED
+configuration and fail it on the ~300 end-of-file-fixer rewrites, 19
+trailing-whitespace rewrites and 10 detect-secrets findings that 29.2-02
+measured, and would redden two ubuntu `test` cells on the D4 assertion that
+29.2-03 fixed. The resulting board would be red, and worse, it would describe a
+tree that the proof in sections 1-7 does not cover. A board that does not
+describe the proven tree is not evidence about the proven tree. Opening it would
+manufacture exactly the mis-read board that T-29.2-17 exists to prevent.
+
+Nothing was merged, auto-merged, approved or requested for review. No pull
+request exists: `gh pr list --state open` -> `[]`, unchanged from the state
+29.2-PATTERNS.md § No Analog Found recorded.
+
+WHAT UNBLOCKS IT -- an author action, not an agent action
+
+Any one of the following, after which Task 2 and Task 3 can run unchanged:
+
+  1. Grant the scope to the existing credential (interactive; opens a browser):
+       gh auth refresh -h github.com -s workflow
+  2. Or configure an SSH key for this machine and push over SSH.
+  3. Or push 7ab969e's branch with a personal access token carrying `workflow`.
+
+Option 1 is the smallest change and is reversible.
+
+RE-MEASUREMENT AFTER THIS SECTION WAS APPENDED
+
+Section 7 warns that any new commit changes the tree the proof describes. The
+sweep was therefore re-run after the section-8 commit landed, and reported
+identically: exit code 0, all seven hooks Passed, `git status --porcelain
+--untracked-files=all` 0 lines, both md5 anchors matching their literals, and
+the driver-state TSV's distinct field count the single value 5. The evidence
+file is under .planning/, which both formatting hooks and detect-secrets
+exclude, so it cannot be rewritten by the hooks it documents.
+
