@@ -207,7 +207,7 @@ submission. POST follows it.
 - [x] **RUN-04**: The returned results are committed with provenance intact, and every §3-facing
       number is traceable to this run
 
-- [ ] **RUN-05**: The Zenodo record is split into immutable inputs and a versioned results
+- [x] **RUN-05**: The Zenodo record is split into immutable inputs and a versioned results
       package, and the results package matching this run's numbers is published **before the
       paper is submitted**, so the archive the paper cites agrees with the §3 it supports —
       todo `2026-08-15-repackage-and-reupload-the-zenodo-archive`
@@ -306,7 +306,7 @@ Deferred with a reason, scheduled for after the SoftwareX submission.
 | RUN-02 | Phase 28 | Pending |
 | RUN-03 | Phase 29 | Complete |
 | RUN-04 | Phase 29 | Complete |
-| RUN-05 | Phase 29 | Pending |
+| RUN-05 | Phase 29 | Complete |
 | POST-01 | Phase 30 | Pending |
 | POST-02 | — | Retired — re-timed to RUN-05 (2026-08-15) |
 | POST-03 | Phase 30 | Pending |

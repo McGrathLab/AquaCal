@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.2
 current_phase_name: merge-release-and-publish
 status: executing
-stopped_at: Completed 29.2-02-PLAN.md
-last_updated: "2026-08-26T23:29:41.579Z"
+stopped_at: Completed 29.2-03-PLAN.md
+last_updated: "2026-08-27T00:33:23.102Z"
 last_activity: 2026-08-26
-last_activity_desc: 29.2-01 pinned the release toolchain (python-semantic-release==10.6.1, gitpython==3.1.59 -- release.yml could not run at all unpinned) and rehearsed the ENTIRE v2.1.0 release end to end in a throwaway /tmp clone against a local bare remote. `semantic-release version --print` output string-equals 2.1.0; PSR's own parser reports MAJOR = 0, settling D-29.2-20. Release commit, annotated v2.1.0 tag, both version files, a 1,219-line CHANGELOG section and a clean sdist all produced and inspected. Nothing irreversible touched.
+last_activity_desc: 29.2-03 converted the one D4 member CI's not-slow selection runs to documented step-count bounds (np.testing.assert_array_max_ulp, maxulp=4 on r_q_m and 8 on chord_incidence_deg -- 4x the measured worst cases of 1 and 2 steps over all 22 rows); h_c_m and h_q_m measured 0/22 and keep exact equality. Then measured what CI will measure: not-slow 0 failed, whole suite exactly 2 failed (both @pytest.mark.slow), all seven experiments-smoke invocations exit 0 with experiments/ byte-unchanged and both md5 anchors unmoved. Evidence: `29.2-smoke-runs.txt`. TWO is now the expected whole-suite count; the D4 todo names two members and records why the third left. No prior artifact was rewritten.
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 71
-  completed_plans: 65
+  completed_plans: 66
   percent: 80
 ---
 
@@ -35,7 +35,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.2 (merge-release-and-publish) — EXECUTING (2/8 plans complete)
+Phase: 29.2 (merge-release-and-publish) — EXECUTING (3/8 plans complete)
 Plan 29.2-01 COMPLETE 2026-08-26 — the phase tracer. Release toolchain pinned; the whole release
 rehearsed in /tmp and the 2.1.0 bump asserted by string equality. Evidence:
 `29.2-release-rehearsal.txt`, `29.2-sdist-listing.txt`. The scratch root
@@ -46,6 +46,17 @@ are repaired in `.pre-commit-config.yaml`: both formatting hooks now share D-29.
 exclude (the superseded mirrored pattern covered NONE of the ten files `trailing-whitespace` would
 have rewritten), and `detect-secrets` gained a `.planning/` arm whose cost — the planning tree stops
 being secret-scanned — is written at the constant. No hook was run; the whole-tree proof is 29.2-04.
+Plan 29.2-03 COMPLETE 2026-08-26 — the one D4 member that is NOT `@pytest.mark.slow` now passes, so
+no D4 failure can redden a cell of CI's `test` job on the release PR. Its two drifting assertions
+became hard bounds of 4 and 8 representable steps with the mechanism written at the assertion (the
+library evaluates `r_q` vectorized, the test scalar — a SAME-MACHINE dispatch asymmetry, correcting
+the D4 todo's cross-platform framing); the two that measured 0/22 keep exact equality. Measured, not
+assumed: not-slow **0 failed**, whole suite **exactly 2 failed** (collected total unchanged at 2418,
+passed exactly one higher), all seven `experiments-smoke` invocations exit 0 with `experiments/`
+byte-unchanged and both md5 anchors unmoved. Evidence: `29.2-smoke-runs.txt`. **TWO is the new
+expected whole-suite count; zero and three are both anomalies** — the superseding statement is
+routed to `29.2-PHASE-RECORD.md` (plan 29.2-08), and the tag message and 29.1-PREPUSH-AUDIT.md were
+NOT rewritten.
 criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
@@ -381,6 +392,9 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 - [Phase 29.2]: 29.2-01: assert the sdist's member list, never its size — two builds of the identical tree 20s apart differ by 20 bytes with identical member lists (strengthens D-29.2-32)
 - [Phase 29.2]: 29.2-01: pin LC_ALL=C for every member-set comparison; the six-name sort order is collation-dependent and would false-alarm on an en_US.UTF-8 machine
 - [Phase 29.2]: 29.2-02: implemented D-29.2-02b's corrected exclude on both formatting hooks, not the superseded mirrored pattern; extended detect-secrets with a .planning/ arm and recorded that the planning tree stops being secret-scanned
+- [Phase 29.2]: 29.2-03: the two drifting D4 assertions (r_q_m, chord_incidence_deg) are bounded as a hard count of representable steps -- np.testing.assert_array_max_ulp at maxulp=4 and 8, four times the measured worst cases -- not a relative tolerance, which cannot express a step count. h_c_m and h_q_m measured 0/22 mismatches and keep exact equality.
+- [Phase 29.2]: 29.2-03: TWO is the new expected whole-suite failure count (measured 2 failed, 2395 passed, 21 skipped; collected total unchanged at 2418). Zero and three are both anomalies. The not-slow selection CI runs reports ZERO, so no D4 member can redden a PR cell.
+- [Phase 29.2]: 29.2-03: the D4 todo now names two members. The third had no captured anchor at all -- its gap was the library's vectorized r_q against the test's scalar r_q on the SAME machine, a dispatch asymmetry, not a Windows pin. Recorded as a correction of the todo, not of the phase that filed it; no prior artifact was rewritten.
 
 ### Blockers/Concerns
 
@@ -407,10 +421,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-26T23:29:41.565Z
+Last session: 2026-08-27T00:33:23.085Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.2-02-PLAN.md
+Stopped at: Completed 29.2-03-PLAN.md
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -441,3 +455,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29 P08 | 45min | 3 tasks | 8 files |
 | Phase 29.2 P01 | 20min | 3 tasks | 3 files |
 | Phase 29.2 P02 | 25m | 3 tasks | 1 files |
+| Phase 29.2 P03 | 1h15m | 3 tasks | 3 files |
