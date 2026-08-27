@@ -1,0 +1,296 @@
+================================================================================
+29.2-precommit-allfiles-proof.txt -- CI's whole-tree hook sweep
+`pre-commit run --all-files` RUN ONCE, LOCALLY, on a committed-clean tree, and
+asserted against FOUR independent invariants (D-29.2-03 and its 2026-08-26
+amendment). Reads with 29.2-02-SUMMARY.md, which wrote the exclude patterns this
+sweep is the first execution of. Extended below with the pull request this proof
+unblocked and that request's check board.
+================================================================================
+
+Measured        : 2026-08-27
+Branch          : results/rerun-freeze-02
+Head sha        : 12291c695a65b91ae2563361f8cfa0759536b9d5
+                  (12291c6 "docs(29.2-03): file this plan's two deviations in
+                  the windows ledger")
+Hook runner     : pre-commit 4.6.2 -- installed UNPINNED, exactly as
+                  .github/workflows/test.yml:54 does it (`pip install
+                  pre-commit`, no version specifier), so that what is proved
+                  here is what CI runs and not a pinned near-neighbour of it.
+                  4.6.2 is what resolved on 2026-08-27; CI resolves whatever is
+                  current on the day it runs, which is the same exposure CI
+                  already carries and is recorded rather than removed.
+Interpreter     : /tmp/aquacal-29.2-precommit-venv/bin/python (Python 3.12.13),
+                  an ISOLATED venv, not the anaconda base environment --
+                  29.2-RESEARCH.md § Environment Availability recorded
+                  pre-commit as not installed on this machine and asked for a
+                  scratch venv rather than a base-environment install. CI's
+                  pre-commit job pins python-version '3.12' (test.yml:51), so
+                  3.12.13 is the SAME minor as the runner and the hooks below
+                  resolve their own pinned environments identically.
+Config commits  : e671074 "fix(29.2-02): scope both formatting hooks off the
+                  byte-sensitive artifacts" and d9e8f49 "fix(29.2-02): add a
+                  .planning/ arm to detect-secrets, and write its cost down"
+                  -- the two commits whose patterns this sweep executes for the
+                  first time. Both landed and were committed BEFORE this run;
+                  the prohibition against sweeping ahead of them is honoured by
+                  ordering, and the clean baseline below is what shows it.
+Hook env cache  : ~/.cache/pre-commit -- outside the repository tree, so the
+                  hook environments pre-commit built cannot themselves appear as
+                  working-tree changes and inflate or mask assertion 2.
+
+--------------------------------------------------------------------------------
+0. WHY A CLEAN RESULT HERE IS NEWS AND NOT ROUTINE
+--------------------------------------------------------------------------------
+
+THIS COMMAND HAS NEVER BEEN INVOKED ANYWHERE IN THIS PROJECT BEFORE. Every hook
+run in Phase 29 and 29.1 was scoped to named files with `--files`; no whole-tree
+sweep appears anywhere in the project's history. `.github/workflows/test.yml:57`
+has been running exactly this command on every push to `main` and every pull
+request into it for as long as that job has existed -- but no pull request has
+ever been opened on this repository, and the results branch has never been pushed
+to `main`, so the job has never fired against this tree. The sweep below is the
+first execution, anywhere, of the seven-hook configuration against all 1,711
+tracked files.
+
+That is why the four assertions exist. Until this run, "the excludes look right"
+was a reading of a regex. It is now a measurement.
+
+And it is why EXIT ZERO IS NOT THE BAR. Two of the seven hooks
+(trailing-whitespace, end-of-file-fixer) rewrite in place and then report
+success on what they rewrote; a third (ruff, `args: [--fix]`) rewrites SOURCE
+the same way. A sweep that silently normalised the 143 deliberate missing
+newlines and the 439 trailing-whitespace advisories inside the 227-file
+provenance commit 70e783f would have exited zero while destroying the record.
+Assertions 2 through 4 are what catch that; assertion 1 alone cannot.
+
+--------------------------------------------------------------------------------
+1. ASSERTION ONE -- THE SWEEP EXITS ZERO
+--------------------------------------------------------------------------------
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+All SEVEN hooks are recorded above, not only the three that plan 29.2-02
+repaired. The four that were never touched (ruff, ruff format, check yaml, check
+for added large files) are reported here because 29.2-RESEARCH.md § Q3f measured
+them read-only and predicted clean for each; this is the first execution that
+confirms the prediction rather than modelling it.
+
+Two of those four are worth naming individually:
+
+  ruff (legacy alias)   Runs with `args: [--fix]`. Had it found a single lint it
+                        would have REWRITTEN SOURCE, and assertion 2 below would
+                        have failed -- a lint finding wearing a byte-integrity
+                        costume. It passed, so no source was rewritten and the
+                        two failure modes did not have to be told apart. Note
+                        what Q3f records: the pre-push gate only covers
+                        `ruff check src/ tests/`, so this CI sweep is the only
+                        thing that lints experiments/, docs/ and the 14 .py
+                        files under .planning/probes/. They are clean today;
+                        they are not GUARDED by anything except this job.
+
+  check for added...    A no-op by construction on a clean checkout, not a pass
+                        earned against content: pre-commit-hooks v5.0.0 filters
+                        to `git diff --staged --diff-filter=A`, which is empty
+                        here and on a fresh CI checkout. Recorded as a pass
+                        because that is what it printed; recorded as a no-op
+                        because a reader should not credit it with more.
+
+--------------------------------------------------------------------------------
+2. ASSERTION TWO -- THE WORKING TREE'S STATUS OUTPUT IS UNCHANGED AND EMPTY
+--------------------------------------------------------------------------------
+
+This is the assertion that catches a hook that rewrote a file and then reported
+success. It is meaningful ONLY because the baseline was taken on a committed-
+clean tree: plans 29.2-01, 29.2-02 and 29.2-03 had committed everything they
+produced before this ran, so an empty result after the sweep can only mean
+nothing moved.
+
+BEFORE the sweep:
+
+  $ git status --porcelain
+
+(no output -- 0 bytes, 0 lines)
+(exit code 0)
+
+AFTER the sweep:
+
+  $ git status --porcelain
+
+(no output -- 0 bytes, 0 lines)
+(exit code 0)
+
+  $ diff <baseline> <post-run>
+
+(no output -- byte-identical)
+(exit code 0)
+
+And with untracked files fully expanded, so that a hook that CREATED a file
+rather than editing one is caught too:
+
+  $ git status --porcelain --untracked-files=all
+
+(no output -- 0 lines)
+(exit code 0)
+
+NOTHING WAS REWRITTEN. Not one of the 1,711 tracked files changed by a byte, and
+no new file appeared. The evidence file you are reading is the only working-tree
+change this plan makes, and it was written after this measurement was taken.
+
+--------------------------------------------------------------------------------
+3. ASSERTION THREE -- BOTH MD5 ANCHORS ARE UNMOVED
+--------------------------------------------------------------------------------
+
+These are the two digests `gate3_git_sha_consistency` and the interface-ablation
+band check rest on.
+
+  $ md5sum experiments/results/real_rig_metrics.json experiments/results/interface_ablation_band.csv
+
+57279708f6106f411d1fe03ed2698291  experiments/results/real_rig_metrics.json
+b6515ed77ed04268608b74217716020b  experiments/results/interface_ablation_band.csv
+
+(exit code 0)
+
+Asserted by STRING EQUALITY against the literals, not by eye:
+
+  $ [ "$(md5sum experiments/results/real_rig_metrics.json | cut -d' ' -f1)" = "57279708f6106f411d1fe03ed2698291" ]
+
+MD5-A: MATCH
+(exit code 0)
+
+  $ [ "$(md5sum experiments/results/interface_ablation_band.csv | cut -d' ' -f1)" = "b6515ed77ed04268608b74217716020b" ]
+
+MD5-B: MATCH
+(exit code 0)
+
+A correction worth carrying forward, because the wrong framing once produced a
+pattern that protected nothing (see .pre-commit-config.yaml:66-76): THESE TWO
+FILES WERE NEVER THE BYTES AT RISK FROM THE FORMATTING HOOKS. They live under
+experiments/results/, which the `results[^/]*/` arm already covered. They are
+asserted here because they are what the repository's gates rest on, so their
+being unmoved is worth stating -- not because this sweep was ever likely to
+move them. The bytes that WERE at risk are the driver-state TSV and the stage
+logs, which assertion 4 names.
+
+--------------------------------------------------------------------------------
+4. ASSERTION FOUR -- THE DRIVER-STATE FILE IS STILL FIVE-FIELD ON EVERY LINE
+--------------------------------------------------------------------------------
+
+  $ awk -F'\t' '{print NF}' experiments/run_experiment_suite_state.7005a27.tsv | sort -u
+
+5
+
+(exit code 0)
+
+The distinct field count across all 40 lines is the SINGLE value 5. Asserted by
+string equality against that single value, so a second distinct count appearing
+would fail rather than pass unnoticed:
+
+  $ [ "$(awk -F'\t' '{print NF}' experiments/run_experiment_suite_state.7005a27.tsv | sort -u | tr '\n' ',')" = "5," ]
+
+NF: SINGLE VALUE 5
+(exit code 0)
+
+Supporting count, which is the specific thing that would have broken:
+
+  $ grep -c $'\t$' experiments/run_experiment_suite_state.7005a27.tsv
+
+20
+(exit code 0)
+
+20 of the 40 lines END IN A TAB. That trailing tab IS the empty fifth column --
+the exit-code field, empty on the `start` rows. Had trailing-whitespace stripped
+it, those 20 lines would have become 4-field while the other 20 stayed 5-field,
+and the `sort -u` above would have printed TWO values instead of one. That is
+schema corruption, not whitespace.
+
+WHY THIS ASSERTION IS HERE WHEN ASSERTION TWO WOULD ALSO HAVE CAUGHT IT: because
+assertion 2 catches it GENERICALLY -- it would report that a file changed --
+while this one names WHICH INVARIANT was at stake. Only the named one survives
+into this file, where a future reader can see what the exclude was protecting
+and why stripping twenty trailing tabs was never a tidying operation. That is
+the whole reason D-29.2-03 was amended on 2026-08-26 to require it.
+
+--------------------------------------------------------------------------------
+5. BEFORE AND AFTER, IN ONE PLACE
+--------------------------------------------------------------------------------
+
+All three measured quantities, baseline beside post-run (D-29-16: report both
+numbers, never only the flattering one):
+
+                                                BEFORE              AFTER
+  git status --porcelain                     0 lines      ->     0 lines
+  git status --porcelain -uall               0 lines      ->     0 lines
+  md5 real_rig_metrics.json          57279708f610...  ->  57279708f610...
+  md5 interface_ablation_band.csv    b6515ed77ed0...  ->  b6515ed77ed0...
+  TSV distinct field count                   {5}          ->     {5}
+  TSV lines ending in a tab                    20         ->       20
+
+EVERY ROW IS UNCHANGED, AND NO ROW WAS ADJUSTED TOWARD BEING UNCHANGED. These
+are what the commands reported. Had any of them moved, the finding would be
+recorded here with the file list and this plan would have stopped -- restoring a
+rewritten artifact and re-running to obtain a pass is expressly prohibited,
+because a rewrite is the reportable result, not an obstacle to a clean one.
+
+--------------------------------------------------------------------------------
+6. PROHIBITIONS HONOURED, EACH BACKED BY A MEASUREMENT
+--------------------------------------------------------------------------------
+
+  No committed artifact was regenerated (D-29-08).
+      Backed by: `git status --porcelain --untracked-files=all` -> 0 lines,
+      section 2. Nothing was written, so nothing was regenerated.
+
+  No hook was skipped, disabled or bypassed.
+      Backed by: seven "Passed" lines in section 1, one per hook in
+      .pre-commit-config.yaml's pre-commit stage. No SKIP= environment variable
+      was set, no --hook-id was passed to scope the run, and no --no-verify is
+      involved -- this is a `run --all-files`, not a commit.
+
+  The configuration was not edited during or for this run.
+      Backed by: `.pre-commit-config.yaml` last changed at d9e8f49, which is
+      three commits before the head sha this was measured at, and the clean
+      status output in section 2 confirms it is unmodified in the working tree.
+
+  The sweep ran on a committed-clean tree, so assertion 2 means what it says.
+      Backed by: the BEFORE row in section 5 -- `git status --porcelain` was
+      already 0 lines before the sweep started. This is the precondition that
+      makes an empty AFTER informative rather than vacuous.
+
+  The two md5 anchors are unmoved.
+      Backed by: the two string-equality assertions in section 3.
+
+  Nothing irreversible was performed by the agent (D-29.2-24).
+      The sweep is read-only in effect. The pull request recorded in section 8
+      was created, which creates only; sections 8 and 9 record that no merge,
+      auto-merge or approval was performed.
+
+--------------------------------------------------------------------------------
+7. SCOPE -- WHAT THIS PROVES, AND WHERE THE PROOF STOPS
+--------------------------------------------------------------------------------
+
+Scope: this proves the seven-hook configuration against THIS tree at THIS sha --
+12291c695a65b91ae2563361f8cfa0759536b9d5 on results/rerun-freeze-02 -- with the
+hook runner that resolved on 2026-08-27, pre-commit 4.6.2. CI runs the identical
+command on a fresh checkout of the same commit, and a fresh checkout of a commit
+is the same tree, so the prediction that the `pre-commit` job goes green is as
+strong as a local measurement can make it. IT IS STILL A PREDICTION UNTIL THE JOB
+REPORTS. Three things can differ on the runner and none is controlled from here:
+the unpinned `pip install pre-commit` may resolve a newer version than 4.6.2; the
+hook repositories are pinned by rev in the configuration but their environments
+are rebuilt from scratch there; and the runner is ubuntu-latest rather than this
+machine. Section 9 records what the job actually did, which is the only thing
+that closes the gap.
+
+The proof also does not extend forward. Any commit pushed to this branch after
+this sha changes the tree, and this evidence would then describe a tree that no
+longer exists -- which is why nothing has been pushed to the branch since.
+
