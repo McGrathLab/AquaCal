@@ -10,7 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # fetch-depth: 0 to match the `test` job in test.yml. This workflow is
+      # triggered by the tag itself, so `git describe --match 'v[0-9]*'` would
+      # resolve at depth 1 as long as HEAD is exactly the tagged commit; the
+      # full history makes tests/unit/test_run_manifest.py's assertions hold
+      # regardless of where the tag sits.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -18,10 +25,15 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
 
+      # The `bench` extra carries psutil, which src/aquacal/io/benchmark.py
+      # needs to populate cpu_count_logical and ram_total_bytes. Without it
+      # both degrade to None (by design, benchmark.py:151-159) and the
+      # manifest field assertions fail. Same fix as test.yml, which got it in
+      # edfaa5a; this job was missed there and gates every PyPI upload.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,bench]"
 
       - name: Run tests
         run: pytest tests/ -m "not slow"
