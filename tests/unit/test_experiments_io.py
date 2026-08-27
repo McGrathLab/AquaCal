@@ -6,15 +6,20 @@ All tests are fast: no calibration, no download, and none are marked slow.
 
 from __future__ import annotations
 
+import argparse
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from experiments._io import (
+    add_baseline_dir_argument,
     build_experiment_arg_parser,
     compare_experiment_csv,
+    compare_experiment_csv_if_present,
     exit_code_for,
+    resolve_baseline_dir,
     validate_args,
     write_direct_call_benchmark,
     write_experiment_csv,
@@ -172,6 +177,86 @@ class TestCheckComparator:
         )
         assert report.passed is False
         assert "extra_column" in report.message or "Header mismatch" in report.message
+
+    def test_exclude_columns_ignores_differences_only_in_named_columns(self, tmp_path):
+        """D-07/D-08: excluding a column skips it in the cell comparison, and
+        the report still fails when a NON-excluded column differs."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        # Differ ONLY in "gt_x_m" (a non-key float column).
+        fresh = committed.copy()
+        fresh.loc[0, "gt_x_m"] = fresh.loc[0, "gt_x_m"] + 100.0
+
+        report = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report.passed is True
+
+        # Now also differ in a NON-excluded column -- must still fail.
+        fresh.loc[1, "reprojection_rms_px"] = fresh.loc[1, "reprojection_rms_px"] * (
+            1 + 10 * CHECK_RTOL
+        )
+        report2 = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report2.passed is False
+        assert "reprojection_rms_px" in report2.worst_cell
+
+    def test_exclude_columns_never_exempts_the_header_comparison(self, tmp_path):
+        """D-07: a header difference must still fail even when the differing
+        column is named in exclude_columns -- the schema contract is never
+        excludable."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.drop(columns=["gt_x_m"]).copy()
+
+        report = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("gt_x_m",),
+        )
+        assert report.passed is False
+        assert "Header mismatch" in report.message
+
+    def test_exclude_columns_default_reproduces_todays_exact_behavior(self, tmp_path):
+        """Omitting exclude_columns must leave today's outcome and message
+        byte-identical on an unchanged fixture."""
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+
+        fresh = committed.copy()
+
+        report_default = compare_experiment_csv(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        report_explicit_empty = compare_experiment_csv(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=(),
+        )
+        assert report_default == report_explicit_empty
+        assert report_default.passed is True
+        assert (
+            report_default.message
+            == "Fresh output matches committed baseline within tolerance."
+        )
 
     def test_check_passes_on_mixed_empty_and_real_string_column(self, tmp_path):
         """Regression for 19.2-11/19.2-12 (review H upstream finding 2): a
@@ -672,9 +757,224 @@ class TestSeed:
 
 class TestCommittedRecordUntouchedBySeed:
     def test_e1_committed_record_has_no_seed_key(self):
-        import pathlib
+        """Phase 26 / DRIVER-04 (D-28) moved the committed baselines to
+        experiments/pre_rerun_baseline/ so the frozen sha ships with an empty
+        experiments/results/. This asserts a property of the COMMITTED record,
+        so the archive is its subject. Anchored to the repo root rather than
+        cwd (WR-06) and guarded, so a fresh clone -- which has neither tree --
+        skips rather than erroring.
+        """
+        from tests.unit._baseline_paths import archive_results_dir
 
-        record = json.loads(
-            pathlib.Path("experiments/results/e1_benchmark_refractive.json").read_text()
-        )
+        # archive_results_dir(), deliberately NOT the plan-26-14 resolver: this asserts a
+        # property of the ARCHIVED Phase-19.1 record. Plan 26-13 made E1's call sites pass
+        # seed=, so the LIVE e1_benchmark_refractive.json now carries one and following the
+        # live tree would invert this test. Sibling of SEEDLESS_LEGACY_RECORDS.
+        baseline = archive_results_dir() / "e1_benchmark_refractive.json"
+        if not baseline.exists():
+            pytest.skip(f"committed baseline absent (fresh clone): {baseline}")
+        record = json.loads(baseline.read_text())
         assert "seed" not in record["solver_config"]
+
+
+class TestBaselineDir:
+    """Phase 26 / DRIVER-03 (D-12, ruling A4): `--check` must be able to read its
+    baselines from the archive DRIVER-04 moved them into, and a baseline that is
+    absent by policy must report N/A rather than raise.
+    """
+
+    def test_shared_parser_still_exposes_exactly_five_flags(self):
+        """`--baseline-dir` is SCRIPT-LOCAL: the shared five-flag contract (D-21)
+        must not have widened to serve the two scripts that need it.
+        """
+        parser = build_experiment_arg_parser()
+        options = sorted(o for a in parser._actions for o in a.option_strings)
+        assert options == ["--check", "--force", "--out", "--seed", "--smoke"]
+        assert not hasattr(parser.parse_args([]), "baseline_dir")
+
+    def test_add_baseline_dir_argument_adds_one_optional_path_flag(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        returned = add_baseline_dir_argument(parser)
+        assert returned is parser
+
+        args = parser.parse_args([])
+        assert args.baseline_dir is None
+
+        args = parser.parse_args(["--baseline-dir", "experiments/pre_rerun_baseline"])
+        assert isinstance(args.baseline_dir, Path)
+        assert str(args.baseline_dir).replace("\\", "/") == (
+            "experiments/pre_rerun_baseline"
+        )
+
+    def test_add_baseline_dir_argument_rejects_a_duplicate_flag(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        add_baseline_dir_argument(parser)
+        with pytest.raises(argparse.ArgumentError):
+            add_baseline_dir_argument(parser)
+
+    def test_resolve_baseline_dir_falls_back_to_out_dir(self, tmp_path):
+        assert resolve_baseline_dir(None, tmp_path) == Path(tmp_path)
+
+    def test_resolve_baseline_dir_prefers_the_explicit_directory(self, tmp_path):
+        archive = tmp_path / "pre_rerun_baseline" / "results"
+        assert resolve_baseline_dir(archive, tmp_path) == Path(archive)
+
+    def test_resolve_baseline_dir_never_creates_anything(self, tmp_path):
+        archive = tmp_path / "does_not_exist"
+        resolve_baseline_dir(archive, tmp_path)
+        assert not archive.exists()
+
+    def test_if_present_returns_none_for_a_missing_baseline(self, tmp_path):
+        """Ruling A4: E2's reprojection_residuals.csv / reconstruction_errors.csv
+        are gitignored by DATA-01b policy, so neither experiments/results/ nor the
+        archive holds them. N/A beats a FileNotFoundError raised after a 50-87
+        minute calibration.
+        """
+        missing = tmp_path / "reprojection_residuals.csv"
+        report = compare_experiment_csv_if_present(
+            _exp1_frame(),
+            missing,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+        )
+        assert report is None
+
+    def test_if_present_matches_compare_when_the_baseline_exists(self, tmp_path):
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+        fresh = committed.copy()
+
+        direct = compare_experiment_csv(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        guarded = compare_experiment_csv_if_present(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        assert guarded == direct
+        assert guarded is not None
+        assert guarded.passed
+
+    def test_if_present_forwards_exclude_columns(self, tmp_path):
+        committed = _exp1_frame()
+        committed_path = tmp_path / "exp1_parameter_errors.csv"
+        committed.to_csv(committed_path, index=False)
+        fresh = committed.copy()
+        fresh.loc[0, "reprojection_rms_px"] = 999.0
+
+        unguarded = compare_experiment_csv_if_present(
+            fresh, committed_path, key_columns=EXP1_KEY_COLUMNS, rtol=CHECK_RTOL
+        )
+        assert unguarded is not None and not unguarded.passed
+
+        excluded = compare_experiment_csv_if_present(
+            fresh,
+            committed_path,
+            key_columns=EXP1_KEY_COLUMNS,
+            rtol=CHECK_RTOL,
+            exclude_columns=("reprojection_rms_px",),
+        )
+        assert excluded is not None and excluded.passed
+
+    def test_compare_experiment_csv_itself_still_raises_on_a_missing_baseline(
+        self, tmp_path
+    ):
+        """The totality contract at `_io.py:348-357` deliberately propagates I/O
+        errors (D-13). Ruling A4 puts the guard in the CALLER; this test exists so
+        a future "helpful" fix inside `compare_experiment_csv` fails loudly.
+        """
+        with pytest.raises(FileNotFoundError):
+            compare_experiment_csv(
+                _exp1_frame(),
+                tmp_path / "absent.csv",
+                key_columns=EXP1_KEY_COLUMNS,
+                rtol=CHECK_RTOL,
+            )
+
+
+class TestBaselineDirE3Plumbing:
+    """Phase 26 / DRIVER-03: E3's `--check` argument plumbing (D-10, D-12).
+
+    Deliberately drives the parser and the resolution helper only. `_run_check`
+    recomputes a Newton sweep over the rig's working volume -- it is an
+    experiment, not a unit test, and this suite never runs one. E3 has no
+    dedicated CLI test file, so these live beside the helper tests to keep
+    `-k baseline` a single selector.
+    """
+
+    def test_e3_parser_exposes_baseline_dir_and_all_five_shared_flags(self):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        parser = build_arg_parser()
+        options = {o for a in parser._actions for o in a.option_strings}
+        assert {"--seed", "--out", "--force", "--smoke", "--check"} <= options
+        assert "--baseline-dir" in options
+
+    def test_e3_check_resolves_baselines_under_baseline_dir(self, tmp_path):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        archive = tmp_path / "pre_rerun_baseline" / "results"
+        out = tmp_path / "fresh"
+        args = build_arg_parser().parse_args(
+            ["--check", "--baseline-dir", str(archive), "--out", str(out)]
+        )
+        assert args.check is True
+        assert resolve_baseline_dir(args.baseline_dir, out) == archive
+        # A --check run writes nowhere, and resolution creates nothing.
+        assert not archive.exists()
+
+    def test_e3_check_without_the_flag_resolves_under_out(self, tmp_path):
+        from experiments.e3_derived_quantities import build_arg_parser
+
+        out = tmp_path / "fresh"
+        args = build_arg_parser().parse_args(["--check", "--out", str(out)])
+        assert args.baseline_dir is None
+        assert resolve_baseline_dir(args.baseline_dir, out) == out
+
+    def test_e3_rejects_baseline_dir_with_force(self, capsys):
+        from experiments.e3_derived_quantities import (
+            _validate_e3_args,
+            build_arg_parser,
+        )
+
+        parser = build_arg_parser()
+        args = parser.parse_args(["--check", "--force", "--baseline-dir", "x"])
+        with pytest.raises(SystemExit):
+            _validate_e3_args(parser, args)
+        err = capsys.readouterr().err
+        assert "--baseline-dir" in err
+        assert "--force" in err
+
+    def test_e3_rejects_baseline_dir_without_check(self, capsys):
+        from experiments.e3_derived_quantities import (
+            _validate_e3_args,
+            build_arg_parser,
+        )
+
+        parser = build_arg_parser()
+        args = parser.parse_args(["--baseline-dir", "x"])
+        with pytest.raises(SystemExit):
+            _validate_e3_args(parser, args)
+        err = capsys.readouterr().err
+        assert "--baseline-dir" in err
+        assert "--check" in err
+
+    def test_e3_main_exits_nonzero_for_baseline_dir_with_force(self):
+        from experiments.e3_derived_quantities import main
+
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--check", "--force", "--baseline-dir", "x"])
+        assert excinfo.value.code != 0
+
+    def test_e3_run_check_accepts_baseline_dir_keyword(self):
+        """Signature-level assertion: `_run_check` gained a keyword-only
+        `baseline_dir` defaulting to None, so existing callers keep working.
+        """
+        import inspect
+
+        from experiments.e3_derived_quantities import _run_check
+
+        sig = inspect.signature(_run_check)
+        param = sig.parameters["baseline_dir"]
+        assert param.kind is inspect.Parameter.KEYWORD_ONLY
+        assert param.default is None

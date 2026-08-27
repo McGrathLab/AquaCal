@@ -1,0 +1,198 @@
+================================================================================
+29-rails-before.txt -- the D1 provenance rails MEASURED against the COMMITTED
+tree, before a single line of test source was changed (plan 29-06, task 1).
+================================================================================
+
+Measured        : 2026-08-26
+Branch          : results/rerun-freeze-02
+HEAD at measure : (see "GIT CONTEXT" below)
+Interpreter     : ~/anaconda3/envs/aquacal-freeze02-cleanenv/bin/python
+                  (Python 3.11.15, pytest 9.1.1; `pytest` is absent from the
+                  active `aquacal` env -- 29-03-SUMMARY:208 flagged this, and
+                  29-RESEARCH:1252 nominates the cleanenv interpreter for all
+                  work in the working clone -01. Every count in this file and
+                  in 29-rails-after.txt comes from that one interpreter, so the
+                  before/after deltas are comparable.)
+
+D-29-12 requires the count be MEASURED, not re-quoted from D1's prediction.
+This file is that measurement. Nothing under tests/ or experiments/ was touched
+to produce it; `git diff --quiet -- tests/` exits 0 at the point of writing.
+
+--------------------------------------------------------------------------------
+1. THE RAIL SUBJECT -- `live`, not `archive`
+--------------------------------------------------------------------------------
+
+This is recorded FIRST and deliberately. `resolve_results_dir()` returns the
+archive tree while `experiments/results/` is empty, and re-aims at the live tree
+the moment it holds a file. A "the rails are green" note taken from a run that
+had quietly changed subject to `experiments/pre_rerun_baseline/results/` would
+validate history rather than this run. So:
+
+  $ python -c "from tests.unit._baseline_paths import resolve_results_dir; \
+               d,t = resolve_results_dir(); print(t); print(d)"
+  RESULTS_TREE = live
+  RESULTS_DIR  = /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results
+
+  $ python -m pytest \
+      "tests/unit/test_experiments_provenance.py::TestResolvedTreeIsObservable" \
+      -v -p no:cacheprovider
+  tests/unit/test_experiments_provenance.py::TestResolvedTreeIsObservable::test_the_resolved_tree_is_named PASSED [ 50%]
+  tests/unit/test_experiments_provenance.py::TestResolvedTreeIsObservable::test_a_populated_live_tree_would_disable_the_carve_out PASSED [100%]
+  2 passed in 0.22s
+
+The flip predicted by plan 26-14 has happened. Every failure below is a
+statement about THIS run's own output.
+
+--------------------------------------------------------------------------------
+2. THE PROVENANCE MODULE -- 8 failed, 279 passed, 20 skipped
+--------------------------------------------------------------------------------
+
+  $ python -m pytest tests/unit/test_experiments_provenance.py -q -p no:cacheprovider
+
+  FAILED tests/unit/test_experiments_provenance.py::TestEnvironmentPresence::test_every_benchmark_record_has_environment[run_manifest.json]
+  FAILED tests/unit/test_experiments_provenance.py::TestSeedProvenance::test_every_benchmark_record_carries_a_seed[run_manifest.json]
+  FAILED tests/unit/test_experiments_provenance.py::TestCsvProvenanceMap::test_all_committed_csvs_have_a_named_record[generalization_sweep_per_camera.csv]
+  FAILED tests/unit/test_experiments_provenance.py::TestCsvProvenanceMap::test_all_committed_csvs_have_a_named_record[generalization_sweep_per_camera_band.csv]
+  FAILED tests/unit/test_experiments_provenance.py::TestCsvProvenanceMap::test_multi_seed_band_declares_its_seed_coverage[exp1_band.csv]
+  FAILED tests/unit/test_experiments_provenance.py::TestCsvProvenanceMap::test_multi_seed_band_declares_its_seed_coverage[exp1_parameter_band.csv]
+  FAILED tests/unit/test_experiments_provenance.py::TestCsvProvenanceMap::test_multi_seed_band_declares_its_seed_coverage[generalization_sweep_per_camera_band.csv]
+  FAILED tests/unit/test_experiments_provenance.py::TestSelfDescribingJson::test_schema_versionless_json_set_equals_self_describing_json
+  8 failed, 279 passed, 20 skipped in 23.57s
+  (exit code 1)
+
+MEASURED SET == PREDICTED SET. All eight node ids match 29-RESEARCH § "The D1
+Provenance Rails -- MEASURED, not predicted" row for row, and match D1's
+original prediction, in both directions: there is no ninth failure, and none of
+the eight is missing. The summary line `8 failed, 279 passed, 20 skipped` is
+also identical to research's `8 failed, 279 passed, 20 skipped in 23.11s`
+(23.57s here). Nothing to report as a difference under D-29-12.
+
+Diagnosis, one line per failure -- every one is an assertion encoding an
+expectation that MOVED BY DESIGN, and none touches a measured value:
+
+  1+2. run_manifest.json carries `schema_version` but is FLAT. Its keys are
+       aquacal_version_declared, blas_thread_cap, ..., git_sha, ..., utc_start
+       (26 keys, verified by reading the file) -- no `environment` block, no
+       `solver_config`. It is DRIVER-02's SUITE-level manifest, schema owner
+       experiments/_run_manifest.py:82 (REQUIRED_MANIFEST_FIELDS), a different
+       schema from assemble_benchmark_record's. A suite-level manifest
+       describes a RUN, not a solve, so it has no seed to carry.
+       -> one carve-out beside SELF_DESCRIBING_JSON resolves both.
+
+  3.   generalization_sweep_per_camera.csv -- new E6 artifact from FIX-03
+       (plan 23-03), written by e6_generalization_sweep.py::_run_full at :1746.
+       No CSV_TO_RECORD entry. -> add one naming e6_provenance.json.
+
+  4+7. generalization_sweep_per_camera_band.csv -- same origin, band half,
+       written by _run_seed_band at :1511. No entry, and it spans SIX seeds.
+       -> one entry naming e6_seed_band_provenance.json AND containing the
+       literal `seeds 42-47`; the span is what makes #7 resolve rather than
+       merely replace #4.
+
+  5+6. exp1_band.csv and exp1_parameter_band.csv say `seeds 42-51`; the
+       artifacts carry FOUR seeds. Measured directly off the committed CSVs:
+         exp1_band.csv            256 rows, seeds [42, 43, 44, 45]
+         exp1_parameter_band.csv  384 rows, seeds [42, 43, 44, 45]
+       This is Ruling A1 of 2026-08-15 (run_experiment_suite.sh:1452), which
+       cut E1's band from ten seeds to four. -> `seeds 42-51` becomes
+       `seeds 42-45`, annotated rather than silently rewritten.
+
+  8.   Six extra schema-versionless JSONs beyond the two named. Verbatim from
+       the assertion message:
+         {'e7_seed_band_degeneracy_breakdown.json', 'e1_degeneracy_breakdown.json',
+          'e5_degeneracy_breakdown.json', 'real_rig_metrics.json',
+          'e5_seed_band_degeneracy_breakdown.json',
+          'interface_ablation_conditioning.json', 'calibration.json',
+          'e7_degeneracy_breakdown.json'}
+       vs SELF_DESCRIBING_JSON {'real_rig_metrics.json',
+                                'interface_ablation_conditioning.json'}
+       TWO INDEPENDENT CAUSES:
+       (a) five NEW breakdown sidecars from DEGEN-01/DEGEN-02, added
+           deliberately in Phase 24 and written by
+           experiments/_degeneracy.py::write_degeneracy_breakdown;
+       (b) calibration.json -- 2.1 MB and GITIGNORED. It reaches a rail whose
+           stated scope is "committed under experiments/results/" only because
+           _discover_json_files() has no _is_tracked filter while its sibling
+           _discover_csv_files() does. That asymmetry is the defect, not the
+           file.
+
+For the record, the same measurement also confirms the reference cross-check:
+generalization_sweep_per_camera.csv is SINGLE-seed (144 rows, seed [42]), which
+is why it produces a map-coverage failure (#3) and no seed-span failure -- the
+seed rail skips single-seed CSVs by design.
+
+--------------------------------------------------------------------------------
+3. THE FIVE TREE-KEYED CONTROL MODULES -- 245 passed
+--------------------------------------------------------------------------------
+
+These are the modules that would reveal a repopulation problem BEYOND D1. If the
+returned tree were malformed, truncated, or in the wrong layout, they would say
+so here rather than leaving D1 to be blamed for it.
+
+  $ python -m pytest tests/unit/test_baseline_paths.py tests/unit/test_expectations.py \
+      tests/unit/test_experiments_e3.py tests/unit/test_experiments_e5.py \
+      tests/unit/test_experiments_io.py -q -p no:cacheprovider
+  245 passed in 29.76s
+  (exit code 0)
+
+Matches 29-RESEARCH's measured 245 exactly. The D1 module is the ONLY module
+affected by repopulation.
+
+--------------------------------------------------------------------------------
+4. D4's THREE ANCHOR FAILURES -- confirmed still failing
+--------------------------------------------------------------------------------
+
+  $ python -m pytest tests/unit/test_discard_accounting.py tests/unit/test_optim_common.py \
+      tests/unit/test_pipeline.py -q -p no:cacheprovider
+  FAILED tests/unit/test_discard_accounting.py::test_matches_frozen_anchor
+  FAILED tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector
+  FAILED tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+  3 failed, 191 passed in 107.44s (0:01:47)
+
+These are PRE-EXISTING exact-equality anchor misses (1 ULP to 1.4e-9), proven by
+byte-identity of every input to rerun-freeze-01, and are the first Linux
+evaluation of anchors captured on Windows. They are ruled on in the
+rerun-freeze-02 tag annotation and in 29.1-PREPUSH-AUDIT.md §1. Plan 29-06 does
+NOT repair them; they are the expected residue.
+
+--------------------------------------------------------------------------------
+5. THE ARITHMETIC THIS PLAN IS AIMED AT
+--------------------------------------------------------------------------------
+
+                                    provenance module      full suite
+  Before (this file)                8 failed               11 failed  (8 D1 + 3 D4)
+  Target after the repairs          0 failed                3 failed  (D4 only)
+
+D-29-15: THREE is the expected final full-suite count. ZERO and FOUR are BOTH
+anomalies -- a zero would mean D4's three ruled anchors had been silenced, a
+four would mean something new broke. Neither is to be adjusted toward three.
+
+--------------------------------------------------------------------------------
+6. GIT CONTEXT AT MEASUREMENT
+--------------------------------------------------------------------------------
+
+  $ git rev-parse --abbrev-ref HEAD
+  results/rerun-freeze-02
+
+  $ git log -4 --pretty='%h %s'
+  9fdd884 docs(29): set Record B's version to 2.1.0 per author ruling
+  51ebbcc docs(29-01): update state and roadmap for the zenodo tooling plan
+  9559ea8 docs(29-01): complete zenodo-tooling-and-sandbox-rehearsal plan
+  0b56022 docs(29-01): record the author's sandbox approval and three findings
+
+  $ git status --porcelain    (empty except this evidence file being written)
+
+  $ git diff --quiet -- tests/ ; echo $?
+  0    <- nothing under tests/ was changed to produce this measurement
+
+  $ git diff --quiet -- experiments/ ; echo $?
+  0    <- the frozen tree is untouched (D-29-08)
+
+The artifacts commit 70e783f "results(29): full production suite at
+rerun-freeze-02" (plan 29-05) is what makes this measurement possible at all:
+_is_tracked() shells `git ls-files --error-unmatch`, which reads the INDEX, so
+while the 227 artifacts were merely untracked _discover_csv_files() found
+nothing and the CSV rails passed VACUOUSLY. Five of the eight failures above
+exist only because the tree is committed. That is why plan 29-06 sits
+downstream of 29-05 (29-RESEARCH Pitfall 4).
+

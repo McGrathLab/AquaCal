@@ -1,0 +1,30 @@
+{
+  "probe": "solver-concurrency",
+  "date": "2026-08-18",
+  "question": "Does one AquaCal solve saturate the box? If not, the accuracy-only stages of the full-suite driver could run N-wide.",
+  "vehicle": "e1_refractive_comparison single-seed (both models)",
+  "measured_on": {
+    "logical_cores": 20,
+    "ram_gib": 15.7,
+    "python": "3.12.12"
+  },
+  "child_exit_code": 0,
+  "wall_clock_s": 318.4,
+  "n_samples": 157,
+  "cores_busy": {
+    "mean": 1.2,
+    "p50": 0.99,
+    "p95": 1.99,
+    "peak": 2.56,
+    "note": "excludes the first 30 s of startup"
+  },
+  "peak_rss_gib": 0.61,
+  "concurrency_headroom_on_linux_target": {
+    "target_cores": 32,
+    "target_ram_gib": 31.06,
+    "bounded_by_cores": 16.1,
+    "bounded_by_memory_at_85pct": 43.4,
+    "recommended_workers": 16,
+    "caveat": "E1 is the cheapest and smallest solve in the suite. E6/E7 band cells and E2 are larger; peak RSS especially does not transfer. Treat this as an upper bound on headroom, not a setting."
+  }
+}

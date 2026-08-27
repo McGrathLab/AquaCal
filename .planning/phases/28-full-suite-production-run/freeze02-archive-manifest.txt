@@ -1,0 +1,58 @@
+freeze02 archive manifest — /home/tlancaster/rerun-freeze-02-output.tar.gz
+Source clone: /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod  (HEAD 7005a2771aa115e4f4c1284cec7e145739586a4a, detached)
+Run: 2026-08-25T00:47:07.773Z -> 06:48:28.378Z, 20/20 stages at exit 0
+Archived: 2026-08-25T15:01:33Z
+
+The nine paths the driver actually writes, per run_experiment_suite.sh:264-272,:304,:309.
+Attempt 1's DOCUMENTED tar line named a directory that never existed and omitted three real
+output trees (results_e2_invocations, results_e2_timing, results_e2_memory). This list is
+authored from the driver's own variables; the count assertion below is what would have
+caught that omission.
+
+PATH                                                              FILES
+-------------------------------------------------------------- --------
+experiments/results                                                 152
+experiments/results_e2_band                                         136
+experiments/results_e2_invocations                                  119
+experiments/results_e2_timing                                         6
+experiments/results_e2_memory                                         6
+experiments/results_e4_repeat                                         4
+experiments/run_experiment_suite_state.7005a27.tsv                    1
+experiments/run_experiment_suite_state.7005a27.failures.txt           1
+experiments/run_experiment_suite_state.7005a27.stagelogs             36
+-------------------------------------------------------------- --------
+LIVE TOTAL                                                          461
+
+COMPLETENESS ASSERTION
+  tar tzf … | grep -v '/$' | wc -l          = 461
+  find <nine paths> -type f | wc -l          = 461
+  distinct top-level experiments/<name>      = 9  (expected 9)
+  archive size                               = 31838334 bytes
+  VERDICT: counts agree; archive is complete.
+
+WHY THIS ARCHIVE HOLDS 461 FILES AND ATTEMPT 1'S HELD 507
+  The 46-file difference is entirely rehearsal residue that attempt 1 swept in and this
+  corrected nine-path list excludes by construction:
+      results_smoke_e2_band                              4
+      results_smoke_e2_invocations                       4
+      run_experiment_suite_state.3ab9c13.dryrun.tsv      1
+      run_experiment_suite_state.3ab9c13.dryrun.failures 1
+      run_experiment_suite_state.3ab9c13.dryrun.stagelogs 36
+                                                  total 46
+  507 - 46 = 461. The arithmetic closes exactly, and every one of the six output trees and
+  three state artifacts has an IDENTICAL file count in both attempts, path for path.
+  This archive contains production output only.
+
+DRY-RUN RESIDUE IN THIS CLONE — present, deliberately NOT archived
+  experiments/run_experiment_suite_state.7005a27.dryrun.tsv
+  experiments/run_experiment_suite_state.7005a27.dryrun.failures.txt
+  experiments/run_experiment_suite_state.7005a27.dryrun.stagelogs/   (39 entries total)
+  These are 28-01's dry-run rehearsal. They are gitignored (.gitignore:266-272), which is
+  why freeze02-tree-state-at-handoff.txt shows exactly nine entries and not twelve — the
+  default git status --porcelain form does not list ignored paths. Attempt 1's tree-state
+  record also showed nine, but for a different reason: it had no dry-run residue at all.
+  The nine-line records are byte-parallel; the trees behind them are not identical.
+
+NOT ARCHIVED, BY DESIGN
+  /home/tlancaster/suite_run_freeze02.log — lives outside the clone so capturing it cannot
+  trip the driver's non-empty-tree refusal. Preserved separately as .log.preserved.

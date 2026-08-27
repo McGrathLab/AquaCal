@@ -312,6 +312,15 @@ class CalibrationConfig:
             measurement mode, plus a whole-run top-level reading. Off by
             default per BENCH-02's requirement that memory measurement never
             run unless explicitly requested.
+        log_all_observation_depths: Opt-in. If True, records the depth below the
+            water surface (h_q, meters) of EVERY evaluated observation at each
+            Stage 3 solution — not just the degenerate ones — and writes them to
+            output_dir/all_observation_depths.csv. This is what makes a flagged
+            observation's depth interpretable against the population it came
+            from, rather than as a bare number. Roughly 74k rows per stage and
+            ~10 MB on the 13-camera production rig, so it is off by default; it
+            is consumed only by the post-solve residual evaluation and never
+            runs inside the solve.
         seed: Master seed controlling the calibration/validation frame holdout
             split, for reproducibility across repeated runs. Default 42.
         shared_interface: Analysis/ablation option, NOT a recommended setting.
@@ -362,6 +371,7 @@ class CalibrationConfig:
     save_conditioning: bool = False  # Opt-in: Jacobian singular-value spectrum + parameter correlation matrix at the solution
     save_benchmark: bool = True  # Write output_dir/benchmark.json every run (BENCH-04); cheap, on by default
     benchmark_memory: bool = False  # Opt-in: per-stage-boundary peak-RSS reading in benchmark.json (BENCH-02)
+    log_all_observation_depths: bool = False  # Opt-in: h_q for EVERY observation at each stage-3 solution, not just flagged ones (~74k rows/stage, ~10 MB on the 13-camera rig); post-solve residual evaluation only, never inside the solve
     seed: int = 42  # Master seed for the pipeline's holdout split (reproducibility)
     shared_interface: bool = True  # Analysis/ablation only: False gives each camera its own water_z (not recommended for production; the shared-interface assumption underlies the paper's central claim)
     initial_water_z: dict[str, float] | None = None
@@ -607,20 +617,33 @@ class ConnectivityError(CalibrationError):
 class DegenerateObservationWarning(UserWarning):
     """Warns that observations could not be projected by the refractive model.
 
-    Emitted by Stage 3 when the solution contains board corners the refractive
-    model cannot project -- typically corners lying at or above the water
-    surface, which is physically impossible for a submerged target. Such
-    observations are continued with a pinhole extension so the solve keeps a
-    gradient, but the continuation puts the residual on a C0-but-not-C1 kink
-    at the refractive/pinhole boundary.
+    Emitted by Stage 3 when the solution contains observations the refractive
+    model cannot project. Phase 24 distinguishes three causes, named as the
+    projector names them: ``above_interface`` (the corner sits at or above the
+    estimated water surface), ``behind_camera`` (no pixel exists for it), and
+    ``interface_below_camera`` (the estimated interface fell below an estimated
+    camera center -- a solver-excursion convergence diagnostic, explicitly not a
+    claim about submerged hardware).
 
-    When this warning fires, first-order optimality is UNRELIABLE as a
-    convergence measure: the kink inflates it independent of whether the
-    solve actually converged, so neither optimality NOR the reprojection RMS
-    can be trusted to judge convergence in this state. The correct response
-    is to fix the scenario geometry so no corner sits at or above the
-    interface -- not to re-tune the solver or read either diagnostic more
-    carefully.
+    Two independent things are reported, and they must not be conflated. The
+    CAUSE above answers "what do I fix". The FATE answers "what does this cost
+    me": an ``extended`` observation was continued with the pinhole extension,
+    which is C0 but not C1 at the refractive/pinhole boundary and carries zero
+    ``water_z`` gradient, while every other parameter keeps full gradient; a
+    ``penalized`` observation sits on a flat penalty and carries no gradient at
+    all.
+
+    Warning volume scales with the degenerate FRACTION, not the raw count: below
+    1% of the stage's evaluated observations the condition is reported for the
+    record, and at or above 1% the message states that both optimality and the
+    reprojection RMS are unreliable for the solve as a whole. **That threshold
+    scales warning volume only** -- the ``count > 0 -> degenerate`` gate is
+    untouched, with no threshold and no tolerance.
+
+    The message names both readings and does not infer provenance: if the run is
+    an authored scenario the geometry is the fix; if it is measured hardware that
+    fix is not available, and the per-fate statement above is what the count does
+    and does not invalidate.
     """
 
     pass

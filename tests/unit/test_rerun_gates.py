@@ -11,8 +11,15 @@ from pathlib import Path
 
 import pandas as pd
 
+from experiments._run_manifest import (
+    REQUIRED_MANIFEST_FIELDS,
+    RUN_MANIFEST_FILENAME,
+)
 from experiments.check_rerun_gates import (
     GateResult,
+    _check_guard_column,
+    _check_run_manifest,
+    _guard_count_from_record,
     check_band_csv,
     check_e1,
     check_e2_band,
@@ -200,6 +207,141 @@ class TestGate1GuardCount:
         )[0]
         assert result.verdict == "FAIL"
         assert "no " in result.detail and "column present" in result.detail
+
+
+class TestGate1SplitCounters:
+    """Plan 24-02: the gate reads plan 24-01's split without changing its verdict."""
+
+    def test_guard_count_reads_all_three_shapes_unchanged(self):
+        """The three read shapes are untouched by the split -- plan 24-01
+        deliberately left the merged key's name and meaning alone."""
+        assert (
+            _guard_count_from_record(
+                {"problem_shape": {"degenerate_observations_at_solution": 1}}
+            )
+            == 1
+        )
+        assert _guard_count_from_record({"degenerate_observations_at_solution": 2}) == 2
+        assert (
+            _guard_count_from_record(
+                {"discard_stats": {"degenerate_observations_at_solution": 3}}
+            )
+            == 3
+        )
+        assert _guard_count_from_record({"problem_shape": {}}) is None
+
+    def test_present_zero_passes_instead_of_cannot_confirm(self, tmp_path):
+        """D-04's zero-emission plus D-11's mirror together make this branch
+        PASS on a clean production run for the first time: the count is
+        PRESENT at 0 rather than absent."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 0},
+                    "discard_stats": {
+                        "degenerate_observations_at_solution": 0,
+                        "degenerate_observations_cause_above_interface"
+                        "__stage3_interface_optimization": 0,
+                        "degenerate_observations_fate_extended"
+                        "__stage3_interface_optimization": 0,
+                        "observations_evaluated__stage3_interface_optimization": 1760,
+                    },
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "PASS"
+        assert "cannot confirm zero" not in result.detail
+
+    def test_absent_field_still_fails(self, tmp_path):
+        """A genuinely absent field is still a FAIL -- the message now says
+        why an absence means a stale artifact, but it does not soften."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {},
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "FAIL"
+        assert "cannot confirm zero" in result.detail
+        assert "predating the instrumentation" in result.detail
+
+    def test_breakdown_report_names_dominant_cause_and_denominator(self, tmp_path):
+        """The fraction the report prints comes from a RECORDED per-stage
+        denominator, which is what retires the hand-reconstructed
+        `198 / 73,975 = 0.268%`. Both axes are labelled so they are never
+        summed together, and neither is interpreted (that is DEGEN-04's)."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 5},
+                    "discard_stats": {
+                        "degenerate_observations_at_solution": 5,
+                        "degenerate_observations_cause_above_interface"
+                        "__stage3_interface_optimization": 4,
+                        "degenerate_observations_cause_behind_camera"
+                        "__stage3_interface_optimization": 1,
+                        "degenerate_observations_fate_extended"
+                        "__stage3_interface_optimization": 3,
+                        "degenerate_observations_fate_penalized"
+                        "__stage3_interface_optimization": 2,
+                        "observations_evaluated__stage3_interface_optimization": 1000,
+                    },
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        # The verdict is still exactly `count > 0 -> degenerate`.
+        assert result.verdict == "FAIL"
+        assert "dominant cause=above_interface (4)" in result.detail
+        assert "0.400%" in result.detail
+        assert "1000 observation(s) evaluated" in result.detail
+        assert "by fate: 3 extended, 2 penalized" in result.detail
+        assert "never add them together" in result.detail
+
+    def test_breakdown_absent_leaves_the_message_unchanged(self, tmp_path):
+        """An artifact predating the split carries no breakdown; the gate says
+        nothing extra rather than inventing an empty one."""
+        for name in ("e1_benchmark_refractive", "e1_benchmark_nonrefractive"):
+            _write_json(
+                tmp_path / f"{name}.json",
+                {
+                    "environment": _good_environment(),
+                    "solver_config": {"seed": 42, "n_water": 1.333},
+                    "problem_shape": {"degenerate_observations_at_solution": 0},
+                    "stages": _good_stages(),
+                },
+            )
+        result = _find(
+            check_e1(tmp_path),
+            experiment="E1",
+            gate_prefix="gate1_guard_count:e1_benchmark_refractive",
+        )[0]
+        assert result.verdict == "PASS"
+        assert result.detail.endswith("count=0")
 
 
 class TestGate2Status:
@@ -637,6 +779,9 @@ class TestMainCli:
         pd.DataFrame({"seed": [42]}).to_csv(
             tmp_path / "interface_ablation.csv", index=False
         )
+        # DRIVER-02: a tree with no run manifest is no longer "fully passing" --
+        # Gate 3 FAILs hard on its absence (D-21).
+        _write_json(tmp_path / RUN_MANIFEST_FILENAME, _good_manifest(git_sha=sha))
 
         exit_code = main([str(tmp_path)])
         captured = capsys.readouterr()
@@ -885,8 +1030,13 @@ def _write_e6_band_csv(
     *,
     status_by_row: str | None = None,
     non_ok_seed: int | None = None,
+    camera_values: tuple[int, ...] = (8, 12, 16),
 ) -> None:
-    """One baseline row + one 'cameras' row per camera value, per seed."""
+    """One baseline row + one 'cameras' row per camera value, per seed.
+
+    `camera_values` defaults to the production axis; pass a shorter tuple to
+    model a collapsed `--smoke` band.
+    """
     rows: dict[str, list] = {"seed": [], "axis": [], "axis_value": [], "status": []}
     for seed in seeds:
         rows["seed"].append(seed)
@@ -896,7 +1046,7 @@ def _write_e6_band_csv(
         if non_ok_seed is not None and seed == non_ok_seed:
             status = "failed"
         rows["status"].append(status_by_row or status)
-        for cameras in (8, 12, 16):
+        for cameras in camera_values:
             rows["seed"].append(seed)
             rows["axis"].append("cameras")
             rows["axis_value"].append(cameras)
@@ -1158,3 +1308,567 @@ class TestCheckE4Repeat:
         )
         results = check_e4_repeat(tmp_path)
         assert any(r.verdict == "FAIL" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# D-21: Gate 3 extends over the suite run manifest with ALL-HARD-FAIL semantics.
+#
+# The todo is explicit that a provenance mismatch which only warns is a
+# provenance mismatch that ships, so there is no "N/A" verdict anywhere in this
+# gate -- not even for a missing manifest, which is the loudest case of all.
+# ---------------------------------------------------------------------------
+
+
+def _good_manifest(git_sha: str = "a" * 40, **overrides) -> dict:
+    manifest = {
+        "schema_version": 1,
+        "git_sha": git_sha,
+        "git_describe": "v2.0.1-161-gd0bbe09",
+        "git_dirty": False,
+        "os": "Windows 11",
+        "kernel": "11",
+        "machine": "Zephyrus",
+        "python_version": "3.12.12",
+        "numpy_version": "2.4.2",
+        "scipy_version": "1.17.0",
+        "opencv_version": "4.13.0",
+        "opencv_build": "4.13.0.90",
+        "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+        "cpu_count_logical": 20,
+        "ram_total_bytes": 16_000_000_000,
+        "installed_distribution_version": "2.0.1",
+        "utc_start": "2026-08-18T12:00:00Z",
+    }
+    manifest.update(overrides)
+    return manifest
+
+
+def _write_manifest(out_dir: Path, manifest: dict) -> None:
+    _write_json(out_dir / RUN_MANIFEST_FILENAME, manifest)
+
+
+def _write_sha_bearing_artifact(out_dir: Path, git_sha: str) -> None:
+    """One artifact whose environment.git_sha Gate 3 already collects."""
+    _write_json(
+        out_dir / "e1_benchmark_refractive.json",
+        {
+            "environment": _good_environment(git_sha=git_sha),
+            "solver_config": {"seed": 42, "n_water": 1.333},
+            "problem_shape": {"degenerate_observations_at_solution": 0},
+            "stages": _good_stages(),
+        },
+    )
+
+
+class TestRunManifestGate:
+    def test_manifest_gate_covers_every_required_field(self):
+        """The gate imports the field list; it must not restate it (D-05)."""
+        assert len(REQUIRED_MANIFEST_FIELDS) >= 17
+
+    def test_manifest_gate_fails_hard_when_the_manifest_is_absent(self, tmp_path):
+        results = _check_run_manifest(tmp_path)
+        assert results
+        assert all(r.verdict == "FAIL" for r in results)
+        assert any(RUN_MANIFEST_FILENAME in r.detail for r in results)
+
+    def test_manifest_gate_never_emits_an_na_verdict(self, tmp_path):
+        """Every shape of input -- absent, corrupt, null-bearing, disagreeing,
+        dirty, and clean -- must produce only PASS or FAIL."""
+        cases = [
+            lambda d: None,
+            lambda d: _write_json(d / RUN_MANIFEST_FILENAME, {}),
+            lambda d: _write_manifest(d, _good_manifest(git_dirty=None)),
+            lambda d: _write_manifest(d, _good_manifest(git_dirty=True)),
+            lambda d: _write_manifest(d, _good_manifest()),
+        ]
+        for index, build in enumerate(cases):
+            case_dir = tmp_path / f"case{index}"
+            case_dir.mkdir()
+            build(case_dir)
+            for result in _check_run_manifest(case_dir):
+                assert result.verdict in ("PASS", "FAIL"), result
+
+    def test_manifest_gate_passes_on_a_complete_clean_agreeing_manifest(self, tmp_path):
+        sha = "b" * 40
+        _write_sha_bearing_artifact(tmp_path, sha)
+        _write_manifest(tmp_path, _good_manifest(git_sha=sha))
+        results = _check_run_manifest(tmp_path)
+        assert results
+        assert all(r.verdict == "PASS" for r in results), [r.detail for r in results]
+
+    def test_manifest_gate_fails_and_names_every_null_field(self, tmp_path):
+        _write_manifest(tmp_path, _good_manifest(opencv_build=None, git_describe=None))
+        results = _check_run_manifest(tmp_path)
+        field_results = [r for r in results if r.gate.endswith("fields")]
+        assert len(field_results) == 1
+        assert field_results[0].verdict == "FAIL"
+        assert "opencv_build" in field_results[0].detail
+        assert "git_describe" in field_results[0].detail
+
+    def test_manifest_gate_fails_when_a_required_field_is_missing_entirely(
+        self, tmp_path
+    ):
+        manifest = _good_manifest()
+        del manifest["opencv_build"]
+        _write_manifest(tmp_path, manifest)
+        field_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("fields")
+        ]
+        assert field_results[0].verdict == "FAIL"
+        assert "opencv_build" in field_results[0].detail
+
+    def test_manifest_gate_fails_on_sha_disagreement_naming_both_values(self, tmp_path):
+        artifact_sha = "c" * 40
+        manifest_sha = "d" * 40
+        _write_sha_bearing_artifact(tmp_path, artifact_sha)
+        _write_manifest(tmp_path, _good_manifest(git_sha=manifest_sha))
+        sha_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("git_sha")
+        ]
+        assert len(sha_results) == 1
+        assert sha_results[0].verdict == "FAIL"
+        assert artifact_sha in sha_results[0].detail
+        assert manifest_sha in sha_results[0].detail
+
+    def test_manifest_gate_passes_sha_check_when_no_artifact_carries_one(
+        self, tmp_path
+    ):
+        """An empty artifact sha set cannot disagree. Covering that hole is the
+        completeness gate's job (plan 26-03), not Gate 3's."""
+        _write_manifest(tmp_path, _good_manifest())
+        sha_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("git_sha")
+        ]
+        assert sha_results[0].verdict == "PASS"
+
+    def test_manifest_gate_fails_on_a_dirty_tree(self, tmp_path):
+        _write_manifest(
+            tmp_path,
+            _good_manifest(git_describe="v2.0.1-161-gd0bbe09-dirty", git_dirty=True),
+        )
+        dirty_results = [
+            r for r in _check_run_manifest(tmp_path) if r.gate.endswith("clean_tree")
+        ]
+        assert len(dirty_results) == 1
+        assert dirty_results[0].verdict == "FAIL"
+
+    def test_manifest_gate_fails_on_a_corrupt_manifest(self, tmp_path):
+        (tmp_path / RUN_MANIFEST_FILENAME).write_text("{not json")
+        results = _check_run_manifest(tmp_path)
+        assert any(r.verdict == "FAIL" for r in results)
+        assert all(r.verdict != "PASS" for r in results)
+
+    def test_manifest_gate_is_wired_into_run_all_gates(self, tmp_path):
+        results = run_all_gates(tmp_path)
+        assert any("run_manifest" in r.gate for r in results)
+
+    def test_sha_consistency_gate_is_unchanged_by_the_manifest_gate(self, tmp_path):
+        """The pre-existing check was extended AROUND, never weakened."""
+        _write_sha_bearing_artifact(tmp_path, "e" * 40)
+        _write_manifest(tmp_path, _good_manifest(git_sha="f" * 40))
+        sha_gate = [
+            r for r in run_all_gates(tmp_path) if r.gate == "gate3_git_sha_consistency"
+        ]
+        assert len(sha_gate) == 1
+        assert sha_gate[0].verdict == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Profile-aware per-experiment checkers (plan 27-03 Task 2, P27-D-20).
+#
+# A gate that cannot pass is worse than no gate, so nothing here weakens a
+# `full` verdict: a suppressed gate becomes a VISIBLE `N/A`, never absent, and
+# every case below is paired with its `profile="full"` / `profile=None`
+# regression.
+# ---------------------------------------------------------------------------
+
+
+def _e6_config_record(optimality: float | None) -> dict:
+    return {
+        "environment": _good_environment(),
+        "solver_config": {"seed": 42},
+        "config": {"n_water": 1.333},
+        "degenerate_observations_at_solution": 0,
+        "metrics": {"optimality_stage3_interface_optimization": optimality},
+    }
+
+
+class TestCheckE4Profile:
+    """`benchmark_grid.csv` is `full`-only in the manifest; E4's smoke path
+    writes no grid, so its absence at smoke is N/A, not FAIL."""
+
+    _GRID_GATES = (
+        "gate1_guard_count:benchmark_grid.csv",
+        "gate2_status:benchmark_grid.csv",
+    )
+
+    def test_absent_grid_is_na_at_smoke(self, tmp_path):
+        results = check_e4(tmp_path, profile="smoke")
+        for gate in self._GRID_GATES:
+            verdicts = _verdicts(results, experiment="E4", gate_prefix=gate)
+            assert verdicts == ["N/A"], (gate, verdicts)
+
+    def test_absent_grid_na_detail_names_the_smoke_path(self, tmp_path):
+        result = _find(
+            check_e4(tmp_path, profile="smoke"),
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        )[0]
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_absent_grid_still_fails_at_full(self, tmp_path):
+        results = check_e4(tmp_path, profile="full")
+        for gate in self._GRID_GATES:
+            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+
+    def test_absent_grid_still_fails_without_a_profile(self, tmp_path):
+        results = check_e4(tmp_path)
+        for gate in self._GRID_GATES:
+            assert _verdicts(results, experiment="E4", gate_prefix=gate) == ["FAIL"]
+
+    def test_present_but_malformed_grid_is_judged_identically_at_every_profile(
+        self, tmp_path
+    ):
+        """The relaxation is keyed on ABSENCE only.
+
+        A grid that exists is judged by the pre-existing rules whatever the
+        profile: a missing guard column FAILs, and a missing `status` column
+        is the pre-existing record-only `N/A` (plan 19.3-07's harness-gating
+        split), not something this plan introduced.
+        """
+        pd.DataFrame({"unrelated": [1]}).to_csv(
+            tmp_path / "benchmark_grid.csv", index=False
+        )
+        for gate, expected in zip(self._GRID_GATES, ("FAIL", "N/A"), strict=True):
+            for profile in (None, "smoke", "full"):
+                verdicts = _verdicts(
+                    check_e4(tmp_path, profile=profile),
+                    experiment="E4",
+                    gate_prefix=gate,
+                )
+                assert verdicts == [expected], (gate, profile, verdicts)
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e4(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover - the assertion is the point
+            raise AssertionError("check_e4 accepted an unknown profile")
+
+
+class TestCheckE5Profile:
+    """`e5_provenance.json` is `full`-only; `_run_smoke_at` never writes it."""
+
+    _SIDECAR_GATES = (
+        "gate1_guard_count:e5_provenance.json",
+        "gate3_provenance:e5_provenance.json",
+    )
+
+    def test_absent_sidecar_is_na_at_smoke(self, tmp_path):
+        results = check_e5(tmp_path, profile="smoke")
+        for gate in self._SIDECAR_GATES:
+            verdicts = _verdicts(results, experiment="E5", gate_prefix=gate)
+            assert verdicts == ["N/A"], (gate, verdicts)
+
+    def test_absent_sidecar_still_fails_at_full(self, tmp_path):
+        results = check_e5(tmp_path, profile="full")
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_absent_sidecar_still_fails_without_a_profile(self, tmp_path):
+        results = check_e5(tmp_path)
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_present_but_bad_sidecar_still_fails_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e5_provenance.json", {"solver_config": {}})
+        results = check_e5(tmp_path, profile="smoke")
+        for gate in self._SIDECAR_GATES:
+            assert _verdicts(results, experiment="E5", gate_prefix=gate) == ["FAIL"]
+
+    def test_pre_existing_na_gates_survive(self, tmp_path):
+        """E5's two record-only N/A gates are unaffected by the profile."""
+        results = check_e5(tmp_path, profile="smoke")
+        assert _verdicts(results, experiment="E5", gate_prefix="gate4_optimality") == [
+            "N/A"
+        ]
+        assert _verdicts(results, experiment="E5", gate_prefix="gate2_status") == [
+            "N/A"
+        ]
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e5(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e5 accepted an unknown profile")
+
+
+class TestCheckE6Profile:
+    """A collapsed smoke solve records no meaningful optimality."""
+
+    def test_null_optimality_is_na_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "N/A"
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_suppressed_optimality_gate_is_still_emitted(self, tmp_path):
+        """A suppressed gate stays VISIBLE in the verdict block (T-27-03-01)."""
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        smoke_gates = {r.gate for r in check_e6(tmp_path, profile="smoke")}
+        full_gates = {r.gate for r in check_e6(tmp_path, profile="full")}
+        assert smoke_gates == full_gates
+
+    def test_guard_and_provenance_gates_still_run_at_smoke(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        results = check_e6(tmp_path, profile="smoke")
+        assert _verdicts(
+            results,
+            experiment="E6",
+            gate_prefix="gate1_guard_count:e6_configs/baseline.json",
+        ) == ["PASS"]
+        assert _verdicts(
+            results,
+            experiment="E6",
+            gate_prefix="gate3_provenance:e6_configs/baseline.json",
+        ) == ["PASS"]
+
+    def test_null_optimality_still_fails_at_full(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path, profile="full"),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_null_optimality_still_fails_without_a_profile(self, tmp_path):
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(None))
+        result = _find(
+            check_e6(tmp_path),
+            experiment="E6",
+            gate_prefix="gate4_optimality:e6_configs/baseline.json",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_gate4_is_suppressed_at_smoke_even_on_a_good_record(self, tmp_path):
+        """Suppression is unconditional at smoke, and PASS-preserving at full.
+
+        Gate 4 asks whether the recorded optimality is meaningful, and at
+        smoke scale it is not -- whatever number the collapsed solve happened
+        to write. So the verdict is `N/A` even here, while the SAME record
+        still PASSes under `full`. This is the one case where `N/A` replaces
+        a PASS rather than a FAIL, and it is deliberate: reading a collapsed
+        solve's optimality as evidence would be the weaker gate.
+        """
+        _write_json(tmp_path / "e6_configs" / "baseline.json", _e6_config_record(1e-3))
+        gate = "gate4_optimality:e6_configs/baseline.json"
+        assert _verdicts(
+            check_e6(tmp_path, profile="smoke"), experiment="E6", gate_prefix=gate
+        ) == ["N/A"]
+        assert _verdicts(
+            check_e6(tmp_path, profile="full"), experiment="E6", gate_prefix=gate
+        ) == ["PASS"]
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e6(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e6 accepted an unknown profile")
+
+
+class TestCheckE6SeedBandProfile:
+    """The `cameras` axis collapses under `--smoke`; the CONSTANT does not."""
+
+    _SEEDS = [42, 43, 44, 45, 46, 47]
+
+    def _write_collapsed(self, tmp_path):
+        _write_e6_band_csv(
+            tmp_path / "generalization_sweep_band.csv",
+            self._SEEDS,
+            camera_values=(8,),
+        )
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+
+    def test_collapsed_axis_is_not_a_fail_at_smoke(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict in ("PASS", "N/A"), result.detail
+        assert "smoke" in result.detail.lower(), result.detail
+
+    def test_collapsed_axis_still_fails_at_full(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="full"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "FAIL"
+        assert "12" in result.detail and "16" in result.detail
+
+    def test_collapsed_axis_still_fails_without_a_profile(self, tmp_path):
+        self._write_collapsed(tmp_path)
+        result = _find(
+            check_e6_seed_band(tmp_path),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "FAIL"
+
+    def test_missing_axis_columns_fails_at_every_profile(self, tmp_path):
+        pd.DataFrame({"seed": self._SEEDS, "status": ["ok"] * len(self._SEEDS)}).to_csv(
+            tmp_path / "generalization_sweep_band.csv", index=False
+        )
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+        for profile in (None, "smoke", "full"):
+            result = _find(
+                check_e6_seed_band(tmp_path, profile=profile),
+                experiment="E6",
+                gate_prefix="gate_e6_seed_band:cameras_axis",
+            )[0]
+            assert result.verdict == "FAIL", profile
+
+    def test_full_axis_still_passes_at_smoke(self, tmp_path):
+        _write_e6_band_csv(tmp_path / "generalization_sweep_band.csv", self._SEEDS)
+        _write_e6_band_sidecar(tmp_path / "e6_seed_band_provenance.json", self._SEEDS)
+        result = _find(
+            check_e6_seed_band(tmp_path, profile="smoke"),
+            experiment="E6",
+            gate_prefix="gate_e6_seed_band:cameras_axis",
+        )[0]
+        assert result.verdict == "PASS"
+
+    def test_unknown_profile_raises_naming_the_offender(self, tmp_path):
+        try:
+            check_e6_seed_band(tmp_path, profile="quick")
+        except ValueError as exc:
+            assert "quick" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("check_e6_seed_band accepted an unknown profile")
+
+
+class TestRunAllGatesThreadsProfile:
+    """`run_all_gates` already accepted `profile`; it now threads it."""
+
+    def test_smoke_profile_reaches_the_e4_grid_gates(self, tmp_path):
+        results = run_all_gates(tmp_path, profile="smoke")
+        assert _verdicts(
+            results,
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        ) == ["N/A"]
+
+    def test_full_profile_leaves_the_e4_grid_gates_failing(self, tmp_path):
+        results = run_all_gates(tmp_path, profile="full")
+        assert _verdicts(
+            results,
+            experiment="E4",
+            gate_prefix="gate1_guard_count:benchmark_grid.csv",
+        ) == ["FAIL"]
+
+
+class TestGate1PipelineRowExemption:
+    """Plan 29.1-01 / D-02: a `record_source="pipeline"` row is reported, not gated.
+
+    D-01 makes E4's real-rig row publish the count E2 measured (198). Gating on
+    it would convert the pre-D-01 "missing" FAIL into a "non-zero" FAIL rather
+    than resolving anything, so gate 1 excludes pipeline rows from its
+    predicate -- while leaving `assembled` rows, and frames with no
+    `record_source` column at all, exactly as they were.
+    """
+
+    @staticmethod
+    def _frame(record_sources, counts, cell_keys=None):
+        data = {
+            "cell_key": cell_keys or [f"cell_{i}" for i in range(len(counts))],
+            "degenerate_observations_at_solution": counts,
+        }
+        if record_sources is not None:
+            data["record_source"] = record_sources
+        return pd.DataFrame(data)
+
+    def test_pipeline_row_with_a_non_zero_count_passes_and_is_named(self):
+        df = self._frame(
+            ["assembled", "assembled", "pipeline"],
+            [0, 0, 198],
+            cell_keys=[
+                "cameras_8_frames_50",
+                "cameras_8_frames_100",
+                "real_rig_13cam_200fr",
+            ],
+        )
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        # The exemption is visible in the gate's own output: gated count,
+        # exempt count, the exempt row's key and its count, and the reason.
+        assert "2 of 3" in result.detail
+        assert "1 row(s) exempt" in result.detail
+        assert "real_rig_13cam_200fr=198" in result.detail
+        assert "pipeline.py:1288" in result.detail
+
+    def test_exempt_row_with_a_missing_count_is_still_exempt(self):
+        """The committed 2026-08-20 benchmark_grid.csv still nulls the cell --
+        the writer fix reaches it only on the next run -- so the exemption must
+        cover a missing count on a pipeline row too."""
+        df = self._frame(["assembled", "pipeline"], [0, None])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        assert "missing" in result.detail
+
+    def test_assembled_row_with_a_non_zero_count_still_fails(self):
+        """T-29.1-01: the exemption is keyed to `pipeline` only -- a synthetic
+        row's non-zero count FAILs even with a pipeline row alongside it."""
+        df = self._frame(["assembled", "pipeline"], [5, 198])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+        assert "1 of 1 gated row(s)" in result.detail
+
+    def test_assembled_row_with_a_missing_count_still_fails(self):
+        """Missing is not zero: an un-instrumented artifact is not evidence of
+        a clean solve, and D-02 does not touch that rule."""
+        df = self._frame(["assembled", "pipeline"], [None, 0])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+
+    def test_frame_without_a_record_source_column_is_unchanged(self):
+        """E6's generalization_sweep.csv and every pre-D-02 frame: every row is
+        gated and the messages are byte-identical to the pre-change gate."""
+        passing = self._frame(None, [0, 0])
+        assert _check_guard_column("E4", "benchmark_grid.csv", passing) == GateResult(
+            "E4",
+            "gate1_guard_count:benchmark_grid.csv",
+            "PASS",
+            "benchmark_grid.csv: 2 row(s), guard count zero everywhere",
+        )
+        failing = self._frame(None, [0, 5])
+        assert _check_guard_column("E4", "benchmark_grid.csv", failing) == GateResult(
+            "E4",
+            "gate1_guard_count:benchmark_grid.csv",
+            "FAIL",
+            "benchmark_grid.csv: 1 of 2 row(s) have a non-zero or missing guard count",
+        )
+
+    def test_a_frame_of_only_pipeline_rows_passes_without_gating_anything(self):
+        df = self._frame(["pipeline"], [198])
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "PASS"
+        assert "0 of 1" in result.detail
+
+    def test_missing_guard_column_still_fails_regardless_of_record_source(self):
+        df = pd.DataFrame({"cell_key": ["a"], "record_source": ["pipeline"]})
+        result = _check_guard_column("E4", "benchmark_grid.csv", df)
+        assert result.verdict == "FAIL"
+        assert "column present" in result.detail

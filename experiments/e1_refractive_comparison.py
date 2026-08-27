@@ -18,7 +18,21 @@ Emits into `--out`:
     external figures repository (read-only, outside this repo) reads (D-19). Do not
     add, remove, reorder, or rename a column.
   exp2_spatial_errors.csv -- E1's own new output, no committed baseline (D-20); not
-    compared by --check.
+    compared by --check. Carries the SIX degeneracy columns (DEGEN-01/DEGEN-02 via
+    plan 24-02): `degenerate_observations_at_solution` plus three
+    `degenerate_observations_cause_*` and two `degenerate_observations_fate_*`.
+    Cause and fate are two INDEPENDENT AXES over the same set of invalid
+    observations, not disjoint buckets -- **never add a cause column to a fate
+    column.** Each axis sums independently and exactly to
+    `degenerate_observations_at_solution`, so a row where the two axes disagree is
+    a bookkeeping bug, visible by eye. The counter is a per-MODEL quantity, so
+    every row of a model repeats that model's six values. The three FIXED-CONTRACT
+    CSVs above deliberately did NOT gain these columns (D-19 pins their headers
+    byte-for-byte for an external figures repository).
+  e1_degeneracy_breakdown.json -- the per-stage half D-09 keeps out of the CSVs:
+    the full cause x stage and fate x stage breakdown and the per-stage
+    `observations_evaluated__*` denominators, keyed by model label, written as the
+    raw `discard_stats` dict.
   e1_benchmark_refractive.json, e1_benchmark_nonrefractive.json -- two distinct
     direct-call provenance records (D-09), one per model, because E1 calibrates twice.
   exp1_band.csv, e1_seed_band_provenance.json -- written only by `--seeds`
@@ -26,24 +40,83 @@ Emits into `--out`:
 
 **`--seeds` band mode (D-19.4-14, SC-5a, D-260807-dcv).** `--seeds 42,43,...`
 runs E1's depth-generalization path once per listed seed and emits
-`exp1_band.csv` (one row per seed x test_depth x model -- 10 seeds x 8 depths
-x 2 models = 160 rows at production scale). Its columns are
+`exp1_band.csv` (one row per seed x noise level x test_depth x model; the
+production row count is the product of those four axes, and the run's own
+`e1_seed_band_provenance.json` states the counts it emitted). Its columns are
 `exp2_depth_generalization.csv`'s columns PLUS `exp3_xy_vs_z_anisotropy.csv`'s
 four non-key columns (`xy_rmse_mm`, `z_rmse_mm`, `anisotropy_ratio`,
 `n_points`) PLUS `seed` -- this GAINS COLUMNS on the artifact that already
 existed rather than adding a sibling file. `exp3_xy_vs_z_anisotropy.csv`
 itself is still written only by the single-seed run. This is the committed,
-regenerable artifact behind MF-08's 97-178x deepest-point ratio spread and
-the "2 of 10 seeds exceed 2 mm" finding, both of which previously lived only
-in gitignored `seed_sweep_19_3/` output -- and now, with `z_rmse_mm` merged
-in, is also the regenerable source for the abstract/L281 ~135x headline
-ratio, which was previously computable only from the seedless
-`exp3_xy_vs_z_anisotropy.csv` or that same gitignored sweep output. **E1
+regenerable artifact behind the deepest-point ratio comparison and the
+per-seed depth-error spread that previously lived only in gitignored
+`seed_sweep_19_3/` output -- and now, with `z_rmse_mm` merged in, it is also
+the committed source for the abstract/L281 headline ratio, which was
+previously computable only from the seedless `exp3_xy_vs_z_anisotropy.csv`
+or that same gitignored sweep output. **What it does NOT regenerate is
+MF-08's published `97-178x` band or the `2 of 10 seeds exceed 2 mm`
+finding**: both are the TEN-seed `seed_sweep_19_3/` sweep's own numbers
+(MANUSCRIPT-FINDINGS.md records the ratio band as "mean 139.5, sd 25.1,
+n=10"), and ruling A1 sized this band below that. Quote those two as the
+ten-seed sweep's, and quote this band for what its own seeds cover. **E1
 carries NO accuracy claim (D-19.3-17 demoted it)** -- this band exists for
 reproducibility, not because E1's numbers move: E1's production
 `SCENARIO_NAME = "realistic"` resolves to `generate_real_rig_array()`'s
 frozen shared `water_z` and is INERT under this phase's interface fix (it
-never reaches `generate_camera_array`). A `--seeds` run NEVER writes
+never reaches `generate_camera_array`). **That demotion is qualified as of
+2026-08-15 -- see STATED DOMAIN immediately below, which is the other half
+of this and must be read with it.**
+
+**STATED DOMAIN (BAND-01, D-14, corrected 2026-08-24 under D-08).** E1's
+absolute-accuracy numbers are to be quoted ONLY over the domain the band
+actually swept: the `realistic` scenario's single 12-camera synthetic
+geometry, the seeds sized by **ruling A1** (`run_experiment_suite.sh`'s
+`run_stage_e1_band`, which carries the seed count, the reason for it,
+and the arithmetic behind the row counts), the four detection-noise
+levels of `NOISE_LEVELS` (0.25, 0.5, 0.82, 1.2 px), and the eight test
+depths of `TEST_DEPTHS` (1.10 m to 2.50 m). Those two axes restate
+constants defined in this module and ruling A1 did not touch either; the
+SEED axis is the one it resized, which is why it is cited rather than
+counted here. Outside the domain -- another rig geometry, a noisier
+detector, a deeper test point -- E1's numbers are unlicensed. **The
+authoritative, per-run statement of that domain is the `scope` field of
+`e1_seed_band_provenance.json`**, which `_run_band` DERIVES from the run
+that wrote it: the seed list actually swept, the row counts actually
+emitted, and the noise levels and depths actually used. This paragraph
+names the axes and points there for the values; it deliberately quotes
+neither a seed count nor a row count. The version that did -- ten seeds,
+640/960 rows, from the pre-A1 plan -- outlived ruling A1 and was still
+authorising a domain that had never been run when the 2026-08-20
+production run shipped it (D-08, D-10). The band that establishes the
+domain was EXECUTED IN **Phase 28** at the frozen sha (D-21) -- a
+completed fact, stated in the past tense on purpose, because the clause
+it replaces was a schedule and needed re-dating after every run. Phase
+25 ran a two-seed probe only, which licenses no manuscript-facing
+number, because two seeds cannot separate a noise effect from seed
+variance. What already supports the claim is measured and independent of
+that band: warm-restarting each solve from its own solution recovers no
+cost (largest relative drop 1.8e-9), so the non-refractive baseline is
+CONVERGED and the comparison is fair -- the 97-178x band is
+strengthened, not caveated
+(`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`). The
+one caveat that travels with the band, stated here in the same paragraph so
+it can never be read as under-convergence: the non-refractive baseline arm
+is **severely ill-conditioned** (directional curvature ~3e8). That is a
+property of fitting a pinhole model to refracted data -- expected, not a
+defect, and explicitly NOT a reason to qualify the accuracy claim (D-16).
+
+**Why the band's numbers moved (D-13, anti-confusion note -- no emitter and
+no computed delta by decision).** Two things changed at once: the
+`NOISE_LEVELS` axis above, and FIX-02 freeing the interface normal
+(`normal_fixed=False`). No attribution is computed between them, because
+the old normal-fixed version will not be published and no manuscript-facing
+number depends on the split. Read a moved number accordingly: it is not a
+regression and does not need its cause re-derived. If the two must be
+separated, THE 0.5 px ROW IS THE CLEAN `normal_fixed` ISOLATOR -- 0.5 px is
+the preset default the committed baseline was produced at, so the noise
+axis contributes nothing there and any residual move is FIX-02's.
+
+A `--seeds` run NEVER writes
 `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
 `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those remain
 exclusively the single-seed run's artifacts. The band CSV write always
@@ -53,10 +126,12 @@ artifact's overwrite behavior changes. `--seeds` is mutually exclusive with
 `e1_benchmark_nonrefractive.json` written during a band run additively
 carries a `seeds` list holding the resolved seed list, reflecting the LAST
 seed's diagnostics/timings/accuracy (one provenance record cannot represent
-N independent solves) -- these are seedless legacy records that band mode
-must never overwrite with a single seed's values, which is why the band's
-OWN provenance lives in a separate, band-owned `e1_seed_band_provenance.json`
-sidecar (see below).
+N independent solves). Since plan 26-13 they ALSO carry
+`solver_config["seed"]` naming that last seed -- the two are different
+statements: `seed` names what this record measured, `seeds` what the band
+swept, and `gate3_provenance` requires the former. The band's OWN provenance
+still lives in a separate, band-owned `e1_seed_band_provenance.json` sidecar
+(see below), which is what represents the N solves as a set.
 
 E1's reproduction bar (D-19, AMENDED 2026-07-27): within CHECK_RTOL is fully autonomous.
 A divergence touching none of D-19's named headline numbers gets a written mechanism and
@@ -107,6 +182,11 @@ from aquacal.datasets import (
 )
 from aquacal.io import capture_environment
 from aquacal.validation.reconstruction import triangulate_charuco_corners
+from experiments._degeneracy import (
+    DEGENERACY_COLUMNS,
+    summarize_degeneracy_columns,
+    write_degeneracy_breakdown,
+)
 from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
@@ -130,6 +210,36 @@ CHECK_RTOL = 1e-6
 # (verified against its stored output, 19.1-RESEARCH.md's cell-by-cell trace).
 SCENARIO_NAME = "realistic"
 TEST_DEPTHS = [1.10, 1.20, 1.30, 1.40, 1.50, 1.70, 2.00, 2.50]
+
+# BAND-01/D-11: the detection-noise axis the seed band sweeps, in pixels. Band
+# mode ONLY (D-12) -- `_run_smoke`, `_run_check` and the single-seed run keep
+# today's behaviour at the scenario preset's own default.
+#
+# 0.5 px IS the preset default and therefore the level at which the band's own
+# rows reproduce the committed single-seed CSVs and E1's `--check` bar. It
+# MUST stay in this
+# list: drop it and the band no longer contains the rows the reproduction gate
+# compares against, and the clean `normal_fixed` isolator (D-13) disappears
+# with it. 0.82 px is the PRODUCTION RIG's measured detection noise and is the
+# level that makes the claim transferable; nothing justified 0.5 px physically.
+# 0.25 px brackets a well-behaved detector and 1.2 px a deliberately
+# pessimistic one -- the P1 probe ran 0.5/0.82/1.2 px on seed 42 and the top
+# level neither destabilized the solve nor produced a degenerate observation,
+# so the set is kept as locked.
+#
+# The `n_cameras` GEOMETRY AXIS (`n_cameras in {8, 12, 16}`, considered
+# alongside this one) IS EXPLICITLY SKIPPED, NOT FORGOTTEN -- the 2026-08-15
+# decision in
+# `.planning/todos/pending/2026-08-14-decide-whether-e1-may-carry-absolute-accuracy-claims.md`
+# skips it deliberately. E1's `SCENARIO_NAME = "realistic"` resolves to
+# `generate_real_rig_array()`, whose 12-camera layout IS the manuscript's
+# synthetic rig; varying the camera count would move the geometry the claim is
+# quoted over rather than widen its domain. The stated domain in this module's
+# docstring is therefore written over ONE geometry and a RANGE of noise, which
+# is what the accuracy claim actually needs (D-14). A reader looking for the
+# geometry axis should meet this note, not an unexplained omission.
+NOISE_LEVELS = [0.25, 0.5, 0.82, 1.2]
+
 N_GRID = 7
 XY_EXTENT = 0.5
 XY_CENTER = (-0.34, 0.55)
@@ -143,6 +253,83 @@ BENCHMARK_FILENAMES = {
     "non_refractive": "e1_benchmark_nonrefractive.json",
 }
 
+# D-01/FIX-01: at n_water=1.0 the refractive projector IS the pinhole projector
+# (tests/unit/test_refractive_geometry.py::TestUnitIndexPinholeIdentity, agreement
+# to atol=1e-12), so water_z is an EXACT null direction in this arm -- the cost is
+# flat to 13 significant figures over a 1.5 m sweep while the domain guard climbs
+# 0 -> 14,949. A degenerate bounds interval of this half-width around the
+# scenario's own ground-truth water_z pins the parameter without removing it from
+# the problem. Measured 2026-08-17 (probe_pinned_normal_free.py, both stage-3
+# passes patched): recovered water_z = 1.030999999999 m against GT 1.031 m.
+WATER_Z_PIN_HALF_WIDTH = 1e-12
+
+
+def resolve_water_z_pin(scenario, n_water: float) -> float | None:
+    """Return the water_z value to pin the non-refractive arm at, or None.
+
+    Returns `None` whenever `n_water != 1.0` -- the refractive arm must stay
+    unpinned (water_z is genuinely observable there; pinning it inflates the
+    headline ratio to a flattering 168x and breaks the manuscript's
+    stable-anisotropy claim, `.planning/MANUSCRIPT-FINDINGS.md:972`).
+
+    At `n_water == 1.0`, reads the scenario's own ground-truth `water_zs` and
+    returns the single shared value. Raises `ValueError` if the scenario's
+    cameras do not share one water_z -- a shared pin is undefined for a
+    non-shared ground truth (E1's `SCENARIO_NAME = "realistic"` scenario
+    always shares one, via `generate_real_rig_array`).
+    """
+    if n_water != 1.0:
+        return None
+    distinct = set(scenario.water_zs.values())
+    if len(distinct) != 1:
+        raise ValueError(
+            f"resolve_water_z_pin: scenario '{scenario.name}' does not share a "
+            f"single water_z across cameras -- found {sorted(distinct)}. A "
+            "shared pin is undefined for a non-shared ground truth."
+        )
+    return next(iter(distinct))
+
+
+def build_water_z_provenance(pin: float | None) -> dict:
+    """D-04 provenance triple for a benchmark record's `solver_config`.
+
+    Both arms carry the same key set (`water_z_pinned_m`, `water_z_pin_mechanism`,
+    `water_z_pin_reason`) so a reader diffing the non-refractive and refractive
+    records finds both the asymmetry and its justification without leaving the
+    artifact.
+    """
+    if pin is None:
+        return {
+            "water_z_pinned_m": None,
+            "water_z_pin_mechanism": None,
+            "water_z_pin_reason": (
+                "deliberately NOT pinned: under refraction water_z is genuinely "
+                "observable and estimating it is the method's contribution "
+                "(.planning/MANUSCRIPT-FINDINGS.md:972)."
+            ),
+        }
+    return {
+        "water_z_pinned_m": pin,
+        "water_z_pin_mechanism": (
+            "degenerate bounds interval (lb = ub -/+ 1e-12) on the water_z "
+            "slot, threaded from the experiment to build_bounds at BOTH "
+            "stage-3 passes (interface_estimation.py and refinement.py); the "
+            "parameter stays packed and is not removed from the problem"
+        ),
+        "water_z_pin_reason": (
+            "at n_water=1.0 the refractive projector IS the pinhole projector "
+            "(tests/unit/test_refractive_geometry.py::"
+            "TestUnitIndexPinholeIdentity, agreement to atol=1e-12), so "
+            "water_z is an exact null direction in this arm -- sweeping it "
+            "over 1.5 m leaves the cost constant to 13 significant figures "
+            "while the domain-guard count climbs 0 -> 14,949 -- and pinning "
+            "it is therefore a reparameterization of a null space, not a "
+            "model change. measurement: "
+            ".planning/MANUSCRIPT-FINDINGS.md:892-903"
+        ),
+    }
+
+
 # Pinned key columns for sort-before-write / --check row realignment (Pitfall 5).
 EXP1_KEY_COLUMNS = ["camera", "model"]
 EXP2_KEY_COLUMNS = ["test_depth_m", "model"]
@@ -151,7 +338,38 @@ SPATIAL_KEY_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m"]
 # D-19.4-14: the band CSV carries every seed's rows, so `seed` joins the key
 # columns -- (test_depth_m, model) alone is no longer unique once multiple
 # seeds are concatenated (mirrors E7's BAND_KEY_COLUMNS convention).
-BAND_KEY_COLUMNS = ["seed", "test_depth_m", "model"]
+#
+# BAND-01: `noise_std` joins them for exactly the same reason. The band now
+# sweeps NOISE_LEVELS inside each seed, so (seed, test_depth_m, model) names
+# FOUR rows, not one. `write_experiment_csv` validates only that the key
+# columns EXIST -- it sorts by them and never checks uniqueness -- so omitting
+# `noise_std` here does not fail loudly: it writes a file in which every
+# (seed, test_depth_m, model) key appears once per NOISE_LEVELS entry rather
+# than once, and `compare_experiment_csv` is then reporting on rows it cannot
+# align. The multiplicity is the point, not any particular row count -- that
+# count moves with the seed list and the level list.
+BAND_KEY_COLUMNS = ["seed", "noise_std", "test_depth_m", "model"]
+# A SECOND band key shape, not an extension of BAND_KEY_COLUMNS. EXP1's rows
+# are keyed by (camera, model) and have NO depth axis at all, so its columns
+# cannot be merged into exp1_band.csv without reindexing them onto a depth
+# they do not vary over -- that would fabricate a depth dependence the
+# parameter errors do not have. Hence a separate `exp1_parameter_band.csv`.
+#
+# BAND-01, and a DOCUMENTED DEPARTURE from D-12's literal text, which says
+# "only exp1_band.csv gains the column". D-12's rationale is protecting the
+# three FIXED-CONTRACT CSVs (exp1_parameter_errors.csv,
+# exp2_depth_generalization.csv, exp3_xy_vs_z_anisotropy.csv) that the
+# external figures repository reads byte-for-byte -- and those are untouched.
+# `exp1_parameter_band.csv` is not one of them: it is a band artifact from the
+# same D-19.4-14 precedent, written unconditionally from the same accumulator
+# as exp1_band.csv, so the noise axis lands in it whether or not the key list
+# admits it. Leaving it out is strictly worse here than on exp1_band.csv,
+# because this file has NO depth column to disambiguate the per-level rows
+# with -- without `noise_std` the whole band collapses onto one distinct key
+# per (seed, camera, model), i.e. one key for every len(NOISE_LEVELS) rows.
+# The column therefore goes in both lists; the tension is settled here rather
+# than rediscovered.
+PARAMETER_BAND_KEY_COLUMNS = ["seed", "noise_std", "camera", "model"]
 
 # Pinned column order -- byte-identical to the committed baselines (D-19).
 EXP1_COLUMNS = [
@@ -185,7 +403,39 @@ EXP3_COLUMNS = [
     "anisotropy_ratio",
     "n_points",
 ]
-SPATIAL_COLUMNS = ["test_depth_m", "model", "x_m", "y_m", "z_m", "signed_error_mm"]
+SPATIAL_COLUMNS = [
+    "test_depth_m",
+    "model",
+    "x_m",
+    "y_m",
+    "z_m",
+    "signed_error_mm",
+    # DEGEN-01/DEGEN-02 via plan 24-02, D-09 as revised 2026-08-17. APPENDED,
+    # never inserted. This is the ONLY `_build_dataframes` output that may
+    # carry them: `EXP1_COLUMNS`, `EXP2_COLUMNS` and `EXP3_COLUMNS` pin
+    # byte-identical headers for an external, read-only figures repository
+    # (D-19, "do not add, remove, reorder, or rename a column"), whereas
+    # `exp2_spatial_errors.csv` is E1's own output with no committed baseline
+    # and is not compared by `--check` (D-20). The counter is a per-MODEL
+    # quantity, so every row of a given model repeats that model's values --
+    # no per-point split of it is fabricated.
+    #
+    # `cause` and `fate` are two INDEPENDENT AXES over the same set of
+    # degenerate observations, not disjoint buckets. NEVER add a cause column
+    # to a fate column -- that double-counts. EACH AXIS SUMS INDEPENDENTLY TO
+    # `degenerate_observations_at_solution`, so a row where the two axes
+    # disagree is a bookkeeping bug, visible by eye.
+    #
+    # The per-stage breakdown and the `observations_evaluated__*` denominators
+    # live in the `e1_degeneracy_breakdown.json` sidecar, not here.
+    "degenerate_observations_at_solution",
+    "degenerate_observations_cause_above_interface",
+    "degenerate_observations_cause_behind_camera",
+    "degenerate_observations_cause_interface_below_camera",
+    "degenerate_observations_fate_extended",
+    "degenerate_observations_fate_penalized",
+]
+assert tuple(SPATIAL_COLUMNS[-6:]) == DEGENERACY_COLUMNS
 
 # D-260807-dcv: the manuscript's ~135x headline ratio (main.tex L68/L281) is raw
 # `z_rmse_mm` at the deepest test point, and `z_rmse_mm` previously lived ONLY in
@@ -291,18 +541,30 @@ def compute_xyz_errors(calibration, test_poses, test_detections, board):
 
 def _run_one_model(scenario, n_water, seed):
     """Calibrate one model and return (result, detections, timings, diagnostics,
-    discard_stats).
+    discard_stats, water_z_pin).
 
     `discard_stats["degenerate_observations_at_solution"]` (D-19.3-11) is the
     final-solution guard count `calibrate_synthetic` recorded via
     `discard_stats_out`; a non-zero count logs one prominent warning here so
     it is never silently swallowed, but this function never raises on it --
     the library records, the harness (or plan 19.3-08's queue script) gates.
+
+    `water_z_pin` (FIX-01) is the resolved pin value (or `None`) from
+    `resolve_water_z_pin` -- all four of E1's call sites (`_run_full`,
+    `_run_smoke`, `_run_check`, `_run_band`) reach the solver through this one
+    function, so the pin is resolved and applied here rather than at each
+    caller.
     """
     diag_stage3 = SolverDiagnostics()
     diag_intrinsic_pass = SolverDiagnostics()
     timings: dict[str, float] = {}
     discard_stats: dict[str, int] = {}
+    water_z_pin = resolve_water_z_pin(scenario, n_water)
+    water_z_bounds = (
+        (water_z_pin - WATER_Z_PIN_HALF_WIDTH, water_z_pin + WATER_Z_PIN_HALF_WIDTH)
+        if water_z_pin is not None
+        else None
+    )
     result, detections = calibrate_synthetic(
         scenario,
         n_water=n_water,
@@ -314,6 +576,16 @@ def _run_one_model(scenario, n_water, seed):
         },
         timings_out=timings,
         discard_stats_out=discard_stats,
+        # FIX-02: the library signature defaults normal_fixed=True, but
+        # CalibrationConfig.interface_normal_fixed defaults to False, and E2's
+        # real-rig run and the manuscript's tab:cpr rows were produced at
+        # False -- so omitting this argument silently solved a problem two
+        # tilt DOF smaller. The one recorded rationale for the old True
+        # default (19.2-01-SUMMARY.md:105) is about keeping already-committed
+        # Phase-19.1 records bit-identical; that premise is gone because the
+        # v2.1 re-run replaces every artifact by design.
+        normal_fixed=False,
+        water_z_bounds=water_z_bounds,
     )
     diagnostics = {
         "stage3_interface_optimization": diag_stage3,
@@ -328,7 +600,7 @@ def _run_one_model(scenario, n_water, seed):
             n_water,
             n_degenerate,
         )
-    return result, detections, timings, diagnostics, discard_stats
+    return result, detections, timings, diagnostics, discard_stats, water_z_pin
 
 
 def merge_band_columns(df_exp2: pd.DataFrame, df_exp3: pd.DataFrame) -> pd.DataFrame:
@@ -365,7 +637,9 @@ def merge_band_columns(df_exp2: pd.DataFrame, df_exp3: pd.DataFrame) -> pd.DataF
     return merged.reindex(columns=BAND_MERGED_COLUMNS)
 
 
-def _build_dataframes(scenario, results, seed, test_depths=None):
+def _build_dataframes(
+    scenario, results, seed, test_depths=None, discard_stats_by_model=None
+):
     """Run the depth sweep and assemble the four output DataFrames.
 
     `results` is a dict keyed by model label ("refractive"/"non_refractive") mapping
@@ -377,9 +651,24 @@ def _build_dataframes(scenario, results, seed, test_depths=None):
         test_depths: Depths to sweep. Defaults to the module-level `TEST_DEPTHS`
             (the full eight-depth preset); `--smoke` passes a single trivial depth
             instead, without mutating the module constant.
+        discard_stats_by_model: Each model label's raw `discard_stats` dict
+            from `_run_one_model`, used to fill `exp2_spatial_errors.csv`'s
+            six appended degeneracy columns. `None` (the default) writes
+            `None` in all six rather than `0` -- `0` means "measured and found
+            clean", `None` means "never measured for this row".
     """
     depths = TEST_DEPTHS if test_depths is None else test_depths
     board = BoardGeometry(scenario.board_config)
+    # Per-MODEL, computed once: the counter is a property of the model's
+    # solve, not of any individual reconstructed point.
+    degeneracy_by_model = {
+        label: summarize_degeneracy_columns(
+            None
+            if discard_stats_by_model is None
+            else discard_stats_by_model.get(label)
+        )
+        for label in results
+    }
 
     errors_by_model = {
         label: compute_per_camera_errors(result, scenario, gauge_correct_z=True)
@@ -480,6 +769,7 @@ def _build_dataframes(scenario, results, seed, test_depths=None):
                             "y_m": sp.positions[j, 1],
                             "z_m": sp.positions[j, 2],
                             "signed_error_mm": sp.signed_errors[j] * 1000,
+                            **degeneracy_by_model[label],
                         }
                     )
     df_exp2 = pd.DataFrame(rows_exp2, columns=EXP2_COLUMNS)
@@ -516,20 +806,22 @@ def _run_full(args: argparse.Namespace) -> int:
     timings_by_model = {}
     diagnostics_by_model = {}
     discard_stats_by_model = {}
+    water_z_pin_by_model = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, timings, diagnostics, discard_stats = _run_one_model(
-            scenario, n_water, args.seed
+        result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+            _run_one_model(scenario, n_water, args.seed)
         )
         print(f"  Reprojection RMS: {result.diagnostics.reprojection_error_rms:.4f} px")
         results[label] = (result, detections)
         timings_by_model[label] = timings
         diagnostics_by_model[label] = diagnostics
         discard_stats_by_model[label] = discard_stats
+        water_z_pin_by_model[label] = water_z_pin
 
     print("\nEvaluating depth sweep and anisotropy...")
     df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
-        scenario, results, args.seed
+        scenario, results, args.seed, discard_stats_by_model=discard_stats_by_model
     )
 
     write_experiment_csv(
@@ -574,6 +866,7 @@ def _run_full(args: argparse.Namespace) -> int:
             },
             timings=timings_by_model[label],
             diagnostics=diagnostics_by_model[label],
+            seed=args.seed,
             solver_config={
                 "robust_loss": "huber",
                 "loss_scale": 1.0,
@@ -581,6 +874,7 @@ def _run_full(args: argparse.Namespace) -> int:
                 "n_water": n_water,
                 "n_air": 1.0,
                 "shared_interface": True,
+                "normal_fixed": False,
                 "ftol": diagnostics_by_model[label][
                     "stage3_interface_optimization"
                 ].ftol,
@@ -590,11 +884,32 @@ def _run_full(args: argparse.Namespace) -> int:
                 "gtol": diagnostics_by_model[label][
                     "stage3_interface_optimization"
                 ].gtol,
+                **build_water_z_provenance(water_z_pin_by_model[label]),
             },
-            accuracy={"reprojection_rms_px": result.diagnostics.reprojection_error_rms},
+            accuracy={
+                "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                "water_z_recovered_m": float(
+                    next(iter(result.cameras.values())).water_z
+                ),
+            },
             force=args.force,
         )
         print(f"Wrote {record_path}")
+
+    # D-09's sidecar half, keyed by model label: the cause x stage and
+    # fate x stage breakdown plus the per-stage `observations_evaluated__*`
+    # denominators, none of which belong in a CSV. The RAW dict is written,
+    # unaggregated -- same structural argument as D-11, so a counter added to
+    # the library later arrives here without this script naming it. Each
+    # arm's per-block `optimality_by_block` decomposition needs no work here:
+    # it is a `SolverDiagnostics` field, so `assemble_benchmark_record`
+    # already emits it beside that stage's `optimality` in
+    # `e1_benchmark_<model>.json`.
+    write_degeneracy_breakdown(
+        out_dir / "e1_degeneracy_breakdown.json",
+        {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+        force=args.force,
+    )
 
     print("\nE1 run complete.")
     return 0
@@ -617,17 +932,23 @@ def _run_smoke(args: argparse.Namespace) -> int:
         timings_by_model = {}
         diagnostics_by_model = {}
         discard_stats_by_model = {}
+        water_z_pin_by_model = {}
         for label, n_water in MODELS:
-            result, detections, timings, diagnostics, discard_stats = _run_one_model(
-                scenario, n_water, args.seed
+            result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+                _run_one_model(scenario, n_water, args.seed)
             )
             results[label] = (result, detections)
             timings_by_model[label] = timings
             diagnostics_by_model[label] = diagnostics
             discard_stats_by_model[label] = discard_stats
+            water_z_pin_by_model[label] = water_z_pin
 
         df_exp1, df_exp2, df_spatial, df_exp3 = _build_dataframes(
-            scenario, results, args.seed, test_depths=smoke_depths
+            scenario,
+            results,
+            args.seed,
+            test_depths=smoke_depths,
+            discard_stats_by_model=discard_stats_by_model,
         )
 
         write_experiment_csv(
@@ -672,6 +993,7 @@ def _run_smoke(args: argparse.Namespace) -> int:
                 },
                 timings=timings_by_model[label],
                 diagnostics=diagnostics_by_model[label],
+                seed=args.seed,
                 solver_config={
                     "robust_loss": "huber",
                     "loss_scale": 1.0,
@@ -679,6 +1001,7 @@ def _run_smoke(args: argparse.Namespace) -> int:
                     "n_water": n_water,
                     "n_air": 1.0,
                     "shared_interface": True,
+                    "normal_fixed": False,
                     "ftol": diagnostics_by_model[label][
                         "stage3_interface_optimization"
                     ].ftol,
@@ -688,12 +1011,22 @@ def _run_smoke(args: argparse.Namespace) -> int:
                     "gtol": diagnostics_by_model[label][
                         "stage3_interface_optimization"
                     ].gtol,
+                    **build_water_z_provenance(water_z_pin_by_model[label]),
                 },
                 accuracy={
-                    "reprojection_rms_px": result.diagnostics.reprojection_error_rms
+                    "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                    "water_z_recovered_m": float(
+                        next(iter(result.cameras.values())).water_z
+                    ),
                 },
                 force=True,
             )
+        write_degeneracy_breakdown(
+            tmp_path / "e1_degeneracy_breakdown.json",
+            {label: dict(stats) for label, stats in discard_stats_by_model.items()},
+            # Smoke write into a throwaway tmp dir -- nothing committed to clobber.
+            force=True,
+        )
         print(f"Smoke-wrote all six artifacts to {tmp_path}")
 
     return 0
@@ -715,8 +1048,8 @@ def _run_check(args: argparse.Namespace) -> int:
     results = {}
     for label, n_water in MODELS:
         print(f"\nCalibrating {label} model (n_water={n_water})...")
-        result, detections, _timings, _diagnostics, _discard_stats = _run_one_model(
-            scenario, n_water, args.seed
+        result, detections, _timings, _diagnostics, _discard_stats, _water_z_pin = (
+            _run_one_model(scenario, n_water, args.seed)
         )
         results[label] = (result, detections)
 
@@ -741,17 +1074,44 @@ def _run_check(args: argparse.Namespace) -> int:
 
 
 def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None:
-    """`--seeds`: run E1's depth-generalization path once per seed, emit the
-    band CSV and per-model provenance (D-19.4-14, SC-5a, D-260807-dcv).
+    """`--seeds`: run E1's depth-generalization path once per seed and per
+    noise level, emit the band CSV and per-model provenance (D-19.4-14, SC-5a,
+    D-260807-dcv, BAND-01).
+
+    BAND-01/D-11/D-12: each seed is run once per level of `NOISE_LEVELS`, with
+    `scenario.noise_std` overridden before the solve, and every emitted row is
+    stamped with the effective level in a `noise_std` column. The axis is band
+    mode's ALONE -- `_run_smoke`, `_run_check` and the single-seed run are
+    untouched -- and it collapses to one level under `--smoke`. At production
+    scale this multiplies both band CSVs by `len(NOISE_LEVELS)`:
+    `exp1_band.csv` is seeds x levels x `len(TEST_DEPTHS)` x models, and
+    `exp1_parameter_band.csv` is seeds x levels x cameras x models. The counts
+    a run actually emits are DERIVED into the `scope` field of
+    `e1_seed_band_provenance.json` (D-08) rather than frozen here;
+    `run_experiment_suite.sh`'s `run_stage_e1_band` carries the same
+    arithmetic for the production seed list under ruling A1.
 
     Writes `exp1_band.csv` (force implied -- see the module docstring's
     "--seeds band mode" section), now carrying `BAND_MERGED_COLUMNS` --
     `EXP2_COLUMNS` plus EXP3's non-key columns (`xy_rmse_mm`, `z_rmse_mm`,
     `anisotropy_ratio`, `n_points`) via `merge_band_columns`, so the
     manuscript's headline `z_rmse_mm` ratio is regenerable from this
-    artifact -- and `e1_seed_band_provenance.json`, plus both
-    `e1_benchmark_<model>.json` sidecars, additively carrying
-    `solver_config["seeds"] = seeds`. Deliberately does NOT write
+    artifact -- and `exp1_parameter_band.csv`, keyed
+    `PARAMETER_BAND_KEY_COLUMNS` and carrying `seed` plus all of
+    `EXP1_COLUMNS`, so the parameter-level columns (`focal_length_error_pct`,
+    `reprojection_rms_px` and the per-camera position errors) are likewise
+    regenerable per seed rather than existing only in the single-seed
+    `exp1_parameter_errors.csv` -- and `e1_seed_band_provenance.json`, which is
+    where the band's own seed record lives.
+
+    The two `e1_benchmark_<model>.json` sidecars are written ONLY when they are
+    absent (D-07): band mode may create them, carrying
+    `solver_config["seeds"] = seeds` and `solver_config["seed"] = seeds[-1]`,
+    and never overwrites an existing one -- not even under `--force`, which is
+    deliberately not honoured at that one call site. When they already exist the
+    run says so and leaves them byte-identical; nothing is lost, because
+    `e1_seed_band_provenance.json` records the seeds this band actually swept.
+    Deliberately does NOT write
     `exp1_parameter_errors.csv`, `exp2_depth_generalization.csv`,
     `exp2_spatial_errors.csv`, or `exp3_xy_vs_z_anisotropy.csv` -- those
     remain exclusively the single-seed run's artifacts.
@@ -765,6 +1125,12 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     """
     scenario_name = "ideal" if smoke else SCENARIO_NAME
     depths = [1.30] if smoke else None
+    # BAND-01: the noise axis collapses under --smoke exactly as the depth
+    # sweep does on the line above. `None` means "leave scenario.noise_std at
+    # the preset default", which is the pre-BAND-01 behaviour. Without this
+    # collapse every smoke-scale band test (and there are eight of them in
+    # tests/unit/test_e1_band_mode.py) would run FOUR times the solves.
+    noise_levels = [None] if smoke else NOISE_LEVELS
 
     # Captured ONCE before the seed loop -- capture_environment() shells out to
     # `git rev-parse` per call, and a per-cell call is what split an artifact's
@@ -777,37 +1143,77 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
     last_timings_by_model: dict = {}
     last_diagnostics_by_model: dict = {}
     last_discard_stats_by_model: dict = {}
+    last_water_z_pin_by_model: dict = {}
     last_scenario = None
+    # `run_seed_band` returns ONE concatenated frame and stamps `seed` onto it
+    # itself; it cannot return two, and its signature is shared with E7 so it
+    # must not grow one. The parameter-level frames are therefore accumulated
+    # here and stamped with `seed` inside the runner, mirroring how the five
+    # `last_*` accumulators above are carried out of the closure.
+    exp1_frames: list[pd.DataFrame] = []
 
     def _runner(seed: int) -> pd.DataFrame:
         nonlocal last_results, last_timings_by_model, last_diagnostics_by_model
         nonlocal last_discard_stats_by_model, last_scenario
+        nonlocal last_water_z_pin_by_model
 
-        scenario = create_scenario(scenario_name, seed=seed)
-        results: dict = {}
-        timings_by_model: dict = {}
-        diagnostics_by_model: dict = {}
-        discard_stats_by_model: dict = {}
-        for label, n_water in MODELS:
-            result, detections, timings, diagnostics, discard_stats = _run_one_model(
-                scenario, n_water, seed
+        # BAND-01/D-11: the noise loop is nested INSIDE the runner, wrapping
+        # the two-model loop -- not outside around `run_seed_band`. Outside,
+        # the `last_*` accumulators and the benchmark payload ("taken from the
+        # LAST seed") would be ambiguous across four calls of the whole band.
+        noise_frames: list[pd.DataFrame] = []
+        for noise in noise_levels:
+            scenario = create_scenario(scenario_name, seed=seed)
+            # D-11: override the scenario's own noise level rather than
+            # changing `create_scenario`'s signature (a public-API change two
+            # phases before a freeze is what forced v2.0.0 last time). This
+            # ONE line is the whole of the axis: `_run_one_model` generates
+            # the calibration detections from `scenario.noise_std`, and
+            # `_build_dataframes` generates the evaluation set's detections
+            # from the same attribute -- so calibration noise and evaluation
+            # noise track together for free, which is what a rig-level claim
+            # needs.
+            if noise is not None:
+                scenario.noise_std = noise
+            # Never null: when `noise is None` (smoke) the effective level is
+            # whatever the preset chose.
+            effective_noise = float(scenario.noise_std)
+
+            results: dict = {}
+            timings_by_model: dict = {}
+            diagnostics_by_model: dict = {}
+            discard_stats_by_model: dict = {}
+            water_z_pin_by_model: dict = {}
+            for label, n_water in MODELS:
+                result, detections, timings, diagnostics, discard_stats, water_z_pin = (
+                    _run_one_model(scenario, n_water, seed)
+                )
+                results[label] = (result, detections)
+                timings_by_model[label] = timings
+                diagnostics_by_model[label] = diagnostics
+                discard_stats_by_model[label] = discard_stats
+                water_z_pin_by_model[label] = water_z_pin
+
+            df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
+                scenario, results, seed, test_depths=depths
             )
-            results[label] = (result, detections)
-            timings_by_model[label] = timings
-            diagnostics_by_model[label] = diagnostics
-            discard_stats_by_model[label] = discard_stats
+            # Stamped here, mirroring the existing `.assign(seed=seed)` idiom.
+            # `run_seed_band` deliberately does NOT learn about noise: its
+            # "call runner once per seed, stamp `seed`, concatenate" contract
+            # is shared with E7.
+            exp1_frames.append(df_exp1.assign(seed=seed, noise_std=effective_noise))
+            noise_frames.append(
+                merge_band_columns(df_exp2, df_exp3).assign(noise_std=effective_noise)
+            )
 
-        _df_exp1, df_exp2, _df_spatial, df_exp3 = _build_dataframes(
-            scenario, results, seed, test_depths=depths
-        )
+            last_results = results
+            last_timings_by_model = timings_by_model
+            last_diagnostics_by_model = diagnostics_by_model
+            last_discard_stats_by_model = discard_stats_by_model
+            last_water_z_pin_by_model = water_z_pin_by_model
+            last_scenario = scenario
 
-        last_results = results
-        last_timings_by_model = timings_by_model
-        last_diagnostics_by_model = diagnostics_by_model
-        last_discard_stats_by_model = discard_stats_by_model
-        last_scenario = scenario
-
-        return merge_band_columns(df_exp2, df_exp3)
+        return pd.concat(noise_frames, ignore_index=True)
 
     band_df = run_seed_band(_runner, seeds)
     elapsed_seconds = time.monotonic() - start
@@ -820,10 +1226,66 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
         force=True,
     )
 
+    # The parameter-level band. `seed` and `noise_std` lead (BAND-01: both are
+    # key columns -- see PARAMETER_BAND_KEY_COLUMNS), then all of EXP1_COLUMNS --
+    # emitting the full set rather than only the two columns the manuscript
+    # needs costs nothing and keeps the per-camera position errors available.
+    # EXP1_COLUMNS itself and the single-seed exp1_parameter_errors.csv are
+    # untouched: those stay byte-identical to their committed baselines (D-19).
+    parameter_band_df = pd.concat(exp1_frames, ignore_index=True)[
+        ["seed", "noise_std", *EXP1_COLUMNS]
+    ]
+    write_experiment_csv(
+        parameter_band_df,
+        out_dir / "exp1_parameter_band.csv",
+        key_columns=PARAMETER_BAND_KEY_COLUMNS,
+        # Force is implied for band output, same as exp1_band.csv above
+        # (D-19.4-14).
+        force=True,
+    )
+
     # Band-owned provenance (D-260807-dcv, mirrors E5/E6's pattern): the
-    # e1_benchmark_<model>.json records below are seedless legacy records that
-    # band mode must never overwrite with a single seed's values, so the
-    # seeds actually run here have nowhere else to be recorded.
+    # e1_benchmark_<model>.json records below are single-seed records that band
+    # mode may CREATE when they are absent and NEVER overwrites when they
+    # exist, so the seeds actually run here have nowhere else to be recorded.
+    #
+    # D-07: that policy is ENFORCED, not aspirational. The mechanism is the
+    # literal `force=False` at the write_direct_call_benchmark call below --
+    # this function's own `force` argument is deliberately not honoured there,
+    # and only there. Before phase 29.1 the policy was stated in this comment
+    # and contradicted by the call, which passed `force=force`; the resumability
+    # guard was all that kept it true, and `--force` removed even that.
+    #
+    # Two corrections to the sources that filed this, both relied on when the
+    # defect was written up and both wrong:
+    #
+    #   1. A clean experiments/results/ does NOT remove the skip. Stage `e1`
+    #      runs with --force (run_experiment_suite.sh's run_stage_e1) and
+    #      `e1_band` depends_on `e1`, so both records already exist by the time
+    #      the band runs. That is why the skip fired on 2026-08-20 despite a
+    #      clean start. The live hazards are (a) a --force band run and (b) a
+    #      standalone band into a fresh --out with no preceding single-seed run,
+    #      where the write proceeds and stamps the records with seeds[-1].
+    #   2. gate3_provenance does NOT depend on this write. `_run_full` already
+    #      stamps seed=args.seed onto both records (see :829-871), so nothing
+    #      downstream needs band mode to republish them.
+    #
+    # ASYMMETRY, deliberate: e7_interface_ablation.py's _run_band carries the
+    # identical call and the identical comment and is out of phase 29.1's scope,
+    # so E7 still passes `force=force` there. Tracked in
+    # .planning/todos/pending/2026-08-20-e7-band-mirrors-e1-benchmark-overwrite-hazard.md.
+    # D-08/D-10: the `scope` field below is DERIVED from this run, never
+    # frozen into a literal. These four values are read back out of the frames
+    # that were just emitted rather than recomputed from the constants, so
+    # they describe what was actually written -- including under `--smoke`,
+    # where both axes collapse.
+    swept_noise_levels = sorted(
+        round(float(value), 6) for value in band_df["noise_std"].unique()
+    )
+    swept_depths = sorted(
+        round(float(value), 6) for value in band_df["test_depth_m"].unique()
+    )
+
     sidecar_path = out_dir / "e1_seed_band_provenance.json"
     with open(sidecar_path, "w") as f:
         json.dump(
@@ -842,17 +1304,65 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 # column the manuscript's deepest-test-point
                 # refractive-vs-non-refractive ratio is computed from; this
                 # band exists so that ratio is regenerable from a committed
-                # artifact.
+                # artifact. It ALSO covers exp1_parameter_band.csv's
+                # parameter-level columns, which previously existed per-seed
+                # only in gitignored sweep output.
+                # D-08/D-10: DERIVED, never a literal. This field's whole
+                # job is stating the domain a published number may be quoted
+                # over, and the literal it replaced authorised a ten-seed,
+                # 640/960-row domain that ruling A1 had already cut to four
+                # seeds and 256/384 rows -- a claim outliving the conditions
+                # that produced it, which is the class of defect D-10 names.
+                # Every quantity below comes from THIS run. What stays fixed
+                # text is the citation of ruling A1 (a stable cross-reference
+                # is not a recomputed value) and the four static claims after
+                # it, which are properties of the comparison rather than
+                # measurements of the run. The pre-29.1 forward-looking clause
+                # naming the phase that "will" execute and verify this band is
+                # deliberately gone: a schedule is not a domain, and it is the
+                # half of this string that needed re-dating after every run.
                 "scope": (
-                    "This band varies the SEED across E1's depth-generalization "
-                    "and xy-vs-z anisotropy sweep on the 'realistic' synthetic "
-                    "scenario, and bounds seed-to-seed variance of "
-                    "exp1_band.csv's metrics -- including z_rmse_mm, the column "
-                    "the manuscript's deepest-test-point refractive-vs-"
-                    "non-refractive ratio is computed from -- on that synthetic "
-                    "scenario only. It is NOT a physical-rig or real-data claim, "
-                    "and this sidecar neither asserts nor denies an accuracy "
-                    "claim for E1 (D-19.3-17 already demoted E1's own)."
+                    f"MEASURED DOMAIN (BAND-01, D-08): this run swept "
+                    f"{len(seeds)} seed(s) {list(seeds)} x "
+                    f"{len(swept_noise_levels)} detection-noise level(s) "
+                    f"{swept_noise_levels} px x {len(swept_depths)} test "
+                    f"depth(s) {swept_depths} m, on the 'realistic' scenario's "
+                    f"single 12-camera synthetic geometry, emitting "
+                    f"{len(band_df)} rows of exp1_band.csv and "
+                    f"{len(parameter_band_df)} rows of "
+                    f"exp1_parameter_band.csv. E1's absolute-accuracy numbers "
+                    f"are to be quoted ONLY over that domain -- it is what was "
+                    f"run, read back from the emitted frames, not a plan. The "
+                    f"seed axis is sized by RULING A1 (run_experiment_suite.sh, "
+                    f"run_stage_e1_band), which carries the arithmetic and the "
+                    f"reason it is four seeds and not ten; see it before "
+                    f"quoting a wider seed domain than this one. "
+                    f"Supporting evidence, already measured: warm restarts "
+                    f"recover no cost (largest relative drop 1.8e-9), so the "
+                    f"non-refractive baseline is converged and the comparison "
+                    f"is fair. The caveat travelling with it, stated together "
+                    f"so it cannot be read as under-convergence: that baseline "
+                    f"arm is severely ill-conditioned (~3e8 directional "
+                    f"curvature), which is a property of fitting a pinhole "
+                    f"model to refracted data -- expected, not a defect, and "
+                    f"not a reason to qualify the accuracy claim (D-16). "
+                    f"This band varies the SEED and (BAND-01) the DETECTION "
+                    f"NOISE across E1's depth-generalization and xy-vs-z "
+                    f"anisotropy sweep on the 'realistic' synthetic scenario, "
+                    f"and bounds seed-to-seed variance of exp1_band.csv's "
+                    f"metrics -- including z_rmse_mm, the column the "
+                    f"manuscript's deepest-test-point refractive-vs-"
+                    f"non-refractive ratio is computed from -- on that "
+                    f"synthetic scenario only. It ALSO bounds seed-to-seed "
+                    f"variance of the parameter-level columns emitted in "
+                    f"exp1_parameter_band.csv (focal_length_error_pct, "
+                    f"reprojection_rms_px, and the per-camera position "
+                    f"errors), over the same seeds and the same scenario. It "
+                    f"is NOT a physical-rig or real-data claim: D-19.3-17's "
+                    f"demotion of E1's own accuracy claim is qualified, not "
+                    f"reversed, by the measured domain above -- E1 bounds "
+                    f"estimator variance under stated noise, and E2 carries "
+                    f"the accuracy claim against reality."
                 ),
             },
             f,
@@ -871,6 +1381,7 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             "n_water": n_water,
             "n_air": 1.0,
             "shared_interface": True,
+            "normal_fixed": False,
             "ftol": last_diagnostics_by_model[label][
                 "stage3_interface_optimization"
             ].ftol,
@@ -881,8 +1392,9 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
                 "stage3_interface_optimization"
             ].gtol,
             "seeds": list(seeds),
+            **build_water_z_provenance(last_water_z_pin_by_model[label]),
         }
-        write_direct_call_benchmark(
+        wrote = write_direct_call_benchmark(
             record_path,
             problem_shape={
                 "n_cameras": len(last_scenario.intrinsics),
@@ -894,13 +1406,41 @@ def _run_band(seeds: list[int], out_dir: Path, smoke: bool, force: bool) -> None
             },
             timings=last_timings_by_model[label],
             diagnostics=last_diagnostics_by_model[label],
+            # The record reflects the LAST seed's diagnostics/timings/accuracy
+            # (see this function's docstring), so that is the seed it is
+            # labelled with. `solver_config["seeds"]` still carries the full
+            # list -- one names what this record measured, the other what the
+            # band swept. Plan 26-13.
+            seed=seeds[-1],
             solver_config=solver_config,
-            accuracy={"reprojection_rms_px": result.diagnostics.reprojection_error_rms},
-            # Force is NOT implied for any artifact besides the band CSV
-            # (D-19.4-14) -- normal resumability applies here.
-            force=force,
+            accuracy={
+                "reprojection_rms_px": result.diagnostics.reprojection_error_rms,
+                "water_z_recovered_m": float(
+                    next(iter(result.cameras.values())).water_z
+                ),
+            },
+            # Force is NOT implied for any artifact besides the band CSVs
+            # (D-19.4-14), and this is the ONE place where the run's own
+            # --force is deliberately not honoured either (D-07). Honouring it
+            # is exactly what would turn the policy stated above into a lie:
+            # a forced band run would silently republish two records the
+            # single-seed stage owns, stamped with seeds[-1]'s values. The
+            # literal below is the enforcement; the resumability guard is only
+            # a second line of defence.
+            force=False,
         )
-        print(f"Wrote {record_path}")
+        # D-06: the log reports what happened, not what was attempted. The
+        # writer returns False when it skipped, and printing "Wrote" over that
+        # return is the defect this branch replaces. The skip line is worded
+        # differently from _io's own logger.info skip message on purpose --
+        # two identical claims in one log is the shape the defect had.
+        if wrote:
+            print(f"Wrote {record_path}")
+        else:
+            print(
+                f"Kept existing {record_path}: band mode never overwrites the "
+                "single-seed benchmark record (D-07)."
+            )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

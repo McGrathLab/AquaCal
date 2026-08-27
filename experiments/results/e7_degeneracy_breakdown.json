@@ -1,0 +1,50 @@
+{
+  "percamera_fixed": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949
+  },
+  "percamera_refined": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949,
+    "observations_evaluated__stage3_intrinsic_pass": 14949
+  },
+  "shared_fixed": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949
+  },
+  "shared_refined": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_above_interface__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_intrinsic_pass": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_intrinsic_pass": 0,
+    "observations_evaluated__stage3_interface_optimization": 14949,
+    "observations_evaluated__stage3_intrinsic_pass": 14949
+  }
+}

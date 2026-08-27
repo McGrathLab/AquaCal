@@ -1,0 +1,276 @@
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[PASS] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_100/benchmark.json e4_cells/cameras_12_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_200/benchmark.json e4_cells/cameras_12_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_12_frames_50/benchmark.json e4_cells/cameras_12_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_100/benchmark.json e4_cells/cameras_16_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_200/benchmark.json e4_cells/cameras_16_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_16_frames_50/benchmark.json e4_cells/cameras_16_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_100/benchmark.json e4_cells/cameras_8_frames_100/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_200/benchmark.json e4_cells/cameras_8_frames_200/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: count=0
+[PASS] E4  gate3_provenance:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E4  gate4_optimality:e4_cells/cameras_8_frames_50/benchmark.json e4_cells/cameras_8_frames_50/benchmark.json: optimality present per stage
+[PASS] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv: 9 of 10 row(s) gated, guard count zero everywhere; 1 row(s) exempt (real_rig_13cam_200fr=198) -- a record_source='pipeline' row is a real-hardware anchor row whose count the library itself declines to treat as a verdict below pipeline.py:1288's 1% threshold, so it is published and reported here rather than gated on (D-01/D-02)
+[PASS] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv: no row published with status=='degenerate'
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0 [dominant cause=above_interface (0), 0.000% of the 164439 observation(s) evaluated; by fate: 0 extended, 0 penalized (cause and fate are separate axes over the same observations; never add them together)]
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv: 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51] match e7_seed_band_provenance.json's recorded seed list
+[PASS] E1  gate4_band:exp1_band.csv                      exp1_band.csv: 4 distinct seed(s) [42, 43, 44, 45] match e1_seed_band_provenance.json's recorded seed list
+[PASS] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv: 4 distinct seed(s) [42, 43, 44, 45] match e1_seed_band_provenance.json's recorded seed list
+[PASS] E6  gate_e6_seed_band:seed_count                  generalization_sweep_band.csv: 6 distinct seeds [42, 43, 44, 45, 46, 47]
+[PASS] E6  gate_e6_seed_band:row_count                   row count = 84, uniform across seeds (14 rows/seed)
+[PASS] E6  gate_e6_seed_band:cameras_axis                cameras axis present at [8, 12, 16]
+[PASS] E6  gate_e6_seed_band:status_counts               every row status=='ok' across all 6 seeds
+[PASS] E6  gate_e6_seed_band:sidecar_seeds               sidecar solver_config['seeds'] matches the CSV's distinct seeds
+[PASS] E6  gate_e6_seed_band:sidecar_git_sha             e6_seed_band_provenance.json git_sha=7005a2771aa115e4f4c1284cec7e145739586a4a
+[PASS] E5  gate_e5_seed_band:seed_count                  index_sensitivity_seed_band.csv: 6 distinct seeds [42, 43, 44, 45, 46, 47]
+[PASS] E5  gate_e5_seed_band:sidecar_seeds               e5_seed_band_provenance.json carries solver_config['seeds']
+[PASS] E5  gate_e5_seed_band:n_assumed_band              e5_seed_band_provenance.json carries n_assumed_band alongside seeds
+[PASS] E5  gate_e5_seed_band:scope                       e5_seed_band_provenance.json scope: "This band varies the SEED across the fixed N_ASSUMED_BAND sweep of the assumed refractive index, and bounds seed-to-seed noise in E5's scale-bias measurement. It is DISTINCT from n_assumed_band (also present in this sidecar), which varies the assumed index at ONE seed and bounds nothing about seed noise -- conflating the two is exactly what demoted E5's accuracy claim under D-19.3-17 (D-19.5-05)."
+[PASS] E4  gate_e4_repeat:row_count                      benchmark_grid_repeat.csv: 6 rows
+[PASS] E4  gate_e4_repeat:cells                          all three repeat cells present: [(8, 100), (12, 100), (16, 100)]
+[PASS] E4  gate_e4_repeat:repeat_labels                  repeat labels [1, 2] present
+[PASS] E4  gate_e4_repeat:nfev_beside_wallclock          every row with a non-null seconds_stage3_interface_optimization has a non-null nfev_stage3_interface_optimization
+[PASS] E2  gate_e2_band:record_count                     3 per-seed metric records found: seeds [42, 43, 44]
+[PASS] E2  gate_e2_band:not_identical                    3 distinct metric record(s) across 3 seeds
+[PASS] E2  gate_e2_band:seed42_reproduction              seed-42 band record matches /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/real_rig_metrics.json within rtol=1e-06
+[PASS] E2  gate_e2_band:scope                            e2_band_scope.json scope states both required phrases
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha matches every artifact (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] preflight completeness:run_manifest.json                run_manifest.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/run_manifest.json; no row count is pinned for it (JSON sidecar, not a table.)
+[PASS] preflight completeness:environment_lock.txt             environment_lock.txt: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/environment_lock.txt; no row count is pinned for it (A pip-freeze text lockfile, not a table.)
+[PASS] e1  completeness:exp1_parameter_errors.csv        exp1_parameter_errors.csv: 24 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp1_parameter_errors.csv, as expected.
+[PASS] e1  completeness:exp2_depth_generalization.csv    exp2_depth_generalization.csv: 16 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp2_depth_generalization.csv, as expected.
+[PASS] e1  completeness:exp3_xy_vs_z_anisotropy.csv      exp3_xy_vs_z_anisotropy.csv: 16 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp3_xy_vs_z_anisotropy.csv, as expected.
+[PASS] e1  completeness:exp2_spatial_errors.csv          exp2_spatial_errors.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp2_spatial_errors.csv; no row count is pinned for it (per-point frame whose length is a property of the draw, not of the design; existence only. Gitignored, so it is never committed.)
+[PASS] e1  completeness:e1_benchmark_refractive.json     e1_benchmark_refractive.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e1_benchmark_refractive.json; no row count is pinned for it (JSON benchmark record, not a table.)
+[PASS] e1  completeness:e1_benchmark_nonrefractive.json  e1_benchmark_nonrefractive.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e1_benchmark_nonrefractive.json; no row count is pinned for it (JSON benchmark record, not a table.)
+[PASS] e1  completeness:e1_degeneracy_breakdown.json     e1_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e1_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 sidecar: the raw discard_stats dict keyed by model label.)
+[PASS] e1_band completeness:exp1_band.csv                    exp1_band.csv: 256 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp1_band.csv, as expected.
+[PASS] e1_band completeness:exp1_parameter_band.csv          exp1_parameter_band.csv: 384 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/exp1_parameter_band.csv, as expected.
+[PASS] e1_band completeness:e1_seed_band_provenance.json     e1_seed_band_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e1_seed_band_provenance.json; no row count is pinned for it (band provenance sidecar, not a table.)
+[PASS] e3  completeness:code_constants.csv               code_constants.csv: 9 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/code_constants.csv, as expected.
+[PASS] e3  completeness:newton_iterations.csv            newton_iterations.csv: 26 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/newton_iterations.csv, as expected.
+[PASS] e3  completeness:cpr_grouping.csv                 cpr_grouping.csv: 12 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/cpr_grouping.csv, as expected.
+[PASS] e3  completeness:structural_scaling.csv           structural_scaling.csv: 84 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/structural_scaling.csv, as expected.
+[PASS] e3  completeness:e3_provenance.json               e3_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e3_provenance.json; no row count is pinned for it (provenance sidecar, not a table.)
+[PASS] e3  completeness:cpr_grouping.tex                 cpr_grouping.tex: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/cpr_grouping.tex; no row count is pinned for it (generated LaTeX fragment. D-39 records that it is never \input and tab:cpr is hand-transcribed; existence is still the completeness signal.)
+[PASS] e3  completeness:cpr_derived_values.tex           cpr_derived_values.tex: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/cpr_derived_values.tex; no row count is pinned for it (generated LaTeX fragment.)
+[PASS] e5  completeness:index_sensitivity.csv            index_sensitivity.csv: 11 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/index_sensitivity.csv, as expected.
+[PASS] e5  completeness:e5_provenance.json               e5_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e5_provenance.json; no row count is pinned for it (provenance sidecar, not a table. full-only (P27-D-20 class 1): e5_index_sensitivity.py:871-889 (_run_smoke_at) writes index_sensitivity.csv and returns without writing this sidecar -- the write at :725 is on the full run_band path only. The smoke code path cannot produce it.)
+[PASS] e5  completeness:e5_degeneracy_breakdown.json     e5_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e5_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 sidecar keyed 'band'.)
+[PASS] e5_band completeness:index_sensitivity_seed_band.csv  index_sensitivity_seed_band.csv: 66 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/index_sensitivity_seed_band.csv, as expected.
+[PASS] e5_band completeness:e5_seed_band_provenance.json     e5_seed_band_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e5_seed_band_provenance.json; no row count is pinned for it (band provenance sidecar, not a table.)
+[PASS] e5_band completeness:e5_seed_band_degeneracy_breakdown.json e5_seed_band_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e5_seed_band_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 band-owned sidecar keyed by seed.)
+[PASS] e6_repeat1 completeness:generalization_sweep.csv         generalization_sweep.csv: 14 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep.csv, as expected.
+[PASS] e6_repeat1 completeness:generalization_sweep_per_camera.csv generalization_sweep_per_camera.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep_per_camera.csv; no row count is pinned for it (new in Phase 23-03 and absent from the committed tree, so no baseline row count exists to assert; existence only until Phase 28 measures it.)
+[PASS] e6_repeat1 completeness:e6_provenance.json               e6_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_provenance.json; no row count is pinned for it (provenance sidecar, not a table.)
+[PASS] e6_band completeness:generalization_sweep_band.csv    generalization_sweep_band.csv: 84 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep_band.csv, as expected.
+[PASS] e6_band completeness:generalization_sweep_per_camera_band.csv generalization_sweep_per_camera_band.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep_per_camera_band.csv; no row count is pinned for it (new in Phase 23-03 and absent from the committed tree; existence only. Its length is a per-camera expansion of the band, which varies with the cameras axis, so no design arithmetic pins it before Phase 28.)
+[PASS] e6_band completeness:e6_seed_band_provenance.json     e6_seed_band_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_seed_band_provenance.json; no row count is pinned for it (band provenance sidecar. Plan 26-05 added an `axes` field and a scope string derived from the resolved axes, so a band cannot claim coverage it did not have.)
+[PASS] e7  completeness:interface_ablation.csv           interface_ablation.csv: 48 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/interface_ablation.csv, as expected.
+[PASS] e7  completeness:interface_ablation_conditioning.json interface_ablation_conditioning.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/interface_ablation_conditioning.json; no row count is pinned for it (conditioning sidecar, not a table.)
+[PASS] e7  completeness:e7_benchmark_shared_fixed.json   e7_benchmark_shared_fixed.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_benchmark_shared_fixed.json; no row count is pinned for it (per-arm benchmark record, not a table.)
+[PASS] e7  completeness:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_benchmark_shared_refined.json; no row count is pinned for it (per-arm benchmark record, not a table.)
+[PASS] e7  completeness:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_benchmark_percamera_fixed.json; no row count is pinned for it (per-arm benchmark record, not a table.)
+[PASS] e7  completeness:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_benchmark_percamera_refined.json; no row count is pinned for it (per-arm benchmark record, not a table.)
+[PASS] e7  completeness:e7_trace_shared_fixed.csv        e7_trace_shared_fixed.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_trace_shared_fixed.csv; no row count is pinned for it (solver iteration trace; its length is the solver's iteration count, which no design arithmetic pins. Existence only.)
+[PASS] e7  completeness:e7_trace_shared_refined.csv      e7_trace_shared_refined.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_trace_shared_refined.csv; no row count is pinned for it (solver iteration trace; length is the solver's iteration count.)
+[PASS] e7  completeness:e7_trace_percamera_fixed.csv     e7_trace_percamera_fixed.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_trace_percamera_fixed.csv; no row count is pinned for it (solver iteration trace; length is the solver's iteration count.)
+[PASS] e7  completeness:e7_trace_percamera_refined.csv   e7_trace_percamera_refined.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_trace_percamera_refined.csv; no row count is pinned for it (solver iteration trace; length is the solver's iteration count.)
+[PASS] e7  completeness:e7_degeneracy_breakdown.json     e7_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 sidecar keyed by arm name.)
+[PASS] e7_band completeness:interface_ablation_band.csv      interface_ablation_band.csv: 480 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/interface_ablation_band.csv, as expected.
+[PASS] e7_band completeness:e7_seed_band_provenance.json     e7_seed_band_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_seed_band_provenance.json; no row count is pinned for it (band provenance sidecar, not a table.)
+[PASS] e7_band completeness:e7_seed_band_degeneracy_breakdown.json e7_seed_band_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_seed_band_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 band-owned sidecar keyed by seed, then arm.)
+[PASS] e7_focal_standoff completeness:e7_focal_standoff.csv            e7_focal_standoff.csv: 4 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e7_focal_standoff.csv, as expected.
+[PASS] e4  completeness:benchmark_grid.csv               benchmark_grid.csv: 10 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/benchmark_grid.csv, as expected.
+[PASS] e4  completeness:benchmark_grid.tex               benchmark_grid.tex: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/benchmark_grid.tex; no row count is pinned for it (generated LaTeX fragment; Phase 25 added the D-17 optimality caveat as a %% comment block. The CSV schema did not move.)
+[PASS] e4_repeat completeness:benchmark_grid_repeat.csv        benchmark_grid_repeat.csv: 6 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/benchmark_grid_repeat.csv, as expected.
+[PASS] e2_production completeness:benchmark.json                   benchmark.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/benchmark.json; no row count is pinned for it (the pipeline's own benchmark record. Also E4's real-rig input (ordering constraint O4) and E3 tier 3's copy source.)
+[PASS] e2_production completeness:camera_parameters.csv            camera_parameters.csv: 13 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/camera_parameters.csv, as expected.
+[PASS] e2_production completeness:real_rig_metrics.json            real_rig_metrics.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/real_rig_metrics.json; no row count is pinned for it (the metrics record check_e2_band compares each band seed against at rtol 1e-6. Also reconstruction_bootstrap's hard REAL_RIG_METRICS_PATH.)
+[PASS] e2_production completeness:reconstruction_errors.csv        reconstruction_errors.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/reconstruction_errors.csv; no row count is pinned for it (per-point frame whose length is a property of the dataset; existence only. Gitignored by DATA-01b, so it exists on disk after a run but is never committed -- and E2's --check raises FileNotFoundError on a clean checkout because of it.)
+[PASS] e2_production completeness:reprojection_residuals.csv       reprojection_residuals.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/reprojection_residuals.csv; no row count is pinned for it (per-observation frame; existence only. Gitignored by DATA-01b.)
+[PASS] e2_production completeness:degenerate_observations.csv      degenerate_observations.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_invocations/e2_classification/degenerate_observations.csv; no row count is pinned for it (written ONLY when at least one flagged row exists, so a run in which nothing was flagged legitimately produces no file and its absence is PASS, not FAIL (Phase 25 D-08) -- but ONLY when the `condition` below shows the condition did not hold. A stage-agnostic len() double-counts observations flagged in both stage-3 passes -- group by `stage` first. DIRECTORY (D-29.1-17): `aquacal.validation.diagnostics` writes this into the PIPELINE's output_dir, which E2's generated invocation configs set per variant; it is a pipeline-level diagnostic, not an experiment-level --out artifact. The manifest declared `experiments/results` until 2026-08-24, a directory the writer never uses, so the 2026-08-20 roll-up scored it PASS-by-absence while 198 rows sat in the invocation tree. The classification invocation is the copy of record and the one MF-24 cites. The timing and memory invocations write their own byproduct copies of this same file into their own trees; those are properties of two runs whose purpose is timing and memory rather than measurements anyone cites, and they are deliberately not separately gated.)
+[PASS] e2_production completeness:all_observation_depths.csv       all_observation_depths.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_invocations/e2_classification/all_observation_depths.csv; no row count is pinned for it (written ONLY when internals.log_all_observation_depths is true, which rides E2's classification run and nothing else; absence is PASS ONLY when the `condition` below shows that switch was off. Expect about 11 MB on the 13-camera rig. DIRECTORY (D-29.1-17): written by `aquacal.validation.diagnostics` into the PIPELINE's output_dir, i.e. the classification invocation's tree -- never into --out. Only the classification variant sets the switch, so unlike `degenerate_observations.csv` there are no byproduct copies in the timing and memory trees. The file is large and is gitignored under the invocation tree (`experiments/results_e2_invocations/*/all_observation_depths.csv`, committed in 672be71), so it exists on a machine that has run the suite and is never committed -- the same DATA-01b treatment the bulk E2 artifacts already get. It is deliberately NOT duplicated into `experiments/results`, which has no ignore rule for that filename and would trip check-added-large-files --maxkb=1000 for the next person to clone (D-29.1-19).)
+[PASS] e2_band completeness:e2_band_scope.json               e2_band_scope.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_band/e2_band_scope.json; no row count is pinned for it (band scope sidecar. Lives in the SIBLING results_e2_band/ tree, which check_e2_band resolves as out_dir.parent / 'results_e2_band'. The completeness gate resolves any non-out_dir artifact the same way.)
+[PASS] e2_timing completeness:benchmark.json                   benchmark.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_timing/benchmark.json; no row count is pinned for it (the timing run's own benchmark record, in its own tree so it can never overwrite the production run's.)
+[PASS] e2_memory completeness:benchmark.json                   benchmark.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_memory/benchmark.json; no row count is pinned for it (the memory run's own benchmark record, in its own tree. D-15 makes the timing and memory runs two distinct runs, non-negotiable.)
+[PASS] reconstruction_bootstrap completeness:reconstruction_bootstrap.json    reconstruction_bootstrap.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/reconstruction_bootstrap.json; no row count is pinned for it (bootstrap summary record. Full profile only: its inputs are E2's, and E2 writes nothing to --out under --smoke.)
+[PASS] fd_jacobian completeness:fd_jacobian_accuracy.csv         fd_jacobian_accuracy.csv: 8 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.csv, as expected.
+[PASS] fd_jacobian completeness:fd_jacobian_accuracy.json        fd_jacobian_accuracy.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.json; no row count is pinned for it (companion record, not a table. full-only (P27-D-20 class 1): fd_jacobian_accuracy.py:652-666 (_run_smoke) writes fd_jacobian_accuracy.csv and returns without writing this sidecar -- the write at :631 is on the full path only. Note the sibling fd_jacobian_accuracy.csv IS written under smoke and stays ["smoke","full"]; only this .json sidecar moves.)
+
+TOTAL: 176 PASS, 7 N/A, 0 FAIL
+
+================================================================================
+RECORDED ASSERTIONS — plan 29-02 Task 2
+Everything above this rule is check_rerun_gates.py stdout, captured verbatim by
+shell redirection. Everything below is this task's recorded measurements.
+================================================================================
+
+INVOCATION
+  cwd          /home/tlancaster/aquacal-frozen-rerun-freeze-01   (branch results/rerun-freeze-02)
+  interpreter  /home/tlancaster/anaconda3/envs/aquacal-freeze02-cleanenv/bin/python
+  command      python experiments/check_rerun_gates.py experiments/results --profile full
+  run at       2026-08-26
+
+PROCESS EXIT CODE
+  gate exit code                                        0        (expected 0)
+  stderr                                                empty
+  NOTE: the standalone gate exits 0 on a healthy tree. Per D-01/D-02 the verdict
+  of record is the roll-up TOTAL: line, not $?. Both are recorded here, and both
+  agree. (The non-zero-exit-on-success convention belongs to the suite DRIVER,
+  run_experiment_suite.sh, not to this checker.)
+
+ROLL-UP — THE VERDICT OF RECORD
+  measured     TOTAL: 176 PASS, 7 N/A, 0 FAIL
+  expected     TOTAL: 176 PASS, 7 N/A, 0 FAIL                    AGREES
+
+FAILURE-VERDICT LINE COUNT
+  grep -c '^\[FAIL' over gate stdout                  0        (expected 0)
+  grep -cE '^\[(FAIL|ERROR)' over gate stdout         0        (expected 0)
+
+GATE 3 — PROVENANCE (the single-sha property, D-29-10 stop-list item 2)
+  gate3_git_sha_consistency                             PASS
+      every artifact carries the same git_sha
+      (7005a2771aa115e4f4c1284cec7e145739586a4a)
+  gate3_run_manifest_present                            PASS
+      run_manifest.json found and parsed
+  gate3_run_manifest_fields                             PASS
+      all 17 required environment fields are present and non-null
+  gate3_run_manifest_git_sha                            PASS
+      manifest git_sha matches every artifact
+      (7005a2771aa115e4f4c1284cec7e145739586a4a)
+  gate3_run_manifest_clean_tree                         PASS
+      the working tree was clean when this run started
+  Per-artifact gate3_provenance lines                   29 of 29 PASS
+
+  Gate 3 reads environment.git_sha recorded INSIDE the artifacts and never
+  shells out to live git (check_rerun_gates.py:2011-2037, :2040-2190). That is
+  why the tree passes here, in a clone whose HEAD is not 7005a27.
+
+E2 BAND SIBLING RESOLUTION — why all six trees had to land together
+  check_rerun_gates.py:2262-2264 calls
+      check_e2_band(out_dir.parent / "results_e2_band", ...)
+  i.e. a SIBLING of out_dir, not a child. All six output trees plus the three
+  state artifacts were landed at their original relative paths before grading,
+  which is why the roll-up reproduces 176 rather than degrading silently.
+
+COMPARISON AGAINST PHASE 28's OWN POST-RUN CAPTURE
+  reference    .planning/phases/28-full-suite-production-run/freeze02-gates-full.txt
+  line counts  this file (gate stdout portion) 185   reference 185
+
+  Raw diff, byte for byte:                             DIFFER, 126 changed lines
+      diff exit status 1; 130 diff-output lines; 126 of them are '<' or '>' lines.
+      ALL 126 carry an absolute clone path in the gate's detail string, and
+      NOTHING ELSE differs. Phase 28 produced its capture inside
+      /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod; this capture was
+      produced inside /home/tlancaster/aquacal-frozen-rerun-freeze-01. The gate
+      prints out_dir.resolve(), so the clone path is embedded in every line that
+      names an artifact file.
+
+  Path-normalised diff (both sides with the clone prefix rewritten to <CLONE>/):
+      diff exit status 0 -- ZERO differing lines.                 AGREES
+
+  VERDICT: the two captures agree line for line on every measured value. The
+  126-line raw difference is entirely the clone prefix and carries no
+  measurement. Nothing mutated the tree between the run machine and here.
+
+BYTE INTEGRITY ACROSS THE GRADING RUN (T-29-10)
+  md5 of the two anchor artifacts, taken before and after the gate invocation:
+      experiments/results/real_rig_metrics.json       57279708f6106f411d1fe03ed2698291  OK
+      experiments/results/interface_ablation_band.csv b6515ed77ed04268608b74217716020b  OK
+  The gate is read-only over the tree; both anchors are unchanged, and both match
+  the values recorded in 29-RESEARCH.md.
+
+FROZEN-TREE PROHIBITIONS HONOURED (D-29-08, D-29-11)
+  git status --porcelain experiments/check_rerun_gates.py   empty -- gate unedited
+  No artifact under experiments/results*/ was edited, regenerated or reformatted.
+  No experiment stage was re-run. No pre-commit hook was installed or invoked.
+  .git/hooks/ non-sample entries: 0.
+
+ROADMAP CRITERION 1: DEMONSTRATED IN THE WORKING CLONE, ON THE BRANCH THE
+RESULTS WILL BE COMMITTED TO. The gate passes over the complete returned run,
+Gate 3's single-sha assertion included.

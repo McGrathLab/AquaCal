@@ -73,6 +73,52 @@ here so phase numbering and the release history stay reconcilable. The last GSD 
 
 **Documentation debt this created:** every v1.7–v1.8 feature is discoverable only from
 `troubleshooting.md`, and the intrinsics seeding is undocumented entirely. Addressed by
-v1.9 Task Group E.
+v2.0 Task Group E.
+
+---
+
+## v2.0 Publication Prep (Closed: 2026-08-15)
+
+**Phases completed:** 10 of 12 (16, 17, 18, 19, 19.1, 19.2, 19.3, 19.4, 19.5, 21), 106 plans
+**Deferred, carried forward:** Phase 20 (Refractive Index Helper), Phase 22 (Release Cut)
+**Timeline:** 22 days (2026-07-23 → 2026-08-13)
+**Changes:** 709 files, +145,357 / −3,657 lines across 673 commits
+**Git range:** `cd5dd00` (feat(16-01)) → `f55dd51`
+**Releases:** v2.0.0 and v2.0.1 tagged on GitHub 2026-08-11 — the first push in 674 commits.
+Zenodo dataset record **21889922**, version DOI `10.5281/zenodo.21889922`, concept DOI
+`10.5281/zenodo.18645384` preserved.
+
+> **Planned as "v1.9", shipped as v2.0.** Phase 19.3 made `board` a required parameter of
+> `generate_board_trajectory` and `generate_real_rig_trajectory`, both public exports, forcing
+> a major bump. Archived under what shipped.
+
+**Delivered:** All code-side tooling the SoftwareX reviewer responses depend on — observability
+hooks, benchmark instrumentation, a per-camera interface ablation mode — and then, through five
+inserted decimal phases, the experiment suite itself: consolidated, executed, provenance-complete,
+geometrically corrected twice, and uncertainty-banded. The Zenodo archive was regenerated from
+the full frameset and republished so §3 reproduces from bytes a reader can download.
+
+**Key accomplishments:**
+1. Experiment observability and benchmark instrumentation: per-stage calibration dumps,
+   per-iteration optimizer traces, conditioning diagnostics via blocked tall-skinny QR, standalone
+   held-out evaluation, and a machine-readable `benchmark.json` on every run
+2. Per-camera interface ablation mode (`shared_interface=False`) with `True` proven bit-unchanged
+3. One `experiments/` directory, one implementation per experiment, and a provenance table mapping
+   every paper artifact to its script, data file, and figure generator
+4. Two geometry defects found and corrected — boards protruding through the water surface (19.3),
+   and ground truth giving each camera its own water surface (19.4, 1.42 px mean modelling error
+   against a 0.4–0.9 px residual)
+5. Uncertainty bands (19.5): E5 and E6 gained seed bands, E2 a split band, and R1.2/R1.3 got their
+   first experimental answers — establishing what may be *claimed*, not just what is correct
+6. Dataset refresh and first push in 674 commits: full-frameset Zenodo archive published as a new
+   version with lineage preserved, `load_example("real-rig")` verified from a cold cache, and a
+   pre-2.0.0 audit that caught three release-locked defects before they froze
+
+**Known deferred items at close:** 15 (see STATE.md § Deferred Items) — 2 debug sessions,
+5 quick-task records, 5 todos, 3 verification gaps. Plus 4 unsatisfied requirements
+(INDEX-01..03, DOCS-07), all carried forward rather than dropped.
+
+**No release cut at close** by user decision 2026-08-15. The next milestone cleans up the
+experiments, fixes the accumulated defects, and re-runs the full suite at a single code version.
 
 ---

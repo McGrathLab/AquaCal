@@ -22,6 +22,19 @@ from aquacal.config.schema import (
 )
 
 
+def _assert_max_ulp(actual, desired, maxulp, row):
+    """Bounded float comparison that keeps the offending row visible.
+
+    numpy's assertion names the observed step count but not which row produced it,
+    and this module's convention is that both are visible, so the two are joined.
+    Returns the per-element step-difference array in case a caller wants to record it.
+    """
+    try:
+        return np.testing.assert_array_max_ulp(actual, desired, maxulp=maxulp)
+    except AssertionError as exc:
+        raise AssertionError(f"{exc}\n{row}") from exc
+
+
 def _toy_cost(params, A):
     """Simple quadratic cost: residuals = A @ params.
 
@@ -1045,3 +1058,607 @@ class TestInvalidProjectionKeepsGradient:
         assert costs[0] < costs[1] < costs[2], (
             f"cost is not monotone in height above the interface: {costs}"
         )
+
+
+class TestParameterBlockSlices:
+    """Phase 24 / DEGEN-05: the packed vector's structural block layout."""
+
+    N_CAMS = 3
+    N_FRAMES = 2
+
+    def _order(self):
+        return [f"cam{i}" for i in range(self.N_CAMS)], list(range(self.N_FRAMES))
+
+    @pytest.mark.parametrize("normal_fixed", [True, False])
+    @pytest.mark.parametrize("refine_intrinsics", [True, False])
+    @pytest.mark.parametrize("shared_interface", [True, False])
+    def test_parameter_block_slices_tile_the_packed_vector(
+        self, normal_fixed, refine_intrinsics, shared_interface
+    ):
+        """Blocks are contiguous, non-overlapping, and cover the whole vector."""
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        blocks = build_parameter_block_slices(
+            camera_order,
+            frame_order,
+            "cam0",
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        lower, _ = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            base_intrinsics=_dummy_intrinsics(camera_order)
+            if refine_intrinsics
+            else None,
+            refine_intrinsics=refine_intrinsics,
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        ordered = sorted(blocks.values(), key=lambda s: s.start)
+        assert ordered[0].start == 0
+        for previous, following in zip(ordered, ordered[1:]):
+            assert previous.stop == following.start, "blocks are not contiguous"
+        assert ordered[-1].stop == len(lower)
+        assert sum(s.stop - s.start for s in ordered) == len(lower)
+        # A zero-width block is omitted rather than emitted empty.
+        assert all(s.stop > s.start for s in ordered)
+        assert ("tilt" in blocks) is (not normal_fixed)
+        assert ("intrinsics" in blocks) is refine_intrinsics
+
+    def test_block_slices_agree_with_parameter_labels(self):
+        """`labels[i]` names `x[i]`, so the labels must tile the same way."""
+        from aquacal.calibration._observability import build_parameter_labels
+        from aquacal.calibration._optim_common import build_parameter_block_slices
+
+        camera_order, frame_order = self._order()
+        for shared_interface in (True, False):
+            blocks = build_parameter_block_slices(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            labels = build_parameter_labels(
+                camera_order,
+                frame_order,
+                "cam0",
+                shared_interface=shared_interface,
+            )
+            assert len(labels) == sum(s.stop - s.start for s in blocks.values())
+
+            water_z_label = labels[blocks["water_z"].start]
+            assert water_z_label == "water_z" or water_z_label.endswith("_water_z")
+
+
+def _dummy_intrinsics(camera_order):
+    from aquacal.config.schema import CameraIntrinsics
+
+    K = np.array([[500.0, 0.0, 320.0], [0.0, 500.0, 240.0], [0.0, 0.0, 1.0]])
+    return {
+        cam: CameraIntrinsics(
+            K=K.copy(), dist_coeffs=np.zeros(5), image_size=(640, 480)
+        )
+        for cam in camera_order
+    }
+
+
+class TestDegeneracyBreakdownOut:
+    """Phase 24 / DEGEN-02: `compute_residuals`' six-key cause/fate/denominator fill.
+
+    Reuses `TestInvalidProjectionKeepsGradient`'s scene, which already produces a
+    known invalid population by lifting frame 1 above the water surface.
+    """
+
+    @staticmethod
+    def _packed(lift_frame1_above_water):
+        return TestInvalidProjectionKeepsGradient()._packed(lift_frame1_above_water)
+
+    def test_degeneracy_breakdown_out_defaults_to_none_and_records_nothing(self):
+        """The default path is byte-for-byte what every existing caller gets."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+
+        without_kwarg = compute_residuals(params, *cost_args)
+        explicit_none = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=None
+        )
+        breakdown: dict[str, int] = {}
+        instrumented = compute_residuals(
+            params, *cost_args, degeneracy_breakdown_out=breakdown
+        )
+
+        np.testing.assert_array_equal(without_kwarg, explicit_none)
+        np.testing.assert_array_equal(without_kwarg, instrumented)
+        assert breakdown, "a supplied dict must be filled"
+
+    def test_clean_scene_fills_six_keys_with_zero_counts_and_a_real_denominator(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(False)
+        breakdown: dict[str, int] = {}
+        compute_residuals(params, *cost_args, degeneracy_breakdown_out=breakdown)
+
+        assert set(breakdown) == {
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+            "observations_evaluated",
+        }
+        for key in (
+            "above_interface",
+            "behind_camera",
+            "interface_below_camera",
+            "extended",
+            "penalized",
+        ):
+            assert breakdown[key] == 0, breakdown
+        assert breakdown["observations_evaluated"] > 0
+
+    def test_degeneracy_breakdown_causes_sum_to_invalid_count_out(self):
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+        by_cause = (
+            breakdown["above_interface"]
+            + breakdown["behind_camera"]
+            + breakdown["interface_below_camera"]
+        )
+        assert by_cause == counts[0]
+        assert breakdown["observations_evaluated"] >= counts[0]
+
+    def test_degeneracy_breakdown_fates_sum_to_invalid_count_out(self):
+        """The second, independent decomposition of the same invalid set."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert breakdown["extended"] + breakdown["penalized"] == counts[0]
+
+    def test_interface_below_camera_batch_is_attributed_to_that_cause_only(self):
+        """A water surface estimated below every camera center: one cause, no others.
+
+        This is a statement about the ESTIMATE -- the free `water_z` parameter has
+        excursed below the (also free) camera centers -- and never a claim that
+        hardware was submerged.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, cams, _ = self._packed(False)
+        water_z_index = 6 * (len(cams) - 1)  # normal_fixed, shared water_z
+        params = params.copy()
+        params[water_z_index] = -0.05  # below every camera center at Z = 0
+
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+        )
+
+        assert counts[0] > 0
+        assert breakdown["interface_below_camera"] == counts[0]
+        assert breakdown["above_interface"] == 0
+        assert breakdown["behind_camera"] == 0
+
+
+class TestPerObservationDetailSinks:
+    """Phase 25 / DEGEN-04: the per-observation joint the Phase 24 marginals lack.
+
+    Reuses `TestInvalidProjectionKeepsGradient`'s scene, which already produces a
+    known invalid population by lifting frame 1 above the water surface.
+    """
+
+    WATER_Z = 0.15
+
+    @staticmethod
+    def _packed(lift_frame1_above_water):
+        return TestInvalidProjectionKeepsGradient()._packed(lift_frame1_above_water)
+
+    @classmethod
+    def _packed_partially_flagged(cls):
+        """A scene whose flagged corner ids are NON-CONTIGUOUS within a view.
+
+        Frame 1's board is rotated about the world Y axis and parked so that it
+        STRADDLES the interface: a corner is above or below the water according
+        to its board-local x. Charuco corners are ordered row-major with x
+        varying fastest, so the two columns nearest the surface flag in every
+        row and the flagged set interleaves with the clean one instead of
+        forming a prefix -- which is exactly what an `i`/`k` index-space mix-up
+        needs in order to be visible. The 0.195 m offset was chosen against the
+        board's own corner table (z spans 0.0903 m under this tilt) so the
+        crossing lands mid-board.
+        """
+        params, cost_args, cams, frame_order = cls._packed(False)
+        params = params.copy()
+        pose_block_start = 6 * (len(cams) - 1) + 1  # normal_fixed, shared water_z
+        offset = pose_block_start + frame_order.index(1) * 6
+        params[offset : offset + 3] = np.array([0.0, 0.6, 0.0])
+        params[offset + 3 : offset + 6] = np.array([0.0, 0.0, 0.195])
+        return params, cost_args, cams, frame_order
+
+    # -- 1. one row per flagged observation ---------------------------------
+
+    def test_detail_sink_emits_one_row_per_flagged_observation(self):
+        """Row count equals the independently-counted flagged total, one row each."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+        )
+
+        assert counts[0] > 0, "scenario did not produce any invalid projections"
+        assert len(rows) == counts[0]
+        by_cause = (
+            breakdown["above_interface"]
+            + breakdown["behind_camera"]
+            + breakdown["interface_below_camera"]
+        )
+        assert len(rows) == by_cause
+
+        triples = [(r["camera"], r["frame_idx"], r["corner_id"]) for r in rows]
+        assert len(set(triples)) == len(triples), "an observation was emitted twice"
+
+        expected_keys = {
+            "camera",
+            "frame_idx",
+            "corner_id",
+            "h_q_m",
+            "h_c_m",
+            "r_q_m",
+            "chord_incidence_deg",
+            "extended",
+            "nan_reason",
+        }
+        for row in rows:
+            assert set(row) == expected_keys, row
+            # D-06: the library holds no bucket name -- the cause stays a code.
+            assert isinstance(row["nan_reason"], int)
+            assert not isinstance(row["nan_reason"], bool)
+        # `stage` is the caller's to stamp (D-07); it must not appear here.
+        assert all("stage" not in r for r in rows)
+
+    # -- 2. inert when None -------------------------------------------------
+
+    def test_detail_sink_is_inert_when_none(self):
+        """D-06b: both sinks None leaves the residual vector bit-for-bit identical."""
+        from aquacal.calibration._optim_common import compute_residuals
+
+        params, cost_args, _, _ = self._packed(True)
+
+        baseline = compute_residuals(params, *cost_args)
+        explicit_none = compute_residuals(
+            params,
+            *cost_args,
+            degeneracy_details_out=None,
+            observation_depths_out=None,
+        )
+        rows: list[dict] = []
+        depths: list[dict] = []
+        instrumented = compute_residuals(
+            params,
+            *cost_args,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert np.array_equal(baseline, explicit_none)
+        assert np.array_equal(baseline, instrumented)
+        assert rows, "a supplied detail list must be filled"
+        assert depths, "a supplied depth list must be filled"
+
+    # -- 3. the two index spaces must not cross -----------------------------
+
+    def test_detail_sink_index_spaces_do_not_cross(self):
+        """The flagged-subset and full-point-set index spaces must stay apart.
+
+        `unextendable` and the recomputed geometry are indexed over the flagged
+        subset (`k`); `nan_reason` and `corner_ids` over the full point set
+        (`i`). Mixing them is the most likely bug in this diff, so the scenario
+        is built to make a mix visible: the flagged corner ids interleave with
+        the clean ones.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.refractive_geometry import (
+            NAN_REASON_ABOVE_INTERFACE,
+            NAN_REASON_NONE,
+        )
+
+        params, cost_args, _, _ = self._packed_partially_flagged()
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        depths: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert counts[0] > 0
+        # Sanity: this really is the partial, interleaved case the test needs.
+        flagged_views = {(r["camera"], r["frame_idx"]) for r in rows}
+        assert flagged_views, "no flagged observation to test"
+        n_noncontiguous_views = 0
+        for cam, frame in flagged_views:
+            flagged_ids = sorted(
+                r["corner_id"]
+                for r in rows
+                if r["camera"] == cam and r["frame_idx"] == frame
+            )
+            all_ids = sorted(
+                d["corner_id"]
+                for d in depths
+                if d["camera"] == cam and d["frame_idx"] == frame
+            )
+            assert 0 < len(flagged_ids) < len(all_ids), (
+                "the view is entirely flagged or entirely clean; the index "
+                "spaces coincide and the test proves nothing"
+            )
+            if flagged_ids != list(
+                range(flagged_ids[0], flagged_ids[0] + len(flagged_ids))
+            ):
+                n_noncontiguous_views += 1
+        assert n_noncontiguous_views > 0, (
+            "no view had a non-contiguous flagged set; an off-by-k read would "
+            "still land on the right value"
+        )
+
+        # `i`-space columns: a flagged row can never carry NAN_REASON_NONE. If
+        # `nan_reason` were read at `k` instead of `i` some rows would.
+        assert all(r["nan_reason"] != NAN_REASON_NONE for r in rows)
+        assert (
+            sum(1 for r in rows if r["nan_reason"] == NAN_REASON_ABOVE_INTERFACE)
+            == breakdown["above_interface"]
+        )
+        # `k`-space columns: every above-interface row must have h_q <= 0 by the
+        # definition of that branch. Reading h_q at `i` would surface a positive.
+        for row in rows:
+            if row["nan_reason"] == NAN_REASON_ABOVE_INTERFACE:
+                assert row["h_q_m"] <= 0.0, row
+        # `extended`/`penalized` is the second `k`-space axis and must agree with
+        # the independently-counted fate marginal.
+        assert sum(1 for r in rows if r["extended"]) == breakdown["extended"]
+        assert sum(1 for r in rows if not r["extended"]) == breakdown["penalized"]
+
+    # -- 4. the recomputed geometry is the projector's ----------------------
+
+    def test_detail_sink_recomputed_geometry_matches_projector(self):
+        """h_q/h_c/r_q must be the projector's own quantities, not an approximation.
+
+        Recomputed here from `refractive_geometry.py:661,675,676-679` verbatim.
+        `h_c_m` and `h_q_m` are compared with `==`. `r_q_m` and
+        `chord_incidence_deg` are compared against a hard bound of N representable
+        steps (`np.testing.assert_array_max_ulp`), never `pytest.approx` -- a
+        relative tolerance would pass on a sink that had drifted to a different
+        (but nearby) formula, and it cannot express a step count at all: one step
+        maps to a relative size anywhere across a factor-of-two range depending on
+        position within the binade, so any single `rtol` is up to 2x loose.
+
+        MEASURED, all 22 rows instrumented 2026-08-26. `h_c_m` and `h_q_m` agree
+        on 22 of 22 rows. `r_q_m` disagrees on 6 of 22, worst gap **1 step** -- a
+        sink value of 0.10681280743540097 against a recomputed
+        0.10681280743540099. `chord_incidence_deg` disagrees on 3 of 22, worst gap
+        **2 steps**.
+
+        THE MECHANISM, stated as a correction. The open D4 todo classifies this
+        test as one of three Windows-captured exact-equality anchors that fail on
+        Linux. That is wrong for this member: it has no captured anchor at all.
+        The library evaluates `r_q = np.sqrt(dx*dx + dy*dy)` VECTORIZED over N
+        points (`refractive_geometry.py:676`) while this test evaluates it SCALAR
+        on one element below, and numpy's array and scalar paths may differ by one
+        representable step ON THE SAME MACHINE. That is a dispatch asymmetry, not
+        a captured constant and not a platform pin -- it was invisible on Windows
+        only because that build dispatched differently. `chord_incidence_deg`
+        inherits that one step through `arctan2` and `degrees`, which is exactly
+        why its bound is larger: one inherited step plus at most one rounding in
+        each of the two calls.
+
+        WHY 4 AND 8, in orders of magnitude both ways. They are four times the
+        measured worst cases of 1 and 2. CI runs on runners whose numpy SIMD
+        dispatch this project does not control and the whole diagnosis is that the
+        gap IS a dispatch artifact, so a bound equal to this machine's maximum
+        would be pinned to this machine by construction. Downward, this is still
+        an extraordinarily tight assertion: at the measured magnitude 8 steps is
+        1.110e-16 absolute and 1.04e-15 relative, ~9 orders of magnitude tighter
+        than the `pytest.approx` default `rtol=1e-6` this comparison must never
+        become. A sink that had drifted to a different but nearby formula still
+        fails.
+
+        DO NOT widen these bounds to a relative tolerance. And do NOT "fix" a
+        future failure by making this test recompute `r_q` vectorized to match the
+        library: identical dispatch depends on array length and memory alignment,
+        so the test would pass by coincidence on one machine and could break on a
+        runner with a different vector width. That is more fragile, not less.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.camera import Camera
+
+        params, cost_args, cams, frame_order = self._packed_partially_flagged()
+        detections, base_intrinsics, board, ref_cam, ref_ext = cost_args[:5]
+        del detections
+
+        rows: list[dict] = []
+        compute_residuals(params, *cost_args, degeneracy_details_out=rows)
+        assert rows
+
+        extrinsics, water_zs, board_poses, intrinsics = unpack_params(
+            params,
+            ref_cam,
+            ref_ext,
+            cams,
+            frame_order,
+            base_intrinsics=base_intrinsics,
+        )
+
+        for row in rows:
+            cam_name = row["camera"]
+            pose = board_poses[row["frame_idx"]]
+            corners_3d = board.transform_corners(pose.rvec, pose.tvec)
+            Q = corners_3d[row["corner_id"]]
+            camera = Camera(cam_name, intrinsics[cam_name], extrinsics[cam_name])
+            C = camera.C
+            z_int = water_zs[cam_name]
+
+            h_c = z_int - C[2]
+            h_q = Q[2] - z_int
+            dx = Q[0] - C[0]
+            dy = Q[1] - C[1]
+            r_q = np.sqrt(dx * dx + dy * dy)
+
+            assert row["h_c_m"] == h_c, row
+            assert row["h_q_m"] == h_q, row
+            # r_q_m: measured worst gap 1 step over 22 rows, bounded at 4.
+            _assert_max_ulp(row["r_q_m"], r_q, maxulp=4, row=row)
+            # chord_incidence_deg: measured worst gap 2 steps, bounded at 8 -- it
+            # inherits r_q's step through arctan2 and degrees.
+            _assert_max_ulp(
+                row["chord_incidence_deg"],
+                np.degrees(np.arctan2(r_q, h_c + h_q)),
+                maxulp=8,
+                row=row,
+            )
+
+    # -- 5. the full-population depth sink ----------------------------------
+
+    def test_observation_depths_sink_covers_every_observation(self):
+        """D-09: one row per EVALUATED observation, flagged or not."""
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.refractive_geometry import NAN_REASON_NONE
+
+        params, cost_args, _, _ = self._packed(True)
+        counts: list[int] = []
+        breakdown: dict[str, int] = {}
+        rows: list[dict] = []
+        depths: list[dict] = []
+        compute_residuals(
+            params,
+            *cost_args,
+            invalid_count_out=counts,
+            degeneracy_breakdown_out=breakdown,
+            degeneracy_details_out=rows,
+            observation_depths_out=depths,
+        )
+
+        assert len(depths) == breakdown["observations_evaluated"]
+        triples = [(d["camera"], d["frame_idx"], d["corner_id"]) for d in depths]
+        assert len(set(triples)) == len(triples)
+        assert all(
+            set(d) == {"camera", "frame_idx", "corner_id", "h_q_m", "nan_reason"}
+            for d in depths
+        )
+        assert all("stage" not in d for d in depths)
+
+        n_clean = sum(1 for d in depths if d["nan_reason"] == NAN_REASON_NONE)
+        assert n_clean == breakdown["observations_evaluated"] - counts[0]
+        # Every flagged observation appears in the full-population table too.
+        flagged = {(r["camera"], r["frame_idx"], r["corner_id"]) for r in rows}
+        assert flagged <= set(triples)
+
+
+class TestWaterZBoundsOverride:
+    """FIX-01 (D-01): a `water_z_bounds` override reaching `build_bounds` pins the
+    water_z slot(s) without touching the default [0.01, 2.0] bound when omitted.
+    """
+
+    N_CAMS = 3
+    N_FRAMES = 2
+
+    def _order(self):
+        camera_order = [f"cam{i}" for i in range(self.N_CAMS)]
+        frame_order = list(range(self.N_FRAMES))
+        return camera_order, frame_order
+
+    @pytest.mark.parametrize("normal_fixed", [True, False])
+    @pytest.mark.parametrize("shared_interface", [True, False])
+    def test_override_pins_exactly_the_water_z_slot(
+        self, normal_fixed, shared_interface
+    ):
+        camera_order, frame_order = self._order()
+        pin_lo, pin_hi = 1.031 - 1e-12, 1.031 + 1e-12
+
+        lower, upper = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+            water_z_bounds=(pin_lo, pin_hi),
+        )
+        lower_default, upper_default = build_bounds(
+            camera_order,
+            frame_order,
+            "cam0",
+            normal_fixed=normal_fixed,
+            shared_interface=shared_interface,
+        )
+
+        n_tilt_params = 0 if normal_fixed else 2
+        n_extrinsic_params = 6 * (self.N_CAMS - 1)
+        n_water_z_params = 1 if shared_interface else self.N_CAMS
+        water_z_idx = n_tilt_params + n_extrinsic_params
+
+        water_z_slice = slice(water_z_idx, water_z_idx + n_water_z_params)
+        np.testing.assert_allclose(lower[water_z_slice], pin_lo)
+        np.testing.assert_allclose(upper[water_z_slice], pin_hi)
+
+        # Everything outside the water_z slot is untouched relative to the
+        # default-bound call.
+        mask = np.ones_like(lower, dtype=bool)
+        mask[water_z_slice] = False
+        np.testing.assert_array_equal(lower[mask], lower_default[mask])
+        np.testing.assert_array_equal(upper[mask], upper_default[mask])
+
+    def test_omitting_override_leaves_default_bound_byte_identical(self):
+        """Not passing water_z_bounds must reproduce today's [0.01, 2.0] exactly."""
+        camera_order, frame_order = self._order()
+        lower_a, upper_a = build_bounds(camera_order, frame_order, "cam0")
+        lower_b, upper_b = build_bounds(
+            camera_order, frame_order, "cam0", water_z_bounds=None
+        )
+        np.testing.assert_array_equal(lower_a, lower_b)
+        np.testing.assert_array_equal(upper_a, upper_b)
+
+        n_extrinsic_params = 6 * (self.N_CAMS - 1)
+        water_z_idx = n_extrinsic_params
+        assert lower_a[water_z_idx] == pytest.approx(0.01)
+        assert upper_a[water_z_idx] == pytest.approx(2.0)

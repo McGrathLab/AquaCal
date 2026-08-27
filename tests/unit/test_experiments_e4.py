@@ -44,6 +44,7 @@ from experiments._io import (
 )
 from experiments.e4_benchmark_grid import (
     _NULL_METRICS,
+    CHECK_EXCLUDED_COLUMNS,
     DECLARED_CELLS,
     E2_BENCHMARK_PATH,
     GRID_BOARD_CONFIG,
@@ -57,16 +58,19 @@ from experiments.e4_benchmark_grid import (
     MEMORY_NEAR_CEILING_FRACTION,
     MEMORY_PRESSURE_CLEAN,
     MEMORY_PRESSURE_NEAR_CEILING,
+    OPTIMALITY_CAVEAT_TEX,
     REPEAT_CELLS,
     SKIPPED_EXIT_CODE,
     _array_xy_span,
     _classify_memory_pressure,
+    _extract_pipeline_row,
     _invoke_subprocess_with_status_mapping,
     _validate_e4_args,
     build_arg_parser,
     build_grid_dataframe,
     build_grid_scenario,
     default_xy_extent_for_layout,
+    resolve_e2_benchmark_path,
     run_cell_subprocess,
     run_grid_cell,
     splice_repeat_records,
@@ -159,9 +163,14 @@ def _write_fake_cell(
     )
 
 
-def _write_fake_e2_record(path: Path) -> None:
-    """Write a minimal but schema-shaped E2 benchmark.json fixture."""
-    record = {
+def _fake_e2_record() -> dict:
+    """A minimal but schema-shaped E2 benchmark.json record.
+
+    Deliberately carries NO guard count under either `discard_stats` or
+    `problem_shape` -- that is the un-instrumented shape, and tests that need a
+    measured count add it explicitly (plan 29.1-01).
+    """
+    return {
         "schema_version": 1,
         "problem_shape": {
             "n_cameras": 13,
@@ -215,7 +224,11 @@ def _write_fake_e2_record(path: Path) -> None:
             },
         },
     }
-    path.write_text(json.dumps(record))
+
+
+def _write_fake_e2_record(path: Path) -> None:
+    """Write a minimal but schema-shaped E2 benchmark.json fixture."""
+    path.write_text(json.dumps(_fake_e2_record()))
 
 
 @pytest.fixture
@@ -728,6 +741,52 @@ def test_latex_fragment_separates_real_rig(full_grid_dir, tmp_path):
     # The real-rig row's key must not appear before its own labeled block --
     # i.e. it is not folded into the earlier nine-cell blocks.
     assert real_rig_key_rendered not in text[:real_rig_marker]
+
+
+def test_latex_carries_the_optimality_caveat(full_grid_dir, tmp_path):
+    """D-17/DEGEN-05: the caveat ships inside the artifact the number ships in.
+
+    `optimality_stage3_interface_optimization` reaches Zenodo in
+    `benchmark_grid.tex`. A reader must meet its three properties -- volatile at
+    a fixed solution, block-incomparable, magnitude-dependent in reliability --
+    in the same file, BEFORE the block that renders the column.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    tex_path = tmp_path / "benchmark_grid.tex"
+    write_grid_latex(df, tex_path)
+    text = tex_path.read_text()
+
+    # The caveat block is present verbatim, so the emitted text cannot drift
+    # from the module constant without this test failing.
+    assert OPTIMALITY_CAVEAT_TEX in text
+
+    # It is a LaTeX comment through and through -- a single non-`%` line would
+    # corrupt every document that \input's this fragment.
+    caveat_lines = OPTIMALITY_CAVEAT_TEX.splitlines()
+    assert caveat_lines, "the caveat constant must not be empty"
+    for line in caveat_lines:
+        assert line.startswith("%"), f"caveat line is not a LaTeX comment: {line!r}"
+
+    # The three properties are actually stated, not merely gestured at.
+    lowered = OPTIMALITY_CAVEAT_TEX.lower()
+    assert "volatile at a fixed solution" in lowered
+    assert "not comparable across parameter blocks" in lowered
+    assert "magnitude-dependent in reliability" in lowered
+    assert "2026-08-17-optimality-decomposition" in OPTIMALITY_CAVEAT_TEX
+
+    # ORDERING, not mere presence: the caveat precedes both blocks that carry
+    # the column -- the full supplement grid and the real-rig anchor row.
+    caveat_idx = text.index(OPTIMALITY_CAVEAT_TEX)
+    full_grid_idx = text.index("% E4 full grid")
+    real_rig_idx = text.index("% E4 real-rig anchor row")
+    assert caveat_idx < full_grid_idx
+    assert caveat_idx < real_rig_idx
+
+    # And the column really is in those blocks (escaped by write_latex_fragment),
+    # so the ordering assertion above is guarding something that exists.
+    assert "optimality\\_stage3\\_interface\\_optimization" in text[full_grid_idx:]
 
 
 class TestRealChildProcess:
@@ -1478,3 +1537,291 @@ class TestSpliceRepeatCli:
             text=True,
         )
         assert result.stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# FIX-05 (D-09): resolve_e2_benchmark_path and its two callers
+# ---------------------------------------------------------------------------
+
+
+def test_e2_record_resolves_relative_to_out_dir(tmp_path):
+    """FIX-05: a `benchmark.json` native to `--out` is used in preference to
+    the repo tree's record -- proven with a sentinel value distinguishable
+    from `experiments/results/benchmark.json`."""
+    sentinel_reprojection_rms = 0.123456
+    native_e2_path = tmp_path / "benchmark.json"
+    _write_fake_e2_record(native_e2_path)
+    record = json.loads(native_e2_path.read_text())
+    record["accuracy"]["reprojection_rms"] = sentinel_reprojection_rms
+    native_e2_path.write_text(json.dumps(record))
+
+    resolved_path, note = resolve_e2_benchmark_path(tmp_path)
+    assert resolved_path == tmp_path / "benchmark.json"
+    assert "native" in note
+
+    cell_statuses = [
+        {
+            "n_cameras": n,
+            "n_frames": f,
+            "status": "ok",
+            "status_reason": "",
+            "exit_code": 0,
+        }
+        for n, f in DECLARED_CELLS
+    ]
+    cells_dir = tmp_path / "e4_cells"
+    for n_cameras, n_frames in DECLARED_CELLS:
+        _write_fake_cell(
+            cells_dir / f"cameras_{n_cameras}_frames_{n_frames}", n_cameras, n_frames
+        )
+
+    df = build_grid_dataframe(tmp_path, cell_statuses, resolved_path)
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["reprojection_rms"] == sentinel_reprojection_rms
+
+
+def test_e2_record_absent_under_non_default_out_is_not_imported_from_the_repo_tree(
+    tmp_path,
+):
+    """FIX-05: a non-default `--out` with no native `benchmark.json` must
+    resolve to `None`, never silently fall back to the repo tree's record."""
+    resolved_path, note = resolve_e2_benchmark_path(tmp_path)
+    assert resolved_path is None
+    assert "absent" in note
+
+    cell_statuses = [
+        {
+            "n_cameras": n,
+            "n_frames": f,
+            "status": "ok",
+            "status_reason": "",
+            "exit_code": 0,
+        }
+        for n, f in DECLARED_CELLS
+    ]
+    cells_dir = tmp_path / "e4_cells"
+    for n_cameras, n_frames in DECLARED_CELLS:
+        _write_fake_cell(
+            cells_dir / f"cameras_{n_cameras}_frames_{n_frames}", n_cameras, n_frames
+        )
+
+    df = build_grid_dataframe(tmp_path, cell_statuses, resolved_path)
+    real_rig_row = df.iloc[-1]
+    assert real_rig_row["record_source"] == "missing_e2_benchmark"
+    assert pd.isna(real_rig_row["reprojection_rms"])
+
+
+def test_default_out_dir_still_uses_the_file_anchored_constant():
+    """FIX-05: the default output tree must still resolve to the
+    `__file__`-anchored E2_BENCHMARK_PATH constant, not a cwd-relative guess.
+    Branch 1 (a native `benchmark.json`) and branch 2 (the default-tree
+    constant) are path-equal for the default directory by construction --
+    what matters is the resolved path itself, not which branch produced it
+    on a machine where `experiments/results/benchmark.json` happens to
+    already exist."""
+    resolved_path, note = resolve_e2_benchmark_path(E2_BENCHMARK_PATH.parent)
+    assert resolved_path == E2_BENCHMARK_PATH
+    assert resolved_path.is_absolute()
+    assert "native" in note or "default tree" in note
+
+
+def test_both_build_grid_dataframe_callers_resolve_relative_to_out():
+    """D-09: both `_run_check` and `_run_full` must resolve E2's record
+    through `resolve_e2_benchmark_path(out_dir)`, never pass the bare
+    `E2_BENCHMARK_PATH` constant directly to `build_grid_dataframe` -- fixing
+    only one call site leaves `--check --out` importing another machine's
+    real-rig row (measured 2026-08-17)."""
+    import inspect
+
+    for fn in (e4_grid_module._run_check, e4_grid_module._run_full):
+        source = inspect.getsource(fn)
+        assert "resolve_e2_benchmark_path(out_dir)" in source, (
+            f"{fn.__name__} must call resolve_e2_benchmark_path(out_dir)"
+        )
+        assert (
+            "build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)"
+            not in source
+        ), (
+            f"{fn.__name__} must not pass the bare E2_BENCHMARK_PATH constant "
+            "to build_grid_dataframe"
+        )
+
+
+# ---------------------------------------------------------------------------
+# D-07/D-08: the named --check exclusion list
+# ---------------------------------------------------------------------------
+
+
+def test_check_excluded_columns_is_exactly_two_named_entries():
+    """A named list beats a heuristic (D-07): growing it is a deliberate
+    test edit, never a silent inheritance."""
+    assert CHECK_EXCLUDED_COLUMNS == ("exit_code", "status_reason")
+
+
+def test_run_check_passes_exclude_columns_and_prints_the_skipped_set():
+    """D-07: _run_check must pass exclude_columns=CHECK_EXCLUDED_COLUMNS to
+    compare_experiment_csv, and must print what it skipped on every run."""
+    import inspect
+
+    source = inspect.getsource(e4_grid_module._run_check)
+    assert "exclude_columns=CHECK_EXCLUDED_COLUMNS" in source
+    assert "print(" in source
+
+
+def test_degenerate_gate_predicate_is_still_count_greater_than_zero(full_grid_dir):
+    """D-05: the gate is exactly `count > 0 -> degenerate`, exercised
+    BEHAVIOURALLY at the boundary rather than read off source text.
+
+    A softening into a threshold ("real rigs tolerate a few") would keep every
+    existing assertion passing at count 3 while silently letting count 1
+    through, so the boundary case is the one that pins it. Phase 25's D-04
+    settled the scope question by removing real-rig runs from the gate's reach,
+    NOT by loosening the synthetic predicate -- this test is what makes that
+    distinction enforceable.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    boundary_cell = DECLARED_CELLS[0]
+    cell_dir = (
+        out_dir / "e4_cells" / f"cameras_{boundary_cell[0]}_frames_{boundary_cell[1]}"
+    )
+    cell_key = f"cameras_{boundary_cell[0]}_frames_{boundary_cell[1]}"
+
+    # Exactly one degenerate observation -- the smallest nonzero count.
+    _write_fake_cell(
+        cell_dir,
+        boundary_cell[0],
+        boundary_cell[1],
+        degenerate_observations_at_solution=1,
+    )
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    row = df[df["cell_key"] == cell_key].iloc[0]
+    assert row["status"] == "degenerate"
+    assert row["degenerate_observations_at_solution"] == 1
+
+    # Zero on the same cell -- ok, with the column present and zero.
+    _write_fake_cell(
+        cell_dir,
+        boundary_cell[0],
+        boundary_cell[1],
+        degenerate_observations_at_solution=0,
+    )
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    row = df[df["cell_key"] == cell_key].iloc[0]
+    assert row["status"] == "ok"
+    assert row["degenerate_observations_at_solution"] == 0
+
+
+def test_smoke_path_is_never_gated_at_any_count(full_grid_dir):
+    """The smoke carve-out, behaviourally: a SMOKE_CELLS cell carrying a
+    nonzero count produces no gated row at all, because build_grid_dataframe --
+    the sole gating site -- never iterates it."""
+    from experiments.e4_benchmark_grid import SMOKE_CELLS
+
+    out_dir, cell_statuses, e2_path = full_grid_dir
+    smoke_cell = SMOKE_CELLS[0]
+    smoke_key = f"cameras_{smoke_cell[0]}_frames_{smoke_cell[1]}"
+    _write_fake_cell(
+        out_dir / "e4_cells" / smoke_key,
+        smoke_cell[0],
+        smoke_cell[1],
+        degenerate_observations_at_solution=7,
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+    assert smoke_key not in set(df["cell_key"])
+    assert (df["status"] == "ok").all()
+
+
+class TestPipelineRowGuardCount:
+    """Plan 29.1-01 / D-01: the real-rig row publishes the count E2 measured.
+
+    Before D-01 `_extract_pipeline_row` hardcoded `None` here on the (by then
+    retired) reasoning that E2's record predated `discard_stats` threading.
+    Phase 24's DEGEN-02 instrumentation ended that, so the value is read --
+    from `discard_stats` first, `problem_shape` as the fallback -- while an
+    un-instrumented record still yields `None`, keeping "never measured"
+    distinguishable from "measured zero".
+    """
+
+    @staticmethod
+    def _record(**overrides) -> dict:
+        record = _fake_e2_record()
+        record.update(overrides)
+        return record
+
+    def test_guard_count_is_read_from_discard_stats(self):
+        record = self._record(
+            discard_stats={"degenerate_observations_at_solution": 198}
+        )
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 198
+        assert row["record_source"] == "pipeline"
+
+    def test_guard_count_falls_back_to_problem_shape(self):
+        record = self._record()
+        record["problem_shape"]["degenerate_observations_at_solution"] = 7
+        assert "discard_stats" not in record
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 7
+
+    def test_discard_stats_wins_over_problem_shape(self):
+        record = self._record(
+            discard_stats={"degenerate_observations_at_solution": 198}
+        )
+        record["problem_shape"]["degenerate_observations_at_solution"] = 3
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 198
+
+    def test_uninstrumented_record_still_yields_none(self):
+        """The property gate 1 rests on: a record that never measured the
+        count must stay distinguishable from one that measured zero."""
+        record = self._record()
+        assert "discard_stats" not in record
+        assert "degenerate_observations_at_solution" not in record["problem_shape"]
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] is None
+
+    def test_measured_zero_is_published_as_zero_not_none(self):
+        record = self._record(discard_stats={"degenerate_observations_at_solution": 0})
+        row = _extract_pipeline_row(record)
+        assert row["degenerate_observations_at_solution"] == 0
+
+
+def test_real_rig_row_keeps_status_ok_at_a_non_zero_guard_count(
+    full_grid_dir, tmp_path
+):
+    """D-01: the `> 0` downgrade is scoped to `record_source="assembled"`
+    rows. The pipeline row carries a real, non-zero, real-hardware count and
+    must still publish as `status="ok"` -- while a synthetic cell with a
+    non-zero count in the SAME frame is still downgraded to "degenerate", so
+    this is an exemption for one row kind, not a blanket relaxation.
+    """
+    out_dir, cell_statuses, e2_path = full_grid_dir
+
+    # Give E2's record the count it actually measured on 2026-08-20.
+    e2_record = json.loads(Path(e2_path).read_text())
+    e2_record["discard_stats"] = {"degenerate_observations_at_solution": 198}
+    Path(e2_path).write_text(json.dumps(e2_record))
+
+    # ... and give one synthetic cell a non-zero count too.
+    degenerate_cell = DECLARED_CELLS[0]
+    _write_fake_cell(
+        out_dir
+        / "e4_cells"
+        / f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}",
+        degenerate_cell[0],
+        degenerate_cell[1],
+        degenerate_observations_at_solution=4,
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
+
+    pipeline_row = df[df["record_source"] == "pipeline"].iloc[0]
+    assert pipeline_row["cell_key"] == "real_rig_13cam_200fr"
+    assert pipeline_row["degenerate_observations_at_solution"] == 198
+    assert pipeline_row["status"] == "ok"
+    assert pipeline_row["status_reason"] == ""
+
+    synthetic_key = f"cameras_{degenerate_cell[0]}_frames_{degenerate_cell[1]}"
+    synthetic_row = df[df["cell_key"] == synthetic_key].iloc[0]
+    assert synthetic_row["status"] == "degenerate"

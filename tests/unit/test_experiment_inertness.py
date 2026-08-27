@@ -39,6 +39,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from aquacal.datasets.synthetic import create_scenario
 
 _EXPERIMENTS_DIR = Path(__file__).resolve().parents[2] / "experiments"
@@ -193,3 +195,97 @@ def test_reference_counter_ignores_prose_but_not_code(tmp_path):
         encoding="utf-8",
     )
     assert _count_references(real_use, "generate_camera_array") > 0
+
+
+def test_e1_header_states_the_accuracy_claim_stated_domain():
+    """BAND-01/D-14: E1's module docstring records the domain over which its
+    absolute-accuracy numbers may be quoted, beside the D-19.3-17 demotion
+    note, together with the D-16 ill-conditioning caveat.
+
+    Scoped to `_E1_PATH`'s parsed docstring, never to a repository-wide grep:
+    the prose in THIS file (and in any plan or summary document) must be
+    unable to satisfy or falsify the gate. `_count_references`'s own
+    docstring records what happened the last time a source-text check here
+    was allowed to see prose it did not mean to see.
+    """
+    tree = ast.parse(_E1_PATH.read_text(encoding="utf-8"), filename=str(_E1_PATH))
+    docstring = ast.get_docstring(tree)
+    assert docstring is not None
+
+    # The noise range the domain is stated over.
+    assert "0.25" in docstring
+    assert "1.2" in docstring
+    # The seed count and the geometry the domain is stated over.
+    assert "ten seeds" in docstring
+    assert "12-camera" in docstring
+    # D-16: the caveat, paired with the converged-baseline finding.
+    assert "ill-conditioned" in docstring.lower()
+    assert "converged" in docstring.lower()
+    # D-21: the establishing band is Phase 28 work, not a Phase 25 result.
+    assert "Phase 28" in docstring
+    # D-13: the anti-confusion note names the 0.5 px isolator.
+    assert "normal_fixed" in docstring
+
+
+# ---------------------------------------------------------------------------
+# DEGEN-04 / D-04: the gate-scope rationale must exist at all three gate sites
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+_GATE_RATIONALE_SITES = (
+    _REPO_ROOT / "src" / "aquacal" / "calibration" / "_observability.py",
+    _EXPERIMENTS_DIR / "e4_benchmark_grid.py",
+    _EXPERIMENTS_DIR / "e6_generalization_sweep.py",
+)
+
+
+def _read(path: Path) -> str:
+    """Read a target file's text, skipping cleanly if it is genuinely absent.
+
+    Args:
+        path: File to read.
+
+    Returns:
+        The file's text content, decoded as UTF-8.
+    """
+    if not path.is_file():
+        pytest.skip(f"target file not found: {path}")
+    return path.read_text(encoding="utf-8")
+
+
+def test_gate_scope_rationale_present_at_all_three_sites():
+    """DEGEN-04 / D-04: the authored-vs-given-geometry rationale for keeping the
+    degeneracy gate synthetic-only, and the tripwire that would re-open the
+    decision, are present at every site a code reader meets the gate.
+
+    The decision itself has no verification criterion -- it is a policy call
+    (25-RESEARCH.md). What is checkable, and what this pins, is that the
+    reasoning exists beside the gate rather than only in a planning file.
+
+    GREP-HYGIENE NOTE -- the failure mode deliberately avoided here. The
+    original `_count_references` above stripped `#`-comment lines and counted
+    substrings, so a *docstring* asserting an invariant survived the filter and
+    failed the very gate that checked it (see that function's own docstring).
+    The mitigation used here is scoping by FILENAME: this assertion reads only
+    the three files in `_GATE_RATIONALE_SITES`, and this test module is not one
+    of them. Nothing written in this docstring -- including the phrases quoted
+    below -- can therefore either satisfy or falsify the assertion. The phrases
+    are also required to be present rather than absent, so the polarity is the
+    safe one: prose leaking into a scanned file could only ever make a missing
+    rationale look present in a file that is supposed to carry it anyway.
+    """
+    for path in _GATE_RATIONALE_SITES:
+        source = _read(path)
+        # The decision and the reasoning that licenses it.
+        assert "SYNTHETIC-ONLY" in source, f"{path.name} lacks the gate-scope decision"
+        assert "authored" in source, f"{path.name} lacks the authored-geometry half"
+        assert "given" in source, f"{path.name} lacks the given-geometry half"
+        # The tripwire, and the sole source of the count it would be read from.
+        assert "camera_model_failure" in source, f"{path.name} lacks the tripwire"
+        assert "Phase 29" in source, f"{path.name} lacks the frozen-table reference"
+        # The provenance of the evidence, marked provisional (D-02).
+        assert "2026-08-17-degeneracy-classification" in source, (
+            f"{path.name} does not cite the probe that settled the mechanism"
+        )
+        assert "D-04" in source, f"{path.name} does not name the decision"

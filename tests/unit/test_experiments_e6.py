@@ -48,6 +48,8 @@ def _sample_metrics() -> dict:
         "water_z_error_mm_mean": 0.6,
         "num_comparisons": 1000,
         "num_frames": 20,
+        "water_z_error_mm_signed_mean": -0.6,
+        "z_position_error_mm_gauge_corrected_mean": 0.1,
     }
 
 
@@ -125,6 +127,94 @@ def test_water_z_error_helper():
     estimated_water_zs = {"cam0": 1.0, "cam1": 1.003, "cam2": 1.0}
     result = m.compute_water_z_error_mm_mean(estimated_water_zs, true_water_zs)
     assert result == pytest.approx(1.0, abs=1e-6)
+
+
+def test_water_z_error_signed_vs_absolute_are_provably_different():
+    """The signed helper preserves sign; the absolute helper (pre-existing)
+    does not -- the two columns are provably different quantities (FIX-03,
+    23-03)."""
+    true_water_zs = {"cam0": 1.0, "cam1": 1.0, "cam2": 1.0}
+    estimated_water_zs = {"cam0": 1.003, "cam1": 0.997, "cam2": 1.0}
+    signed = m.compute_water_z_error_mm_signed(estimated_water_zs, true_water_zs)
+    assert signed == pytest.approx(0.0, abs=1e-9)
+
+    estimated_water_zs_all_negative = {"cam0": 0.997, "cam1": 1.0, "cam2": 1.0}
+    signed_negative = m.compute_water_z_error_mm_signed(
+        estimated_water_zs_all_negative, true_water_zs
+    )
+    absolute_negative = m.compute_water_z_error_mm_mean(
+        estimated_water_zs_all_negative, true_water_zs
+    )
+    assert signed_negative == pytest.approx(-1.0, abs=1e-9)
+    assert absolute_negative == pytest.approx(1.0, abs=1e-9)
+
+
+def test_compute_water_z_error_mm_signed_matches_committed_identity_shape():
+    """Mirrors the acceptance criterion's hand-built pair: signed and
+    absolute diverge for a single-camera discrepancy."""
+    estimated = {"c0": 1.0, "c1": 0.997}
+    true = {"c0": 1.0, "c1": 1.0}
+    assert m.compute_water_z_error_mm_signed(estimated, true) == pytest.approx(
+        -1.5, abs=1e-9
+    )
+    assert m.compute_water_z_error_mm_mean(estimated, true) == pytest.approx(
+        1.5, abs=1e-9
+    )
+
+
+def test_build_per_camera_rows_shape_and_identity(monkeypatch):
+    """One row per camera, exactly E6_PER_CAMERA_COLUMNS' keys,
+    is_reference_camera true for exactly one camera, and the
+    h_c_error_mm_signed identity holds for every row (FIX-03, 23-03)."""
+
+    class _StubScenario:
+        intrinsics = {"cam0": object(), "cam1": object(), "cam2": object()}
+        water_zs = {"cam0": 1.0, "cam1": 1.0, "cam2": 1.0}
+
+    class _StubCal:
+        def __init__(self, water_z):
+            self.water_z = water_z
+
+    class _StubResult:
+        cameras = {
+            "cam0": _StubCal(1.0005),
+            "cam1": _StubCal(0.999),
+            "cam2": _StubCal(1.002),
+        }
+
+    scenario = _StubScenario()
+    result = _StubResult()
+
+    def _fake_per_camera_errors(result, scenario, gauge_correct_z=False):
+        base = {
+            "cam0": {"z_position_error_mm": 0.0},
+            "cam1": {"z_position_error_mm": -1.2},
+            "cam2": {"z_position_error_mm": 2.4},
+        }
+        if gauge_correct_z:
+            return {
+                k: {"z_position_error_mm": v["z_position_error_mm"] + 0.1}
+                for k, v in base.items()
+            }
+        return base
+
+    monkeypatch.setattr(m, "compute_per_camera_errors", _fake_per_camera_errors)
+
+    config = {"axis": "layout", "axis_value": "line", "config_key": "layout_line"}
+    rows = m.build_per_camera_rows(config, seed=43, scenario=scenario, result=result)
+
+    assert len(rows) == 3
+    for row in rows:
+        assert set(row.keys()) == set(m.E6_PER_CAMERA_COLUMNS)
+
+    reference_rows = [r for r in rows if r["is_reference_camera"]]
+    assert len(reference_rows) == 1
+    assert reference_rows[0]["camera"] == "cam0"
+
+    for row in rows:
+        assert row["h_c_error_mm_signed"] == pytest.approx(
+            row["water_z_error_mm_signed"] - row["z_position_error_mm_raw"], abs=1e-9
+        )
 
 
 def test_tilt_configuration_matches_e4():
@@ -448,7 +538,11 @@ def test_compute_configuration_metrics_reads_diagnostics_optimality(monkeypatch)
         reconstruction = _StubReconstruction()
         num_frames = 5
 
-    monkeypatch.setattr(m, "compute_per_camera_errors", lambda result, scenario: {})
+    monkeypatch.setattr(
+        m,
+        "compute_per_camera_errors",
+        lambda result, scenario, gauge_correct_z=False: {},
+    )
 
     metrics = m.compute_configuration_metrics(
         _StubScenario(),
@@ -597,6 +691,75 @@ def test_force_true_still_reruns_and_overwrites(tmp_path, monkeypatch):
     assert "forced re-run reached the scenario builder" in outcome["status_reason"]
 
 
+def test_resume_restores_per_camera_rows_from_schema_v2_checkpoint(tmp_path):
+    """A schema_version: 2 checkpoint's per_camera_rows are restored into
+    per_camera_rows_out on resume (FIX-03, 23-03)."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    per_camera_rows = [
+        {
+            "axis": config["axis"],
+            "axis_value": config["axis_value"],
+            "config_key": config["config_key"],
+            "seed": 42,
+            "camera": "cam0",
+            "is_reference_camera": True,
+            "z_position_error_mm_raw": 0.0,
+            "z_position_error_mm_gauge_corrected": 0.1,
+            "water_z_error_mm_signed": -0.36,
+            "h_c_error_mm_signed": -0.36,
+        }
+    ]
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "schema_version": 2,
+        "per_camera_rows": per_camera_rows,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    sink: list[dict] = []
+    m.run_configuration(
+        config, seed=42, n_frames=100, out_dir=tmp_path, per_camera_rows_out=sink
+    )
+
+    assert sink == per_camera_rows
+
+
+def test_resume_from_schema_v1_checkpoint_warns_and_adds_no_rows(tmp_path, caplog):
+    """A schema_version: 1 checkpoint (predating FIX-03) resumes with no
+    per-camera rows, logs a warning naming the config key, and does not
+    raise (FIX-03, 23-03)."""
+    configs = m.build_axis_configurations()
+    config = configs[0]
+    configs_dir = tmp_path / "e6_configs"
+    configs_dir.mkdir()
+    checkpoint = {
+        "status": "ok",
+        "status_reason": "",
+        "metrics": _sample_metrics(),
+        "seed": 42,
+        "n_frames": 100,
+        "schema_version": 1,
+    }
+    (configs_dir / f"{config['config_key']}.json").write_text(json.dumps(checkpoint))
+
+    sink: list[dict] = []
+    with caplog.at_level("WARNING"):
+        outcome = m.run_configuration(
+            config, seed=42, n_frames=100, out_dir=tmp_path, per_camera_rows_out=sink
+        )
+
+    assert outcome["status"] == "ok"
+    assert sink == []
+    assert any(config["config_key"] in rec.message for rec in caplog.records)
+
+
 def test_false_resume_concession_removed():
     """The docstring no longer claims a resumed CSV requires --force to fill
     every metric column -- that sentence described the CR-02 defect as an
@@ -740,12 +903,19 @@ def test_run_sweep_captures_environment_once(tmp_path, monkeypatch):
 
 
 def test_e6_columns_count():
-    """generalization_sweep.csv's header carries 31 columns: the original 28
-    (unchanged by the provenance work, plan 19.2-23) plus the two optimality
-    columns Task 1 of plan 19.2-27 adds (WR-02), plus the
-    degenerate_observations_at_solution column plan 19.3-07 appends last."""
-    assert len(m.E6_COLUMNS) == 31
-    assert m.E6_COLUMNS[-1] == "degenerate_observations_at_solution"
+    """generalization_sweep.csv's header carries 33 columns: the original 31
+    (28 base + two optimality columns, WR-02, plus
+    degenerate_observations_at_solution) plus the two FIX-03 (23-03) columns
+    -- water_z_error_mm_signed_mean and
+    z_position_error_mm_gauge_corrected_mean -- appended at the end.
+    degenerate_observations_at_solution stays PRESENT but is no longer last;
+    its invariant moved to test_degenerate_column_appended_last, which now
+    checks its fixed index rather than "is the final column"."""
+    assert len(m.E6_COLUMNS) == 33
+    assert "degenerate_observations_at_solution" in m.E6_COLUMNS
+    assert "water_z_error_mm_signed_mean" in m.E6_COLUMNS
+    assert "z_position_error_mm_gauge_corrected_mean" in m.E6_COLUMNS
+    assert m.E6_COLUMNS[-1] == "z_position_error_mm_gauge_corrected_mean"
 
 
 # ---------------------------------------------------------------------------
@@ -1119,9 +1289,242 @@ def test_degenerate_gate_source_is_a_smoke_condition_not_a_threshold():
 
 
 def test_degenerate_column_appended_last():
-    """The new column is appended at the very end of E6_COLUMNS, verified by
-    index -- every pre-existing column keeps its position."""
+    """`degenerate_observations_at_solution` was appended at the very end of
+    E6_COLUMNS by plan 19.3-07; FIX-03 (23-03) appended TWO MORE columns
+    after it, so the invariant this test checks moved: it is no longer the
+    final column, but its own index (fixed once the two optimality columns
+    and the base 28 landed) has not moved -- every pre-existing column,
+    including this one, kept its position when the new pair was appended."""
     assert (
         m.E6_COLUMNS.index("degenerate_observations_at_solution")
-        == len(m.E6_COLUMNS) - 1
+        == len(m.E6_COLUMNS) - 3
     )
+
+
+def test_degenerate_gate_predicate_is_still_count_greater_than_zero(
+    tmp_path, monkeypatch
+):
+    """D-05: E6's gate is exactly `count > 0 -> degenerate`, exercised
+    BEHAVIOURALLY at the boundary rather than read off source text.
+
+    A softening into a threshold ("real rigs tolerate a few") would keep the
+    existing count-3 assertions passing while silently letting count 1 through,
+    so the smallest nonzero count is the case that pins it. Phase 25's D-04
+    settled the gate-scope question by removing real-rig runs from the gate's
+    reach, NOT by loosening this predicate.
+    """
+    configs = m.build_axis_configurations()
+    config = configs[0]
+
+    # Each invocation gets its own out_dir: run_configuration caches an outcome
+    # per config_key under out_dir/e6_configs/, so reusing one directory would
+    # replay the first call's checkpoint instead of re-exercising the gate.
+
+    # Exactly one degenerate observation -- the smallest nonzero count.
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=1)
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=10, out_dir=tmp_path / "count_1"
+    )
+    assert outcome["status"] == "degenerate"
+    assert outcome["status_reason"] != ""
+    assert outcome["degenerate_observations_at_solution"] == 1
+
+    # Zero -- ok, with the column present and zero.
+    _patch_run_configuration_internals(monkeypatch, degenerate_count=0)
+    outcome = m.run_configuration(
+        config, seed=42, n_frames=10, out_dir=tmp_path / "count_0"
+    )
+    assert outcome["status"] == "ok"
+    assert outcome["status_reason"] == ""
+    assert outcome["degenerate_observations_at_solution"] == 0
+
+    # The smoke carve-out holds at that same boundary count, and above it.
+    for count in (1, 7):
+        _patch_run_configuration_internals(monkeypatch, degenerate_count=count)
+        outcome = m.run_configuration(
+            config,
+            seed=42,
+            n_frames=10,
+            out_dir=tmp_path / f"smoke_{count}",
+            is_smoke=True,
+        )
+        assert outcome["status"] == "ok"
+        assert outcome["degenerate_observations_at_solution"] == count
+
+
+# ---------------------------------------------------------------------------
+# D-40 (plan 26-05): the --axes selector. `scale` is 3 of the band's 17
+# configurations (18 of 102 cells) and appears in zero rows of the
+# manuscript's numbers-ledger.tsv, so the frozen re-run drops it. The
+# selector is opt-in: every existing invocation must be unchanged.
+# ---------------------------------------------------------------------------
+
+_TODAYS_DEFAULT_CONFIG_KEYS = [
+    "baseline",
+    "index_1.36",
+    "index_1.39",
+    "index_1.42",
+    "index_1.45",
+    "index_1.48",
+    "index_1.51",
+    "index_1.55",
+    "baseline",
+    "layout_ring",
+    "layout_line",
+    "scale_half_scale",
+    "baseline",
+    "scale_double_scale",
+]
+
+
+def test_all_axes_constant_names_the_four_axes_in_emission_order():
+    assert m.ALL_AXES == ("index", "layout", "scale", "cameras")
+
+
+def test_axes_default_none_is_todays_behaviour_exactly():
+    """A bare call is unchanged: same length, same order, same keys. A silent
+    default change would invalidate every committed E6 artifact."""
+    configs = m.build_axis_configurations()
+    assert [c["config_key"] for c in configs] == _TODAYS_DEFAULT_CONFIG_KEYS
+    assert configs == m.build_axis_configurations(axes=None)
+
+
+def test_axes_full_set_is_identical_to_axes_none():
+    """Passing the full set is no restriction at all -- identical to None
+    under both include_cameras_axis values (this is what the --axes default
+    string does, so the CLI default cannot change any existing run)."""
+    for include in (False, True):
+        assert m.build_axis_configurations(
+            axes=m.ALL_AXES, include_cameras_axis=include
+        ) == m.build_axis_configurations(include_cameras_axis=include)
+
+
+def test_axes_dropping_scale_gives_14_band_configurations():
+    """D-40's frozen-run selection: 14 configurations x 6 seeds = 84 rows."""
+    configs = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    assert len(configs) == 14
+    assert not any(c["axis"] == "scale" for c in configs)
+    assert {c["axis"] for c in configs} == {"index", "layout", "cameras"}
+
+
+def test_include_cameras_axis_wins_when_axes_omits_cameras():
+    """Composition rule: the two flags UNION rather than fight -- neither can
+    veto the other's request, so an axes list that omits `cameras` while
+    include_cameras_axis=True still emits it (17, not 14)."""
+    configs = m.build_axis_configurations(
+        axes=("index", "layout", "scale"), include_cameras_axis=True
+    )
+    assert len(configs) == 17
+    assert sum(1 for c in configs if c["axis"] == "cameras") == 3
+
+
+def test_axes_can_request_cameras_without_the_include_flag():
+    """The union runs the other way too: an explicit restricted selection
+    naming `cameras` emits it even at include_cameras_axis=False."""
+    configs = m.build_axis_configurations(axes=("index", "cameras"))
+    assert {c["axis"] for c in configs} == {"index", "cameras"}
+    assert len(configs) == len(m.INDEX_AXIS_VALUES) + len(m.CAMERAS_AXIS_VALUES)
+
+
+def test_axes_selection_preserves_order_and_the_ten_keys():
+    """Selection filters, it never reorders or reshapes: each selected axis's
+    block is element-for-element the default call's own block."""
+    default_configs = m.build_axis_configurations(include_cameras_axis=True)
+    expected_keys = set(default_configs[0].keys())
+    assert len(expected_keys) == 10
+    selected = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    assert selected == [c for c in default_configs if c["axis"] != "scale"]
+    for c in selected:
+        assert set(c.keys()) == expected_keys
+
+
+def test_axes_selection_keeps_a_baseline_in_every_selected_axis():
+    selected = m.build_axis_configurations(
+        axes=("index", "layout", "cameras"), include_cameras_axis=True
+    )
+    baseline_axes = {c["axis"] for c in selected if c["is_baseline"]}
+    assert baseline_axes == {"index", "layout", "cameras"}
+    assert {c["config_key"] for c in selected if c["is_baseline"]} == {"baseline"}
+
+
+def test_unknown_axis_raises_valueerror_naming_it_and_the_valid_set():
+    """A silently-ignored typo would produce a band of the wrong shape that
+    still exits 0 (T-26-16)."""
+    with pytest.raises(ValueError) as excinfo:
+        m.build_axis_configurations(axes=("bogus",))
+    message = str(excinfo.value)
+    assert "bogus" in message
+    for axis in m.ALL_AXES:
+        assert axis in message
+
+
+def test_empty_axis_selection_raises_valueerror():
+    with pytest.raises(ValueError) as excinfo:
+        m.build_axis_configurations(axes=())
+    assert "axes" in str(excinfo.value)
+
+
+def test_index_axis_is_still_eight_values():
+    """D-40 explicitly offered and did NOT take the index 8->5 cut."""
+    assert len(m.INDEX_AXIS_VALUES) == 8
+
+
+def test_scale_axis_values_still_defined():
+    """The axis is deselectable, not deleted."""
+    assert len(m.SCALE_AXIS_VALUES) == 3
+
+
+def test_arg_parser_axes_flag_parses_to_a_tuple():
+    parser = m.build_arg_parser()
+    args = parser.parse_args(["--axes", "index,layout,cameras"])
+    assert args.axes == ("index", "layout", "cameras")
+
+
+def test_arg_parser_axes_default_preserves_the_full_set():
+    parser = m.build_arg_parser()
+    args = parser.parse_args([])
+    assert args.axes == m.ALL_AXES
+    assert m.build_axis_configurations(axes=args.axes) == (
+        m.build_axis_configurations()
+    )
+
+
+def test_arg_parser_still_carries_the_other_e6_flags():
+    parser = m.build_arg_parser()
+    options = {a.option_strings[0] for a in parser._actions if a.option_strings}
+    assert {"--axes", "--seeds", "--no-fail-fast"} <= options
+
+
+def test_arg_parser_axes_help_documents_the_frozen_invocation():
+    parser = m.build_arg_parser()
+    help_text = parser.format_help()
+    assert "--axes" in help_text
+    assert "numbers-ledger" in help_text
+
+
+def test_resolve_axes_reports_what_will_actually_be_emitted():
+    assert m.resolve_axes() == ("index", "layout", "scale")
+    assert m.resolve_axes(include_cameras_axis=True) == (
+        "index",
+        "layout",
+        "scale",
+        "cameras",
+    )
+    assert m.resolve_axes(
+        axes=("layout", "index", "cameras"), include_cameras_axis=True
+    ) == ("index", "layout", "cameras")
+
+
+def test_band_scope_string_names_only_the_axes_actually_run():
+    """T-26-15: a scope string claiming coverage the run did not have is
+    precisely the class of defect FIX-06 cleaned up."""
+    scope = m._band_scope_string(("index", "layout", "cameras"))
+    assert "index/layout/cameras" in scope
+    assert "scale" not in scope
+    assert "seed" in scope
+    full_scope = m._band_scope_string(("index", "layout", "scale", "cameras"))
+    assert "index/layout/scale/cameras" in full_scope

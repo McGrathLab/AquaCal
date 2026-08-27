@@ -37,7 +37,20 @@ Invoked as `python -m experiments.e5_index_sensitivity`. Inherits the shared
 five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`, `--check`)
 from `experiments._io.build_experiment_arg_parser` (D-21).
 
-Emits into `--out`: `index_sensitivity.csv`.
+Emits into `--out`: `index_sensitivity.csv`, `e5_provenance.json`, and
+`e5_degeneracy_breakdown.json`.
+
+**The six degeneracy columns (DEGEN-01/DEGEN-02 via plan 24-02).**
+`index_sensitivity.csv` carries `degenerate_observations_at_solution` plus
+three `degenerate_observations_cause_*` and two
+`degenerate_observations_fate_*` columns. Cause (`above_interface`,
+`behind_camera`, `interface_below_camera`) and fate (`extended`, `penalized`)
+are two INDEPENDENT AXES over the same set of invalid observations, not
+disjoint buckets -- **never add a cause column to a fate column.** Each axis
+sums independently and exactly to `degenerate_observations_at_solution`, so a
+row where the two axes disagree is a bookkeeping bug, visible by eye. The full
+per-stage breakdown and the per-stage `observations_evaluated__*` denominators
+are not in the CSV; they live in the `e5_degeneracy_breakdown.json` sidecar.
 
 **Scope note:** this module only defines the sweep machinery and is
 unit-tested here. The production band is run by plan 19.2-13, in a later
@@ -67,6 +80,11 @@ from aquacal.datasets.synthetic import (
 )
 from aquacal.io import capture_environment
 from aquacal.validation.evaluation import evaluate_calibration
+from experiments._degeneracy import (
+    DEGENERACY_COLUMNS,
+    summarize_degeneracy_columns,
+    write_degeneracy_breakdown,
+)
 from experiments._io import (
     build_experiment_arg_parser,
     compare_experiment_csv,
@@ -137,7 +155,34 @@ E5_COLUMNS: list[str] = [
     "scale_bias_over_floor",
     "num_comparisons",
     "num_frames",
+    # DEGEN-01/DEGEN-02 via plan 24-02, D-09 as revised 2026-08-17. APPENDED,
+    # never inserted, so every pre-existing column keeps its index and an
+    # already-committed CSV stays readable against a new reader.
+    #
+    # `cause` and `fate` are two INDEPENDENT AXES over the same set of
+    # degenerate observations, not disjoint buckets: cause answers "what do I
+    # fix?", fate answers "can I trust this row's optimality?". NEVER add a
+    # cause column to a fate column -- that double-counts. Instead, EACH AXIS
+    # SUMS INDEPENDENTLY TO `degenerate_observations_at_solution`, so a row
+    # where the two axes disagree is a bookkeeping bug, visible by eye. That
+    # self-validating property is the reason both axes are published rather
+    # than one.
+    #
+    # The per-stage breakdown and the per-stage `observations_evaluated__*`
+    # denominators are deliberately NOT here -- they live in the
+    # `e5_degeneracy_breakdown.json` sidecar.
+    "degenerate_observations_at_solution",
+    "degenerate_observations_cause_above_interface",
+    "degenerate_observations_cause_behind_camera",
+    "degenerate_observations_cause_interface_below_camera",
+    "degenerate_observations_fate_extended",
+    "degenerate_observations_fate_penalized",
 ]
+assert len(E5_COLUMNS) == 23 and len(set(E5_COLUMNS)) == 23
+# The appended six are exactly the shared list, in the shared order -- spelled
+# out above so a reader of this file sees the column names without chasing an
+# import, asserted here so the two can never drift apart.
+assert tuple(E5_COLUMNS[-6:]) == DEGENERACY_COLUMNS
 E5_KEY_COLUMNS = ["n_assumed"]
 
 # Distinct from E5_KEY_COLUMNS (D-19.5-05, the naming_hazard): this band
@@ -335,6 +380,7 @@ def build_row(
     n_true: float,
     seed: int,
     square_size_m: float,
+    discard_stats: dict[str, int] | None = None,
 ) -> dict:
     """Build one E5 row from a held-out evaluation.
 
@@ -355,6 +401,13 @@ def build_row(
         seed: The seed this point ran at (review H5 -- every row carries its
             own seed).
         square_size_m: The ChArUco board's square size, in metres.
+        discard_stats: This point's raw `discard_stats` dict, from which the
+            six appended degeneracy columns are derived (the merged total, the
+            three cross-stage per-CAUSE sums and the two cross-stage per-FATE
+            sums). `None` (the default) -- the case where the counts were
+            never computed for this row -- writes `None` in all six, never
+            `0`: E6's `_build_row` convention, where `0` means "measured and
+            found clean" and `None` means "never measured".
 
     Returns:
         A dict with exactly `E5_COLUMNS` as keys, in `E5_COLUMNS` order.
@@ -382,6 +435,7 @@ def build_row(
         "scale_bias_over_floor": None,
         "num_comparisons": evaluation.reconstruction.num_comparisons,
         "num_frames": evaluation.num_frames,
+        **summarize_degeneracy_columns(discard_stats),
     }
     return {col: row[col] for col in E5_COLUMNS}
 
@@ -527,6 +581,10 @@ def run_index_point(
         n_true=n_true,
         seed=seed,
         square_size_m=scenario.board_config.square_size,
+        # This point's own counts, so each row's six degeneracy columns
+        # describe the row's own solve rather than the band aggregate. The
+        # band-level sum still accumulates in the caller's `discard_stats_out`.
+        discard_stats=discard_stats_out,
     )
 
 
@@ -654,6 +712,16 @@ def _run_full(args: argparse.Namespace) -> int:
         force=args.force,
     )
 
+    # D-09's sidecar half: the cause x stage and fate x stage breakdown plus
+    # the per-stage `observations_evaluated__*` denominators, none of which
+    # belong in a CSV. The RAW dict is written, unaggregated -- a counter added
+    # to the library later arrives here without this script naming it.
+    write_degeneracy_breakdown(
+        out_dir / "e5_degeneracy_breakdown.json",
+        {"band": dict(discard_stats)},
+        force=args.force,
+    )
+
     sidecar_path = out_dir / "e5_provenance.json"
     if args.force or not sidecar_path.exists():
         sidecar = build_provenance_sidecar(args.seed, discard_stats=discard_stats)
@@ -706,6 +774,7 @@ def _run_seed_band(
     n_frames = 4 if smoke else E5_N_FRAMES
 
     discard_stats: dict[str, int] = {}
+    breakdown_by_seed: dict[str, dict] = {}
 
     def _runner(seed: int) -> pd.DataFrame:
         point_stats: dict[str, int] = {}
@@ -720,6 +789,7 @@ def _run_seed_band(
         )
         for key, value in point_stats.items():
             discard_stats[key] = discard_stats.get(key, 0) + value
+        breakdown_by_seed[str(seed)] = dict(point_stats)
         return df
 
     band_df = run_seed_band(_runner, seeds)
@@ -748,6 +818,18 @@ def _run_seed_band(
     sidecar_path.parent.mkdir(parents=True, exist_ok=True)
     with open(sidecar_path, "w") as f:
         json.dump(sidecar, f, indent=2, sort_keys=True)
+
+    # Band-OWNED breakdown filename, keyed by seed. Deliberately not
+    # `e5_degeneracy_breakdown.json`: that one belongs to the single-seed run,
+    # and a `--seeds` run must never overwrite a single-seed artifact
+    # (T-19.5-05-01), exactly as the two provenance sidecars are kept apart.
+    write_degeneracy_breakdown(
+        out_dir / "e5_seed_band_degeneracy_breakdown.json",
+        breakdown_by_seed,
+        # Matches the band CSV writer above: for a band run, regenerating IS
+        # the point, so the sidecar follows its artifact.
+        force=True,
+    )
 
     print(f"Wrote {band_path} and {sidecar_path}")
 

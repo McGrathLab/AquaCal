@@ -24,7 +24,10 @@ Emits, into `--out` (default `experiments/results/`):
     - `reconstruction_bootstrap.json` -- point estimates, 95% percentile CIs,
       n_frames/n_rows/n_resamples/seed, the scope statement, and a
       `point_estimate_matches_real_rig_metrics` cross-check against the
-      published `real_rig_metrics.json` values.
+      `real_rig_metrics.json` sitting alongside it in `--out` (D-23). When no
+      such companion exists -- the ordinary case under `--smoke` -- that field
+      is `null`, never `false`, and `real_rig_metrics_resolution` records
+      where resolution looked.
 """
 
 from __future__ import annotations
@@ -53,7 +56,19 @@ LOCAL_RECONSTRUCTION_ERRORS_PATH = Path("experiments/results/reconstruction_erro
 ARCHIVE_RECONSTRUCTION_ERRORS_RELPATH = Path(
     "reference_outputs/reconstruction_errors.csv"
 )
-REAL_RIG_METRICS_PATH = Path("experiments/results/real_rig_metrics.json")
+# D-23: anchored to `__file__`, never the process cwd. This constant names the
+# DEFAULT tree's copy only; it is consulted as a fallback exclusively when
+# `--out` IS that default tree (see `resolve_real_rig_metrics_path`). Anchoring
+# to `__file__` follows `e5_index_sensitivity.py:_default_metrics_path` and
+# `e4_benchmark_grid.py:E2_BENCHMARK_PATH`: a cwd-relative miss degrades a
+# cross-check to null with only a WARNING, which is the silently-degraded
+# artifact this phase exists to eliminate.
+REAL_RIG_METRICS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "experiments"
+    / "results"
+    / "real_rig_metrics.json"
+)
 CLUSTER_COLUMN = "frame_idx"
 FULL_N_RESAMPLES = 10_000
 SMOKE_N_RESAMPLES = 200
@@ -218,12 +233,59 @@ def _load_reconstruction_errors(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def _load_real_rig_metrics() -> dict:
-    with open(REAL_RIG_METRICS_PATH) as f:
+def resolve_real_rig_metrics_path(out_dir: Path) -> tuple[Path | None, str]:
+    """Locate the `real_rig_metrics.json` companion for this run's `--out` (D-23).
+
+    Three branches, mirroring `e4_benchmark_grid.py:296-309`:
+
+    1. ``out_dir / "real_rig_metrics.json"`` -- the native case: the companion
+       artifact this same run's tree produced.
+    2. The `__file__`-anchored `REAL_RIG_METRICS_PATH`, but ONLY when `out_dir`
+       resolves to that constant's own parent (i.e. `--out` IS the default
+       tree). **Never fall back across trees:** importing the default tree's
+       file into a `--smoke` or scratch run would splice in numbers describing
+       a different run, possibly on a different machine.
+    3. Otherwise `None`, plus a reason naming both places it looked.
+
+    Args:
+        out_dir: The active `--out` directory (already resolved by
+            `resolve_out_dir`).
+
+    Returns:
+        A `(path_or_None, resolution_note)` tuple. `path_or_None` is `None`
+        exactly when branch 3 applies; `resolution_note` is a human-readable
+        string, recorded in the emitted artifact, naming which branch was
+        taken.
+    """
+    out_dir = Path(out_dir)
+    candidate = out_dir / "real_rig_metrics.json"
+    if candidate.exists():
+        return candidate, f"native: resolved relative to --out ({candidate})"
+    if out_dir.resolve() == REAL_RIG_METRICS_PATH.parent.resolve():
+        return (
+            REAL_RIG_METRICS_PATH,
+            f"default tree: __file__-anchored REAL_RIG_METRICS_PATH "
+            f"({REAL_RIG_METRICS_PATH})",
+        )
+    return (
+        None,
+        f"absent: no real_rig_metrics.json under {out_dir} and --out is not "
+        f"the default tree; refusing to import {REAL_RIG_METRICS_PATH}, which "
+        "describes a different run",
+    )
+
+
+def _load_real_rig_metrics(path: Path) -> dict:
+    with open(path) as f:
         return json.load(f)
 
 
-def _run(seed: int, n_resamples: int, errors_path: Path | None = None) -> dict:
+def _run(
+    seed: int,
+    n_resamples: int,
+    errors_path: Path | None = None,
+    out_dir: Path | None = None,
+) -> dict:
     """Load the comparisons, bootstrap, and assemble the artifact dict."""
     resolved = resolve_reconstruction_errors_path(errors_path)
     logger.info("Reading inter-corner comparisons from %s", resolved)
@@ -248,12 +310,24 @@ def _run(seed: int, n_resamples: int, errors_path: Path | None = None) -> dict:
         ci_95[stat_name] = [low, high]
     seconds = time.monotonic() - start
 
-    real_rig_metrics = _load_real_rig_metrics()
-    point_estimate_matches_real_rig_metrics = all(
-        abs(point_estimates[local_key] - real_rig_metrics[remote_key])
-        <= POINT_ESTIMATE_RTOL * abs(real_rig_metrics[remote_key])
-        for local_key, remote_key in _REAL_RIG_METRICS_MAP.items()
+    metrics_path, metrics_resolution = resolve_real_rig_metrics_path(
+        REAL_RIG_METRICS_PATH.parent if out_dir is None else out_dir
     )
+    point_estimate_matches_real_rig_metrics: bool | None
+    if metrics_path is None:
+        # Honest degradation: "not comparable" must never be encoded as
+        # `False`, which the --check path would report as a mismatch.
+        logger.warning(
+            "Skipping the real_rig_metrics cross-check -- %s", metrics_resolution
+        )
+        point_estimate_matches_real_rig_metrics = None
+    else:
+        real_rig_metrics = _load_real_rig_metrics(metrics_path)
+        point_estimate_matches_real_rig_metrics = all(
+            abs(point_estimates[local_key] - real_rig_metrics[remote_key])
+            <= POINT_ESTIMATE_RTOL * abs(real_rig_metrics[remote_key])
+            for local_key, remote_key in _REAL_RIG_METRICS_MAP.items()
+        )
 
     environment = capture_environment()
     return {
@@ -270,6 +344,7 @@ def _run(seed: int, n_resamples: int, errors_path: Path | None = None) -> dict:
         "point_estimates": point_estimates,
         "ci_95": ci_95,
         "point_estimate_matches_real_rig_metrics": point_estimate_matches_real_rig_metrics,
+        "real_rig_metrics_resolution": metrics_resolution,
         "scope": SCOPE_STATEMENT,
         "environment": environment,
     }
@@ -316,6 +391,7 @@ def main(argv: list[str] | None = None) -> int:
         seed=args.seed,
         n_resamples=n_resamples,
         errors_path=args.reconstruction_errors,
+        out_dir=out_dir,
     )
 
     if args.check:
@@ -329,7 +405,16 @@ def main(argv: list[str] | None = None) -> int:
             mismatches.append("n_rows")
         if committed.get("n_frames") != record["n_frames"]:
             mismatches.append("n_frames")
-        if not record["point_estimate_matches_real_rig_metrics"]:
+        matches = record["point_estimate_matches_real_rig_metrics"]
+        if matches is None:
+            # D-23: absence is "not comparable", not a mismatch. Conflating
+            # them turned a missing companion under --smoke into a false
+            # negative and exit 1.
+            print(
+                "point_estimate_matches_real_rig_metrics: not comparable -- "
+                f"{record['real_rig_metrics_resolution']}"
+            )
+        elif not matches:
             mismatches.append("point_estimate_matches_real_rig_metrics")
         if mismatches:
             print(f"reconstruction_bootstrap.json: mismatched fields {mismatches}")

@@ -18,6 +18,7 @@ where they sit (`SEEDLESS_LEGACY_RECORDS`), not regenerated.
 
 from __future__ import annotations
 
+import ast
 import json
 import pathlib
 import subprocess
@@ -25,12 +26,30 @@ import subprocess
 import pandas as pd
 import pytest
 
+from tests.unit._baseline_paths import archive_results_dir, resolve_results_dir
+
 # Anchored to the repository root via this file's own location, not the
 # process working directory -- a gate that resolves relative to cwd can
 # vanish from a run silently just because pytest was invoked from elsewhere
 # (WR-06). tests/unit/test_experiments_provenance.py -> parents[2] == repo root.
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-RESULTS_DIR = REPO_ROOT / "experiments" / "results"
+
+# Phase 26 / DRIVER-04 (D-28): the committed baselines this whole module asserts
+# about MOVED to experiments/pre_rerun_baseline/ so the frozen sha ships with an
+# empty experiments/results/ for the v2.1 re-run to write into. This module's
+# subject is the COMMITTED BASELINE SET, not whatever a fresh run happens to
+# have produced, so the archive is its correct target -- pointing it at the
+# now-empty experiments/results/ would make every assertion here vacuous.
+#
+# ⚠ Phase 30 / POST-03 PURGES the archive. At that point this constant needs a
+# DELIBERATE decision -- repoint at the re-baselined experiments/results/, or
+# retire the module's exhaustiveness gates with it -- not a silent edit.
+# Plan 26-14: resolved, not hardcoded. While `experiments/results/` is empty this IS the
+# archive, so today's subject is unchanged; the moment Phase 28 repopulates the live tree,
+# every rail below re-aims at the frozen run's own output instead of passing green against
+# history. `RESULTS_TREE` is "archive" or "live" and appears in skip reasons so a skip can
+# never be ambiguous about what it was checking.
+RESULTS_DIR, RESULTS_TREE = resolve_results_dir()
 
 # The subset of capture_environment()'s live key names (src/aquacal/io/
 # benchmark.py) covering library version, git SHA, and the Python/NumPy/SciPy
@@ -67,6 +86,46 @@ SELF_DESCRIBING_JSON = frozenset(
         # (`per_arm` singular-value/correlation data), covered by the four
         # e7_benchmark_*.json records produced by the same E7 run.
         "interface_ablation_conditioning.json",
+        # ADDED 2026-08-26 (plan 29-06). The five e{N}_degeneracy_breakdown
+        # sidecars below are DEGEN-01/DEGEN-02 artifacts (Phase 24), all
+        # written by experiments/_degeneracy.py::write_degeneracy_breakdown.
+        # Each carries the raw cause x stage / fate x stage counts and the
+        # per-stage `observations_evaluated__*` denominators that D-09
+        # deliberately keeps OUT of the CSVs. None is an
+        # assemble_benchmark_record and none publishes a schema_version, which
+        # is exactly why they belong here. They were absent from this set only
+        # because they postdate its last review and `experiments/results/` was
+        # empty from DRIVER-04 until the v2.1 re-run was committed, so the
+        # exactness rail below had nothing to discover them in.
+        #
+        # e1_degeneracy_breakdown.json: E1's breakdown, keyed by model label,
+        # written by experiments/e1_refractive_comparison.py:908 in the same
+        # run that wrote e1_benchmark_refractive.json and
+        # e1_benchmark_nonrefractive.json -- those two records cover it.
+        "e1_degeneracy_breakdown.json",
+        # e5_degeneracy_breakdown.json: E5's single-seed breakdown
+        # (e5_index_sensitivity.py:719, keyed "band" after the n_assumed sweep
+        # it aggregates), covered by experiments/results/e5_provenance.json,
+        # written by the same run a few lines later.
+        "e5_degeneracy_breakdown.json",
+        # e5_seed_band_degeneracy_breakdown.json: E5's BAND-owned breakdown,
+        # keyed by seed (e5_index_sensitivity.py:826), covered by
+        # experiments/results/e5_seed_band_provenance.json. A separate filename
+        # from the single-seed one above by design, so a `--seeds` run never
+        # overwrites a single-seed artifact (T-19.5-05-01) -- the same
+        # separation the two provenance sidecars already keep.
+        "e5_seed_band_degeneracy_breakdown.json",
+        # e7_degeneracy_breakdown.json: E7's breakdown keyed by arm
+        # (experiments/e7_interface_ablation.py:656), covered by the four
+        # e7_benchmark_{shared,percamera}_{fixed,refined}.json records written
+        # by the same single-seed E7 run.
+        "e7_degeneracy_breakdown.json",
+        # e7_seed_band_degeneracy_breakdown.json: E7's band-owned breakdown,
+        # keyed by seed then arm, covered by
+        # experiments/results/e7_seed_band_provenance.json -- the band's own
+        # sidecar, which exists precisely because those four arm records are
+        # SEEDLESS_LEGACY_RECORDS that band mode must never overwrite.
+        "e7_seed_band_degeneracy_breakdown.json",
         # NOTE: calibration.json was removed from this set by DATA-01b (plan
         # 21-11). E2's raw calibration artifact left the repository once the
         # Zenodo real-rig archive was published and now ships there under
@@ -74,19 +133,79 @@ SELF_DESCRIBING_JSON = frozenset(
         # image-source run, not the byte-identical 2026-07-31 video-source
         # file removed here -- same library, agreeing to ~1.5e-8 on water_z.
         # The exact bytes remain in git history at 25655f7.
+        #
+        # NOTE 2026-08-26 (plan 29-06): calibration.json is written by E2 on
+        # every run and is gitignored (.gitignore), so it sits in the working
+        # tree at 2.1 MB without ever being committed. It reappeared in this
+        # rail's discovered set the moment the live tree was repopulated --
+        # not because the DATA-01b decision changed, but because
+        # `_discover_json_files()` globbed the working tree with no
+        # tracked-file filter while its CSV sibling had one. That asymmetry was
+        # fixed at the helper (see `_discover_json_files` below); re-admitting
+        # the file here would have papered over it, since an uncommitted file
+        # has no business in a carve-out whose stated scope is committed
+        # artifacts.
+    }
+)
+
+# Committed JSON that DOES carry a `schema_version` but is not an
+# assemble_benchmark_record, so the record-shaped rails below (an
+# `environment` block, a `solver_config` seed) do not apply to it and must not
+# sweep it in. Kept as a named, per-member-commented set rather than an
+# inline `!=` in the discovery helper so the full set of exclusions stays
+# readable in one place, exactly as SELF_DESCRIBING_JSON above.
+#
+# Verified not to be a hiding place by
+# TestSuiteLevelManifestCarveOut.test_carve_out_members_are_flat_manifests:
+# a member that grows an `environment` block or a `solver_config` fails there
+# and has to be moved back into the general checks deliberately.
+SUITE_LEVEL_MANIFEST_JSON = frozenset(
+    {
+        # run_manifest.json: DRIVER-02's SUITE-level manifest. Its schema owner
+        # is experiments/_run_manifest.py:82 (REQUIRED_MANIFEST_FIELDS, with
+        # MANIFEST_SCHEMA_VERSION at :71), NOT
+        # aquacal.io.assemble_benchmark_record. The file is FLAT: git_sha,
+        # git_describe, git_dirty, os, kernel, machine, python_version,
+        # numpy_version, scipy_version, opencv_version, cpu_model,
+        # ram_total_bytes, utc_start and the rest sit at the top level, so it
+        # publishes the same environment provenance the rails ask for -- just
+        # not nested under an `environment` key. It also carries no
+        # `solver_config`, and correctly so: a suite-level manifest describes a
+        # RUN, not a solve, and REQUIRED_MANIFEST_FIELDS deliberately names no
+        # seed. `check_rerun_gates.py` imports REQUIRED_MANIFEST_FIELDS rather
+        # than keeping a second copy, so this file's own gate is gate 3's
+        # manifest check, not the two rails below.
+        #
+        # It became visible to those rails only in Phase 29: the driver writes
+        # this manifest, and experiments/pre_rerun_baseline/results/ has none,
+        # so while the rails were aimed at the archive there was nothing to
+        # sweep in.
+        "run_manifest.json",
     }
 )
 
 # The six benchmark records written in Phase 19.1, before solver_config["seed"]
-# existed: E1's two and E7's four. Plan 19.2-02 added seed= to the direct-call
-# path (write_direct_call_benchmark) and plan 19.2-14 added it to the pipeline
-# entry point's solver_config -- both are additive,
-# landing AFTER these six records were written. Re-running them costs roughly
-# 90 minutes for records the manuscript already cites and produces no new
-# information (19.2-CONTEXT.md Claude's Discretion item 1). This exemption is
-# removed the moment any of these six is regenerated -- test_seedless_carve_
-# out_is_exact fails the instant a member stops lacking a seed, so the set
-# cannot silently become a blanket exemption.
+# existed: E1's two and E7's four. Plan 19.2-02 added the seed PARAMETER to the
+# direct-call writer (write_direct_call_benchmark) and plan 19.2-14 added it to
+# the pipeline entry point's solver_config -- both additive, landing AFTER these
+# six records were written.
+#
+# CORRECTED 2026-08-18 (plan 26-13). This comment used to say the exemption was
+# "removed the moment any of these six is regenerated". That was false: 19.2-02
+# added the writer's parameter but NOT E1's or E7's call sites, so regenerating
+# these six never stamped a seed -- the 26-10 smoke pass wrote all six fresh,
+# with current code, and check_rerun_gates reported six gate3_provenance FAILs
+# on them. Plan 26-13 fixed the five call sites. The six files NAMED here are
+# the archived Phase-19.1 artifacts under experiments/pre_rerun_baseline/results/
+# (see RESULTS_DIR above); they are exempt because they will never be rewritten,
+# not because a rewrite would fix them. Records written by today's code carry a
+# seed and are covered by TestE1AndE7BenchmarkRecordsCarryASeed.
+#
+# Re-running the originals would cost roughly 90 minutes for records the
+# manuscript already cites and produce no new information (19.2-CONTEXT.md
+# Claude's Discretion item 1). test_seedless_carve_out_is_exact still fails the
+# instant a member stops lacking a seed, so the set cannot silently become a
+# blanket exemption.
 SEEDLESS_LEGACY_RECORDS = frozenset(
     {
         "e1_benchmark_refractive.json",
@@ -133,10 +252,29 @@ CSV_TO_RECORD: dict[str, str] = {
     "e7_trace_shared_refined.csv": (
         "experiments/results/e7_benchmark_shared_refined.json"
     ),
+    # CORRECTED 2026-08-26 (plan 29-06). Both E1 band entries below used to
+    # declare their span as `seeds 42-51`, and that claim is preserved here
+    # rather than deleted because it was true of the artifacts it was written
+    # against: E1's band ran ten seeds when quick task 260813-clj registered
+    # these CSVs. Ruling A1 of 2026-08-15 (run_experiment_suite.sh:1452) then
+    # cut E1's band from ten seeds to FOUR, and the v2.1 re-run's artifacts
+    # carry four -- exp1_band.csv has 256 rows over seeds [42, 43, 44, 45] and
+    # exp1_parameter_band.csv 384 rows over the same four, with
+    # experiments/results/e1_seed_band_provenance.json recording
+    # solver_config['seeds'] == [42, 43, 44, 45] in agreement. So the span text
+    # is corrected to `seeds 42-45`. It is the ARTIFACTS that moved, by
+    # decision; the assertion was left behind. This field's whole job is
+    # stating what a published number may be quoted over, so a stale span here
+    # is a stale claim about the manuscript, not a cosmetic drift.
+    #
+    # `test_multi_seed_band_declares_its_seed_coverage` computes the expected
+    # span FROM the CSV on every run, so it is the rail -- not this comment --
+    # that keeps the two in step if E1's band is ever re-cut again.
     "exp1_band.csv": (
         "experiments/results/e1_seed_band_provenance.json (the band-owned "
         "sidecar, quick task 260807-dcv), which records solver_config['seeds'] "
-        "matching this CSV's own seed column across seeds 42-51; "
+        "matching this CSV's own seed column across seeds 42-45 (four seeds "
+        "since Ruling A1 of 2026-08-15 cut the band from ten); "
         "experiments/results/e1_benchmark_refractive.json + "
         "e1_benchmark_nonrefractive.json supply version/git_sha/environment "
         "but NOT this band's seeds -- both are SEEDLESS_LEGACY_RECORDS and "
@@ -147,6 +285,26 @@ CSV_TO_RECORD: dict[str, str] = {
         "xy_rmse_mm/z_rmse_mm/anisotropy_ratio/n_points: z_rmse_mm at the "
         "deepest test point is the manuscript's headline ratio (main.tex L68, "
         "L281) and previously existed per-seed only in gitignored sweep output"
+    ),
+    "exp1_parameter_band.csv": (
+        "experiments/results/e1_seed_band_provenance.json (the same band-owned "
+        "sidecar that covers exp1_band.csv), which records "
+        "solver_config['seeds'] matching this CSV's own seed column across "
+        "seeds 42-45 (four seeds since Ruling A1 of 2026-08-15 cut the band "
+        "from ten); "
+        "experiments/results/e1_benchmark_refractive.json + "
+        "e1_benchmark_nonrefractive.json supply version/git_sha/environment "
+        "but NOT this band's seeds -- both are SEEDLESS_LEGACY_RECORDS and "
+        "carry no seed key at all, and band mode deliberately does not "
+        "overwrite them. This is E1's SECOND band artifact rather than extra "
+        "columns on exp1_band.csv because EXP1's rows are keyed "
+        "(camera, model) with no depth axis, so merging them onto the depth-"
+        "keyed band would fabricate a depth dependence the parameter errors do "
+        "not have. It carries EXP1's focal_length_error_pct and "
+        "reprojection_rms_px -- the columns behind the manuscript's focal-drift "
+        "and reprojection-RMS sentences (main.tex L270, L271) -- plus the "
+        "per-camera position errors; all of them previously existed per-seed "
+        "only in gitignored sweep output"
     ),
     "exp1_parameter_errors.csv": (
         "experiments/results/e1_benchmark_refractive.json + "
@@ -185,6 +343,35 @@ CSV_TO_RECORD: dict[str, str] = {
         "and E7's bands the sidecar here DOES cover the whole span, so the "
         "seed column and the sidecar corroborate each other"
     ),
+    # ADDED 2026-08-26 (plan 29-06). Both per-camera CSVs are FIX-03
+    # artifacts (plan 23-03), written by
+    # experiments/e6_generalization_sweep.py at :1746 (_run_full) and :1511
+    # (_run_seed_band). They postdate this map's last review and were
+    # unregistered until the v2.1 re-run committed them, at which point
+    # test_all_committed_csvs_have_a_named_record did exactly its job.
+    "generalization_sweep_per_camera.csv": (
+        "experiments/results/e6_provenance.json (the SAME E6 run-level sidecar "
+        "that covers generalization_sweep.csv -- both CSVs are written by one "
+        "_run_full pass over the same twelve configurations, so one record "
+        "covers both) -- also carries its own seed column, single-seed at 42, "
+        "which is why it is not a band. FIX-03 (plan 23-03) added this "
+        "per-camera decomposition beside the configuration-level sweep: it "
+        "reports z_position_error_mm_raw against "
+        "z_position_error_mm_gauge_corrected per camera, plus the signed "
+        "water_z and h_c errors, none of which survive the configuration-level "
+        "aggregation in generalization_sweep.csv"
+    ),
+    "generalization_sweep_per_camera_band.csv": (
+        "experiments/results/e6_seed_band_provenance.json (the SAME band-owned "
+        "sidecar that covers generalization_sweep_band.csv, written by one "
+        "_run_seed_band pass, plan 19.5-10 COV-03 + COV-04), which records "
+        "solver_config['seeds'] matching this CSV's own seed column across "
+        "seeds 42-47 -- the per-camera half of E6's band, 864 rows, added by "
+        "FIX-03 (plan 23-03); as with E6's other band artifact the sidecar "
+        "DOES cover the whole span, unlike E1's and E7's, so the seed column "
+        "and the sidecar corroborate each other rather than the column "
+        "standing alone"
+    ),
     "index_sensitivity.csv": (
         "experiments/results/e5_provenance.json (E5's run-level sidecar, "
         "plan 19.2-19) -- also carries its own seed column"
@@ -221,6 +408,19 @@ CSV_TO_RECORD: dict[str, str] = {
     ),
 }
 
+# CSV_TO_RECORD keys whose artifact is not on disk YET -- registered ahead of
+# the run that produces it, because an unregistered CSV fails
+# test_all_committed_csvs_have_a_named_record the moment it appears.
+# Deliberately per-file and expected to shrink to empty:
+# test_pending_csvs_are_still_pending fails as soon as one lands.
+#
+# Currently EMPTY, and that is the resting state. exp1_parameter_band.csv --
+# the entry this list was introduced for (quick task 260813-clj) -- landed with
+# the seeds 42-51 band re-run and was removed here, so the stale-entry gate
+# covers it again. Add a name only for the window between registering a CSV and
+# committing the run that produces it.
+PENDING_CSVS: frozenset[str] = frozenset()
+
 
 def _read_csv_columns(path: pathlib.Path) -> list[str]:
     """Column names of ``path``, read without loading the whole frame."""
@@ -242,9 +442,20 @@ def _seed_span(seeds: "pd.Series") -> str:
 
 
 def _discover_json_files() -> list[pathlib.Path]:
+    """Every git-TRACKED `*.json` under the resolved results tree.
+
+    `rglob`, not `glob`, and deliberately so: E4's records live one level down
+    in `e4_cells/<cell>/benchmark.json` and E6's checkpoints in
+    `e6_configs/*.json`, so a top-level walk would silently drop them. Only the
+    filter was added 2026-08-26 (plan 29-06), never the walk.
+
+    The `_is_tracked` filter matches the one `_discover_csv_files` below has
+    always had; see that helper's docstring for the reasoning, which applies to
+    JSON word for word.
+    """
     if not RESULTS_DIR.exists():
         return []
-    return sorted(RESULTS_DIR.rglob("*.json"))
+    return sorted(p for p in RESULTS_DIR.rglob("*.json") if _is_tracked(p))
 
 
 def _is_tracked(path: pathlib.Path) -> bool:
@@ -259,6 +470,21 @@ def _is_tracked(path: pathlib.Path) -> bool:
     alone made the tripwire fire on exactly the files it was never meant to
     cover. Filtering to tracked files narrows the suite to its own stated scope;
     it does not weaken any assertion about artifacts that ARE committed.
+
+    EXTENDED 2026-08-26 (plan 29-06) to the JSON rails, which had the identical
+    problem and no filter. The text above applies word for word: E2 writes a
+    2.1 MB ``calibration.json`` on every run and it is gitignored (DATA-01b,
+    plan 21-11, moved that artifact to the published Zenodo archive), so it
+    appears on disk after any E2 run but is never committed.
+    ``_discover_json_files`` globbed the working tree without this filter, so
+    that one uncommitted file reached
+    ``test_schema_versionless_json_set_equals_self_describing_json`` -- a rail
+    whose stated scope is committed artifacts -- and demanded a carve-out entry
+    it has no business holding. The asymmetry was invisible while
+    ``experiments/results/`` was empty and surfaced only when the v2.1 re-run
+    repopulated the tree. Fixing it at the helper keeps both rails honest about
+    the same set; carving the file out would have hidden the divergence
+    instead.
     """
     try:
         return (
@@ -286,13 +512,30 @@ def _load_json(path: pathlib.Path) -> dict:
 
 
 def _schema_versioned_json_files() -> list[pathlib.Path]:
-    """Every committed `*.json` that carries a `schema_version` key.
+    """Every committed `*.json` that carries a `schema_version` key AND is
+    shaped like a benchmark record.
 
     Includes both assemble_benchmark_record-shaped files (which also carry
     `stages`) and E3's minimal sidecar (which does not) -- both publish a
     `schema_version`, so both are in scope for the environment-presence check.
+
+    Excludes `SUITE_LEVEL_MANIFEST_JSON`. Added 2026-08-26 (plan 29-06):
+    `run_manifest.json` publishes a `schema_version` too, but under DRIVER-02's
+    suite-level schema (experiments/_run_manifest.py:82), not
+    assemble_benchmark_record's. Sweeping it in asserted a record's shape
+    against a file that never claimed it -- an `environment` block it publishes
+    flat instead, and a `solver_config` seed that a manifest describing a RUN
+    rather than a solve has no business carrying. The exclusion narrows this
+    helper to its own stated subject and removes no coverage: gate 3's manifest
+    check in experiments/check_rerun_gates.py already asserts every field of
+    REQUIRED_MANIFEST_FIELDS on that file, importing the tuple rather than
+    keeping a second copy.
     """
-    return [p for p in _discover_json_files() if "schema_version" in _load_json(p)]
+    return [
+        p
+        for p in _discover_json_files()
+        if p.name not in SUITE_LEVEL_MANIFEST_JSON and "schema_version" in _load_json(p)
+    ]
 
 
 def _record_seed(record: dict) -> object | None:
@@ -334,8 +577,8 @@ _E4_CELL_FILES = sorted(RESULTS_DIR.glob("e4_cells/*/benchmark.json"))
 
 pytestmark = pytest.mark.skipif(
     not RESULTS_DIR.exists() or not any(RESULTS_DIR.iterdir()),
-    reason="experiments/results/ is absent or empty (fresh clone without committed "
-    "artifacts) -- nothing to check provenance against.",
+    reason=f"the resolved results tree ({RESULTS_TREE}: {RESULTS_DIR}) is absent or empty "
+    "(fresh clone without committed artifacts) -- nothing to check provenance against.",
 )
 
 
@@ -407,8 +650,10 @@ class TestSeedProvenance:
         """Every schema_version-carrying record carries a seed, except the six
         named Phase-19.1 legacy records (review H5: a carve-out earned by an
         explicit, commented, exactly-verified set -- not by omission)."""
-        if path.name in SEEDLESS_LEGACY_RECORDS:
+        if RESULTS_TREE == "archive" and path.name in SEEDLESS_LEGACY_RECORDS:
             pytest.skip(f"{path.name} is an exempted Phase-19.1 legacy record")
+        # Against a LIVE tree there are no exemptions: plan 26-13 made every one of these
+        # six carry a seed at write time, so a seedless record there is a real defect.
         record = _load_json(path)
         seed = _record_seed(record)
         assert seed is not None, (
@@ -424,7 +669,11 @@ class TestSeedProvenance:
         WITH a seed, or renamed, this test fails and forces the set to be
         updated deliberately."""
         for name in SEEDLESS_LEGACY_RECORDS:
-            path = RESULTS_DIR / name
+            # archive_results_dir(), NOT RESULTS_DIR: this is a statement about six
+            # ARCHIVED files. The same six filenames written by today's code DO carry a
+            # seed (26-13), so following a live tree would invert this into a false
+            # failure. Plan 26-14.
+            path = archive_results_dir() / name
             assert path.exists(), f"SEEDLESS_LEGACY_RECORDS names {name}, not on disk"
             record = _load_json(path)
             seed = _record_seed(record)
@@ -606,12 +855,38 @@ class TestCsvProvenanceMap:
 
     def test_csv_to_record_has_no_stale_entries(self):
         """Every CSV_TO_RECORD key names a CSV that actually exists on disk --
-        the map must be updated, not just grown, when a CSV is removed."""
+        the map must be updated, not just grown, when a CSV is removed.
+
+        `PENDING_CSVS` is the one narrow exemption: an entry registered ahead
+        of the run that produces its artifact. Registration has to land first
+        because an unregistered CSV fails
+        `test_all_committed_csvs_have_a_named_record` the moment it appears,
+        which would put the gate's own failure between the run and its commit.
+        The list is deliberately explicit and per-file, so every other kind of
+        stale entry -- the removed-CSV case this test exists for -- still fails.
+        """
         if not RESULTS_DIR.exists():
             pytest.skip("experiments/results/ not present (fresh clone)")
         on_disk = {p.name for p in _CSV_FILES}
-        stale = set(CSV_TO_RECORD) - on_disk
+        stale = set(CSV_TO_RECORD) - on_disk - PENDING_CSVS
         assert not stale, f"CSV_TO_RECORD names CSV(s) no longer on disk: {stale}"
+
+    def test_pending_csvs_are_still_pending(self):
+        """`PENDING_CSVS` must shrink to empty, not linger.
+
+        Once a pending artifact is committed the exemption is dead weight that
+        would quietly re-open the stale-entry hole for that filename, so this
+        fails as soon as the file lands and forces its removal from the list.
+        """
+        if not RESULTS_DIR.exists():
+            pytest.skip("experiments/results/ not present (fresh clone)")
+        on_disk = {p.name for p in _CSV_FILES}
+        landed = PENDING_CSVS & on_disk
+        assert not landed, (
+            f"{sorted(landed)} is now committed under experiments/results/ -- "
+            "remove it from PENDING_CSVS so the stale-entry gate covers it "
+            "again."
+        )
 
 
 class TestOneMachineConsistency:
@@ -670,3 +945,295 @@ class TestSelfDescribingJson:
             f"schema_version-less committed JSON files {versionless} do not "
             f"match SELF_DESCRIBING_JSON {set(SELF_DESCRIBING_JSON)} exactly"
         )
+
+
+class TestSuiteLevelManifestCarveOut:
+    """Plan 29-06.
+
+    `SUITE_LEVEL_MANIFEST_JSON` lifts `run_manifest.json` out of the two
+    benchmark-record rails above. That is only legitimate while the file really
+    is a suite-level manifest, so the carve-out is held to the same standard as
+    `SEEDLESS_LEGACY_RECORDS` and `SELF_DESCRIBING_JSON`: earned by an
+    explicit, commented, checked set -- never by omission.
+    """
+
+    def test_carve_out_members_are_flat_manifests(self):
+        """Each carved-out file found on disk really is manifest-shaped.
+
+        Iterates the DISCOVERED set rather than the carve-out, so a tree that
+        legitimately holds no manifest asserts nothing instead of skipping:
+        `experiments/pre_rerun_baseline/results/` has none, because the driver
+        that writes it (DRIVER-02) postdates that baseline. A tree that HAS one
+        is checked in full.
+        """
+        for path in [p for p in _JSON_FILES if p.name in SUITE_LEVEL_MANIFEST_JSON]:
+            record = _load_json(path)
+            assert "schema_version" in record, (
+                f"{path.name} is carved out of the benchmark-record rails as a "
+                "suite-level manifest, but carries no schema_version at all -- "
+                "either move it to SELF_DESCRIBING_JSON, which is where "
+                "schema-less committed JSON belongs, or restore the "
+                "schema_version its writer is supposed to stamp (DRIVER-02)."
+            )
+            assert "environment" not in record, (
+                f"{path.name} is carved out of the environment rail because it "
+                "publishes git_sha/python_version/numpy_version/scipy_version "
+                "FLAT, but it now carries an `environment` block -- either "
+                "drop it from SUITE_LEVEL_MANIFEST_JSON so the rail covers it "
+                "again, or record here why a suite-level manifest grew one "
+                "(DRIVER-02, experiments/_run_manifest.py)."
+            )
+            assert "solver_config" not in record, (
+                f"{path.name} is carved out of the seed rail because a "
+                "suite-level manifest describes a RUN and not a solve, but it "
+                "now carries a `solver_config` -- either drop it from "
+                "SUITE_LEVEL_MANIFEST_JSON so the seed rail covers it again, "
+                "or record here why a manifest gained a seed (DRIVER-02, "
+                "experiments/_run_manifest.py)."
+            )
+
+    def test_carve_out_has_exactly_one_member(self):
+        """Exactly one member, named.
+
+        Mirrors test_seedless_carve_out_has_exactly_six_members_and_excludes_e2:
+        a carve-out that can grow by an edit nobody reads is how an exemption
+        becomes a blanket. A second suite-level schema has to fail here first
+        and be added deliberately, with its own comment naming its owner.
+        """
+        assert set(SUITE_LEVEL_MANIFEST_JSON) == {"run_manifest.json"}
+
+
+# ---------------------------------------------------------------------------
+# FIX-02: every experiment must pass normal_fixed explicitly at every
+# calibrate_synthetic/optimize_interface/joint_refinement call site.
+#
+# E1 and E7 were not wrong on purpose -- they simply omitted the argument,
+# silently inheriting the library's normal_fixed=True default and solving a
+# problem two tilt DOF smaller than production (which runs at False). The
+# omission was unrecoverable from their artifacts: the neighbouring
+# shared_interface key WAS recorded, so a reader meets one interface-model
+# flag present and the other absent and reasonably (wrongly) infers it was
+# considered. This test makes any future omission fail loudly, across every
+# experiment that solves, rather than silently reproducing the same defect.
+# ---------------------------------------------------------------------------
+
+NORMAL_FIXED_MODULES = (
+    "experiments/e1_refractive_comparison.py",
+    "experiments/e4_benchmark_grid.py",
+    "experiments/e5_index_sensitivity.py",
+    "experiments/e6_generalization_sweep.py",
+    "experiments/e7_interface_ablation.py",
+)
+_NORMAL_FIXED_CALLEES = {
+    "calibrate_synthetic",
+    "optimize_interface",
+    "joint_refinement",
+}
+
+
+def _callee_name(node: ast.Call) -> str | None:
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def test_every_experiment_passes_normal_fixed_explicitly():
+    """Parse each of NORMAL_FIXED_MODULES and assert every
+    calibrate_synthetic/optimize_interface/joint_refinement call carries a
+    normal_fixed keyword argument, naming the module/callee/line on failure.
+    Adding a sixth solving experiment requires deliberately adding it to
+    NORMAL_FIXED_MODULES -- an omission here would silently exempt a new
+    experiment from this gate.
+
+    E1 and E7 were not wrong on purpose here -- they simply omitted the
+    argument, silently inheriting the library's normal_fixed=True default and
+    solving a problem two tilt DOF smaller than production (which runs at
+    False). The omission was unrecoverable from their own artifacts: the
+    neighbouring shared_interface key WAS recorded, so a reader met one
+    interface-model flag present and the other absent and reasonably (but
+    wrongly) inferred it was considered.
+    """
+    missing: list[str] = []
+    for rel_path in NORMAL_FIXED_MODULES:
+        path = REPO_ROOT / rel_path
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            callee = _callee_name(node)
+            if callee not in _NORMAL_FIXED_CALLEES:
+                continue
+            if not any(kw.arg == "normal_fixed" for kw in node.keywords):
+                missing.append(f"{rel_path}:{node.lineno} -- {callee}(...)")
+    assert not missing, (
+        "The following calls omit normal_fixed, silently inheriting the "
+        "library's normal_fixed=True default instead of stating the "
+        "resolved value explicitly:\n" + "\n".join(missing)
+    )
+
+
+class TestE1AndE7BenchmarkRecordsCarryASeed:
+    """Plan 26-13.
+
+    `gate3_provenance` reads `record["seed"]` or `record["solver_config"]["seed"]`
+    (`check_rerun_gates.py:374-378`). E1's and E7's call sites never passed one, so
+    every run -- including the 26-10 smoke pass, on records it had just written --
+    produced six unconditional gate FAILs.
+
+    E7's four records here are written by a REAL reduced-scale run of the experiment.
+    E1's two are constructed through the same writer with a representative payload,
+    because E1's own `--smoke` path writes into an internal TemporaryDirectory that
+    `--out` cannot redirect (`e1_refractive_comparison.py:893`), so no file it writes
+    survives the call. The E1 assertion therefore covers the writer contract, not
+    E1's argument threading; the call sites are covered by `test_e1_call_sites_pass_a_seed`.
+    """
+
+    E7_RECORDS = (
+        "e7_benchmark_shared_fixed.json",
+        "e7_benchmark_shared_refined.json",
+        "e7_benchmark_percamera_fixed.json",
+        "e7_benchmark_percamera_refined.json",
+    )
+    E1_RECORDS = (
+        "e1_benchmark_refractive.json",
+        "e1_benchmark_nonrefractive.json",
+    )
+
+    def test_e7_records_from_a_real_run_carry_a_seed(self, tmp_path):
+        from experiments.check_rerun_gates import _provenance_gaps
+        from experiments.e7_interface_ablation import (
+            _write_ablation_artifacts,
+            run_all_arms,
+        )
+
+        results, scenario = run_all_arms(seed=7, smoke=True)
+        _write_ablation_artifacts(results, scenario, tmp_path, force=True, seed=7)
+
+        for name in self.E7_RECORDS:
+            path = tmp_path / name
+            assert path.exists(), f"{name} was not written by the run"
+            record = _load_json(path)
+            assert record["solver_config"]["seed"] == 7, (
+                f"{name} carries solver_config['seed']="
+                f"{record['solver_config'].get('seed')!r}, expected 7"
+            )
+            assert _provenance_gaps(record, require_water_index=True) == [], (
+                f"{name} still fails gate3_provenance"
+            )
+
+    def test_e1_records_carry_a_seed_through_the_writer(self, tmp_path):
+        from experiments._io import write_direct_call_benchmark
+        from experiments.check_rerun_gates import _provenance_gaps
+        from experiments.e7_interface_ablation import (
+            _build_arm_benchmark_payload,
+            run_all_arms,
+        )
+
+        results, scenario = run_all_arms(seed=11, smoke=True)
+        problem_shape, solver_config, accuracy = _build_arm_benchmark_payload(
+            results[0], scenario
+        )
+        assert "seed" not in solver_config, (
+            "the payload builder must not pre-seed solver_config -- "
+            "write_direct_call_benchmark raises on a duplicate key"
+        )
+
+        for name in self.E1_RECORDS:
+            path = tmp_path / name
+            write_direct_call_benchmark(
+                path,
+                problem_shape=problem_shape,
+                timings=results[0].elapsed_seconds,
+                diagnostics=results[0].diagnostics,
+                seed=11,
+                solver_config=solver_config,
+                accuracy=accuracy,
+                force=True,
+            )
+            record = _load_json(path)
+            assert record["solver_config"]["seed"] == 11
+            assert _provenance_gaps(record, require_water_index=True) == []
+
+    def test_e1_call_sites_pass_a_seed(self):
+        """Every `write_direct_call_benchmark` call in E1 and E7 passes `seed=`.
+
+        Read from the SOURCE rather than a run, because E1's full and band paths are
+        minutes-long and its smoke path writes nowhere reachable. A call site that
+        stops passing the seed fails here even though no file is produced.
+        """
+        import ast
+
+        for module in (
+            "experiments/e1_refractive_comparison.py",
+            "experiments/e7_interface_ablation.py",
+        ):
+            tree = ast.parse(pathlib.Path(module).read_text(encoding="utf-8"))
+            calls = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and getattr(node.func, "id", None) == "write_direct_call_benchmark"
+            ]
+            assert calls, f"{module}: no write_direct_call_benchmark calls found"
+            for call in calls:
+                kwargs = {kw.arg for kw in call.keywords}
+                assert "seed" in kwargs, (
+                    f"{module}:{call.lineno} calls write_direct_call_benchmark "
+                    f"without seed= -- gate3_provenance will FAIL on its output"
+                )
+
+
+class TestResolvedTreeIsObservable:
+    """Plan 26-14.
+
+    These rails were repointed at the archive by 26-01 because DRIVER-04 emptied
+    `experiments/results/`. Nothing repointed them back, so after Phase 28 they would have
+    passed green while validating history rather than the frozen run's output.
+    """
+
+    def test_the_resolved_tree_is_named(self):
+        """`RESULTS_TREE` reports which tree the module is actually checking.
+
+        It is "archive" today and FLIPS TO "live" once Phase 28 repopulates
+        `experiments/results/` -- that flip is the point of plan 26-14, so this asserts the
+        marker is honest about the directory it names, never that the archive is permanent.
+        """
+        assert RESULTS_TREE in {"archive", "live"}
+        if RESULTS_TREE == "archive":
+            assert RESULTS_DIR == archive_results_dir()
+        else:
+            assert RESULTS_DIR != archive_results_dir()
+            assert RESULTS_DIR.name == "results"
+
+    def test_a_populated_live_tree_would_disable_the_carve_out(self, tmp_path):
+        """Simulates the Phase 28 state: with a live tree present, no record is exempt.
+
+        Copies two real archived records into a sandbox live tree, resolves against it, and
+        asserts the exemption predicate that `test_every_benchmark_record_carries_a_seed`
+        applies is False there -- so the six legacy names stop being skipped the moment the
+        frozen run writes its own.
+        """
+        live = tmp_path / "experiments" / "results"
+        live.mkdir(parents=True)
+        copied = 0
+        for name in sorted(SEEDLESS_LEGACY_RECORDS)[:2]:
+            source = archive_results_dir() / name
+            if source.exists():
+                (live / name).write_text(source.read_text(), encoding="utf-8")
+                copied += 1
+        if copied < 2:
+            pytest.skip("archived legacy records absent (fresh clone)")
+
+        resolved, which = resolve_results_dir(tmp_path)
+
+        assert which == "live"
+        assert resolved == live
+        for name in SEEDLESS_LEGACY_RECORDS:
+            exempt = which == "archive" and name in SEEDLESS_LEGACY_RECORDS
+            assert not exempt, (
+                f"{name} would still be exempt against a live tree -- the carve-out must "
+                "not survive Phase 28"
+            )

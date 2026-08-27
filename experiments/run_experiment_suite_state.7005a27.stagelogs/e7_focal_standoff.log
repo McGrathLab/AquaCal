@@ -1,0 +1,99 @@
+[2026-08-25T01:44:20Z] >>> STAGE 19/20: e7_focal_standoff starting
+Experiment output directory: /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results
+              arm  n_seeds  n_cameras_per_seed  mean_within_seed_correlation  n_seeds_negative  n_seeds_positive  p_one_sided                 verdict                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       scope  degenerate_observations_at_solution  degenerate_observations_cause_above_interface  degenerate_observations_cause_behind_camera  degenerate_observations_cause_interface_below_camera  degenerate_observations_fate_extended  degenerate_observations_fate_penalized
+     shared_fixed       10                  12                           NaN                 0                 0     1.000000 vacuous_by_construction Re-analysis of the ten committed seeds (42-51) of experiments/results/interface_ablation_band.csv at the 'realistic' scenario. Bounds the focal-length/standoff association within that band only; not a re-run and not a new calibration (D-19.5-05). VACUOUS BY CONSTRUCTION: this arm never refines intrinsics, so focal_drift_pct is 0.0 exactly for every camera and seed in interface_ablation_band.csv. The within-seed correlation is therefore undefined (zero variance), not null -- there is no measured absence of a signature here, and this row must not be read as one. The supplement's argument about the fixed arm is a priori and draws on a different artifact (MF-17).                                    0                                              0                                            0                                                     0                                      0                                       0
+  percamera_fixed       10                  12                           NaN                 0                 0     1.000000 vacuous_by_construction Re-analysis of the ten committed seeds (42-51) of experiments/results/interface_ablation_band.csv at the 'realistic' scenario. Bounds the focal-length/standoff association within that band only; not a re-run and not a new calibration (D-19.5-05). VACUOUS BY CONSTRUCTION: this arm never refines intrinsics, so focal_drift_pct is 0.0 exactly for every camera and seed in interface_ablation_band.csv. The within-seed correlation is therefore undefined (zero variance), not null -- there is no measured absence of a signature here, and this row must not be read as one. The supplement's argument about the fixed arm is a priori and draws on a different artifact (MF-17).                                    0                                              0                                            0                                                     0                                      0                                       0
+   shared_refined       10                  12                      0.918534                 0                10     0.000977       signature_present                                                                                                                                                                                                                                                                                                                                                                                                                                      Re-analysis of the ten committed seeds (42-51) of experiments/results/interface_ablation_band.csv at the 'realistic' scenario. Bounds the focal-length/standoff association within that band only; not a re-run and not a new calibration (D-19.5-05).                                    0                                              0                                            0                                                     0                                      0                                       0
+percamera_refined       10                  12                      0.431943                 1                 9     0.010742       signature_present                                                                                                                                                                                                                                                                                                                                                                                                                                      Re-analysis of the ten committed seeds (42-51) of experiments/results/interface_ablation_band.csv at the 'realistic' scenario. Bounds the focal-length/standoff association within that band only; not a re-run and not a new calibration (D-19.5-05).                                    0                                              0                                            0                                                     0                                      0                                       0
+[2026-08-25T01:44:20Z] <<< STAGE 19/20: e7_focal_standoff finished exit=0
+----- GATE VERDICT: stage=e7_focal_standoff out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[PASS] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0 [dominant cause=above_interface (0), 0.000% of the 164439 observation(s) evaluated; by fate: 0 extended, 0 penalized (cause and fate are separate axes over the same observations; never add them together)]
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv: 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51] match e7_seed_band_provenance.json's recorded seed list
+[PASS] E1  gate4_band:exp1_band.csv                      exp1_band.csv: 4 distinct seed(s) [42, 43, 44, 45] match e1_seed_band_provenance.json's recorded seed list
+[PASS] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv: 4 distinct seed(s) [42, 43, 44, 45] match e1_seed_band_provenance.json's recorded seed list
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[FAIL] E2  gate_e2_band:seed_43_e2_out                   seed_43_e2_out/real_rig_metrics.json missing or unreadable
+[FAIL] E2  gate_e2_band:record_count                     found 1 per-seed metric record(s) under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_band, expected exactly 3
+[PASS] E2  gate_e2_band:seed42_reproduction              seed-42 band record matches /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/real_rig_metrics.json within rtol=1e-06
+[PASS] E2  gate_e2_band:scope                            e2_band_scope.json scope states both required phrases
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha matches every artifact (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] e7_focal_standoff completeness:e7_focal_standoff.csv            e7_focal_standoff.csv: 4 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e7_focal_standoff.csv, as expected.
+
+TOTAL: 70 PASS, 10 N/A, 7 FAIL
+----- END GATE VERDICT: stage=e7_focal_standoff exit=1 -----

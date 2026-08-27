@@ -5,7 +5,7 @@
 - Optimization & Performance (2 entries)
 - Coordinate Frames & Geometry (2 entries)
 - Calibration Lessons (1 entry)
-- Known Issues & Workarounds (0 entries)
+- Known Issues & Workarounds (6 entries)
 - Debugging Recipes (0 entries)
 
 ## Architecture
@@ -77,6 +77,17 @@ re-derived before being cited. See `.planning/debug/stage3-diverges-new-geometry
 **Insight**: Without `CALIB_USE_INTRINSIC_GUESS`, OpenCV auto-initializes K from a homography/DLT decomposition that can be badly ill-conditioned for some board-pose distributions, and the nonlinear refinement never escapes the resulting basin. A richer distortion model does not help (rational 8-coeff produced fx=3971). Seeding `fx = fy = max(image_width, image_height)` with the principal point at the image center fixes it and reproduces the unguided result to 6+ significant figures on well-behaved cameras, so it is a safe no-op where calibration already worked. A bad K here poisons Stage 2 PnP directly -- the camera was already misplaced in `calibration_initial.json`, before any joint optimization -- and Stage 3/4 does not self-correct, because the wrong intrinsics and wrong pose are locally mutually consistent.
 **References**: `src/aquacal/calibration/intrinsics.py:calibrate_intrinsics_single`, `.planning/debug/callibration071626-tilt-high-reproj.md`.
 **Added**: 2026-07-20
+
+### `optimality` is real but volatile — trust large values, never small ones
+**Context**: E1's non-refractive arm reported `optimality_intrinsic` = 92.78 against the refractive arm's 0.0247 on the same scenario and seed. Three probes on 2026-08-17 chased it. Two attractive explanations were **falsified by measurement**: it is not the pinned `water_z` (that slot contributes 0.00% of the reported number — Coleman-Li scaling multiplies by *distance to the bound*, so a pinned parameter is crushed toward zero, not inflated), and it is not finite-difference Jacobian error (a central-difference Jacobian agrees to five significant figures, 92.7841 vs 92.7843).
+**Insight**: three properties of `scipy.optimize.least_squares`'s reported `optimality` (`trf`: `||g*v||_inf`) that apply to every experiment in this suite, not just E1:
+1. **Volatile at a fixed solution.** Warm-restarting a solve from its own solution moved the reported value 92.78 -> 27.58 -> 2.16 while cost changed 1.8e-9. The problem is severely ill-conditioned (directional curvature ~3e8): flat along the valley floor, gradient swinging 43x over a step invisible in the cost. Two runs of the same solve can report wildly different optimality and both be correct.
+2. **Not comparable across parameter blocks.** The scalar mixes Coleman-Li scalings of `v = 1` (unbounded extrinsics and board poses), `v ~ 700` (wide-bounded intrinsics — one block read 49.97 scaled against a 0.068 raw gradient), and `v ~ 2e-12` (a pinned slot). It is not a like-for-like maximum.
+3. **Reliability depends on magnitude.** Large values are trustworthy; small ones are not. At optimality ~0.001 the production Jacobian disagreed with its 3-point reference by 44%, and naive FD steps inflated it by six orders (`rel_step` 1e-10). At optimality ~92 every step tried agreed. **Differences between two small optimality values carry no information.** A large gap (0.0247 vs 92.78) is real.
+Positive corollary: the library's production FD step rule tracks the 3-point reference in both regimes, so the Jacobian machinery in `_optim_common.py` is validated — the volatility is the problem's, not the code's.
+**Practical rule**: never gate on an optimality *value*, never compare two small ones, and never read it as a conditioning measure across blocks. `check_rerun_gates.py` already gets this right — Gate 4 checks optimality **presence only**, by a lesson from Phase 19.2 where a cell shipped a plausible reprojection error at an optimality six orders too high. Do not weaken that gate into a magnitude comparison.
+**References**: `.planning/probes/2026-08-17-optimality-decomposition/` (three probes, `FINDINGS.md`); requirement DEGEN-05; `check_rerun_gates.py:30-37`.
+**Added**: 2026-08-17
 
 ## Known Issues & Workarounds
 
@@ -235,6 +246,62 @@ written to either location persists only on that one machine and is invisible to
 and to a fresh clone. Durable, shareable project lessons belong in `.planning/knowledge-base.md`
 (this file), which CLAUDE.md itself designates as the home for accumulated gotchas.
 **Added**: 2026-08-02
+
+### A stale editable install stamps the wrong version onto every artifact it produces
+**Context**: On 2026-08-13 `pyproject.toml` read **2.0.1** (bumped 2026-08-11, `2ba0f8e`) while the
+`AquaCal` env still carried `aquacal-1.8.0.dist-info` and an `__editable__.aquacal-1.8.0.pth`.
+`aquacal.__version__` reported 1.8.0 and `aquacal.__file__` pointed at the working tree — so 2.0.1
+code would have been recorded as 1.8.0 in every `benchmark.json` and every provenance sidecar it
+wrote. Nothing was corrupted only because no artifact had been produced since the bump.
+**Insight**: `src/aquacal/__init__.py` and `capture_environment()` both resolve the version through
+`importlib.metadata.version("aquacal")`, i.e. *installed distribution metadata*. An editable
+install writes that metadata once, at `pip install -e .` time, and editing `pyproject.toml` never
+refreshes it; meanwhile the `.pth` keeps resolving imports to the live tree. The two diverge
+**silently** — no warning, no exception, just a confident and wrong provenance record. This is the
+same genre as "commit nothing during a production run": a cheap precondition whose violation is
+invisible in the output. It matters because `aquacal_version` is load-bearing evidence — MF-19
+traced §3's real-rig numbers by reading it, and MF-20 is stated as a 1.8.0 -> 2.0.1 comparison.
+**How to apply**: run `pip install -e . --no-deps` immediately after any `pyproject.toml` version
+bump, and before any production run in a source checkout; confirm with
+`python -c "import aquacal; print(aquacal.__version__)"`. `experiments/prelaunch_gate.sh`'s
+`ENV_VERSION_MATCH` check (check 2) now asserts installed == declared and aborts the queue if not,
+and `capture_environment()` records `aquacal_version_declared` beside `aquacal_version` so an
+escaped case is diagnosable from the artifact alone. Do **not** "fix" this by hardcoding
+`__version__` — that trades a detectable mismatch for a silent one.
+**References**: `experiments/prelaunch_gate.sh` (ENV_VERSION_MATCH),
+`src/aquacal/io/benchmark.py:capture_environment`, `experiments/README.md` §7,
+`.planning/todos/done/2026-08-13-editable-install-metadata-can-mislabel-artifact-provenance.md`.
+**Added**: 2026-08-13
+
+### A verification gate that cannot pass is worse than no gate (D-10)
+**Context**: E4's `--check` reported 9 of 10 cells mismatched on the committed tree, on exactly two
+columns (`exit_code`, `status_reason`), while all 33 other metric columns reproduced to 1e-6. Both
+failures were structural, not regressions: `_run_check` hardcodes `"exit_code": None` because no
+subprocess runs under `--check` (the committed CSV holds the real run's `0.0`), and
+`status_reason` round-trips an empty string through CSV as `NaN`. Neither can ever clear by
+construction. This is the same shape as another gate observed to pass while parsing nothing
+against a `CONTEXT.md` holding 21 trackable decisions — a decision-coverage gate reporting 0
+trackable decisions and reading as green.
+**Insight**: A verification gate that cannot pass is worse than no gate at all — a gate that has
+only ever been observed in one state (always red, or always green) has not been validated — it has not been shown capable of the *other* state, so nobody can tell a
+genuine failure/pass from the gate's own structural inability to do otherwise. Both instances here
+trained a reader to expect the gate's output regardless of what actually happened underneath: an
+always-red `--check` trains "red is normal, don't look closer"; an always-green decision-coverage
+gate trains "green means covered" when it means "parsed nothing." **Before trusting a gate,
+establish that it can fail and that it can pass** — with a concrete case of each, not by reading
+the gate's own source and assuming. FIX-05 fixed the always-red case by excluding exactly the two
+named, measurement-backed columns (`experiments/e4_benchmark_grid.py:CHECK_EXCLUDED_COLUMNS`) and
+printing what was skipped on every run, so the exclusion itself stays visible rather than becoming
+a second thing nobody re-derives.
+**How to apply**: when a check is asserted "passing" or "failing" as a matter of course, ask what
+would make it flip. If the answer requires code you have not written or a state you have never
+produced, the gate is unvalidated, not green. A wider audit of this project's other gates
+(`experiments/check_rerun_gates.py`) was considered here and deliberately not taken — worth
+revisiting at the Phase 27 freeze, the last cheap moment before Phase 29 depends on those gates.
+**References**: `.planning/phases/23-experiment-correctness-fixes/23-02-SUMMARY.md`,
+`.planning/probes/2026-08-17-phase-23-recon/e4_check_detail.py`,
+`experiments/e4_benchmark_grid.py:CHECK_EXCLUDED_COLUMNS`.
+**Added**: 2026-08-17
 
 ## Debugging Recipes
 

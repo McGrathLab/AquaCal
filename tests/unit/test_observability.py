@@ -484,6 +484,7 @@ class TestCaptureSolverDiagnostics:
         )
 
         assert diag.njev is None
+
         assert diag.nfev == 10
 
     def test_tolerances_and_max_nfev_recorded_verbatim(self):
@@ -563,10 +564,26 @@ class TestCaptureSolverDiagnostics:
         assert diag.n_residuals_reason is None
 
     def test_n_residuals_field_order(self):
-        """n_residuals/n_residuals_reason are declared last, immediately after
-        n_groups_reason, so the existing field order is unperturbed."""
+        """n_residuals/n_residuals_reason follow n_groups_reason immediately, so
+        the pre-existing field order is unperturbed.
+
+        Phase 24 appended `optimality_by_block` and `parameters_at_bound` with
+        their `*_reason` companions AFTER this pair, so the assertion is on the
+        pair's position relative to `n_groups_reason` rather than on it being
+        last -- appending is what keeps every existing consumer's field order
+        stable."""
         field_names = [f.name for f in dataclasses.fields(SolverDiagnostics)]
-        assert field_names[-2:] == ["n_residuals", "n_residuals_reason"]
+        anchor = field_names.index("n_groups_reason")
+        assert field_names[anchor + 1 : anchor + 3] == [
+            "n_residuals",
+            "n_residuals_reason",
+        ]
+        assert field_names[-4:] == [
+            "optimality_by_block",
+            "optimality_by_block_reason",
+            "parameters_at_bound",
+            "parameters_at_bound_reason",
+        ]
 
     def test_n_residuals_none_with_reason(self):
         result = _mock_result_with_njev()
@@ -609,3 +626,221 @@ class TestCaptureSolverDiagnostics:
         assert diag.n_residuals == 4096
         assert type(diag.n_residuals) is int
         assert diag.n_residuals_reason is None
+
+    def test_absent_labels_record_none_plus_reason(self):
+        """D-15's absent-metric convention: None plus a reason, never a silent omit."""
+        result = _mock_result_with_njev()
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+        )
+
+        assert diag.optimality_by_block is None
+        assert diag.parameters_at_bound is None
+        assert diag.optimality_by_block_reason
+        assert diag.parameters_at_bound_reason
+        assert "parameter_labels" in diag.optimality_by_block_reason
+
+
+class TestOptimalityDecomposition:
+    """Phase 24 / DEGEN-05 and D-16, against a real bounded `least_squares` solve.
+
+    Uses a small bounded least-squares problem laid out exactly like a packed
+    calibration vector (2 cameras, 1 frame, normal fixed, shared interface), so
+    `build_parameter_labels` and `build_parameter_block_slices` apply verbatim
+    without paying for a full Stage-3 solve.
+    """
+
+    CAMERA_ORDER = ["cam0", "cam1"]
+    FRAME_ORDER = [0]
+    REFERENCE = "cam0"
+
+    def _layout(self, water_z_bounds=None):
+        from aquacal.calibration._optim_common import (
+            build_bounds,
+            build_parameter_block_slices,
+        )
+
+        labels = build_parameter_labels(
+            self.CAMERA_ORDER, self.FRAME_ORDER, self.REFERENCE
+        )
+        blocks = build_parameter_block_slices(
+            self.CAMERA_ORDER, self.FRAME_ORDER, self.REFERENCE
+        )
+        bounds = build_bounds(
+            self.CAMERA_ORDER,
+            self.FRAME_ORDER,
+            self.REFERENCE,
+            water_z_bounds=water_z_bounds,
+        )
+        return labels, blocks, bounds
+
+    @staticmethod
+    def _solve(bounds, x0):
+        target = np.linspace(0.2, 1.4, len(x0))
+        target = np.clip(target, bounds[0], bounds[1])
+
+        def residuals(x):
+            return (x - target) * np.linspace(1.0, 3.0, len(x))
+
+        return least_squares(residuals, x0=x0, bounds=bounds, method="trf")
+
+    def test_optimality_by_block_max_equals_scipy_optimality(self):
+        """The correctness anchor: scipy reports `norm(g * v, inf)` over ALL blocks.
+
+        If the per-block maxima did not recover that scalar, the decomposition
+        would be attributing the wrong quantity.
+        """
+        labels, blocks, bounds = self._layout()
+        x0 = np.clip(np.full(len(labels), 0.5), bounds[0], bounds[1])
+        result = self._solve(bounds, x0)
+
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            parameter_labels=labels,
+            parameter_blocks=blocks,
+            bounds=bounds,
+        )
+
+        assert diag.optimality_by_block_reason is None
+        assert set(diag.optimality_by_block) == set(blocks)
+        assert max(
+            b["max_scaled"] for b in diag.optimality_by_block.values()
+        ) == pytest.approx(result.optimality, rel=1e-9)
+
+        total = sum(b["n_params"] for b in diag.optimality_by_block.values())
+        assert total == len(labels)
+        for name, block in diag.optimality_by_block.items():
+            assert block["argmax_parameter"] in labels
+            assert isinstance(block["max_scaled"], float)
+            assert isinstance(block["max_unscaled"], float)
+            assert isinstance(block["n_params"], int), name
+
+    def test_nothing_from_result_fun_or_jac_is_retained(self):
+        """Pitfall 4 stays intact: only P-length arrays are read, none are stored."""
+        labels, blocks, bounds = self._layout()
+        x0 = np.clip(np.full(len(labels), 0.5), bounds[0], bounds[1])
+        result = self._solve(bounds, x0)
+
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            parameter_labels=labels,
+            parameter_blocks=blocks,
+            bounds=bounds,
+        )
+
+        for value in dataclasses.asdict(diag).values():
+            assert not isinstance(value, np.ndarray)
+        for block in diag.optimality_by_block.values():
+            for item in block.values():
+                assert not isinstance(item, np.ndarray)
+
+
+class TestParametersAtBound:
+    """D-16: which parameters terminated ON a bound, pinned vs traveled."""
+
+    CAMERA_ORDER = ["cam0", "cam1"]
+    FRAME_ORDER = [0]
+    REFERENCE = "cam0"
+
+    def _capture(self, water_z_bounds):
+        from aquacal.calibration._optim_common import (
+            build_bounds,
+            build_parameter_block_slices,
+        )
+
+        labels = build_parameter_labels(
+            self.CAMERA_ORDER, self.FRAME_ORDER, self.REFERENCE
+        )
+        blocks = build_parameter_block_slices(
+            self.CAMERA_ORDER, self.FRAME_ORDER, self.REFERENCE
+        )
+        bounds = build_bounds(
+            self.CAMERA_ORDER,
+            self.FRAME_ORDER,
+            self.REFERENCE,
+            water_z_bounds=water_z_bounds,
+        )
+        target = np.linspace(0.2, 1.4, len(labels))
+
+        def residuals(x):
+            return (x - target) * np.linspace(1.0, 3.0, len(x))
+
+        x0 = np.clip(np.full(len(labels), 0.5), bounds[0], bounds[1])
+        result = least_squares(residuals, x0=x0, bounds=bounds, method="trf")
+
+        diag = SolverDiagnostics()
+        capture_solver_diagnostics(
+            result,
+            diag,
+            ftol=1e-8,
+            xtol=1e-8,
+            gtol=1e-8,
+            max_nfev_effective=100,
+            max_nfev_source="scipy_auto",
+            parameter_labels=labels,
+            parameter_blocks=blocks,
+            bounds=bounds,
+        )
+        return diag
+
+    def test_pinned_parameter_is_classified_pinned_not_traveled(self):
+        """A zero-width bound interval is a pin by request, not a limit hit.
+
+        Without this discrimination the detector would fire on E1's
+        non-refractive arm every single run and be trained away, exactly as the
+        always-red gate in `knowledge-base.md` was.
+        """
+        diag = self._capture(water_z_bounds=(1.031 - 1e-12, 1.031 + 1e-12))
+
+        assert diag.parameters_at_bound_reason is None
+        pinned = [
+            entry
+            for entry in diag.parameters_at_bound
+            if entry["parameter"] == "water_z"
+        ]
+        assert pinned, diag.parameters_at_bound
+        assert pinned[0]["classification"] == "pinned"
+        assert pinned[0]["interval_width"] == pytest.approx(2e-12, rel=1e-3)
+        assert pinned[0]["bound"] in ("lower", "upper")
+        assert pinned[0]["gap"] < 1e-9
+
+    def test_a_wide_interval_bound_hit_is_classified_traveled(self):
+        """The other side of the discrimination: the solver ran into a real limit."""
+        diag = self._capture(water_z_bounds=(0.01, 0.2))
+
+        traveled = [
+            entry
+            for entry in diag.parameters_at_bound
+            if entry["classification"] == "traveled"
+        ]
+        assert traveled, diag.parameters_at_bound
+        assert all(entry["interval_width"] > 1e-9 for entry in traveled)
+
+    def test_an_unbounded_solve_reports_an_empty_list_not_none(self):
+        """Nothing at a bound is a populated empty list -- present, not absent."""
+        diag = self._capture(water_z_bounds=None)
+
+        assert diag.parameters_at_bound is not None
+        assert diag.parameters_at_bound_reason is None
+        assert isinstance(diag.parameters_at_bound, list)

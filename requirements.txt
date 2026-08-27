@@ -7,7 +7,9 @@
 
 numpy
 scipy>=1.16
-opencv-python>=4.6,<5.0
+# Pinned to one minor: corner detection changes across OpenCV minors and the
+# published real-rig numbers were produced under 4.13.0. See pyproject.toml.
+opencv-python==4.13.*
 pyyaml
 matplotlib
 pandas

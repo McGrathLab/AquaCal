@@ -31,7 +31,12 @@ from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
 from aquacal.core.refractive_geometry import refractive_project
 from aquacal.datasets import create_scenario
-from experiments.e1_refractive_comparison import _run_one_model, compute_xyz_errors
+from experiments.e1_refractive_comparison import (
+    _run_one_model,
+    build_water_z_provenance,
+    compute_xyz_errors,
+    resolve_water_z_pin,
+)
 
 
 @pytest.fixture
@@ -266,9 +271,14 @@ def test_run_one_model_records_degenerate_count():
     left at _run_one_model's own default (True), matching E1's real call
     shape."""
     scenario = create_scenario("minimal", seed=1)
-    _result, _detections, _timings, _diagnostics, discard_stats = _run_one_model(
-        scenario, n_water=1.333, seed=1
-    )
+    (
+        _result,
+        _detections,
+        _timings,
+        _diagnostics,
+        discard_stats,
+        _water_z_pin,
+    ) = _run_one_model(scenario, n_water=1.333, seed=1)
     assert "degenerate_observations_at_solution" in discard_stats
     assert isinstance(discard_stats["degenerate_observations_at_solution"], int)
 
@@ -279,7 +289,144 @@ def test_run_one_model_never_raises_on_a_positive_count():
     section 4) -- _run_one_model must complete and record the count, never
     raise."""
     scenario = create_scenario("ideal", seed=1)
-    _result, _detections, _timings, _diagnostics, discard_stats = _run_one_model(
-        scenario, n_water=1.333, seed=1
-    )
+    (
+        _result,
+        _detections,
+        _timings,
+        _diagnostics,
+        discard_stats,
+        _water_z_pin,
+    ) = _run_one_model(scenario, n_water=1.333, seed=1)
     assert discard_stats["degenerate_observations_at_solution"] >= 0
+
+
+# ---------------------------------------------------------------------------
+# FIX-01 (D-01/D-03/D-04): resolve_water_z_pin / build_water_z_provenance.
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_water_z_pin_none_for_refractive_index():
+    """The refractive arm (n_water != 1.0) must never be pinned."""
+    scenario = create_scenario("realistic", seed=42)
+    assert resolve_water_z_pin(scenario, 1.333) is None
+
+
+def test_resolve_water_z_pin_reads_scenario_ground_truth():
+    """The non-refractive arm's pin is the scenario's own shared water_z,
+    never a hardcoded literal -- 1.031 m for the 'realistic' scenario."""
+    scenario = create_scenario("realistic", seed=42)
+    pin = resolve_water_z_pin(scenario, 1.0)
+    assert pin == pytest.approx(1.031)
+    assert pin == pytest.approx(next(iter(scenario.water_zs.values())))
+
+
+def test_resolve_water_z_pin_raises_on_non_shared_water_z():
+    """A hand-built scenario stub whose cameras disagree on water_z cannot be
+    pinned to a single shared value -- resolve_water_z_pin must raise rather
+    than silently picking one."""
+    from types import SimpleNamespace
+
+    stub = SimpleNamespace(name="stub", water_zs={"cam0": 1.031, "cam1": 1.040})
+    with pytest.raises(ValueError, match="resolve_water_z_pin"):
+        resolve_water_z_pin(stub, 1.0)
+
+
+def test_build_water_z_provenance_pinned():
+    prov = build_water_z_provenance(1.031)
+    assert prov["water_z_pinned_m"] == 1.031
+    assert prov["water_z_pin_mechanism"]
+    assert prov["water_z_pin_reason"]
+
+
+def test_build_water_z_provenance_unpinned():
+    prov = build_water_z_provenance(None)
+    assert prov["water_z_pinned_m"] is None
+    assert prov["water_z_pin_reason"]
+    assert set(prov.keys()) == {
+        "water_z_pinned_m",
+        "water_z_pin_mechanism",
+        "water_z_pin_reason",
+    }
+
+
+def test_water_z_bounds_threads_through_both_stage3_call_sites():
+    """Source-level assertion, not a solve: both stage-3 call sites
+    (`interface_estimation.optimize_interface` and `refinement.joint_refinement`)
+    must forward `water_z_bounds=water_z_bounds` to `build_bounds`, and
+    `calibrate_synthetic` must forward it to BOTH of them. This is a
+    source-level check specifically because a first-pass-only fix is a
+    measured, silent failure mode (Trap 1): a pin held through Stage 3's
+    first pass drifted from 1.031 m to 0.0425 m by the end of the
+    intrinsic-refinement pass when the override was not also threaded
+    there. A behavioral test that only checks the first pass would pass a
+    broken fix, so this asserts the forwarding exists at the source level
+    in all three functions instead.
+    """
+    import inspect
+
+    from aquacal.calibration.interface_estimation import optimize_interface
+    from aquacal.calibration.refinement import joint_refinement
+    from aquacal.datasets.pipelines import calibrate_synthetic
+
+    assert "water_z_bounds=water_z_bounds" in inspect.getsource(optimize_interface)
+    assert "water_z_bounds=water_z_bounds" in inspect.getsource(joint_refinement)
+    # Two forwards -- to optimize_interface and to joint_refinement. The
+    # parameter's own signature line reads `water_z_bounds: ... = None,`
+    # (a type-annotated default), which does not itself contain the
+    # substring `water_z_bounds=`.
+    assert (
+        inspect.getsource(calibrate_synthetic).count("water_z_bounds=water_z_bounds")
+        == 2
+    )
+
+
+def test_fixed_contract_columns_are_unchanged():
+    """`exp1_parameter_errors.csv`, `exp2_depth_generalization.csv` and
+    `exp3_xy_vs_z_anisotropy.csv` are read BYTE-FOR-BYTE by an external,
+    read-only figures repository (D-19: "do not add, remove, reorder, or
+    rename a column").
+
+    BAND-01 adds a `noise_std` column to the two BAND artifacts. It must NEVER
+    appear in these three, and neither must anything else: the literals below
+    are copied from the module as it stood before the noise axis landed, and a
+    diff against them is the whole point of the test.
+    """
+    from experiments.e1_refractive_comparison import (
+        EXP1_COLUMNS,
+        EXP2_COLUMNS,
+        EXP3_COLUMNS,
+    )
+
+    assert EXP1_COLUMNS == [
+        "camera",
+        "model",
+        "focal_length_error_pct",
+        "z_position_error_mm",
+        "xy_position_error_mm",
+        "gt_x_m",
+        "gt_y_m",
+        "gt_z_m",
+        "est_x_m",
+        "est_y_m",
+        "est_z_m",
+        "reprojection_rms_px",
+    ]
+    assert EXP2_COLUMNS == [
+        "test_depth_m",
+        "model",
+        "signed_mean_mm",
+        "rmse_mm",
+        "scale_factor",
+        "calib_depth_min_m",
+        "calib_depth_max_m",
+    ]
+    assert EXP3_COLUMNS == [
+        "test_depth_m",
+        "model",
+        "xy_rmse_mm",
+        "z_rmse_mm",
+        "anisotropy_ratio",
+        "n_points",
+    ]
+    for columns in (EXP1_COLUMNS, EXP2_COLUMNS, EXP3_COLUMNS):
+        assert "noise_std" not in columns

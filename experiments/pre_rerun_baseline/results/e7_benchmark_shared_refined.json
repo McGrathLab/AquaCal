@@ -1,0 +1,80 @@
+{
+  "accuracy": {
+    "reprojection_rms_px": 0.49903604691219283
+  },
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 0,
+    "n_cameras": 12,
+    "n_frames_calibration": 30,
+    "n_frames_holdout": 0
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "ftol": 1e-08,
+    "gtol": 1e-08,
+    "loss_scale": 1.0,
+    "n_air": 1.0,
+    "n_water": 1.333,
+    "refine_intrinsics": true,
+    "robust_loss": "huber",
+    "shared_interface": true,
+    "xtol": 1e-08
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 3689.042488572195,
+      "fd_reduction": 19.0,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 24700,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 247,
+      "n_params_reason": null,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 14,
+      "njev": 12,
+      "optimality": 0.0016619306568941283,
+      "seconds": 131.42355389999284,
+      "status": 2,
+      "xtol": 1e-08
+    },
+    "stage3_intrinsic_pass": {
+      "cost": 3680.464698756361,
+      "fd_reduction": 17.352941176470587,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 29500,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 17,
+      "n_groups_reason": null,
+      "n_params": 295,
+      "n_params_reason": null,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 4,
+      "njev": 4,
+      "optimality": 0.015536580219986718,
+      "seconds": 50.634857900004135,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}

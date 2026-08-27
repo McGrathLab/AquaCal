@@ -1,0 +1,152 @@
+{
+  "config": {
+    "axis": "cameras",
+    "axis_value": "8",
+    "config_key": "cameras_8",
+    "depth_range": null,
+    "is_baseline": false,
+    "layout": "grid",
+    "n_cameras": 8,
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "spacing": null,
+    "xy_extent": null
+  },
+  "degenerate_observations_at_solution": 0,
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "metrics": {
+    "focal_error_pct_mean": 0.028636627797674848,
+    "num_comparisons": 14760,
+    "num_frames": 100,
+    "optimality_stage3_interface_optimization": 0.002386962262353895,
+    "optimality_stage3_intrinsic_pass": 0.0022173353421587327,
+    "reconstruction_mae_mm": 0.38335353670607014,
+    "reconstruction_rmse_mm": 0.5592302838070871,
+    "reprojection_rms_px": 0.706458165517744,
+    "signed_mean_mm": 0.04211794534344226,
+    "water_z_error_mm_mean": 0.31786112262466304,
+    "water_z_error_mm_signed_mean": -0.31786112262466304,
+    "xy_position_error_mm_mean": 0.1626420667427602,
+    "z_position_error_mm_gauge_corrected_mean": 0.09661732132706102,
+    "z_position_error_mm_mean": -0.6763212492894274
+  },
+  "n_frames": 100,
+  "per_camera_rows": [
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam0",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": -0.31786112262466304,
+      "is_reference_camera": true,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": 0.7729385706164884,
+      "z_position_error_mm_raw": 0.0
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam1",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.3722542144549781,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": 0.08282323353684728,
+      "z_position_error_mm_raw": -0.6901153370796411
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam2",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.9640361595523319,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": -0.5089587115605065,
+      "z_position_error_mm_raw": -1.281897282176995
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam3",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.10673077751163035,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": 0.348346670480195,
+      "z_position_error_mm_raw": -0.4245919001362934
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam4",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.47113650708630395,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": -0.01605905909447858,
+      "z_position_error_mm_raw": -0.788997629710967
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam5",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.8908487381676358,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": -0.4357712901758104,
+      "z_position_error_mm_raw": -1.2087098607922988
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam6",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": -0.04635100308275003,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": 0.5014284510745755,
+      "z_position_error_mm_raw": -0.271510119541913
+    },
+    {
+      "axis": "cameras",
+      "axis_value": "8",
+      "camera": "cam7",
+      "config_key": "cameras_8",
+      "h_c_error_mm_signed": 0.4268867422526478,
+      "is_reference_camera": false,
+      "seed": 44,
+      "water_z_error_mm_signed": -0.31786112262466304,
+      "z_position_error_mm_gauge_corrected": 0.02819070573917759,
+      "z_position_error_mm_raw": -0.7447478648773108
+    }
+  ],
+  "schema_version": 2,
+  "seed": 44,
+  "solver_config": {
+    "seed": 44
+  },
+  "status": "ok",
+  "status_reason": ""
+}

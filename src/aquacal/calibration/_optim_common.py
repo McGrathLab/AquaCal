@@ -6,6 +6,8 @@ used by both interface_estimation (Stage 3's first pass, extrinsics + water_z)
 and refinement (Stage 3's second pass, with intrinsics unlocked).
 """
 
+import warnings
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize._numdiff import approx_derivative, group_columns
@@ -20,7 +22,12 @@ from aquacal.config.schema import (
 from aquacal.core.board import BoardGeometry
 from aquacal.core.camera import Camera
 from aquacal.core.interface_model import Interface
-from aquacal.core.refractive_geometry import refractive_project_batch
+from aquacal.core.refractive_geometry import (
+    NAN_REASON_ABOVE_INTERFACE,
+    NAN_REASON_BEHIND_CAMERA,
+    NAN_REASON_INTERFACE_BELOW_CAMERA,
+    refractive_project_batch,
+)
 from aquacal.utils.transforms import matrix_to_rvec, rvec_to_matrix
 
 #: Residual (pixels) assigned to an observation whose projection cannot be
@@ -28,6 +35,22 @@ from aquacal.utils.transforms import matrix_to_rvec, rvec_to_matrix
 #: limit is defined. This is the historical flat penalty, now confined to the
 #: one case where no continuous extension exists.
 INVALID_PROJECTION_PENALTY_PX = 100.0
+
+#: D-10 row cap for the FLAGGED-observation detail sink, per stage. Only
+#: observations the refractive model could not project reach this sink, and the
+#: whole post-FIX-01 suite's flagged population is E2's ~198 rows -- three orders
+#: of magnitude under the cap. It exists solely so an unattended overnight run
+#: that excurses cannot fill a disk. On truncation the rows stop but the
+#: aggregate count does NOT: it is produced independently by the counters in the
+#: same pass, never from ``len(rows)``.
+DEGENERACY_DETAIL_ROW_CAP_PER_STAGE = 50_000
+
+#: D-10 row cap for the FULL-POPULATION depth sink, per stage. Deliberately four
+#: times the flagged cap: this sink emits one row per *evaluated* observation,
+#: and E2 evaluates 73,975 of them per stage, so the 50k flagged cap would
+#: truncate exactly the table D-09 needs complete. The two values differ because
+#: the two populations differ by ~370x, not because either was tuned.
+OBSERVATION_DEPTH_ROW_CAP_PER_STAGE = 200_000
 
 
 def _extend_invalid_projections(
@@ -519,6 +542,58 @@ def build_structural_column_groups(
     return groups
 
 
+def build_parameter_block_slices(
+    camera_order: list[str],
+    frame_order: list[int],
+    reference_camera: str,
+    refine_intrinsics: bool = False,
+    normal_fixed: bool = True,
+    shared_interface: bool = True,
+) -> dict[str, slice]:
+    """Return the packed vector's five structural blocks, in packing order.
+
+    Phase 24 / DEGEN-05. `optimality` is a single scalar that mixes three
+    Coleman-Li scaling regimes -- ``v = 1`` for unbounded extrinsics and board
+    poses, ``v`` around 700 for wide-bounded intrinsics, ``v`` around 2e-12 for a
+    pinned slot -- so it is NOT a like-for-like maximum across blocks. Attributing
+    it to a block needs the layout, and this module owns the layout: computing it
+    in ``experiments/`` would duplicate exactly the drift
+    ``build_structural_column_groups``' docstring exists to prevent. The widths
+    here are the same arithmetic that function uses.
+
+    Args:
+        camera_order: Ordered camera names, as passed to `pack_params`.
+        frame_order: Ordered frame indices, as passed to `pack_params`.
+        reference_camera: Reference camera name (its extrinsics are not packed).
+        refine_intrinsics: Whether the intrinsics block is present.
+        normal_fixed: If False, a 2-parameter tilt block leads the vector.
+        shared_interface: If True, one global water_z; else one per camera.
+
+    Returns:
+        Dict mapping block name to its slice of the packed vector, with keys
+        drawn from ``"tilt"``, ``"extrinsics"``, ``"water_z"``, ``"board_poses"``
+        and ``"intrinsics"``. A block whose width is zero is omitted.
+    """
+    n_cams = len(camera_order)
+    n_frames = len(frame_order)
+
+    widths = [
+        ("tilt", 0 if normal_fixed else 2),
+        ("extrinsics", 6 * (n_cams - 1)),
+        ("water_z", 1 if shared_interface else n_cams),
+        ("board_poses", 6 * n_frames),
+        ("intrinsics", 4 * n_cams if refine_intrinsics else 0),
+    ]
+
+    blocks: dict[str, slice] = {}
+    start = 0
+    for name, width in widths:
+        if width > 0:
+            blocks[name] = slice(start, start + width)
+        start += width
+    return blocks
+
+
 def build_bounds(
     camera_order: list[str],
     frame_order: list[int],
@@ -527,6 +602,7 @@ def build_bounds(
     refine_intrinsics: bool = False,
     normal_fixed: bool = True,
     shared_interface: bool = True,
+    water_z_bounds: tuple[float, float] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """
     Build lower and upper bounds for optimization.
@@ -541,6 +617,14 @@ def build_bounds(
         shared_interface: If True (default), a single water_z bound is emitted.
             If False, N per-camera water_z bounds are emitted, each the same
             [0.01, 2.0] as the shared bound.
+        water_z_bounds: If given, `(lower, upper)` overrides the default
+            `[0.01, 2.0]` for EVERY water_z slot (all N of them in per-camera
+            mode). A degenerate interval (`lower == upper` within numerical
+            tolerance) holds the parameter fixed at solve time while leaving
+            it packed in the problem — it is not removed. This deliberately
+            does not parameterize the hardcoded default bound itself (D-05,
+            deferred post-submission); it only allows a caller to override it
+            for a specific solve.
 
     Returns:
         Tuple of (lower_bounds, upper_bounds) arrays
@@ -573,6 +657,10 @@ def build_bounds(
     water_z_idx = n_tilt_params + n_extrinsic_params
     lower[water_z_idx : water_z_idx + n_water_z_params] = 0.01
     upper[water_z_idx : water_z_idx + n_water_z_params] = 2.0
+    if water_z_bounds is not None:
+        wz_lo, wz_hi = water_z_bounds
+        lower[water_z_idx : water_z_idx + n_water_z_params] = wz_lo
+        upper[water_z_idx : water_z_idx + n_water_z_params] = wz_hi
 
     # Intrinsic bounds
     if refine_intrinsics:
@@ -614,6 +702,9 @@ def compute_residuals(
     normal_fixed: bool = True,
     shared_interface: bool = True,
     invalid_count_out: list[int] | None = None,
+    degeneracy_breakdown_out: dict[str, int] | None = None,
+    degeneracy_details_out: list[dict] | None = None,
+    observation_depths_out: list[dict] | None = None,
 ) -> NDArray[np.float64]:
     """
     Compute reprojection residuals for all observations.
@@ -646,6 +737,85 @@ def compute_residuals(
             whose refractive projection failed and had to be continued by
             :func:`_extend_invalid_projections`. Purely observational; has no
             effect on the returned residuals. Default None records nothing.
+        degeneracy_breakdown_out: Optional dict, purely observational, defaulting
+            to None -- when None, nothing is recorded, no reason array is
+            allocated, and behaviour is byte-for-byte unchanged for every existing
+            caller. When supplied, it is FILLED (assigned, not accumulated) with
+            exactly six int keys: the three CAUSE counts ``above_interface``,
+            ``behind_camera``, ``interface_below_camera``, read off the
+            projector's per-point reason array; the two FATE counts ``extended``
+            and ``penalized``, read off the ``unextendable`` mask; and
+            ``observations_evaluated``, the denominator this pass actually
+            evaluated. Cause and fate are two INDEPENDENT decompositions of the
+            same invalid set -- each sums to the invalid total on its own, and the
+            two are never additive with each other.
+
+            The caller maps these six onto the flat ``DISCARD_KEYS`` names; this
+            module deliberately holds none of those key strings.
+
+            ``interface_below_camera`` is a statement about the ESTIMATE -- the
+            estimated interface fell below an estimated camera center. It is a
+            convergence diagnostic of solver excursion, NOT a claim that a camera
+            was submerged; physical submersion is explicitly out of scope for this
+            library. Both terms of ``h_c = water_z - C_z`` are free parameters, so
+            the condition is reachable with the cameras bolted above the water the
+            whole time: Phase 23's D-06 measured E1's non-refractive, normal-free
+            arm recovering ``water_z = 0.0120 m`` pinned to the bound floor, at
+            which any camera whose estimated Z exceeds 12 mm satisfies
+            ``h_c <= 0``. Whether E1's 14,949 is mostly this cause is an expected
+            read-off from the Phase 28 frozen run, not an open question to probe.
+        degeneracy_details_out: Optional list, purely observational, defaulting to
+            None -- when None nothing is recorded, no row is built, no geometry is
+            recomputed, and the returned residual vector is bit-for-bit what every
+            existing caller already gets. When supplied, it is EXTENDED (appended
+            to, never cleared) with one dict per FLAGGED observation, i.e. per
+            observation the refractive projector returned NaN for. Each row
+            carries ``camera``, ``frame_idx``, ``corner_id``, ``h_q_m``,
+            ``h_c_m``, ``r_q_m``, ``chord_incidence_deg``, ``extended`` and
+            ``nan_reason``.
+
+            ``h_q_m``, ``h_c_m`` and ``r_q_m`` are METERS in the +Z-down world
+            frame, recomputed here from the same expressions the projector uses
+            (``refractive_geometry.py:661,675,676-679``) so the values are
+            bit-identical to the projector's own internals.
+
+            ``h_q = Q_z - z_int`` is depth below the ESTIMATED interface,
+            evaluated AT THE SOLUTION. It is a statement about the estimate, not
+            about reality: both ``Q_z`` and ``z_int`` are free parameters of the
+            solve, so a negative ``h_q`` means the optimizer placed the corner
+            above its own estimated water surface, never that a physical corner
+            left the water.
+
+            ``chord_incidence_deg`` is the angle of the straight CHORD from the
+            camera center to the point, ``degrees(arctan2(r_q, h_c + h_q))``. It
+            is NOT the refracted exit angle, and must never be read as one: the
+            refracted angle is unrecoverable for a flagged observation, because
+            the Newton loop (``refractive_geometry.py:713-741``) runs only over
+            ``valid_indices`` and a flagged point is outside ``valid`` by
+            construction, so no refraction point ``r_p`` exists for it.
+
+            ``nan_reason`` stays an int8 CODE (the ``NAN_REASON_*`` constants).
+            This module deliberately holds no bucket name -- the taxonomy that
+            maps codes and geometry onto named buckets lives in
+            ``experiments/_degeneracy.py``.
+
+            ``stage`` is added by the CALLER (D-07), never here:
+            ``compute_residuals`` has no ``discard_stage`` parameter and must not
+            gain one. Appends stop at
+            :data:`DEGENERACY_DETAIL_ROW_CAP_PER_STAGE` with a single warning;
+            the aggregate counts in ``degeneracy_breakdown_out`` are computed
+            independently in the same pass and are unaffected by truncation.
+        observation_depths_out: Optional list, purely observational, defaulting to
+            None with the same zero-cost inert contract as
+            ``degeneracy_details_out``. When supplied, it is EXTENDED with one
+            dict per EVALUATED observation -- the full population, not just the
+            flagged one (D-09) -- carrying ``camera``, ``frame_idx``,
+            ``corner_id``, ``h_q_m`` (meters, same estimate-relative meaning as
+            above) and ``nan_reason`` (0, ``NAN_REASON_NONE``, for a clean
+            observation). This is the distribution the flagged tail is a tail OF,
+            and it is ~74k rows per stage on E2, hence its own larger cap
+            :data:`OBSERVATION_DEPTH_ROW_CAP_PER_STAGE` and its own single
+            warning. ``stage`` is again added by the caller.
 
     Returns:
         1D array of residuals [r0_x, r0_y, r1_x, r1_y, ...] in pixels.
@@ -664,6 +834,18 @@ def compute_residuals(
 
     residuals = []
     n_invalid = 0
+
+    record_degeneracy = degeneracy_breakdown_out is not None
+    record_details = degeneracy_details_out is not None
+    record_all_depths = observation_depths_out is not None
+    details_cap_warned = False
+    depths_cap_warned = False
+    n_above_interface = 0
+    n_behind_camera = 0
+    n_interface_below_camera = 0
+    n_extended = 0
+    n_penalized = 0
+    n_observations_evaluated = 0
 
     for frame_idx in frame_order:
         if frame_idx not in detections.frames:
@@ -692,7 +874,23 @@ def compute_residuals(
 
             # Batch-project all corners for this camera-frame pair
             points_3d = np.array([corners_3d[cid] for cid in detection.corner_ids])
-            projected_batch = refractive_project_batch(camera, interface, points_3d)
+            # D-06b: the reason array is allocated ONLY when a breakdown, a
+            # per-observation detail sink (`degeneracy_details_out`) or a
+            # full-population depth sink (`observation_depths_out`) was requested,
+            # and all three are requested only on the single post-solve
+            # evaluation. The solve's own thousands of residual calls therefore
+            # allocate nothing and pay one identity test.
+            nan_reason = (
+                np.zeros(len(points_3d), dtype=np.int8)
+                if (record_degeneracy or record_details or record_all_depths)
+                else None
+            )
+            projected_batch = refractive_project_batch(
+                camera, interface, points_3d, nan_reason_out=nan_reason
+            )
+            # D-10: the denominator is produced by the same pass over the same data
+            # at the same moment as the counts it is the denominator for.
+            n_observations_evaluated += len(detection.corner_ids)
 
             # Compute residuals. An observation the refractive model cannot
             # project is continued with the pinhole extension, so it keeps a
@@ -707,10 +905,144 @@ def compute_residuals(
                 unextendable = np.isnan(diff_invalid).any(axis=1)
                 diff_invalid[unextendable] = INVALID_PROJECTION_PENALTY_PX
                 diff[invalid] = diff_invalid
+
+                if record_degeneracy:
+                    # Two independent axes. There is no tie-break rule ordering one
+                    # cause ahead of another, and none may ever be introduced -- the
+                    # reason array already assigns exactly one cause per point.
+                    # Cause comes from the projector's reason array,
+                    # fate from `unextendable`, and the sum over causes equals
+                    # `invalid.sum()` by construction. If an invalid observation ever
+                    # carried NAN_REASON_NONE the cause counts would fall short and
+                    # relation 3 of `check_discard_invariants` would fire -- that is
+                    # the intended detection path for a bookkeeping bug, and it is
+                    # why nothing is silently bucketed into an "other" kind.
+                    #
+                    # These are five vectorized reductions per (camera, frame), not a
+                    # per-point loop, and none of them runs when the breakdown dict is
+                    # None -- the hot-path prohibition at `_observability.py` holds.
+                    invalid_reasons = nan_reason[invalid]
+                    n_above_interface += int(
+                        (invalid_reasons == NAN_REASON_ABOVE_INTERFACE).sum()
+                    )
+                    n_behind_camera += int(
+                        (invalid_reasons == NAN_REASON_BEHIND_CAMERA).sum()
+                    )
+                    n_interface_below_camera += int(
+                        (invalid_reasons == NAN_REASON_INTERFACE_BELOW_CAMERA).sum()
+                    )
+                    n_this_penalized = int(unextendable.sum())
+                    n_penalized += n_this_penalized
+                    n_extended += int(invalid.sum()) - n_this_penalized
+
+                if degeneracy_details_out is not None:
+                    # DEGEN-04: the per-observation JOINT the two Phase 24
+                    # marginals cannot express. Raw geometry only -- no bucket
+                    # name is spelled here (D-06); the classifier lives in
+                    # `experiments/_degeneracy.py`.
+                    #
+                    # These four expressions are transcribed from
+                    # refractive_geometry.py:661, :675, :676-679 so the recorded
+                    # values are bit-identical to the projector's own internals.
+                    # If that file's arithmetic ever changes, this must follow.
+                    z_int = water_zs[cam_name]
+                    C = camera.C
+                    h_c = float(z_int - C[2])
+                    idx = np.where(invalid)[0]
+                    h_q = points_3d[idx, 2] - z_int
+                    r_q = np.hypot(points_3d[idx, 0] - C[0], points_3d[idx, 1] - C[1])
+                    # The straight-chord incidence angle, NOT the refracted exit
+                    # angle: the Newton loop never ran for these points, so no
+                    # refraction point exists to measure a real exit angle from.
+                    chord_incidence_deg = np.degrees(np.arctan2(r_q, h_c + h_q))
+                    for k, i in enumerate(idx):
+                        # TWO INDEX SPACES, and mixing them is the most likely
+                        # bug in this block (RESEARCH says so by name).
+                        # `k` indexes the flagged subset `points_3d[invalid]`,
+                        # which is what `unextendable` and the recomputed
+                        # geometry arrays above are indexed by. `i` indexes the
+                        # FULL point set, which is what `nan_reason` and
+                        # `detection.corner_ids` are indexed by. Neither may be
+                        # substituted for the other.
+                        if (
+                            len(degeneracy_details_out)
+                            >= DEGENERACY_DETAIL_ROW_CAP_PER_STAGE
+                        ):
+                            if not details_cap_warned:
+                                details_cap_warned = True
+                                warnings.warn(
+                                    "degeneracy detail sink reached its row cap of "
+                                    f"{DEGENERACY_DETAIL_ROW_CAP_PER_STAGE} rows; "
+                                    "further flagged observations are not recorded. "
+                                    "The aggregate counts remain exact -- they are "
+                                    "counted independently, not derived from row "
+                                    "count -- and every emitted row is stamped "
+                                    "`truncated`.",
+                                    UserWarning,
+                                    stacklevel=2,
+                                )
+                            break
+                        degeneracy_details_out.append(
+                            {
+                                "camera": cam_name,
+                                "frame_idx": frame_idx,
+                                "corner_id": int(detection.corner_ids[i]),
+                                "h_q_m": float(h_q[k]),
+                                "h_c_m": h_c,
+                                "r_q_m": float(r_q[k]),
+                                "chord_incidence_deg": float(chord_incidence_deg[k]),
+                                "extended": not bool(unextendable[k]),
+                                "nan_reason": int(nan_reason[i]),
+                            }
+                        )
+
+            if observation_depths_out is not None:
+                # D-09's library half: one row per EVALUATED observation, flagged
+                # or not, so the flagged tail can be read against the
+                # distribution it is a tail of. Deliberately outside the
+                # `if invalid.any():` guard above -- a clean (camera, frame) pair
+                # must still contribute its rows.
+                z_int = water_zs[cam_name]
+                all_h_q = points_3d[:, 2] - z_int
+                for i in range(len(points_3d)):
+                    if (
+                        len(observation_depths_out)
+                        >= OBSERVATION_DEPTH_ROW_CAP_PER_STAGE
+                    ):
+                        if not depths_cap_warned:
+                            depths_cap_warned = True
+                            warnings.warn(
+                                "observation depth sink reached its row cap of "
+                                f"{OBSERVATION_DEPTH_ROW_CAP_PER_STAGE} rows; "
+                                "further observations are not recorded. The "
+                                "aggregate counts remain exact and every emitted "
+                                "row is stamped `truncated`.",
+                                UserWarning,
+                                stacklevel=2,
+                            )
+                        break
+                    observation_depths_out.append(
+                        {
+                            "camera": cam_name,
+                            "frame_idx": frame_idx,
+                            "corner_id": int(detection.corner_ids[i]),
+                            "h_q_m": float(all_h_q[i]),
+                            "nan_reason": int(nan_reason[i]),
+                        }
+                    )
+
             residuals.append(diff.ravel())
 
     if invalid_count_out is not None:
         invalid_count_out.append(n_invalid)
+
+    if degeneracy_breakdown_out is not None:
+        degeneracy_breakdown_out["above_interface"] = n_above_interface
+        degeneracy_breakdown_out["behind_camera"] = n_behind_camera
+        degeneracy_breakdown_out["interface_below_camera"] = n_interface_below_camera
+        degeneracy_breakdown_out["extended"] = n_extended
+        degeneracy_breakdown_out["penalized"] = n_penalized
+        degeneracy_breakdown_out["observations_evaluated"] = n_observations_evaluated
 
     if residuals:
         return np.concatenate(residuals).astype(np.float64)

@@ -1,0 +1,29 @@
+[
+  {
+    "label": "n1.0_normalfixed_FALSE_water_z_PINNED_1.031_BOTH_PASSES (D-02: pinned + normal-free)",
+    "n_water": 1.0,
+    "normal_fixed": false,
+    "water_z_pinned": 1.031,
+    "elapsed_s": 136.1,
+    "degenerate_observations_at_solution": 0,
+    "discard_stats": {
+      "pnp_attempts_total": 511,
+      "pnp_attempts_nonrefractive": 511,
+      "degenerate_observations_at_solution": 0
+    },
+    "optimality_interface": 1.4445430872830798,
+    "optimality_intrinsic": 92.7841140024072,
+    "cost_interface": 26067.0205835744,
+    "cost_intrinsic": 15097.612313075724,
+    "status_interface": 2,
+    "status_intrinsic": 2,
+    "water_z_estimated": 1.030999999999,
+    "water_z_error_from_gt_mm": -0.0,
+    "bound_hit": true,
+    "timings": {
+      "stage3_interface_optimization": 84.37882800000034,
+      "stage3_intrinsic_pass": 50.22657190000018
+    },
+    "ok": true
+  }
+]

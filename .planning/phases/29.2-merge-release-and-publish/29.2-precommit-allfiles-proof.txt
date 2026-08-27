@@ -1,0 +1,1077 @@
+================================================================================
+29.2-precommit-allfiles-proof.txt -- CI's whole-tree hook sweep
+`pre-commit run --all-files` RUN ONCE, LOCALLY, on a committed-clean tree, and
+asserted against FOUR independent invariants (D-29.2-03 and its 2026-08-26
+amendment). Reads with 29.2-02-SUMMARY.md, which wrote the exclude patterns this
+sweep is the first execution of. Extended below with the pull request this proof
+unblocked and that request's check board.
+================================================================================
+
+Measured        : 2026-08-27
+Branch          : results/rerun-freeze-02
+Head sha        : 12291c695a65b91ae2563361f8cfa0759536b9d5
+                  (12291c6 "docs(29.2-03): file this plan's two deviations in
+                  the windows ledger")
+Hook runner     : pre-commit 4.6.2 -- installed UNPINNED, exactly as
+                  .github/workflows/test.yml:54 does it (`pip install
+                  pre-commit`, no version specifier), so that what is proved
+                  here is what CI runs and not a pinned near-neighbour of it.
+                  4.6.2 is what resolved on 2026-08-27; CI resolves whatever is
+                  current on the day it runs, which is the same exposure CI
+                  already carries and is recorded rather than removed.
+Interpreter     : /tmp/aquacal-29.2-precommit-venv/bin/python (Python 3.12.13),
+                  an ISOLATED venv, not the anaconda base environment --
+                  29.2-RESEARCH.md § Environment Availability recorded
+                  pre-commit as not installed on this machine and asked for a
+                  scratch venv rather than a base-environment install. CI's
+                  pre-commit job pins python-version '3.12' (test.yml:51), so
+                  3.12.13 is the SAME minor as the runner and the hooks below
+                  resolve their own pinned environments identically.
+Config commits  : e671074 "fix(29.2-02): scope both formatting hooks off the
+                  byte-sensitive artifacts" and d9e8f49 "fix(29.2-02): add a
+                  .planning/ arm to detect-secrets, and write its cost down"
+                  -- the two commits whose patterns this sweep executes for the
+                  first time. Both landed and were committed BEFORE this run;
+                  the prohibition against sweeping ahead of them is honoured by
+                  ordering, and the clean baseline below is what shows it.
+Hook env cache  : ~/.cache/pre-commit -- outside the repository tree, so the
+                  hook environments pre-commit built cannot themselves appear as
+                  working-tree changes and inflate or mask assertion 2.
+
+--------------------------------------------------------------------------------
+0. WHY A CLEAN RESULT HERE IS NEWS AND NOT ROUTINE
+--------------------------------------------------------------------------------
+
+THIS COMMAND HAS NEVER BEEN INVOKED ANYWHERE IN THIS PROJECT BEFORE. Every hook
+run in Phase 29 and 29.1 was scoped to named files with `--files`; no whole-tree
+sweep appears anywhere in the project's history. `.github/workflows/test.yml:57`
+has been running exactly this command on every push to `main` and every pull
+request into it for as long as that job has existed -- but no pull request has
+ever been opened on this repository, and the results branch has never been pushed
+to `main`, so the job has never fired against this tree. The sweep below is the
+first execution, anywhere, of the seven-hook configuration against all 1,711
+tracked files.
+
+That is why the four assertions exist. Until this run, "the excludes look right"
+was a reading of a regex. It is now a measurement.
+
+And it is why EXIT ZERO IS NOT THE BAR. Two of the seven hooks
+(trailing-whitespace, end-of-file-fixer) rewrite in place and then report
+success on what they rewrote; a third (ruff, `args: [--fix]`) rewrites SOURCE
+the same way. A sweep that silently normalised the 143 deliberate missing
+newlines and the 439 trailing-whitespace advisories inside the 227-file
+provenance commit 70e783f would have exited zero while destroying the record.
+Assertions 2 through 4 are what catch that; assertion 1 alone cannot.
+
+--------------------------------------------------------------------------------
+1. ASSERTION ONE -- THE SWEEP EXITS ZERO
+--------------------------------------------------------------------------------
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+All SEVEN hooks are recorded above, not only the three that plan 29.2-02
+repaired. The four that were never touched (ruff, ruff format, check yaml, check
+for added large files) are reported here because 29.2-RESEARCH.md § Q3f measured
+them read-only and predicted clean for each; this is the first execution that
+confirms the prediction rather than modelling it.
+
+Two of those four are worth naming individually:
+
+  ruff (legacy alias)   Runs with `args: [--fix]`. Had it found a single lint it
+                        would have REWRITTEN SOURCE, and assertion 2 below would
+                        have failed -- a lint finding wearing a byte-integrity
+                        costume. It passed, so no source was rewritten and the
+                        two failure modes did not have to be told apart. Note
+                        what Q3f records: the pre-push gate only covers
+                        `ruff check src/ tests/`, so this CI sweep is the only
+                        thing that lints experiments/, docs/ and the 14 .py
+                        files under .planning/probes/. They are clean today;
+                        they are not GUARDED by anything except this job.
+
+  check for added...    A no-op by construction on a clean checkout, not a pass
+                        earned against content: pre-commit-hooks v5.0.0 filters
+                        to `git diff --staged --diff-filter=A`, which is empty
+                        here and on a fresh CI checkout. Recorded as a pass
+                        because that is what it printed; recorded as a no-op
+                        because a reader should not credit it with more.
+
+--------------------------------------------------------------------------------
+2. ASSERTION TWO -- THE WORKING TREE'S STATUS OUTPUT IS UNCHANGED AND EMPTY
+--------------------------------------------------------------------------------
+
+This is the assertion that catches a hook that rewrote a file and then reported
+success. It is meaningful ONLY because the baseline was taken on a committed-
+clean tree: plans 29.2-01, 29.2-02 and 29.2-03 had committed everything they
+produced before this ran, so an empty result after the sweep can only mean
+nothing moved.
+
+BEFORE the sweep:
+
+  $ git status --porcelain
+
+(no output -- 0 bytes, 0 lines)
+(exit code 0)
+
+AFTER the sweep:
+
+  $ git status --porcelain
+
+(no output -- 0 bytes, 0 lines)
+(exit code 0)
+
+  $ diff <baseline> <post-run>
+
+(no output -- byte-identical)
+(exit code 0)
+
+And with untracked files fully expanded, so that a hook that CREATED a file
+rather than editing one is caught too:
+
+  $ git status --porcelain --untracked-files=all
+
+(no output -- 0 lines)
+(exit code 0)
+
+NOTHING WAS REWRITTEN. Not one of the 1,711 tracked files changed by a byte, and
+no new file appeared. The evidence file you are reading is the only working-tree
+change this plan makes, and it was written after this measurement was taken.
+
+--------------------------------------------------------------------------------
+3. ASSERTION THREE -- BOTH MD5 ANCHORS ARE UNMOVED
+--------------------------------------------------------------------------------
+
+These are the two digests `gate3_git_sha_consistency` and the interface-ablation
+band check rest on.
+
+  $ md5sum experiments/results/real_rig_metrics.json experiments/results/interface_ablation_band.csv
+
+57279708f6106f411d1fe03ed2698291  experiments/results/real_rig_metrics.json
+b6515ed77ed04268608b74217716020b  experiments/results/interface_ablation_band.csv
+
+(exit code 0)
+
+Asserted by STRING EQUALITY against the literals, not by eye:
+
+  $ [ "$(md5sum experiments/results/real_rig_metrics.json | cut -d' ' -f1)" = "57279708f6106f411d1fe03ed2698291" ]
+
+MD5-A: MATCH
+(exit code 0)
+
+  $ [ "$(md5sum experiments/results/interface_ablation_band.csv | cut -d' ' -f1)" = "b6515ed77ed04268608b74217716020b" ]
+
+MD5-B: MATCH
+(exit code 0)
+
+A correction worth carrying forward, because the wrong framing once produced a
+pattern that protected nothing (see .pre-commit-config.yaml:66-76): THESE TWO
+FILES WERE NEVER THE BYTES AT RISK FROM THE FORMATTING HOOKS. They live under
+experiments/results/, which the `results[^/]*/` arm already covered. They are
+asserted here because they are what the repository's gates rest on, so their
+being unmoved is worth stating -- not because this sweep was ever likely to
+move them. The bytes that WERE at risk are the driver-state TSV and the stage
+logs, which assertion 4 names.
+
+--------------------------------------------------------------------------------
+4. ASSERTION FOUR -- THE DRIVER-STATE FILE IS STILL FIVE-FIELD ON EVERY LINE
+--------------------------------------------------------------------------------
+
+  $ awk -F'\t' '{print NF}' experiments/run_experiment_suite_state.7005a27.tsv | sort -u
+
+5
+
+(exit code 0)
+
+The distinct field count across all 40 lines is the SINGLE value 5. Asserted by
+string equality against that single value, so a second distinct count appearing
+would fail rather than pass unnoticed:
+
+  $ [ "$(awk -F'\t' '{print NF}' experiments/run_experiment_suite_state.7005a27.tsv | sort -u | tr '\n' ',')" = "5," ]
+
+NF: SINGLE VALUE 5
+(exit code 0)
+
+Supporting count, which is the specific thing that would have broken:
+
+  $ grep -c $'\t$' experiments/run_experiment_suite_state.7005a27.tsv
+
+20
+(exit code 0)
+
+20 of the 40 lines END IN A TAB. That trailing tab IS the empty fifth column --
+the exit-code field, empty on the `start` rows. Had trailing-whitespace stripped
+it, those 20 lines would have become 4-field while the other 20 stayed 5-field,
+and the `sort -u` above would have printed TWO values instead of one. That is
+schema corruption, not whitespace.
+
+WHY THIS ASSERTION IS HERE WHEN ASSERTION TWO WOULD ALSO HAVE CAUGHT IT: because
+assertion 2 catches it GENERICALLY -- it would report that a file changed --
+while this one names WHICH INVARIANT was at stake. Only the named one survives
+into this file, where a future reader can see what the exclude was protecting
+and why stripping twenty trailing tabs was never a tidying operation. That is
+the whole reason D-29.2-03 was amended on 2026-08-26 to require it.
+
+--------------------------------------------------------------------------------
+5. BEFORE AND AFTER, IN ONE PLACE
+--------------------------------------------------------------------------------
+
+All three measured quantities, baseline beside post-run (D-29-16: report both
+numbers, never only the flattering one):
+
+                                                BEFORE              AFTER
+  git status --porcelain                     0 lines      ->     0 lines
+  git status --porcelain -uall               0 lines      ->     0 lines
+  md5 real_rig_metrics.json          57279708f610...  ->  57279708f610...
+  md5 interface_ablation_band.csv    b6515ed77ed0...  ->  b6515ed77ed0...
+  TSV distinct field count                   {5}          ->     {5}
+  TSV lines ending in a tab                    20         ->       20
+
+EVERY ROW IS UNCHANGED, AND NO ROW WAS ADJUSTED TOWARD BEING UNCHANGED. These
+are what the commands reported. Had any of them moved, the finding would be
+recorded here with the file list and this plan would have stopped -- restoring a
+rewritten artifact and re-running to obtain a pass is expressly prohibited,
+because a rewrite is the reportable result, not an obstacle to a clean one.
+
+--------------------------------------------------------------------------------
+6. PROHIBITIONS HONOURED, EACH BACKED BY A MEASUREMENT
+--------------------------------------------------------------------------------
+
+  No committed artifact was regenerated (D-29-08).
+      Backed by: `git status --porcelain --untracked-files=all` -> 0 lines,
+      section 2. Nothing was written, so nothing was regenerated.
+
+  No hook was skipped, disabled or bypassed.
+      Backed by: seven "Passed" lines in section 1, one per hook in
+      .pre-commit-config.yaml's pre-commit stage. No SKIP= environment variable
+      was set, no --hook-id was passed to scope the run, and no --no-verify is
+      involved -- this is a `run --all-files`, not a commit.
+
+  The configuration was not edited during or for this run.
+      Backed by: `.pre-commit-config.yaml` last changed at d9e8f49, which is
+      three commits before the head sha this was measured at, and the clean
+      status output in section 2 confirms it is unmodified in the working tree.
+
+  The sweep ran on a committed-clean tree, so assertion 2 means what it says.
+      Backed by: the BEFORE row in section 5 -- `git status --porcelain` was
+      already 0 lines before the sweep started. This is the precondition that
+      makes an empty AFTER informative rather than vacuous.
+
+  The two md5 anchors are unmoved.
+      Backed by: the two string-equality assertions in section 3.
+
+  Nothing irreversible was performed by the agent (D-29.2-24).
+      The sweep is read-only in effect. The pull request recorded in section 8
+      was created, which creates only; sections 8 and 9 record that no merge,
+      auto-merge or approval was performed.
+
+--------------------------------------------------------------------------------
+7. SCOPE -- WHAT THIS PROVES, AND WHERE THE PROOF STOPS
+--------------------------------------------------------------------------------
+
+Scope: this proves the seven-hook configuration against THIS tree at THIS sha --
+12291c695a65b91ae2563361f8cfa0759536b9d5 on results/rerun-freeze-02 -- with the
+hook runner that resolved on 2026-08-27, pre-commit 4.6.2. CI runs the identical
+command on a fresh checkout of the same commit, and a fresh checkout of a commit
+is the same tree, so the prediction that the `pre-commit` job goes green is as
+strong as a local measurement can make it. IT IS STILL A PREDICTION UNTIL THE JOB
+REPORTS. Three things can differ on the runner and none is controlled from here:
+the unpinned `pip install pre-commit` may resolve a newer version than 4.6.2; the
+hook repositories are pinned by rev in the configuration but their environments
+are rebuilt from scratch there; and the runner is ubuntu-latest rather than this
+machine. Section 9 records what the job actually did, which is the only thing
+that closes the gap.
+
+The proof also does not extend forward. Any commit pushed to this branch after
+this sha changes the tree, and this evidence would then describe a tree that no
+longer exists -- which is why nothing has been pushed to the branch since.
+
+--------------------------------------------------------------------------------
+8. THE PULL REQUEST -- NOT CREATED. BLOCKED ON A MISSING CREDENTIAL SCOPE.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. Task 2 of plan 29.2-04 could not be completed, and this
+section records why rather than leaving the omission silent.
+
+THE PROOF IN SECTIONS 1-7 STANDS AND IS UNAFFECTED. It was re-taken at the sha
+this section is appended to; see the re-measurement note at the end.
+
+What was attempted:
+
+  $ git push origin results/rerun-freeze-02
+
+To https://github.com/McGrathLab/AquaCal.git
+ ! [remote rejected] results/rerun-freeze-02 -> results/rerun-freeze-02 (refusing
+   to allow an OAuth App to create or update workflow `.github/workflows/release.yml`
+   without `workflow` scope)
+error: failed to push some refs to 'https://github.com/McGrathLab/AquaCal.git'
+
+(exit code 1)
+
+The cause, stated exactly. The branch carries 7ab969e "ci(29.2-01): pin the
+release toolchain to a verified-working PSR/GitPython pair", which MODIFIES
+.github/workflows/release.yml. GitHub refuses any push that creates or updates a
+file under .github/workflows/ unless the credential carries the `workflow`
+scope. The credential available here does not:
+
+  $ gh auth status
+
+  ✓ Logged in to github.com account tlancaster6 (keyring)
+  - Token scopes: 'gist', 'read:org', 'repo'
+
+(exit code 0)
+
+`repo` is sufficient to open the pull request. It is NOT sufficient to push the
+commit the pull request would be opened against. The block is on the push, one
+step earlier than the pull request itself.
+
+No alternative credential exists on this machine, checked read-only and by
+presence only, without printing any value:
+
+  GH_TOKEN unset | GITHUB_TOKEN unset | RELEASE_TOKEN unset | GH_ENTERPRISE_TOKEN unset
+  git credential.helper: not configured (local or global)
+
+SSH was checked as a route around the OAuth scope, because `gh auth status`
+reports "Git operations protocol: ssh" and an SSH key carries no OAuth scope
+restriction. It is not usable either:
+
+  $ ssh -T git@github.com
+
+git@github.com: Permission denied (publickey).
+(exit code 255)
+
+WHAT WAS DELIBERATELY NOT DONE, AND WHY IT MATTERS
+
+The remote branch is presently at 2205eeb, which is 21 commits BEHIND the local
+head ff9d5d1. A pull request could have been opened from that already-pushed
+state without any push at all. IT WAS NOT, AND MUST NOT BE. 2205eeb predates
+every wave-one change:
+
+  e671074, d9e8f49   the two pre-commit exclude repairs -- absent
+  3026813            the D4 step-bound assertion fix    -- absent
+  7ab969e            the release toolchain pin          -- absent
+
+CI against 2205eeb would run the `pre-commit` job against the UNREPAIRED
+configuration and fail it on the ~300 end-of-file-fixer rewrites, 19
+trailing-whitespace rewrites and 10 detect-secrets findings that 29.2-02
+measured, and would redden two ubuntu `test` cells on the D4 assertion that
+29.2-03 fixed. The resulting board would be red, and worse, it would describe a
+tree that the proof in sections 1-7 does not cover. A board that does not
+describe the proven tree is not evidence about the proven tree. Opening it would
+manufacture exactly the mis-read board that T-29.2-17 exists to prevent.
+
+Nothing was merged, auto-merged, approved or requested for review. No pull
+request exists: `gh pr list --state open` -> `[]`, unchanged from the state
+29.2-PATTERNS.md § No Analog Found recorded.
+
+WHAT UNBLOCKS IT -- an author action, not an agent action
+
+Any one of the following, after which Task 2 and Task 3 can run unchanged:
+
+  1. Grant the scope to the existing credential (interactive; opens a browser):
+       gh auth refresh -h github.com -s workflow
+  2. Or configure an SSH key for this machine and push over SSH.
+  3. Or push 7ab969e's branch with a personal access token carrying `workflow`.
+
+Option 1 is the smallest change and is reversible.
+
+RE-MEASUREMENT AFTER THIS SECTION WAS APPENDED
+
+Section 7 warns that any new commit changes the tree the proof describes. The
+sweep was therefore re-run after the section-8 commit landed, and reported
+identically: exit code 0, all seven hooks Passed, `git status --porcelain
+--untracked-files=all` 0 lines, both md5 anchors matching their literals, and
+the driver-state TSV's distinct field count the single value 5. The evidence
+file is under .planning/, which both formatting hooks and detect-secrets
+exclude, so it cannot be rewritten by the hooks it documents.
+
+
+--------------------------------------------------------------------------------
+9. THE PULL REQUEST -- CREATED. SUPERSEDES SECTION 8's BLOCKED STATUS.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. Section 8 is left exactly as written, unedited, because it
+records what was true when it was written and the scope gate it describes is
+part of this phase's record (S6 -- superseding statements never rewrite the
+record). This section states what is true now.
+
+WHAT CLEARED THE GATE
+
+The author ran option 1 of the three routes section 8 offered:
+
+  $ gh auth refresh -h github.com -s workflow        (author action, interactive)
+
+Verified afterwards, read-only, without printing any token value:
+
+  $ gh auth status
+
+  ✓ Logged in to github.com account tlancaster6 (keyring)
+  - Active account: true
+  - Git operations protocol: ssh
+  - Token: gho_************************************
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+
+(exit code 0)
+
+`workflow` is present where section 8 recorded it absent. That is the only thing
+that changed; no credential was created, no token was written to disk by this
+agent, and no value was printed.
+
+THE PUSH THAT SECTION 8 RECORDED AS REJECTED
+
+  $ git push origin results/rerun-freeze-02
+
+To https://github.com/McGrathLab/AquaCal.git
+   2205eeb..cf14d0e  results/rerun-freeze-02 -> results/rerun-freeze-02
+
+(exit code 0)
+
+The same command, the same commit range, the same remote -- now accepted. The
+commit that triggered the rejection, 7ab969e "ci(29.2-01): pin the release
+toolchain to a verified-working PSR/GitPython pair", is in this range and did
+push, which is the direct confirmation that the scope was the whole cause.
+
+Asserted, rather than inferred from the absence of an error:
+
+  $ git rev-parse origin/results/rerun-freeze-02
+
+cf14d0e6fb9b79167c57930455817a1a42985ca6
+(exit code 0)
+
+  $ git rev-parse HEAD
+
+cf14d0e6fb9b79167c57930455817a1a42985ca6
+(exit code 0)
+
+REMOTE AND LOCAL ARE THE SAME SHA. This matters more than it looks: section 7's
+scope paragraph says this proof describes THIS tree at THIS sha, and section 8
+refused to open a request against the stale remote state 2205eeb precisely
+because a board describing an unproven tree is not evidence about the proven
+tree. The push moved the remote onto the proven sha rather than moving the proof
+onto a new one. NO COMMIT WAS MADE BETWEEN THE SWEEP AND THE PUSH, so the sweep
+in sections 1-4 did not have to be re-run, and it was not.
+
+THE PULL REQUEST
+
+  $ gh pr create --base main --head results/rerun-freeze-02 --title "..." --body-file <file>
+
+https://github.com/McGrathLab/AquaCal/pull/3
+(exit code 0)
+
+  Number     : 3
+  URL        : https://github.com/McGrathLab/AquaCal/pull/3
+  Base ref   : main
+  Head ref   : results/rerun-freeze-02
+  Head sha   : cf14d0e6fb9b79167c57930455817a1a42985ca6
+  State      : OPEN
+  Draft      : false
+  Created    : 2026-08-27T00:52:32Z
+
+Asserted by string equality against the expected tuple, not read by eye:
+
+  $ PR=$(gh pr list --state open --base main --head results/rerun-freeze-02 --json number,baseRefName,headRefName,state,mergedAt --jq '.[0]')
+  $ [ "$(echo "$PR" | python3 -c '...print(d["baseRefName"], d["headRefName"], d["state"], d["mergedAt"])')" = "main results/rerun-freeze-02 OPEN None" ]
+
+{"baseRefName":"main","headRefName":"results/rerun-freeze-02","mergedAt":null,"number":3,"state":"OPEN"}
+PR-STATE ASSERTION: PASS
+(exit code 0)
+
+`mergedAt` is null. That is the machine-readable form of "nothing was merged",
+and it is asserted rather than promised.
+
+NOTHING IRREVERSIBLE WAS PERFORMED (D-29.2-24, T-29.2-15)
+
+  No merge.          `mergedAt` is null, asserted above by string equality.
+  No auto-merge.     `autoMergeRequest` is null, from the same read.
+  No approval.       No review was submitted, and none was requested -- so no
+                     review exists that could auto-merge on approval.
+  No draft toggle.   `isDraft` is false; created as a normal request.
+  Creation only.     `gh pr create` creates; it has no merging behaviour of any
+                     kind. RESEARCH § Q5a records this and it is why the command
+                     was chosen over any UI route.
+
+A CORRECTION THAT MUST NOT BE SWALLOWED (D-29-16 -- report both numbers)
+
+29.2-PATTERNS.md § No Analog Found states that "No PR has ever been opened on
+this repo", citing `gh pr list --state open` -> `[]` as its evidence. THAT
+CONCLUSION IS WRONG, and the reason is instructive: `--state open` queries only
+OPEN requests, so it cannot see a closed or merged one. Queried across all
+states at creation time:
+
+  $ gh pr list --state all --json number,title,state --jq '.[] | "\(.number) \(.state) \(.title)"'
+
+3 OPEN    Release v2.1.0: the production run, its artifacts, and the release-engineering repairs — MERGE COMMIT ONLY, never squash
+2 MERGED  Dev
+1 MERGED  ci: exclude tutorial notebooks from detect-secrets
+
+(exit code 0)
+
+TWO PULL REQUESTS PREDATE THIS ONE, both merged. This one is #3 for that reason
+and not because GitHub shares its numbering with issues -- the issue list is
+empty.
+
+What the correction does and does not change. It does NOT invalidate Task 2's
+precondition: that precondition asserts `gh pr list --state open` returns an
+empty list, which it did, and the assertion's purpose -- catching an unexpected
+already-open request -- was served exactly. It DOES retire the "no house
+template exists" premise behind the body's shape. Neither prior body is a usable
+template regardless (#1 is a one-line CI tweak, #2 is titled "Dev"), so the
+verdict-first shape borrowed from 29.1-PREPUSH-AUDIT.md stands on its merits.
+The claim is corrected here, in this phase's record, rather than edited into
+29.2-PATTERNS.md, per S6. The general lesson is the one S7 already states:
+query live state, and query it across the state space you actually mean.
+
+WHAT THE BODY CARRIES
+
+The body opens with five bolded one-line verdicts before any evidence, and says
+why that ordering was chosen. Its two load-bearing instructions:
+
+  1. MERGE COMMIT, NEVER SQUASH -- with the consequence in one sentence (a
+     squash collapses all 451 commits into one message and semantic-release
+     parses only that message, so the release silently does not fire), plus the
+     note that all three merge methods are enabled and the split button
+     remembers the last method used, so the method must be POSITIVELY SELECTED.
+  2. DECLINE THE DELETE-BRANCH PROMPT -- the branch and the tag are both kept
+     deliberately; `deleteBranchOnMerge` is already false, so this is declining
+     a button rather than changing a setting.
+
+It links all four of this phase's evidence files at the pushed sha, and closes
+by stating that nothing was merged, approved, auto-merged, re-run or cancelled.
+
+THE COMMIT COUNT, RE-DERIVED (D-29.2-19) -- BOTH NUMBERS, NEITHER ADJUSTED
+
+  $ git rev-list --count origin/main..results/rerun-freeze-02
+
+451
+(exit code 0)
+
+                              THIS PR    REHEARSAL   RESEARCH 08-26   ROADMAP
+  commits ahead of main         451         438        429 / 431        406
+
+The count has now drifted a third time, 438 -> 451, in the day since the
+rehearsal. Every one of the 13 new commits is a `.planning/` documentation
+commit from wave one of this phase, so the feat/fix figures and the computed
+bump are unaffected: 47 feat, 30 fix, 0 breaking-change markers, MINOR, 2.1.0.
+The body prints 451 as the live figure with all three prior figures beside it.
+This is exactly the drift D-29.2-28b exists for, and it is why plan 29.2-05
+re-runs the rehearsal immediately before the merge rather than trusting this
+row.
+
+--------------------------------------------------------------------------------
+10. THE BOARD FOUND A SEVENTH JOB, AND IT WAS RED -- build-docs
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. The first read of the board returned SEVEN rows, not the six
+this plan predicted. The unpredicted row was `build-docs`, and it had already
+FAILED. This section records the finding, its provenance, the author's ruling on
+it, the repair, and the re-proof the repair forced.
+
+THE ROW COUNT WAS WRONG, AND THE PREDICTION IS WHAT MADE THAT VISIBLE
+
+Predicted before the board was read, from `.github/workflows/test.yml` alone:
+four `test` cells (ubuntu/windows x 3.11/3.12) + `pre-commit` + `experiments-smoke`
+= SIX. The board reported SEVEN. The extra row comes from a SECOND workflow file
+that the prediction did not consult:
+
+  $ ls -1 .github/workflows/
+
+docs.yml
+publish.yml
+release.yml
+slow-tests.yml
+test.yml
+(exit code 0)
+
+  $ sed -n '1,10p' .github/workflows/docs.yml
+
+name: Documentation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+(exit code 0)
+
+`docs.yml` triggers on `pull_request` into `main` and on NOTHING ELSE -- no
+`push`, no schedule. So, exactly like the whole-tree hook sweep this file's
+sections 1-4 prove, IT HAS NEVER FIRED AGAINST THIS TREE. Its last run anywhere
+was 2026-04-20 against `dev`. Opening this pull request is what fired it, and
+that is why a four-month-old defect surfaced today.
+
+T-29.2-17 IS WHAT CAUGHT THIS. The threat register requires the expected row
+count be stated BEFORE the board is read, so that a mismatch is visible as a
+shortfall rather than invisible as a silence. The register anticipated a MISSING
+job; what turned up was a SURPLUS one. The mitigation worked in the direction it
+was not designed for, which is worth recording: an exact predicted count catches
+a surplus row for the same reason it catches a missing one.
+
+THE FAILURE
+
+  Job     : build-docs
+  Run     : 33028275063  (Documentation, pull_request, head cf14d0e)
+  Job link: https://github.com/McGrathLab/AquaCal/actions/runs/33028275063/job/98374620368
+  Step    : "Build documentation" -- `sphinx-build -W --keep-going -b html docs docs/_build/html`
+
+The build completed every page, copied both notebooks, dumped the search index
+and the object inventory -- and then died on the `-W`:
+
+  build finished with problems, 4 warnings (with warnings treated as errors).
+  ##[error]Process completed with exit code 1.
+
+The four problems, extracted verbatim from the run log, are all reStructuredText
+prose faults in docstrings under `src/`:
+
+  src/aquacal/calibration/interface_estimation.py:docstring of
+    aquacal.calibration.interface_estimation.DEGENERACY_WARNING_FRACTION_THRESHOLD:10:
+    WARNING: Definition list ends without a blank line; unexpected unindent. [docutils]
+
+  src/aquacal/calibration/refinement.py:docstring of
+    aquacal.calibration.refinement.DEGENERACY_WARNING_FRACTION_THRESHOLD:13:
+    WARNING: Definition list ends without a blank line; unexpected unindent. [docutils]
+
+  src/aquacal/validation/diagnostics.py:docstring of
+    aquacal.validation.diagnostics.save_diagnostic_report:10:
+    ERROR: Unexpected indentation. [docutils]
+
+  src/aquacal/validation/diagnostics.py:docstring of
+    aquacal.validation.diagnostics.save_diagnostic_report:11:
+    WARNING: Block quote ends without a blank line; unexpected unindent. [docutils]
+
+PROVENANCE -- INHERITED, NOT INTRODUCED
+
+This is a PRE-EXISTING DEFECT that this phase MEASURED, not a regression this
+phase CAUSED. The distinction is the difference between a finding and a mistake,
+and it is asserted rather than assumed:
+
+  $ git log --name-only 12291c6...cf14d0e -- src/
+
+(no output -- phase 29.2 had touched no file under src/ at all before the repair
+below)
+(exit code 0)
+
+The docstrings themselves were last written in phases 24 and 25 (a212d5a,
+34b4354, ba59f84). `DEGENERACY_WARNING_FRACTION_THRESHOLD` entered at d6b55ed,
+"feat(24-01): narrow the degenerate-observation warning by cause and fraction
+(DEGEN-03)", and is absent from `main` entirely -- so two of the four faults have
+never been seen by any docs build, on any branch, ever.
+
+THE AUTHOR'S RULING
+
+Plan 29.2-04's own instruction for a red job is "report it and stop; the repair
+belongs in its own plan against a fresh measurement". That instruction was
+followed to the letter: the failure was reported to the author WITHOUT being
+touched. THE AUTHOR THEN RULED OTHERWISE -- fix the docstrings inside this plan
+and re-run the checks -- and constrained the fix to docstring prose with no
+value, signature, default, threshold or behaviour permitted to move.
+
+Recorded as an explicit scope deviation. This plan's `files_modified` names only
+this evidence file; three files under `src/` were changed on the author's
+instruction. The ruling is the author's; the constraint is the author's; the
+record of both is here so neither is inferred later.
+
+THE REPAIR
+
+  interface_estimation.py and refinement.py (the two are held line-for-line
+  parallel by design, so both take the identical edit): the bullet list under
+  "Justified by two measurements..." sat indented and hard against the sentence
+  above it, so docutils read the sentence as a DEFINITION-LIST TERM and the
+  bullets as its definition -- then hit the unindented sentence below with no
+  blank line between. Blank lines added on both sides and the bullets dedented to
+  the surrounding column, which is a paragraph followed by a bullet list: what
+  the prose always meant, and what it now parses as.
+
+  diagnostics.py: `save_diagnostic_report`'s "Creates:" lead-in had no blank line
+  before its list. One blank line added.
+
+NO BEHAVIOUR CHANGED -- ASSERTED, NOT PROMISED
+
+  $ git diff --stat HEAD~1 HEAD
+
+ src/aquacal/calibration/interface_estimation.py | 8 +++++---
+ src/aquacal/calibration/refinement.py           | 8 +++++---
+ src/aquacal/validation/diagnostics.py           | 1 +
+ 3 files changed, 11 insertions(+), 6 deletions(-)
+(exit code 0)
+
+Every one of those 17 lines is a comment or a docstring line. The two constant
+blocks are `#:` autodoc COMMENTS, which never reach the parser as code at all.
+The strongest available assertion, run over all three files -- parse both the
+parent and the child, strip every docstring, and compare the dumped syntax trees:
+
+  $ python3 -c "...ast.dump(strip_docs(ast.parse(old))) == ast.dump(strip_docs(ast.parse(new)))..."
+
+IDENTICAL  src/aquacal/calibration/interface_estimation.py   (AST, docstrings stripped)
+IDENTICAL  src/aquacal/calibration/refinement.py             (AST, docstrings stripped)
+IDENTICAL  src/aquacal/validation/diagnostics.py             (AST, docstrings stripped)
+(exit code 0)
+
+And the value the author named specifically:
+
+  $ python3 -c "...ast.literal_eval of DEGENERACY_WARNING_FRACTION_THRESHOLD..."
+
+src/aquacal/calibration/interface_estimation.py -> 0.01
+(exit code 0)
+
+Unmoved. `refinement.py` re-exports that same object under an alias and was not
+touched below its comment block.
+
+LOCAL VERIFICATION BEFORE PUSHING -- AND EXACTLY WHERE IT STOPS
+
+The author required the fix be verified locally rather than pushed hopefully.
+THE FULL SPHINX BUILD COULD NOT BE REPRODUCED ON THIS MACHINE, and that is stated
+plainly rather than papered over: `nbsphinx` converts the two tutorial notebooks
+through `pandoc`, `pandoc` is absent here, and `sudo` is password-gated, so the
+`apt-get install pandoc` step CI runs cannot be reproduced.
+
+What WAS reproduced is the exact sub-pipeline that emitted all four messages:
+napoleon (Google style, per `docs/conf.py:65`) transforms each docstring, then
+docutils parses it. Both messages are `[docutils]`-domain, so this is the same
+parser producing the same text. Run in an isolated venv at
+/tmp/aquacal-29.2-docutils-venv (docutils 0.23, sphinx 9.1.0, both unpinned):
+
+  $ python /tmp/dcheck.py          # BEFORE the repair
+
+1 message(s)  src/aquacal/calibration/interface_estimation.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+    <string>:10: (WARNING/2) Definition list ends without a blank line; unexpected unindent.
+1 message(s)  src/aquacal/calibration/refinement.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+    <string>:13: (WARNING/2) Definition list ends without a blank line; unexpected unindent.
+2 message(s)  src/aquacal/validation/diagnostics.py :: save_diagnostic_report
+    <string>:11: (ERROR/3) Unexpected indentation.
+    <string>:12: (WARNING/2) Block quote ends without a blank line; unexpected unindent.
+TOTAL: 4
+(exit code 1)
+
+  $ python /tmp/dcheck.py          # AFTER the repair
+
+0 message(s)  src/aquacal/calibration/interface_estimation.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+0 message(s)  src/aquacal/calibration/refinement.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+0 message(s)  src/aquacal/validation/diagnostics.py :: save_diagnostic_report
+TOTAL: 0
+(exit code 0)
+
+FOUR BEFORE, ZERO AFTER. The harness reproduces CI's count exactly and reproduces
+the two constant line numbers -- 10 and 13 -- VERBATIM. The `diagnostics.py` pair
+lands at 11/12 here against CI's 10/11: a constant one-line offset, because
+`ast.get_docstring(clean=False)` keeps the newline directly after the opening
+quotes that sphinx's `prepare_docstring` drops. Same two messages, same order,
+same text, shifted by one. Recorded rather than smoothed.
+
+Scope of this local check, stated so no one credits it with more: it covers the
+three docstrings that failed, not the whole documentation set. It cannot see a
+notebook-conversion fault, a broken cross-reference, or any warning arising
+outside these three objects. CI's `build-docs` job is the confirmation, and
+section 11 records what it did.
+
+THE SWEEP RE-RUN THE REPAIR FORCED
+
+Section 7 states that any commit pushed to this branch after the proof's sha
+changes the tree the proof describes. The docstring repair is such a commit -- and
+unlike every prior one it touches `src/`, which is INSIDE what the formatting
+hooks and `ruff --fix` operate on. So the sweep was re-run from scratch at the
+new sha. All four invariants were re-asserted, not just the exit code.
+
+  Head sha: 3ffebe39279a2c2d9064c05793a939ba5711123f
+  Runner  : pre-commit 4.6.2 (same isolated venv, hook envs from ~/.cache/pre-commit)
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+                                                BEFORE              AFTER
+  git status --porcelain                     0 lines      ->     0 lines
+  git status --porcelain -uall               0 lines      ->     0 lines
+  md5 real_rig_metrics.json          57279708f610...  ->  57279708f610...
+  md5 interface_ablation_band.csv    b6515ed77ed0...  ->  b6515ed77ed0...
+  TSV distinct field count                   {5}          ->     {5}
+  TSV lines ending in a tab                    20         ->       20
+
+  $ diff <baseline-status> <post-run-status>            -> byte-identical (exit 0)
+  $ [ "$(md5sum .../real_rig_metrics.json ...)" = "57279708f6106f411d1fe03ed2698291" ]
+MD5-A: MATCH (exit code 0)
+  $ [ "$(md5sum .../interface_ablation_band.csv ...)" = "b6515ed77ed04268608b74217716020b" ]
+MD5-B: MATCH (exit code 0)
+  $ [ "$(awk -F'\t' '{print NF}' .../run_experiment_suite_state.7005a27.tsv | sort -u | tr '\n' ',')" = "5," ]
+NF: SINGLE VALUE 5 (exit code 0)
+
+ONE RESULT HERE IS NEW INFORMATION AND NOT A REPEAT. `ruff (legacy alias)` runs
+with `args: [--fix]`, and this is the first sweep in which it had freshly edited
+`src/` files to look at. Had it disliked the reformatted docstrings it would have
+REWRITTEN them, and the status assertion above would have failed. It passed and
+the status is unchanged, so the repair is lint-clean as well as parse-clean.
+
+The proof of sections 1-4 therefore stands at 3ffebe3, re-measured rather than
+carried forward.
+
+--------------------------------------------------------------------------------
+11. THE CHECK BOARD -- RULED **NOT GREEN**. FOUR OF SEVEN ROWS RED.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27, after every check settled. Head sha the board describes:
+f300c55d8cf261db4ef95365d71a8131966e7a21, which is both local HEAD and
+`origin/results/rerun-freeze-02` -- asserted in the closing block of this section.
+
+THE EXPECTED ROW COUNT, STATED BEFORE THE BOARD WAS READ
+
+Six: four `test` matrix cells (ubuntu-latest / windows-latest x 3.11 / 3.12) plus
+`pre-commit` plus `experiments-smoke`, all from `.github/workflows/test.yml`.
+SEVEN arrived. The surplus row is `build-docs`, whose provenance, failure and
+repair are section 10. The count is restated here because T-29.2-17 requires the
+prediction precede the reading, and because a reader of this section alone should
+not have to take the row count on trust.
+
+THE BOARD, EVERY ROW VERBATIM
+
+  $ gh pr checks 3 --json name,state,bucket,link
+
+  NAME                          STATE     BUCKET  LINK
+  ----------------------------  --------  ------  --------------------------------------------------------------------------
+  build-docs                    SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751470/job/98379291277
+  experiments-smoke             SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291522
+  pre-commit                    SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291367
+  test (ubuntu-latest, 3.11)    FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291310
+  test (ubuntu-latest, 3.12)    FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291405
+  test (windows-latest, 3.11)   FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291196
+  test (windows-latest, 3.12)   FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291497
+
+  rows: 7   pass: 3   fail: 4   pending: 0
+(exit code 0)
+
+THE RULING
+
+  **NOT GREEN.** Case one of the three this plan distinguishes: A FAILING JOB --
+  four of them, the entire `test` matrix. Not case two (a missing job: every
+  expected job fired, and one more besides). Not case three (a zero-check board:
+  seven rows were reported).
+
+  The zero-check rule was not exercised and is restated so it stays on the
+  record: a board reporting no checks at all would be ruled NOT GREEN and would
+  halt, because a workflow that never fired proves nothing about the tree. NO
+  SOURCE ARTIFACT IN THIS PHASE SPECIFIES WHAT A ZERO-CHECK BOARD MEANS -- that
+  rule is a FLAGGED PLANNER ASSUMPTION, not a measured behaviour, and it is
+  recorded as an assumption here for the same reason it was recorded as one in
+  the plan.
+
+WHAT WENT GREEN, AND WHY TWO OF THE THREE MATTER MORE THAN THEY LOOK
+
+  pre-commit          SUCCESS in 33 seconds on ubuntu-latest. THIS IS ROADMAP
+                      CRITERION 1, CONFIRMED ON THE REAL RUNNER. Sections 1-4 of
+                      this file predicted it from a local sweep and section 7
+                      said plainly that it remained a prediction until the job
+                      reported. It has now reported. The three hook repairs plan
+                      29.2-02 wrote hold on a fresh checkout with hook
+                      environments rebuilt from scratch, on ubuntu-latest rather
+                      than this machine, with `pip install pre-commit` resolving
+                      independently. The local proof is confirmed, not merely
+                      consistent.
+
+  experiments-smoke   SUCCESS. Matches 29.2-03's local measurement of 7/7
+                      invocations exit 0.
+
+  build-docs          SUCCESS -- RED ON THE PREVIOUS SHA, GREEN HERE. This is the
+                      confirmation section 10's local napoleon+docutils check
+                      explicitly could not provide, because pandoc is absent on
+                      this machine and the notebook half of the build could not
+                      be reproduced. The full build, notebooks and all, now
+                      passes under `-W`. Four docutils problems before, zero
+                      after, measured by CI itself.
+
+WHAT WENT RED -- ALL FOUR `test` CELLS, IDENTICALLY
+
+Every one of the four cells failed with THE SAME FIVE TESTS and an otherwise
+identical tally. The four summary lines, verbatim:
+
+  test (ubuntu-latest, 3.11)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 33 warnings in 4300.58s (1:11:40) =
+  test (ubuntu-latest, 3.12)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 31 warnings in 5088.54s (1:24:48) =
+  test (windows-latest, 3.11)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 22 warnings in 9434.83s (2:37:14) =
+  test (windows-latest, 3.12)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 22 warnings in 11689.68s (3:14:49) =
+
+The five, identical on all four cells:
+
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_every_required_field_is_non_null
+         - AssertionError: null required manifest fields: ['cpu_count_logical', 'git_describe', 'ram_total_bytes']
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_describe_is_a_version_anchor
+         - TypeError: expected string or bytes-like object, got 'NoneType'
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_describe_distinguishes_commits_the_dist_version_cannot
+         - TypeError: argument of type 'NoneType' is not iterable
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_dirty_is_a_bool_agreeing_with_the_describe_suffix
+         - AttributeError: 'NoneType' object has no attribute 'endswith'
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_platform_fields_are_populated
+         - assert False  (isinstance(None, int))
+
+THIS IS NEW INFORMATION AND IT IS REPORTED AS SUCH
+
+29.2-03 measured `pytest -m "not slow"` on THIS TREE at **0 failed**, 2326
+passed, 21 skipped. CI ran the same selection and got **5 failed**, 2319 passed,
+23 skipped. THE PLAN SAID A RED NOT-SLOW CELL WOULD BE NEW INFORMATION AND MUST
+BE REPORTED RATHER THAN EXPLAINED AWAY. It is red, and this is the report. Both
+numbers are printed; neither is adjusted toward the other:
+
+                          LOCAL (29.2-03)     CI (all four cells)
+  failed                        0                     5
+  passed                     2326                  2319
+  skipped                      21                    23
+  deselected                    -                    71
+
+THE DIAGNOSIS -- MEASURED, WITH THE INFERENCE LABELLED
+
+All three null fields are environment facts the runner cannot supply. Both causes
+are measured from the run logs, not surmised:
+
+  `git_describe` is None because THE RUNNER HAS NO TAGS AND NO HISTORY. From the
+  checkout step's own log, verbatim:
+
+      fetch-depth: 1
+      fetch-tags: false
+      [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune \
+        --no-recurse-submodules --depth=1 origin \
+        +1c8234fefc3050e2aa0cffbeaab2cdc265a7ba87:refs/remotes/pull/3/merge
+
+  `.github/workflows/test.yml` uses a bare `- uses: actions/checkout@v4` with no
+  `with:` block, so it takes the action's defaults: depth 1, no tags.
+  `experiments/_run_manifest.py:115` resolves the field with
+  `git describe --match 'v[0-9]*'`, which has nothing to anchor to in a
+  one-commit, zero-tag clone. Note also that the ref fetched is
+  `refs/remotes/pull/3/merge` -- GitHub's synthetic merge commit -- not the
+  branch head.
+
+  `cpu_count_logical` and `ram_total_bytes` are None because PSUTIL IS NOT
+  INSTALLED. `pyproject.toml` puts `psutil>=5.9` in the **`bench`** extra
+  (line 68), while `test.yml:31` installs `pip install -e ".[dev]"`. The string
+  `psutil` does not appear ANYWHERE in the job's install log -- grep count 0.
+  `src/aquacal/io/benchmark.py:158` documents this exact outcome: "psutil
+  unavailable; cpu_count_logical/ram_total_bytes left as None."
+
+  So the production code behaves as its own docstrings specify. What fails is
+  five TESTS that assert those fields are always populated, in an environment
+  that by construction cannot populate them.
+
+  LABELLED AS INFERENCE, NOT MEASUREMENT: that these tests would go green if the
+  checkout fetched tags and the test extra carried psutil is a PREDICTION. It has
+  not been executed. Nothing in this plan changed either, and this plan proposes
+  no repair -- see the ruling on scope below.
+
+PROVENANCE -- INHERITED, LIKE build-docs, AND NEVER BEFORE EXERCISED BY CI
+
+  $ git cat-file -e origin/main:tests/unit/test_run_manifest.py
+
+ABSENT from main
+(exit code 1)
+
+  $ git log --oneline --diff-filter=A -1 -- tests/unit/test_run_manifest.py
+
+1674883 test(26-02): add failing tests for the suite run-manifest emitter
+(exit code 0)
+
+The module arrived in phase 26 and does not exist on `main`, so no CI run has
+ever executed it -- `test.yml` fires on push to `main` and on pull requests into
+`main`, and this is the first pull request since the module was written. The
+pattern is now the second instance of the same shape section 10 recorded for
+`build-docs`: A GATE THAT ONLY FIRES ON A PULL REQUEST INTO `main` ACCUMULATES
+LATENT FAILURES FOR AS LONG AS NO PULL REQUEST IS OPENED. Two such failures
+surfaced within an hour of each other on this, the first such request.
+
+NO REPAIR WAS ATTEMPTED, AND WHY
+
+This plan's instruction for a red job is explicit: report it and stop; the repair
+belongs in its own plan against a fresh measurement, not in a workaround here.
+The `build-docs` repair in section 10 happened ONLY because the author ruled on
+it directly after being shown the failure. NO SUCH RULING EXISTS FOR THIS ONE, so
+nothing was changed. Any fix here would touch either the workflow's checkout
+configuration or the dependency extras or the tests' own semantics -- each a
+decision, none an obvious correction, and the sweep proof would need re-taking
+again afterwards.
+
+Specifically NOT done: no test was skipped, xfailed or deselected to obtain a
+green board (D-29.2-09, D-29-13); no job was re-run; nothing was cancelled.
+
+THE UNPROTECTED DEFAULT BRANCH -- CONTEXT, AND EXPLICITLY NOT A LICENCE
+
+`main` carries neither classic branch protection (`gh api
+repos/.../branches/main/protection` -> 404 Branch not protected) nor a newer
+ruleset (`gh api repos/.../rulesets` -> `[]`). SO THESE FOUR RED CHECKS DO NOT
+MECHANICALLY BLOCK A MERGE. The green button will be available.
+
+STATE IT IN AS MANY WORDS: THAT IS EXACTLY WHY THE REPAIRS EXIST -- so the board
+goes green ON ITS MERITS, not so that a red one can be merged past. T-29.2-18
+accepts the unprotected branch as the repository's standing configuration and
+names the compensating control: the merge is gated behind a human decision in
+plan 29.2-05. This section is input to that decision, not a substitute for it.
+The author decides; this file only reports.
+
+A DIVERGENCE THE NEXT PLAN MUST KNOW ABOUT
+
+The commit carrying THIS section is not pushed, and must not be. Pushing it would
+move the head, fire a fresh run, and the board recorded above would describe a
+tree that no longer exists -- the plan prohibits exactly that, and it is the same
+reasoning section 8 used to refuse a request against a stale remote. So from this
+commit forward, LOCAL HEAD IS AHEAD OF THE PULL REQUEST'S HEAD by the evidence
+commits alone. At the moment the board was read the two were equal:
+
+  $ git rev-parse HEAD ; git rev-parse origin/results/rerun-freeze-02
+
+f300c55d8cf261db4ef95365d71a8131966e7a21
+f300c55d8cf261db4ef95365d71a8131966e7a21
+(exit code 0)
+
+Plan 29.2-05 owns the reconciliation: before merging, the remaining `.planning/`
+commits must be pushed, which re-fires the board and requires it be re-read.
+D-29.2-28b already requires the release rehearsal be re-run immediately before
+the merge for an unrelated reason; this is a second reason to re-measure rather
+than to trust this page.
+
+THE SWEEP, RE-ASSERTED AT THE SHA THE BOARD DESCRIBES
+
+Run once more at f300c55 so that sections 1-4 and section 11 speak about the same
+tree:
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+  $ diff <baseline -uall> <post-run -uall>     -> byte-identical (exit 0)
+  MD5-A: MATCH   MD5-B: MATCH   NF: SINGLE VALUE 5
+
+ONE HONEST CHANGE FROM EVERY PRIOR RUN, RECORDED RATHER THAN ROUNDED AWAY:
+`git status --porcelain -uall` reported **2 lines**, not 0, both before and after
+the sweep. They are two untracked todo files under `.planning/todos/pending/`,
+written while this plan ran and unrelated to the hooks:
+
+  ?? .planning/todos/pending/2026-08-26-docs-yml-only-runs-on-pull-requests-into-main.md
+  ?? .planning/todos/pending/2026-08-26-no-local-gate-builds-the-docs-so-docstring-markup-is-unchecked.md
+
+The assertion that matters is unaffected and is the one actually taken: the
+before and after outputs are BYTE-IDENTICAL, so the sweep neither created,
+deleted nor modified anything. Both files are committed together with this
+section, so the tree returns to fully-tracked. Reporting 0 here would have been
+false, and the four-assertion discipline is worth more than a tidy number.

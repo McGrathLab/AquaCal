@@ -168,6 +168,7 @@ class TestLoadConfig:
         assert config.save_stage_calibrations is True
         assert config.save_optimization_trace is False
         assert config.save_conditioning is False
+        assert config.log_all_observation_depths is False
         assert config.seed == 42
 
     def test_load_config_missing_file(self):
@@ -247,6 +248,7 @@ class TestLoadConfig:
         assert config.save_stage_calibrations is True
         assert config.save_optimization_trace is False
         assert config.save_conditioning is False
+        assert config.log_all_observation_depths is False
         assert config.seed == 42
 
     def test_normal_fixed_defaults_to_false(self):
@@ -314,6 +316,32 @@ class TestLoadConfig:
         assert config.save_optimization_trace is True
         assert config.save_conditioning is True
         assert config.seed == 7
+
+    def test_log_all_observation_depths_defaults_off_and_round_trips(
+        self, valid_config_yaml
+    ):
+        """`log_all_observation_depths` is off unless the config asks for it (D-09).
+
+        The flag lives in the config rather than in an invocation flag so that
+        an instrumented run records its own instrumentation state; that only
+        works if the field survives the YAML round-trip, and only stays safe
+        for ordinary users if its absence means False.
+        """
+        # Absent from `internals:` entirely -> False.
+        valid_config_yaml["internals"] = {"save_stage_calibrations": False}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+        assert config.log_all_observation_depths is False
+
+        # Explicitly requested -> True.
+        valid_config_yaml["internals"] = {"log_all_observation_depths": True}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(valid_config_yaml, f)
+            f.flush()
+            config = load_config(f.name)
+        assert config.log_all_observation_depths is True
 
     def test_load_config_with_intrinsic_board(self, valid_config_yaml):
         """Test loading config with separate intrinsic_board section."""

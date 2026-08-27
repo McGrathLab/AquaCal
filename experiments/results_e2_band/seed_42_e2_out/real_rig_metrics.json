@@ -1,23 +1,23 @@
 {
   "auxiliary_reprojection_px": {
-    "e3v8250": 14.856381427044548
+    "e3v8250": 14.856381390262069
   },
   "camera_height_range_m": [
-    1.0471767675522858,
-    1.1125017239978958
+    1.0471767706702149,
+    1.112501725917547
   ],
-  "inter_corner_mae_mm": 0.25817717557392356,
-  "inter_corner_rmse_mm": 0.628138580850984,
-  "mean_per_camera_reprojection_px": 0.8240385366779744,
-  "mean_relative_error_pct": 0.4302952926232059,
-  "mean_reprojection_px": 0.9276607330387148,
+  "inter_corner_mae_mm": 0.25817717737878654,
+  "inter_corner_rmse_mm": 0.628138596646187,
+  "mean_per_camera_reprojection_px": 0.8240385407126619,
+  "mean_relative_error_pct": 0.4302952956313109,
+  "mean_reprojection_px": 0.9276607463816985,
   "n_comparisons": 7762,
   "provenance": {
     "auxiliary_reprojection_px": "result.diagnostics.reprojection_error_per_camera, keyed by each auxiliary camera's name",
     "camera_height_range_m": "min/max of cc.water_z - cc.extrinsics.C[2] over primary cameras; identical to camera_parameters.csv's h_c_m column",
     "inter_corner_mae_mm": "mean(abs(signed_errors)) from output_dir/spatial_measurements.csv (load_spatial_measurements), converted to mm",
     "inter_corner_rmse_mm": "sqrt(mean(signed_errors**2)) from output_dir/spatial_measurements.csv (load_spatial_measurements), converted to mm",
-    "mean_per_camera_reprojection_px": "mean of result.diagnostics.reprojection_error_per_camera over primary (non-auxiliary) cameras -- this IS the \u00a73 quantity (release diagnostics.json: 0.8786 px, quoted as 0.88)",
+    "mean_per_camera_reprojection_px": "mean of result.diagnostics.reprojection_error_per_camera over primary (non-auxiliary) cameras -- this IS the \u00a73 quantity, computed from THIS run. Do NOT read it as the manuscript's 0.88 px: that came from the 2026-07 release_calibration diagnostics.json (0.8786 px) and is SUPERSEDED as a description of this field (see MANUSCRIPT-FINDINGS MF-19).",
     "mean_relative_error_pct": "inter_corner_mae_mm / (result.board.square_size * 1000) * 100",
     "mean_reprojection_px": "result.diagnostics.reprojection_error_rms -- the POOLED RMS over all observations. This is NOT the quantity the manuscript's \u00a73 calls 'mean reprojection error'; see mean_per_camera_reprojection_px.",
     "n_comparisons": "len(signed_errors) from output_dir/spatial_measurements.csv",
@@ -25,8 +25,8 @@
     "water_z_m": "cc.water_z (shared across all cameras under shared_interface); identical to camera_parameters.csv's water_z_m column"
   },
   "reprojection_range_px": [
-    0.5537182529445406,
-    2.0815506868720615
+    0.5537182413303376,
+    2.0815507624672698
   ],
-  "water_z_m": 1.073840398
+  "water_z_m": 1.073840401
 }

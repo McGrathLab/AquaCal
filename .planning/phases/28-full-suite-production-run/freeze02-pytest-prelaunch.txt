@@ -1,0 +1,341 @@
+...............................................................s........ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+........................................................................ [ 11%]
+....................................................F................... [ 14%]
+........................................................................ [ 17%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 26%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+..........................................................ss............ [ 47%]
+........................................................................ [ 50%]
+...........................ssss........................................s [ 53%]
+sssssssss..sssss.s.s.ss................................................. [ 56%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+...........F............................................................ [ 70%]
+..................................F..................................... [ 73%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 88%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 97%]
+............................................................             [100%]
+=================================== FAILURES ===================================
+__________________________ test_matches_frozen_anchor __________________________
+
+    @pytest.mark.slow
+    def test_matches_frozen_anchor():
+        """Results still equal values captured BEFORE the counters were added.
+    
+        The anchor's provenance is what makes this meaningful: it was generated from a
+        checkout without this plan's edits and committed before them. Regenerating it
+        from instrumented code would make the test self-confirming and worthless.
+    
+        **REGENERATED 2026-08-01 (plan 19.3-04, D-19.3-09), for an unrelated
+        reason.** `generate_camera_array`'s `height_above_water` default moved
+        from the old shallow 0.15 m literal to the real-rig standoff
+        (`WATER_Z` ~1.031 m), and the "minimal" preset this test runs no longer
+        passes `height_above_water=0.15` explicitly, so it now inherits the new
+        default -- `water_z` moved from ~0.196 to ~1.190 m as a direct, intended
+        consequence (not a discard-counter regression; the original
+        pre-instrumentation-vs-instrumented comparison this anchor was built for
+        is now historical, same as `TestSolverConfigSeedIsInert` in
+        `test_pipeline.py`).
+    
+        **REGENERATED again 2026-08-04 (plan 19.4-02, D-19.4-09), also for an
+        unrelated reason.** `generate_camera_array`'s `height_variation` jitter
+        moved from `water_z` onto `C_z` -- cam1 of the "minimal" preset now sits
+        at a jittered camera height above a SHARED water plane instead of
+        looking through its own slightly-deeper water plane at `C_z == 0`. The
+        ground-truth `h_c = water_z - C_z` is unchanged (proven exactly in
+        `tests/unit/test_synthetic_scenario_geometry.py`), but the calibrated
+        (not ground-truth) `water_z` for this scenario is only weakly
+        identified here -- `n_water=1.0` in `_MINIMAL_KWARGS` deliberately
+        mismatches the scenario's `n_water=1.333` ground truth, degrading
+        refraction to near-inert, which is why a millimeter-scale input jitter
+        change can move the optimizer's converged (but weakly-constrained)
+        interface estimate by tens of centimeters while reprojection RMS moves
+        only in its sixth decimal digit. See
+        `tests/fixtures/discard_anchor.json`'s `provenance.note` for the exact
+        before/after values.
+        """
+        if not ANCHOR_PATH.is_file():
+            pytest.skip(f"anchor not generated: {ANCHOR_PATH}")
+        anchor = json.loads(ANCHOR_PATH.read_text())
+    
+        scenario = create_scenario("minimal", seed=1)
+        result, _ = calibrate_synthetic(scenario, **_MINIMAL_KWARGS)
+    
+>       assert (
+            result.diagnostics.reprojection_error_rms == anchor["reprojection_error_rms"]
+        ), "reprojection RMS moved against the pre-instrumentation anchor"
+E       AssertionError: reprojection RMS moved against the pre-instrumentation anchor
+E       assert np.float64(0.794471850364211) == 0.7944718492870945
+E        +  where np.float64(0.794471850364211) = DiagnosticsData(reprojection_error_rms=np.float64(0.794471850364211), reprojection_error_per_camera={}, validation_3d_...mean=0.0, validation_3d_error_std=0.0, per_corner_residuals=None, per_corner_camera_labels=None, per_frame_errors=None).reprojection_error_rms
+E        +    where DiagnosticsData(reprojection_error_rms=np.float64(0.794471850364211), reprojection_error_per_camera={}, validation_3d_...mean=0.0, validation_3d_error_std=0.0, per_corner_residuals=None, per_corner_camera_labels=None, per_frame_errors=None) = CalibrationResult(cameras={'cam0': CameraCalibration(name='cam0', intrinsics=CameraIntrinsics(K=array([[1.66276878e+03...te='synthetic', software_version='test', config_hash='synthetic', num_frames_used=10, num_frames_holdout=0, seed=None)).diagnostics
+
+tests/unit/test_discard_accounting.py:185: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`xtol` termination condition is satisfied.
+Function evaluations 27, initial cost 2.6560e+03, final cost 9.1393e+02, first-order optimality 5.36e-04.
+_ TestPerObservationDetailSinks.test_detail_sink_recomputed_geometry_matches_projector _
+
+self = <test_optim_common.TestPerObservationDetailSinks object at 0x7f61aa9e0410>
+
+    def test_detail_sink_recomputed_geometry_matches_projector(self):
+        """h_q/h_c/r_q must be the projector's own quantities, not an approximation.
+    
+        Recomputed here from `refractive_geometry.py:661,675,676-679` verbatim and
+        compared with `==`, never `pytest.approx` -- a tolerance would pass on a
+        sink that had drifted to a different (but nearby) formula.
+        """
+        from aquacal.calibration._optim_common import compute_residuals
+        from aquacal.core.camera import Camera
+    
+        params, cost_args, cams, frame_order = self._packed_partially_flagged()
+        detections, base_intrinsics, board, ref_cam, ref_ext = cost_args[:5]
+        del detections
+    
+        rows: list[dict] = []
+        compute_residuals(params, *cost_args, degeneracy_details_out=rows)
+        assert rows
+    
+        extrinsics, water_zs, board_poses, intrinsics = unpack_params(
+            params,
+            ref_cam,
+            ref_ext,
+            cams,
+            frame_order,
+            base_intrinsics=base_intrinsics,
+        )
+    
+        for row in rows:
+            cam_name = row["camera"]
+            pose = board_poses[row["frame_idx"]]
+            corners_3d = board.transform_corners(pose.rvec, pose.tvec)
+            Q = corners_3d[row["corner_id"]]
+            camera = Camera(cam_name, intrinsics[cam_name], extrinsics[cam_name])
+            C = camera.C
+            z_int = water_zs[cam_name]
+    
+            h_c = z_int - C[2]
+            h_q = Q[2] - z_int
+            dx = Q[0] - C[0]
+            dy = Q[1] - C[1]
+            r_q = np.sqrt(dx * dx + dy * dy)
+    
+            assert row["h_c_m"] == h_c, row
+            assert row["h_q_m"] == h_q, row
+>           assert row["r_q_m"] == r_q, row
+E           AssertionError: {'camera': 'cam0', 'frame_idx': 1, 'corner_id': 8, 'h_q_m': -0.02275709680740423, ...}
+E           assert 0.10681280743540097 == np.float64(0.10681280743540099)
+
+tests/unit/test_optim_common.py:1496: AssertionError
+__________ TestSolverConfigSeedIsInert.test_matches_pre_change_anchor __________
+
+self = <test_pipeline.TestSolverConfigSeedIsInert object at 0x7f61aa09d850>
+tmp_path = PosixPath('/tmp/pytest-of-tlancaster/pytest-59/test_matches_pre_change_anchor0')
+
+    @pytest.mark.slow
+    def test_matches_pre_change_anchor(self, tmp_path):
+        """The ideal-preset pipeline's numbers exactly match the frozen anchor.
+    
+        The anchor was regenerated at `e4bce72` on 2026-07-31 after D-27
+        (`d5d9dde`) legitimately invalidated the original e1d6548 capture; see
+        the class docstring for the bisection and the cause. A mismatch here is
+        a finding to report, not a tolerance to loosen.
+        """
+        cameras, accuracy = self._run_ideal_pipeline(tmp_path)
+    
+        assert cameras.keys() == self._ANCHOR_CAMERAS.keys()
+        for cam_name, anchor_cam in self._ANCHOR_CAMERAS.items():
+>           np.testing.assert_array_equal(cameras[cam_name]["R"], anchor_cam["R"])
+E           AssertionError: 
+E           Arrays are not equal
+E           
+E           Mismatched elements: 4 / 9 (44.4%)
+E           Mismatch at indices:
+E            [0, 2]: 1.1794605354132222e-16 (ACTUAL), 1.626335673341426e-16 (DESIRED)
+E            [1, 2]: 2.4930557679092736e-16 (ACTUAL), 4.927961186062669e-16 (DESIRED)
+E            [2, 0]: -1.1794605354132222e-16 (ACTUAL), -1.626335673341426e-16 (DESIRED)
+E            [2, 1]: -2.4930557679092736e-16 (ACTUAL), -4.927961186062669e-16 (DESIRED)
+E           Max absolute difference among violations: 2.43490542e-16
+E           Max relative difference among violations: 0.49409996
+E            ACTUAL: array([[ 1.000000e+00,  0.000000e+00,  1.179461e-16],
+E                  [ 0.000000e+00,  1.000000e+00,  2.493056e-16],
+E                  [-1.179461e-16, -2.493056e-16,  1.000000e+00]])
+E            DESIRED: array([[ 1.000000e+00,  0.000000e+00,  1.626336e-16],
+E                  [ 0.000000e+00,  1.000000e+00,  4.927961e-16],
+E                  [-1.626336e-16, -4.927961e-16,  1.000000e+00]])
+
+tests/unit/test_pipeline.py:2345: AssertionError
+----------------------------- Captured stdout call -----------------------------
+============================================================
+AquaCal Calibration Pipeline
+============================================================
+
+[Stage 1] Intrinsic calibration (in-air)...
+  cam0: RMS 0.100 px
+  cam1: RMS 0.100 px
+  cam2: RMS 0.100 px
+  cam3: RMS 0.100 px
+  Calibrated 4 cameras
+
+[Detection] Detecting ChArUco in underwater videos...
+  Found 20 usable frames
+
+[Split] Holdout fraction: 0.2 (seed: 99)
+  Calibration frames: 16
+  Validation frames: 4
+
+[Stage 2] Extrinsic initialization...
+  Located cam0 (1/4)
+  Located cam1 (2/4)
+  Located cam2 (3/4)
+  Located cam3 (4/4)
+  Averaging poses...
+  Initialized 4 camera poses
+  Saved calibration_initial.json
+  Saved camera_rig_initial.png
+
+[Stage 3] Interface and pose optimization...
+`xtol` termination condition is satisfied.
+Function evaluations 24, initial cost 1.2010e+04, final cost 7.6362e-23, first-order optimality 1.08e-07.
+  Stage 3 RMS: 0.000 pixels (14.0s)
+  [Frame Rejection] No outlier frames (median=0.00 px, threshold=5.00 px). No frames dropped.
+  Estimated reference camera tilt: 0.00 degrees
+  Water surface Z: 1.0310 m
+  Camera heights above water (h_c):
+    cam0: cam_z=0.0000  h_c=1.0310
+    cam1: cam_z=0.0000  h_c=1.0310
+    cam2: cam_z=0.0000  h_c=1.0310
+    cam3: cam_z=0.0000  h_c=1.0310
+  Camera height spread: 0.0000 m
+
+[Stage 3: intrinsic pass] Skipped (refine_intrinsics=False)
+
+[Validation] Estimating board poses for held-out frames...
+  Estimated 4 validation frame poses
+
+[Validation] Computing errors on held-out data...
+  Primary cameras:
+    Reprojection RMS: 0.000 pixels
+    3D distance error: MAE 0.00 mm, RMSE 0.00 mm (0.0% of square size)
+
+[Diagnostics] Generating report...
+  Saved diagnostics to /tmp/pytest-of-tlancaster/pytest-59/test_matches_pre_change_anchor0
+  Discards: degenerate_observations_at_solution=0, degenerate_observations_cause_above_interface__stage3_interface_optimization=0, degenerate_observations_cause_behind_camera__stage3_interface_optimization=0, degenerate_observations_cause_interface_below_camera__stage3_interface_optimization=0, degenerate_observations_fate_extended__stage3_interface_optimization=0, degenerate_observations_fate_penalized__stage3_interface_optimization=0, observations_evaluated__stage3_interface_optimization=5610, pnp_attempts_nonrefractive=131, pnp_attempts_total=131
+
+[Save] Saving calibration result...
+  Saved to /tmp/pytest-of-tlancaster/pytest-59/test_matches_pre_change_anchor0/calibration.json
+  Saved benchmark.json
+
+============================================================
+Calibration complete!
+  Primary cameras:
+    Reprojection RMS: 0.000 pixels
+    3D error: MAE 0.00 mm, RMSE 0.00 mm (0.0%)
+============================================================
+=============================== warnings summary ===============================
+tests/unit/test_datasets_pipelines.py::test_seed_threads_through
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/datasets/pipelines.py:150: DegenerateObservationWarning: Stage 3 finished with 1212 observation(s) the refractive model could not project -- 68.864% of the 1760 observation(s) this stage evaluated. Dominant cause: above_interface (the corner sits at or above the estimated water surface). By cause: 1212 above_interface (the corner sits at or above the estimated water surface), 0 behind_camera (no pixel exists for it), 0 interface_below_camera (the estimated interface fell below an estimated camera center -- a solver-excursion convergence diagnostic, explicitly not a claim about submerged hardware). By fate: 1212 were continued with the pinhole extension, which is C0 but not C1 at the refractive/pinhole boundary and carries ZERO water_z gradient -- every other parameter keeps full gradient, so those parameters still contribute to the reported optimality. (The two axes are independent decompositions of the same observations and are never additive.) At 68.864% this is a LARGE fraction of the stage's observations (threshold 1%), so neither the reported first-order optimality (0.0005933, termination status 3) nor the reprojection RMS can be trusted to judge convergence for this solve. Do not re-tune the solver. Both readings are on the table and this library cannot tell them apart: if this is an authored scenario, the geometry is the fix -- move the board so no corner sits at or above the interface. If this is measured hardware, that fix is not available to you, and what the count does and does not invalidate is stated above, per fate.
+    opt_extrinsics, opt_distances, opt_poses, rms = optimize_interface(
+
+tests/unit/test_datasets_pipelines.py::test_bit_exact_repeat
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/datasets/pipelines.py:150: DegenerateObservationWarning: Stage 3 finished with 1108 observation(s) the refractive model could not project -- 62.955% of the 1760 observation(s) this stage evaluated. Dominant cause: above_interface (the corner sits at or above the estimated water surface). By cause: 1108 above_interface (the corner sits at or above the estimated water surface), 0 behind_camera (no pixel exists for it), 0 interface_below_camera (the estimated interface fell below an estimated camera center -- a solver-excursion convergence diagnostic, explicitly not a claim about submerged hardware). By fate: 1108 were continued with the pinhole extension, which is C0 but not C1 at the refractive/pinhole boundary and carries ZERO water_z gradient -- every other parameter keeps full gradient, so those parameters still contribute to the reported optimality. (The two axes are independent decompositions of the same observations and are never additive.) At 62.955% this is a LARGE fraction of the stage's observations (threshold 1%), so neither the reported first-order optimality (0.1379, termination status 2) nor the reprojection RMS can be trusted to judge convergence for this solve. Do not re-tune the solver. Both readings are on the table and this library cannot tell them apart: if this is an authored scenario, the geometry is the fix -- move the board so no corner sits at or above the interface. If this is measured hardware, that fix is not available to you, and what the count does and does not invalidate is stated above, per fate.
+    opt_extrinsics, opt_distances, opt_poses, rms = optimize_interface(
+
+tests/unit/test_evaluation.py::TestEvaluateCalibration::test_cameras_filter_changes_metrics_not_poses
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/validation/reconstruction.py:268: UserWarning: No valid 3D distance comparisons - returning NaN
+    warnings.warn("No valid 3D distance comparisons - returning NaN")
+
+tests/unit/test_experiments_e6.py::test_degenerate_count_gates_production_status
+tests/unit/test_experiments_e6.py::test_degenerate_count_not_gated_on_smoke
+tests/unit/test_experiments_e6.py::test_degenerate_column_not_gated_when_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+  /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/lib/python3.11/site-packages/numpy/_core/fromnumeric.py:3824: RuntimeWarning: Mean of empty slice
+    return _methods._mean(a, axis=axis, dtype=dtype,
+
+tests/unit/test_experiments_e6.py::test_degenerate_count_gates_production_status
+tests/unit/test_experiments_e6.py::test_degenerate_count_not_gated_on_smoke
+tests/unit/test_experiments_e6.py::test_degenerate_column_not_gated_when_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+tests/unit/test_experiments_e6.py::test_degenerate_gate_predicate_is_still_count_greater_than_zero
+  /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/lib/python3.11/site-packages/numpy/_core/_methods.py:142: RuntimeWarning: invalid value encountered in scalar divide
+    ret = ret.dtype.type(ret / rcount)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_returns_correct_types
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:103: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, error = calibrate_intrinsics_single(calibration_video, board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_intrinsics_shapes
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:110: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, _ = calibrate_intrinsics_single(calibration_video, board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_image_size_extracted
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:119: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, _ = calibrate_intrinsics_single(calibration_video, board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_reprojection_error_reasonable
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:125: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    _, error = calibrate_intrinsics_single(calibration_video, board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_accepts_path_object
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:131: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, _ = calibrate_intrinsics_single(Path(calibration_video), board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_accepts_string_path
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:136: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, _ = calibrate_intrinsics_single(str(calibration_video), board)
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_max_frames_parameter
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:142: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, _ = calibrate_intrinsics_single(
+
+tests/unit/test_intrinsics.py::TestCalibrateSingle::test_filters_collinear_detections
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/tests/unit/test_intrinsics.py:195: UserWarning: Camera 'collinear_test': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.4 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, error = calibrate_intrinsics_single(
+
+tests/unit/test_intrinsics.py::TestCalibrateAll::test_processes_all_cameras
+tests/unit/test_intrinsics.py::TestCalibrateAll::test_progress_callback
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/calibration/intrinsics.py:577: UserWarning: Camera 'calibration': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, error = calibrate_intrinsics_single(
+
+tests/unit/test_intrinsics.py::TestCalibrateAll::test_processes_all_cameras
+tests/unit/test_intrinsics.py::TestCalibrateAll::test_progress_callback
+  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/src/aquacal/calibration/intrinsics.py:577: UserWarning: Camera 'cam1': calibration board views are nearly fronto-parallel (90th-percentile tilt 0.2 deg < 15.0 deg). Focal length is poorly constrained by this data and may be substantially wrong even though reprojection error looks good. Recapture the in-air video with the board held at varied orientations (roughly +/-30 deg about both axes).
+    intrinsics, error = calibrate_intrinsics_single(
+
+tests/unit/test_run_experiment_suite_dryrun.py::TestTheTwoRegimeThreadPin::test_the_probe_observed_both_regimes_at_all
+  /home/tlancaster/anaconda3/envs/aquacal-freeze02-prod/lib/python3.11/site-packages/_pytest/fixtures.py:1313: PytestRemovedIn10Warning: Class-scoped fixture defined as instance method is deprecated.
+  Instance attributes set in this fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use @classmethod decorator and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_discard_accounting.py::test_matches_frozen_anchor - As...
+FAILED tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector
+FAILED tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+3 failed, 2407 passed, 26 skipped, 30 warnings in 1638.58s (0:27:18)

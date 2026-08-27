@@ -1,25 +1,26 @@
 {
   "accuracy": {
-    "reprojection_rms": 0.7064620430107456,
-    "validation_3d_error_mean": 3.072045442000091e-05,
-    "validation_3d_error_std": 0.00036160844102863974
+    "reprojection_rms": 0.7064620430895199,
+    "validation_3d_error_mean": 3.072045376726769e-05,
+    "validation_3d_error_std": 0.0003616084405370476
   },
   "environment": {
-    "aquacal_version": "1.8.0",
-    "cpu_count_logical": 20,
-    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "2a2f0faccef4eca243d027023e44e047041a4a1c",
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
     "git_sha_source": "git_rev_parse",
-    "numpy_version": "2.4.2",
+    "numpy_version": "2.4.6",
     "opencv_version": "4.13.0",
-    "os": "Windows 11",
-    "python_version": "3.12.12",
-    "ram_total_bytes": 16857190400,
-    "scipy_version": "1.17.0"
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
   },
   "memory": {
-    "mode": "psutil_peak_wset",
-    "whole_run_peak_bytes": 3259158528
+    "mode": "proc_status_vmhwm",
+    "whole_run_peak_bytes": 3357868032
   },
   "problem_shape": {
     "degenerate_observations_at_solution": 0,
@@ -29,7 +30,7 @@
     "n_cameras_observing_per_frame_min": 3,
     "n_frames": 100,
     "n_observations": 695,
-    "peak_bytes_baseline": 164499456
+    "peak_bytes_baseline": 192557056
   },
   "schema_version": 1,
   "solver_config": {
@@ -42,19 +43,19 @@
   },
   "stages": {
     "stage3_interface_optimization": {
-      "cost": 9236.232722632041,
+      "cost": 9236.232722631885,
       "fd_reduction": 51.46153846153846,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 66900,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1440337920,
-        "commit_peak_bytes_as_of_stage_end": 4353859584,
-        "cumulative_peak_bytes_as_of_stage_end": 3046137856,
-        "delta_bytes_since_previous_boundary": 2881638400,
-        "mode": "psutil_peak_wset",
-        "ram_total_bytes": 16857190400
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 3137347584,
+        "delta_bytes_since_previous_boundary": 2944790528,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 13,
@@ -65,25 +66,54 @@
       "n_residuals_reason": null,
       "nfev": 20,
       "njev": 14,
-      "optimality": 0.011419778519211832,
-      "seconds": 229.77569010001025,
+      "optimality": 0.009256291098267866,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame67_rvec_x",
+          "max_scaled": 0.007768585786848803,
+          "max_unscaled": 0.007768585786848803,
+          "n_params": 600
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam6_tvec_x",
+          "max_scaled": 0.009256291098267866,
+          "max_unscaled": 0.009256291098267866,
+          "n_params": 66
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_ry",
+          "max_scaled": 0.00029786251374807574,
+          "max_unscaled": 0.0014884964332395612,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.004922838082658272,
+          "max_unscaled": 0.004818896178903742,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 91.56662362301722,
       "status": 2,
       "xtol": 1e-08
     },
     "stage3_intrinsic_pass": {
-      "cost": 9230.441517916453,
+      "cost": 9230.441517916446,
       "fd_reduction": 42.1764705882353,
       "ftol": 1e-08,
       "gtol": 1e-08,
       "max_nfev_effective": 71700,
       "max_nfev_source": "scipy_auto",
       "memory": {
-        "commit_current_bytes_as_of_stage_end": 1445658624,
-        "commit_peak_bytes_as_of_stage_end": 4568186880,
-        "cumulative_peak_bytes_as_of_stage_end": 3259158528,
-        "delta_bytes_since_previous_boundary": 213020672,
-        "mode": "psutil_peak_wset",
-        "ram_total_bytes": 16857190400
+        "commit_current_bytes_as_of_stage_end": null,
+        "commit_peak_bytes_as_of_stage_end": null,
+        "cumulative_peak_bytes_as_of_stage_end": 3357868032,
+        "delta_bytes_since_previous_boundary": 220520448,
+        "mode": "proc_status_vmhwm",
+        "ram_total_bytes": null
       },
       "message": "`ftol` termination condition is satisfied.",
       "n_groups": 17,
@@ -94,8 +124,43 @@
       "n_residuals_reason": null,
       "nfev": 4,
       "njev": 4,
-      "optimality": 0.004450470771757864,
-      "seconds": 72.94459060000372,
+      "optimality": 0.0016540412302106233,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame42_tvec_y",
+          "max_scaled": 0.001294379718615346,
+          "max_unscaled": 0.001294379718615346,
+          "n_params": 600
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam10_rvec_z",
+          "max_scaled": 0.0016540412302106233,
+          "max_unscaled": 0.0016540412302106233,
+          "n_params": 66
+        },
+        "intrinsics": {
+          "argmax_parameter": "cam1_cx",
+          "max_scaled": 0.00037386166414752806,
+          "max_unscaled": 5.462607846062895e-07,
+          "n_params": 48
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_rx",
+          "max_scaled": 2.467261313931231e-05,
+          "max_unscaled": 0.00012347508209131774,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.001059335489388205,
+          "max_unscaled": 0.0010368232478974448,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 29.976921035908163,
       "status": 2,
       "xtol": 1e-08
     }

@@ -1,0 +1,130 @@
+[2026-08-25T00:47:09Z] >>> STAGE 6/20: e5 starting
+Experiment output directory: /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results
+Running n_assumed=1.3230 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.7464e+04, final cost 3.7027e+03, first-order optimality 1.38e-03.
+  reprojection_rms_px=0.7087 scale_bias_pct=0.0394
+Running n_assumed=1.3250 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 16, initial cost 1.6838e+04, final cost 3.6970e+03, first-order optimality 1.03e-03.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0414
+Running n_assumed=1.3270 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 1.6127e+04, final cost 3.6927e+03, first-order optimality 1.23e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0435
+Running n_assumed=1.3290 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 12, initial cost 1.5683e+04, final cost 3.6900e+03, first-order optimality 7.72e-04.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0456
+Running n_assumed=1.3310 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.6297e+04, final cost 3.6887e+03, first-order optimality 8.21e-04.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0478
+Running n_assumed=1.3330 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.2552e+04, final cost 3.6888e+03, first-order optimality 8.62e-04.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0499
+Running n_assumed=1.3350 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.2199e+04, final cost 3.6904e+03, first-order optimality 1.43e-03.
+  reprojection_rms_px=0.7062 scale_bias_pct=0.0521
+Running n_assumed=1.3370 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.5888e+04, final cost 3.6933e+03, first-order optimality 1.92e-03.
+  reprojection_rms_px=0.7064 scale_bias_pct=0.0542
+Running n_assumed=1.3390 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 11, initial cost 1.2481e+04, final cost 3.6977e+03, first-order optimality 1.23e-03.
+  reprojection_rms_px=0.7067 scale_bias_pct=0.0564
+Running n_assumed=1.3410 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 14, initial cost 1.3081e+04, final cost 3.7035e+03, first-order optimality 1.10e-03.
+  reprojection_rms_px=0.7072 scale_bias_pct=0.0586
+Running n_assumed=1.3430 (n_true=1.3330)...
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 15, initial cost 1.6403e+04, final cost 3.7107e+03, first-order optimality 9.76e-04.
+  reprojection_rms_px=0.7079 scale_bias_pct=0.0608
+Held-out noise floor file not found at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/real_rig_metrics.json; holdout_floor_pct and scale_bias_over_floor will be null.
+Wrote degeneracy breakdown sidecar to /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e5_degeneracy_breakdown.json
+
+E5 run complete.
+[2026-08-25T00:55:42Z] <<< STAGE 6/20: e5 finished exit=0
+----- GATE VERDICT: stage=e5 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[PASS] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0 [dominant cause=above_interface (0), 0.000% of the 164439 observation(s) evaluated; by fate: 0 extended, 0 penalized (cause and fate are separate axes over the same observations; never add them together)]
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[FAIL] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv not found
+[FAIL] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv not found
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[N/A ] E2  gate_e2_band                                  /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results_e2_band not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha matches every artifact (7005a2771aa115e4f4c1284cec7e145739586a4a)
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] e5  completeness:index_sensitivity.csv            index_sensitivity.csv: 11 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/index_sensitivity.csv, as expected.
+[PASS] e5  completeness:e5_provenance.json               e5_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e5_provenance.json; no row count is pinned for it (provenance sidecar, not a table. full-only (P27-D-20 class 1): e5_index_sensitivity.py:871-889 (_run_smoke_at) writes index_sensitivity.csv and returns without writing this sidecar -- the write at :725 is on the full run_band path only. The smoke code path cannot produce it.)
+[PASS] e5  completeness:e5_degeneracy_breakdown.json     e5_degeneracy_breakdown.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/e5_degeneracy_breakdown.json; no row count is pinned for it (Phase 24 sidecar keyed 'band'.)
+
+TOTAL: 31 PASS, 14 N/A, 8 FAIL
+----- END GATE VERDICT: stage=e5 exit=1 -----

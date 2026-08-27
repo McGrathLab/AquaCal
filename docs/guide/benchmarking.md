@@ -89,14 +89,50 @@ missing.
 | `n_cameras` | int | Number of primary (non-auxiliary) cameras |
 | `n_frames_calibration` | int | Frames used for the joint bundle adjustment |
 | `n_frames_holdout` | int | Frames held out for validation |
+| `degenerate_observations_at_solution` | int | Observations the refractive projector could not evaluate at the reported solution — mirrored from `discard_stats` (see below) |
 
 ```json
 "problem_shape": {
     "n_cameras": 13,
     "n_frames_calibration": 200,
-    "n_frames_holdout": 52
+    "n_frames_holdout": 52,
+    "degenerate_observations_at_solution": 198
 }
 ```
+
+### discard_stats
+
+The run's whole discard-accounting dict, written as its own top-level block and passed
+through unmodified — so a counter added to the library reaches `benchmark.json` without
+anything here being edited. Present only when the writer had discard accounting to record.
+The merged total `degenerate_observations_at_solution` is mirrored into `problem_shape`
+above purely so pre-existing readers keep working; the two values are always equal.
+
+The block carries two **independent** axes over the same set of degenerate observations —
+`degenerate_observations_cause_*` (*why* the projection failed: `above_interface`,
+`behind_camera`, `interface_below_camera`) and `degenerate_observations_fate_*` (*what the
+solver did about it*: `extended`, `penalized`) — each of which sums exactly to
+`degenerate_observations_at_solution`. They are two alternative decompositions of the same
+set, **not** disjoint buckets, so they must never be added together; because each sums to
+the merged total independently, a block where the two axes disagree is a bookkeeping bug.
+Each key is suffixed with `__<stage>`, and each stage also records an
+`observations_evaluated__<stage>` denominator produced by the same pass over the same data
+that produced the counts.
+
+```json
+"discard_stats": {
+    "degenerate_observations_at_solution": 198,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 198,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 198,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 73975
+}
+```
+
+A clean run emits these keys at an explicit `0` rather than omitting them, so an absent
+field means an artifact predating the instrumentation, not an unmeasurable run.
 
 ### stages
 

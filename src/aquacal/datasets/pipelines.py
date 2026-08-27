@@ -35,6 +35,7 @@ def calibrate_synthetic(
     memory_out: dict[str, dict] | None = None,
     normal_fixed: bool = True,
     discard_stats_out: dict[str, int] | None = None,
+    water_z_bounds: tuple[float, float] | None = None,
 ) -> tuple[CalibrationResult, DetectionResult]:
     """Run full calibration pipeline (Stage 2 through Stage 3's second pass) on synthetic data.
 
@@ -83,6 +84,15 @@ def calibrate_synthetic(
             E2's real-rig run and the manuscript's ``tab:cpr`` rows were produced
             under. A caller comparing synthetic results against those published
             numbers must pass ``False``.
+        water_z_bounds: Optional ``(lower, upper)`` override forwarded unchanged
+            to **both** Stage-3 passes (``optimize_interface`` and
+            ``joint_refinement``). A degenerate interval (``lower == upper``
+            within numerical tolerance) pins ``water_z`` at solve time; see
+            ``build_bounds`` for the mechanism (D-01). Forwarding to only one
+            pass is insufficient — a pin held through the first pass drifts
+            during the second if not re-applied there (measured 2026-08-17:
+            1.031 m -> 0.0425 m). ``None`` (the default) leaves the default
+            ``[0.01, 2.0]`` bound unchanged at both passes.
 
     Returns:
         Tuple of (CalibrationResult, DetectionResult). The detections are needed
@@ -157,6 +167,8 @@ def calibrate_synthetic(
         diagnostics_out=stage3_diagnostics_out,
         normal_fixed=normal_fixed,
         discard_stats_out=discard_stats_out,
+        water_z_bounds=water_z_bounds,
+        discard_stage="stage3_interface_optimization",
     )
     if timings_out is not None:
         timings_out["stage3_interface_optimization"] = time.perf_counter() - _t0
@@ -190,6 +202,8 @@ def calibrate_synthetic(
                 diagnostics_out=intrinsic_pass_diagnostics_out,
                 normal_fixed=normal_fixed,
                 discard_stats_out=discard_stats_out,
+                water_z_bounds=water_z_bounds,
+                discard_stage="stage3_intrinsic_pass",
             )
         )
         if timings_out is not None:

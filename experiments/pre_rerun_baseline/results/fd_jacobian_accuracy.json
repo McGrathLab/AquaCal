@@ -1,0 +1,39 @@
+{
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "225a92dd8c2f3509db4d6306bab3d13844b28a8c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "experiment": "fd_jacobian_accuracy",
+  "newton_floor_probe": {
+    "first_non_monotonic_step": null,
+    "plateau_detected": true
+  },
+  "newton_tolerance": 1e-09,
+  "problem_shape": {
+    "n_cameras": 4,
+    "n_frames": 6,
+    "n_params": 57,
+    "n_residuals": 4208,
+    "normal_fixed": false,
+    "refine_intrinsics": false,
+    "seed": 42,
+    "shared_interface": true
+  },
+  "schema_version": 1,
+  "scipy_version": "1.17.0",
+  "scope": "Characterizes the shipped 2-point finite-difference Jacobian's column-wise relative error on a small synthetic problem (n_cameras=4, n_frames=6, refine_intrinsics=False, normal_fixed=False, shared_interface=True). Does NOT characterize accuracy on the 13-camera real rig or any larger problem.",
+  "seconds": 5.986152500001481,
+  "shipped_rel_step_default": 1.4901161193847656e-08,
+  "solver_config": {
+    "seed": 42
+  }
+}

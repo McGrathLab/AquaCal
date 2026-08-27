@@ -27,6 +27,7 @@ from aquacal.config.schema import (
 )
 from aquacal.core.board import BoardGeometry
 from aquacal.validation.diagnostics import (
+    DEGENERATE_OBSERVATION_COLUMNS,
     DiagnosticReport,
     compute_camera_heights,
     compute_depth_stratified_errors,
@@ -842,6 +843,122 @@ class TestSaveDiagnosticReport:
                 "seconds_per_stage": {},
                 "total_seconds": 0.0,
             }
+
+    def test_degenerate_sidecar_absent_when_no_flagged_rows(
+        self,
+        calibration_result,
+        simple_detections,
+        board_poses,
+        simple_reprojection_errors,
+        board_geometry,
+    ):
+        """A clean run writes no sidecar at all -- not an empty file (D-08).
+
+        The presence of degenerate_observations.csv is itself the signal that
+        something was flagged, so an empty file would be a false alarm for
+        every clean rig.
+        """
+        recon_errors = DistanceErrors(
+            mean=0.001, std=0.0005, max_error=0.002, num_comparisons=20
+        )
+        report = generate_diagnostic_report(
+            calibration=calibration_result,
+            detections=simple_detections,
+            board_poses=board_poses,
+            reprojection_errors=simple_reprojection_errors,
+            reconstruction_errors=recon_errors,
+            board=board_geometry,
+        )
+
+        for details in ([], None):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                result = save_diagnostic_report(
+                    report,
+                    calibration_result,
+                    simple_detections,
+                    Path(tmpdir),
+                    save_images=False,
+                    degeneracy_details=details,
+                )
+
+                assert not (Path(tmpdir) / "degenerate_observations.csv").exists()
+                assert "degenerate_observations" not in result
+                # The full-population table follows the same rule.
+                assert not (Path(tmpdir) / "all_observation_depths.csv").exists()
+                assert "all_observation_depths" not in result
+
+    def test_degenerate_sidecar_written_when_rows_present(
+        self,
+        calibration_result,
+        simple_detections,
+        board_poses,
+        simple_reprojection_errors,
+        board_geometry,
+    ):
+        """Flagged rows land in degenerate_observations.csv in fixed column order."""
+        recon_errors = DistanceErrors(
+            mean=0.001, std=0.0005, max_error=0.002, num_comparisons=20
+        )
+        report = generate_diagnostic_report(
+            calibration=calibration_result,
+            detections=simple_detections,
+            board_poses=board_poses,
+            reprojection_errors=simple_reprojection_errors,
+            reconstruction_errors=recon_errors,
+            board=board_geometry,
+        )
+
+        # Keys deliberately NOT in the documented order, so a writer that
+        # relied on dict insertion order would produce a wrong column list.
+        rows = [
+            {
+                "truncated": False,
+                "camera": "cam0",
+                "frame_idx": 3,
+                "corner_id": 7,
+                "h_q_m": -0.002,
+                "h_c_m": 0.31,
+                "r_q_m": 0.05,
+                "chord_incidence_deg": 9.1,
+                "extended": True,
+                "nan_reason": 1,
+                "n_flagged_at_stage": 2,
+                "stage": "stage3_interface_optimization",
+            },
+            {
+                "truncated": False,
+                "camera": "cam1",
+                "frame_idx": 3,
+                "corner_id": 8,
+                "h_q_m": -0.004,
+                "h_c_m": 0.31,
+                "r_q_m": 0.06,
+                "chord_incidence_deg": 11.2,
+                "extended": True,
+                "nan_reason": 1,
+                "n_flagged_at_stage": 2,
+                "stage": "stage3_interface_optimization",
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = save_diagnostic_report(
+                report,
+                calibration_result,
+                simple_detections,
+                Path(tmpdir),
+                save_images=False,
+                degeneracy_details=rows,
+            )
+
+            csv_path = Path(tmpdir) / "degenerate_observations.csv"
+            assert csv_path.exists()
+            assert result["degenerate_observations"] == csv_path
+
+            written = pd.read_csv(csv_path)
+            assert len(written) == 2
+            assert list(written.columns) == list(DEGENERATE_OBSERVATION_COLUMNS)
+            assert list(written["corner_id"]) == [7, 8]
 
 
 class TestPlotCameraRig:

@@ -1,0 +1,91 @@
+{
+  "accuracy": {
+    "reprojection_rms_px": 0.49960616513797923
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "problem_shape": {
+    "degenerate_observations_at_solution": 0,
+    "n_cameras": 12,
+    "n_frames_calibration": 30,
+    "n_frames_holdout": 0
+  },
+  "schema_version": 1,
+  "solver_config": {
+    "ftol": 1e-08,
+    "gtol": 1e-08,
+    "loss_scale": 1.0,
+    "n_air": 1.0,
+    "n_water": 1.333,
+    "normal_fixed": false,
+    "refine_intrinsics": false,
+    "robust_loss": "huber",
+    "seed": 42,
+    "shared_interface": true,
+    "xtol": 1e-08
+  },
+  "stages": {
+    "stage3_interface_optimization": {
+      "cost": 3688.797145071608,
+      "fd_reduction": 19.153846153846153,
+      "ftol": 1e-08,
+      "gtol": 1e-08,
+      "max_nfev_effective": 24900,
+      "max_nfev_source": "scipy_auto",
+      "message": "`ftol` termination condition is satisfied.",
+      "n_groups": 13,
+      "n_groups_reason": null,
+      "n_params": 249,
+      "n_params_reason": null,
+      "n_residuals": 29898,
+      "n_residuals_reason": null,
+      "nfev": 15,
+      "njev": 12,
+      "optimality": 0.0008618874323929049,
+      "optimality_by_block": {
+        "board_poses": {
+          "argmax_parameter": "frame3_tvec_x",
+          "max_scaled": 0.0006047402435349625,
+          "max_unscaled": 0.0006047402435349625,
+          "n_params": 180
+        },
+        "extrinsics": {
+          "argmax_parameter": "cam4_rvec_y",
+          "max_scaled": 0.0008618874323929049,
+          "max_unscaled": 0.0008618874323929049,
+          "n_params": 66
+        },
+        "tilt": {
+          "argmax_parameter": "ref_tilt_ry",
+          "max_scaled": 3.860480869918486e-05,
+          "max_unscaled": 0.00019349814499491913,
+          "n_params": 2
+        },
+        "water_z": {
+          "argmax_parameter": "water_z",
+          "max_scaled": 0.0003849919268189716,
+          "max_unscaled": 0.0003974814422065265,
+          "n_params": 1
+        }
+      },
+      "optimality_by_block_reason": null,
+      "parameters_at_bound": [],
+      "parameters_at_bound_reason": null,
+      "seconds": 23.93236118904315,
+      "status": 2,
+      "xtol": 1e-08
+    }
+  }
+}

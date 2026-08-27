@@ -1,0 +1,319 @@
+================================================================================
+29.2-smoke-runs.txt -- the two pytest selections CI's `test` job runs and all
+seven `--smoke` invocations of CI's `experiments-smoke` job, MEASURED locally at
+this branch's head AFTER the D4 assertion conversion (plan 29.2-03, task 1).
+The experiments-smoke job has never been exercised against this branch; these
+seven runs turn that unknown into a measurement while a failure is still cheap.
+================================================================================
+
+Measured        : 2026-08-26
+Branch          : results/rerun-freeze-02
+Head            : 30268135febb0a007d0a77946c75364e7bd3029b
+                  3026813 fix(29.2-03): bound the two drifting D4 assertions in
+                  representable steps  (one file:
+                  tests/unit/test_optim_common.py)
+Interpreter     : ~/anaconda3/envs/aquacal-freeze02-cleanenv/bin/python3
+                  (Python 3.11.15, pytest 9.1.1, numpy 2.4.6) -- the SAME
+                  interpreter took all three measurements below and the same one
+                  every figure in 29-rails-after.txt and 29.1-PREPUSH-AUDIT.md
+                  was taken on, so the counts compare like with like.
+Note on numpy   : 29.2-RESEARCH.md section Q2 measured 2.4.3 in a scratch venv
+                  and tagged assumption A1 because the brief said 2.4.6. The
+                  project interpreter is 2.4.6. A1 is retired; it never affected
+                  the recommendation (Q2d: the mechanism is identical across
+                  every version CI will install).
+
+--------------------------------------------------------------------------------
+1. BOTH NUMBERS, IN ONE PLACE
+--------------------------------------------------------------------------------
+
+                                              BEFORE            AFTER
+  pytest tests/                              3 failed    ->    2 failed
+  pytest tests/ -m "not slow"                1 failed    ->    0 failed
+
+  The node id that LEFT the set:
+    tests/unit/test_optim_common.py::TestPerObservationDetailSinks
+      ::test_detail_sink_recomputed_geometry_matches_projector
+
+  Arithmetic that makes the delta exact rather than plausible. The whole-suite
+  BEFORE figure quoted from the open D4 todo is
+      3 failed, 2394 passed, 21 skipped   (2418 collected)
+  and section 4 below measured
+      2 failed, 2395 passed, 21 skipped   (2418 collected).
+  The collected total is UNCHANGED at 2418 and the passed count is exactly one
+  higher. One test moved from failed to passed and nothing else moved -- which
+  is what "nothing was skipped, xfailed or deselected" looks like as a number
+  rather than as a promise.
+
+  Provenance of each cell:
+    whole-suite BEFORE  -- quoted, not re-measured. 3 failed is the count in the
+      open D4 todo, in 29.1-PREPUSH-AUDIT.md section 1 (recorded there as
+      "2407 passed, 26 skipped, 3 FAILED (0:27:47)" at the frozen tag, whose
+      collected total is 2436 and therefore NOT comparable on passed/skipped),
+      and in the rerun-freeze-02 annotated tag message.
+    whole-suite AFTER   -- measured, section 4.
+    not-slow AFTER      -- measured, section 3.
+    not-slow BEFORE     -- DERIVED, and labelled as such rather than presented as
+      a fresh run. It rests on two measurements: (a) the target node was executed
+      at HEAD~1 immediately before the edit and reported `1 failed` at exit 1 --
+      the transcript is in section 3(b); and (b) the other two D4 members both
+      carry @pytest.mark.slow (verified by grep: test_discard_accounting.py:142
+      and test_pipeline.py:2332), so both are among the 71 deselected and neither
+      can contribute to this selection. No full not-slow run was taken at HEAD~1.
+
+  Only the FAILURE COUNT is gated on. Passed and skipped counts differ between
+  recorded environments and are not a stable invariant; the collected total is
+  used above only as an internal consistency check within this one interpreter.
+
+  No number in this file was adjusted toward its expectation. Every figure is
+  what the command printed.
+
+--------------------------------------------------------------------------------
+2. THE NEW WHOLE-SUITE INVARIANT (D-29.2-10 supersedes D-29-15)
+--------------------------------------------------------------------------------
+
+TWO IS THE EXPECTED FULL-SUITE COUNT. ZERO AND THREE ARE BOTH ANOMALIES.
+
+  A ZERO would mean the two remaining ruled exact-equality anchors had been
+  silenced -- skipped, xfailed, deselected, or had their anchors re-captured
+  without a decision. The cross-platform question they carry is open and belongs
+  to the post-submission todo; its value comes entirely from them being visible.
+
+  A THREE would mean something new had broken, OR that this plan's conversion
+  had been reverted. Three was the correct count until commit 3026813 and is
+  still the count recorded in the rerun-freeze-02 tag message and in
+  29.1-PREPUSH-AUDIT.md section 1. Those artifacts are NOT rewritten; they stay
+  readable as what was true when they were written. This file, and 29.2's own
+  phase record, are where the superseding statement lives.
+
+  Both remaining failures are @pytest.mark.slow and both read constants from
+  tests/fixtures/. `pytest tests/ -m "not slow"` -- the command CI's `test` job
+  runs on ubuntu and windows across 3.11 and 3.12 -- therefore reports ZERO
+  failures, and no D4 member can redden a cell on the release pull request.
+
+--------------------------------------------------------------------------------
+3. MEASUREMENT 1 -- the not-slow selection: 0 failed
+--------------------------------------------------------------------------------
+
+(a) The selection, at this head.
+
+  $ python3 -m pytest tests/ -m "not slow" -q -p no:cacheprovider
+  2326 passed, 21 skipped, 71 deselected, 28 warnings in 1182.44s (0:19:42)
+  (exit code 0)
+
+  On the coverage flags. The `test` job's line in .github/workflows/test.yml:34
+  is `pytest tests/ -m "not slow" --cov=aquacal --cov-report=xml
+  --cov-report=term`. The three --cov flags are omitted here deliberately: they
+  write coverage.xml into the working tree, which this plan must leave
+  byte-clean, and they cannot change the pass/fail outcome. The selection --
+  which is the thing under measurement -- is identical.
+
+  Runtime note: 0:19:42 against 29.2-VALIDATION.md's "quick ~5 min" expectation.
+  The expectation was wrong, not the run; recorded here rather than corrected.
+
+(b) The same target node at HEAD~1, immediately before the edit -- the BEFORE
+    cell of section 1, and the RED state the conversion was written against.
+
+  $ python3 -m pytest "tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector" -q -p no:cacheprovider
+  >           assert row["r_q_m"] == r_q, row
+  E           AssertionError: {'camera': 'cam0', 'frame_idx': 1, 'corner_id': 8, 'h_q_m': -0.02275709680740423, ...}
+  E           assert 0.10681280743540097 == np.float64(0.10681280743540099)
+  1 failed in 0.44s
+  (exit code 1)
+
+(c) The same node at this head.
+
+  $ python3 -m pytest "tests/unit/test_optim_common.py::TestPerObservationDetailSinks::test_detail_sink_recomputed_geometry_matches_projector" -q -p no:cacheprovider
+  1 passed in 0.43s
+  (exit code 0)
+
+  Reported as PASSED. Not skipped, not deselected, not xfailed -- the
+  distinction the do-not-silence rule exists to protect, asserted rather than
+  claimed.
+
+--------------------------------------------------------------------------------
+4. MEASUREMENT 2 -- the whole suite: exactly 2 failed
+--------------------------------------------------------------------------------
+
+  $ python3 -m pytest tests/ -q -p no:cacheprovider
+  =========================== short test summary info ============================
+  FAILED tests/unit/test_discard_accounting.py::test_matches_frozen_anchor - As...
+  FAILED tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+  2 failed, 2395 passed, 21 skipped, 30 warnings in 1711.81s (0:28:31)
+  (exit code 1)
+
+  The two, with their disagreements as the run reported them:
+
+    tests/unit/test_discard_accounting.py::test_matches_frozen_anchor
+      E  AssertionError: reprojection RMS moved against the pre-instrumentation anchor
+      E  assert np.float64(0.794471850364211) == 0.7944718492870945
+
+    tests/unit/test_pipeline.py::TestSolverConfigSeedIsInert::test_matches_pre_change_anchor
+      E  Arrays are not equal
+      E  Mismatched elements: 4 / 9 (44.4%)
+      E  Max absolute difference among violations: 2.43490542e-16
+
+  Both are @pytest.mark.slow (test_discard_accounting.py:142,
+  test_pipeline.py:2332) and both read constants from tests/fixtures/. Both are
+  character-for-character the same node ids recorded failing in
+  29-rails-before.txt, 29-rails-after.txt and 29.1-PREPUSH-AUDIT.md section 1.
+  Neither was touched by this plan.
+
+  Runtime 0:28:31 against 29.2-VALIDATION.md's "~28 min (measured 0:27:47 at
+  rerun-freeze-02)". Agreement to 44 seconds across the two runs.
+
+--------------------------------------------------------------------------------
+5. MEASUREMENT 3 -- the seven experiments-smoke invocations: 7/7 exit 0
+--------------------------------------------------------------------------------
+
+Run in the order .github/workflows/test.yml:77-83 lists them, one command per
+invocation, from the workflow's own command lines rather than a reconstruction.
+Every one of the seven writes into a fresh /tmp directory; not one names a path
+under experiments/.
+
+  $ python3 -m experiments.e1_refractive_comparison --smoke
+  Wrote degeneracy breakdown sidecar to /tmp/e1_smoke_iihuha9j/e1_degeneracy_breakdown.json
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `xtol` termination condition is satisfied.
+  Function evaluations 2, initial cost 6.5823e-22, final cost 7.4682e-23, first-order optimality 7.45e-08.
+  Stage 3's second pass: Intrinsic refinement...
+  `xtol` termination condition is satisfied.
+  Function evaluations 2, initial cost 1.3825e-21, final cost 9.9087e-23, first-order optimality 1.66e-07.
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 21, initial cost 1.6176e+04, final cost 2.3967e+03, first-order optimality 3.00e+01.
+  Stage 3's second pass: Intrinsic refinement...
+  `ftol` termination condition is satisfied.
+  Function evaluations 16, initial cost 2.3967e+03, final cost 2.9623e+02, first-order optimality 6.78e-01.
+  Smoke-wrote all six artifacts to /tmp/e1_smoke_iihuha9j
+  (exit code 0)   [36 s]
+
+  $ python3 -m experiments.e2_real_rig --smoke
+  Dataset is cached locally; exercising CSV/JSON writer code paths against a stub result (smoke mode does not run the full calibration).
+  Smoke-wrote three CSVs and real_rig_metrics.json to /tmp/e2_smoke_3lx6jrkc
+  (exit code 0)   [1 s]
+
+  $ python3 -m experiments.e7_interface_ablation --smoke
+  Experiment output directory: /tmp/e7_smoke_7abzgx5l
+  Running arm shared_fixed...
+  Running arm shared_refined...
+  Running arm percamera_fixed...
+  Running arm percamera_refined...
+    arm=shared_fixed shared_interface=True refine_intrinsics=False rms=0.2976
+    arm=shared_refined shared_interface=True refine_intrinsics=True rms=0.2972
+    arm=percamera_fixed shared_interface=False refine_intrinsics=False rms=0.2976
+    arm=percamera_refined shared_interface=False refine_intrinsics=True rms=0.2971
+  Wrote degeneracy breakdown sidecar to /tmp/e7_smoke_7abzgx5l/e7_degeneracy_breakdown.json
+  (exit code 0)   [11 s]
+
+  $ python3 -m experiments.e3_derived_quantities --smoke
+  Experiment output directory: /tmp/e3_smoke_z9_2nz9r
+  Newton iterations (pooled, n=3168): scalar min=3 median=4.0 max=5 | batch min=3 median=4.0 max=5
+  (exit code 0)   [1 s]
+
+  $ python3 -m experiments.e4_benchmark_grid --smoke
+  Experiment output directory: /tmp/e4_smoke_83drb367
+  cell cameras_3_frames_3: status=ok exit_code=0 elapsed=3.1s
+  smoke cell cameras_3_frames_3: status=ok exit_code=0
+  cell cameras_3_frames_4: status=ok exit_code=0 elapsed=3.7s
+  smoke cell cameras_3_frames_4: status=ok exit_code=0
+  (exit code 0)   [7 s]
+
+  $ python3 -m experiments.e5_index_sensitivity --smoke
+  Experiment output directory: /tmp/e5_smoke_iss09sqg
+  Running n_assumed=1.3330 (n_true=1.3330)...
+    reprojection_rms_px=0.8136 scale_bias_pct=0.0344
+  Running n_assumed=1.3430 (n_true=1.3330)...
+    reprojection_rms_px=0.8161 scale_bias_pct=0.0561
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 16, initial cost 1.5202e+03, final cost 5.8448e+02, first-order optimality 3.17e-02.
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 14, initial cost 1.6848e+03, final cost 5.8549e+02, first-order optimality 7.82e-03.
+  Smoke-wrote index_sensitivity.csv to /tmp/e5_smoke_iss09sqg
+  (exit code 0)   [15 s]
+
+  $ python3 -m experiments.e6_generalization_sweep --smoke
+  Experiment output directory: /tmp/e6_smoke_pg18hok5
+  axis=index axis_value=1.333 status=ok reprojection_rms_px=0.7100329373809361
+  axis=layout axis_value=grid status=ok reprojection_rms_px=0.7100329373809361
+  axis=scale axis_value=default status=ok reprojection_rms_px=0.7100329373809361
+  axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7121768112364679
+  axis=layout axis_value=ring status=ok reprojection_rms_px=1.4223323892659814
+  axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7108669160466298
+  Skipping configuration baseline: /tmp/e6_smoke_pg18hok5/e6_configs/baseline.json already exists (resumability).
+  smoke: 6 rows, skip-path probe status=ok (cached, not recomputed)
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 16, initial cost 3.4058e+03, final cost 8.2260e+02, first-order optimality 1.57e-03.
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 20, initial cost 4.9551e+03, final cost 8.1014e+02, first-order optimality 2.89e-03.
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 19, initial cost 1.6772e+03, final cost 4.4651e+02, first-order optimality 1.71e-03.
+  Stage 2: Extrinsic initialization...
+  Stage 3: Joint refractive optimization...
+  `ftol` termination condition is satisfied.
+  Function evaluations 10, initial cost 3.2098e+03, final cost 1.5495e+03, first-order optimality 1.50e-03.
+  (exit code 0)   [51 s]
+
+  Seven invocations, seven exit-zero. Total wall clock 122 s.
+
+--------------------------------------------------------------------------------
+6. FROZEN-TREE AND DO-NOT-SILENCE PROHIBITIONS HONOURED
+--------------------------------------------------------------------------------
+
+Each line below is a measurement taken AFTER all ten commands above had run, not
+an assertion about intent.
+
+  git status --porcelain                        empty -- whole tree clean
+  git diff --quiet -- experiments/              exit 0 -- experiments/ unchanged
+  git status --porcelain -uall -- experiments/  empty -- no new untracked file
+                                                anywhere under experiments/
+
+  md5sum experiments/results/real_rig_metrics.json
+    57279708f6106f411d1fe03ed2698291   == recorded digest, UNMOVED
+  md5sum experiments/results/interface_ablation_band.csv
+    b6515ed77ed04268608b74217716020b   == recorded digest, UNMOVED
+
+  No experiment stage was re-run and no committed artifact was regenerated. All
+  seven smoke paths wrote into fresh /tmp directories, named in their own output
+  above; the two md5 anchors were taken before and after and agree.
+
+  The two remaining D4 members were not silenced, evidenced by their node ids
+  still appearing in section 4's failure list rather than by a claim that they
+  were left alone. Nothing anywhere in this plan was skipped, xfailed,
+  --deselected or marked.
+
+  Only one file changed to produce these numbers: tests/unit/test_optim_common.py
+  at commit 3026813. src/ is untouched (git diff --quiet -- src/, exit 0), as are
+  tests/unit/test_discard_accounting.py, tests/unit/test_pipeline.py and
+  tests/synthetic/test_guard_inertness.py.
+
+--------------------------------------------------------------------------------
+7. RESULT
+--------------------------------------------------------------------------------
+
+  RESULT: PASS
+
+  Every check CI's `test` and `experiments-smoke` jobs will run on the release
+  pull request has now been run here first, at this branch's head, and all of
+  them pass: the not-slow selection reports zero failures, and all seven smoke
+  invocations exit zero. The whole suite reports exactly two failures, which is
+  the expected count and not a red check -- CI does not run the whole suite.
+
+  Scope: this is one machine, one operating system (Linux), one interpreter
+  (3.11.15), one numpy (2.4.6). It is NOT a bound on what the ubuntu-and-windows
+  x 3.11-and-3.12 matrix will report. The step bounds committed in 3026813 carry
+  four-fold headroom above this machine's measured worst cases precisely because
+  this file cannot speak for the runners' SIMD dispatch. It is also not a
+  statement about the `pre-commit` job, which plan 29.2-04 measures separately.

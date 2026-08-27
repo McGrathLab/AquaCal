@@ -94,7 +94,14 @@ class TestBandMode:
         assert record["scope"]
 
     def test_ablation_columns_unchanged(self, tmp_path):
-        """E7 gains only the sidecar -- ABLATION_COLUMNS must not change."""
+        """The band CSV's header is exactly `ABLATION_COLUMNS`, in order.
+
+        D-19.4-14 (which this test was written for) added only the sidecar and
+        no column. Plan 24-02 later APPENDED six degeneracy columns to
+        `ABLATION_COLUMNS`; the assertion is against the constant, so what it
+        protects is unchanged -- the band CSV and the constant never diverge,
+        and no pre-existing column moves.
+        """
         main(["--smoke", "--seeds", "42,43", "--out", str(tmp_path)])
         df = pd.read_csv(tmp_path / "interface_ablation_band.csv")
         assert list(df.columns[: len(ABLATION_COLUMNS)]) == ABLATION_COLUMNS

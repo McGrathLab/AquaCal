@@ -1,0 +1,37 @@
+freeze02 per-stage wall clock — derived from run_experiment_suite_state.7005a27.tsv
+Run: 2026-08-25T00:47:07.773Z -> 2026-08-25T06:48:28.378Z, sha 7005a27, pooled, SUITE_WORKERS default
+These ISO stamps are the only per-stage timing record that exists for this run.
+
+stage                    idx  start (UTC)              end (UTC)                    duration  exit       attempt1       delta
+--------------------------------------------------------------------------------------------------------------------------------
+preflight                  1  2026-08-25T00:47:07Z     2026-08-25T00:47:08Z           0m 01s     0         0m 01s     -0m 00s
+prelaunch_probe            2  2026-08-25T00:47:08Z     2026-08-25T00:47:09Z           0m 00s     0         0m 00s     +0m 00s
+fd_jacobian                3  2026-08-25T00:47:09Z     2026-08-25T00:47:11Z           0m 02s     0         0m 02s     +0m 00s
+e1                         4  2026-08-25T00:47:09Z     2026-08-25T00:49:00Z           1m 51s     0         1m 47s     +0m 04s
+e7                         5  2026-08-25T00:47:09Z     2026-08-25T00:49:18Z           2m 09s     0         2m 11s     -0m 01s
+e5                         6  2026-08-25T00:47:09Z     2026-08-25T00:55:42Z           8m 34s     0         8m 34s     -0m 00s
+e2_production              7  2026-08-25T00:47:11Z     2026-08-25T01:13:06Z          25m 55s     0        25m 53s     +0m 01s
+e6_repeat1                 8  2026-08-25T00:49:00Z     2026-08-25T01:25:51Z          36m 51s     0        36m 48s     +0m 03s
+e3                         9  2026-08-25T01:13:06Z     2026-08-25T01:13:13Z           0m 07s     0         0m 07s     -0m 00s
+reconstruction_bootstrap  10  2026-08-25T01:13:13Z     2026-08-25T01:13:24Z           0m 11s     0         0m 11s     -0m 00s
+e2_timing                 11  2026-08-25T05:01:53Z     2026-08-25T05:22:04Z          20m 11s     0        19m 44s     +0m 27s
+e2_memory                 12  2026-08-25T05:22:04Z     2026-08-25T05:41:28Z          19m 24s     0        20m 05s     -0m 41s
+e7_band                   13  2026-08-25T00:49:18Z     2026-08-25T01:11:10Z          21m 52s     0        21m 46s     +0m 06s
+e5_band                   14  2026-08-25T00:55:43Z     2026-08-25T01:48:39Z          52m 56s     0        53m 00s     -0m 04s
+e2_band                   15  2026-08-25T01:13:24Z     2026-08-25T02:26:34Z       1h 13m 10s     0     1h 12m 40s     +0m 30s
+e1_band                   16  2026-08-25T01:11:11Z     2026-08-25T01:44:19Z          33m 08s     0        34m 20s     -1m 12s
+e4                        17  2026-08-25T05:41:29Z     2026-08-25T06:25:35Z          44m 07s     0        42m 58s     +1m 09s
+e6_band                   18  2026-08-25T01:25:51Z     2026-08-25T05:01:52Z       3h 36m 01s     0     3h 35m 24s     +0m 37s
+e7_focal_standoff         19  2026-08-25T01:44:20Z     2026-08-25T01:44:20Z           0m 00s     0         0m 00s     -0m 00s
+e4_repeat                 20  2026-08-25T06:25:36Z     2026-08-25T06:48:28Z          22m 52s     0        23m 32s     -0m 40s
+--------------------------------------------------------------------------------------------------------------------------------
+TOTAL (wall clock)            2026-08-25T00:47:07Z     2026-08-25T06:48:28Z       6h 01m 21s           6h 00m 21s     +1m 00s
+
+Stages: 20   completed at exit 0: 20   non-zero exits: none
+
+Comparison against the plan's two named reference figures (attempt 1, this machine, 2026-08-20):
+  total:    baseline 6h 00m 21s   this run 6h 01m 21s   delta +1m 00s
+  e6_band:  baseline 3h 35m 24s   this run 3h 36m 01s   delta +0m 37s
+
+Observation, not a gate: both figures land within ~1 minute of attempt 1 on the same
+machine. e6_band remains the critical path. Nothing in the schedule diverged materially.

@@ -17,6 +17,17 @@ Emits exactly six artifacts into `--out`:
 The three CSV headers are FIXED CONTRACTS the external figures repository (read-only,
 outside this repo) reads byte-for-byte (D-14) -- do not add, remove, reorder, or
 rename a column.
+
+E2 IS A MULTI-INVOCATION STAGE (D-15/D-16). Its runs are the production/classification
+run, the seed band (`--emit-band-configs`), and timing and memory as two DISTINCT runs.
+`internals.benchmark_memory` and `internals.log_all_observation_depths` are YAML config
+keys, not CLI flags, so `--emit-invocation-configs` GENERATES the three variant configs
+from one source config rather than the repo committing three hand-written copies. It is
+generated because the release config lives at an absolute Windows path outside this repo
+(`C:/Users/tucke/Desktop/Aqua/AquaCal/release_calibration/config.yaml`,
+`rerun_19_5.sh:209`): three committed copies would hard-code that path three times over
+and Phase 27 would have to edit each one for the Linux machine, where generating from a
+single `--config` value means Phase 27 overrides one variable.
 """
 
 from __future__ import annotations
@@ -36,10 +47,12 @@ import numpy as np
 import pandas as pd
 
 from experiments._io import (
+    add_baseline_dir_argument,
     build_experiment_arg_parser,
-    compare_experiment_csv,
+    compare_experiment_csv_if_present,
     exit_code_for,
     parse_seed_list,
+    resolve_baseline_dir,
     resolve_out_dir,
     validate_args,
     write_experiment_csv,
@@ -285,8 +298,11 @@ def build_real_rig_metrics(result, spatial, square_size_m: float) -> dict:
             ),
             "mean_per_camera_reprojection_px": (
                 "mean of result.diagnostics.reprojection_error_per_camera over "
-                "primary (non-auxiliary) cameras -- this IS the §3 quantity "
-                "(release diagnostics.json: 0.8786 px, quoted as 0.88)"
+                "primary (non-auxiliary) cameras -- this IS the §3 quantity, computed "
+                "from THIS run. Do NOT read it as the manuscript's 0.88 px: that came "
+                "from the 2026-07 release_calibration diagnostics.json (0.8786 px) and "
+                "is SUPERSEDED as a description of this field (see "
+                "MANUSCRIPT-FINDINGS MF-19)."
             ),
             "reprojection_range_px": (
                 "min/max of result.diagnostics.reprojection_error_per_camera "
@@ -471,61 +487,123 @@ def _run_smoke(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_check(args: argparse.Namespace) -> int:
-    """Execute `--check` mode: run the real calibration, diff against `--out`.
+def _fold_check_reports(reports) -> int:
+    """Print one verdict line per compared artifact and fold them to an exit code.
 
-    Never writes. Compares the freshly built DataFrames against the CSVs
-    already committed at `args.out` (the in-repo committed baseline this suite
-    maintains), at `CHECK_RTOL`, printing the worst offending cell per file.
+    A `None` report means the baseline file does not exist. That is an N/A --
+    not a failure -- because two of E2's three artifacts are gitignored by
+    deliberate DATA-01b policy (ruling A4). But an all-N/A `--check` is
+    VACUOUS and must never read as a pass: it compared nothing, so it exits
+    nonzero with an explicit message (T-26-18).
+
+    Args:
+        reports: Sequence of `(name, baseline_path, report_or_None)` triples.
+
+    Returns:
+        0 if at least one baseline was present and every present baseline
+        matched; 1 otherwise.
+    """
+    worst_exit = 0
+    n_absent = 0
+    for name, baseline_path, report in reports:
+        if report is None:
+            n_absent += 1
+            print(
+                f"[{name}] N/A -- no committed baseline at {baseline_path} "
+                "(gitignored by deliberate DATA-01b policy; ships only in the "
+                "Zenodo archive). Not counted as a failure."
+            )
+            continue
+        print(f"[{name}] {report.message}")
+        worst_exit = max(worst_exit, exit_code_for(report))
+
+    if reports and n_absent == len(reports):
+        print(
+            "VACUOUS CHECK: every baseline was absent, so nothing was compared. "
+            "Exiting nonzero -- an all-N/A --check is not a reproduction claim. "
+            "Point --baseline-dir at a tree that holds the baselines, or use "
+            "check_e2_band's real_rig_metrics.json comparison instead."
+        )
+        return 1
+    return worst_exit
+
+
+def _run_check(args: argparse.Namespace) -> int:
+    """Execute `--check` mode: run the real calibration, diff against baselines.
+
+    Never writes. Compares the freshly built DataFrames against the CSVs in
+    `resolve_baseline_dir(args.baseline_dir, args.out)` at `CHECK_RTOL`,
+    printing the worst offending cell per file.
+
+    HONEST CONTRACT (SP-5, ruling A4) -- CONTEXT's "`--check` survives on E3 and
+    E2 only" is optimistic for E2, and DRIVER-03's contract table must not
+    repeat it uncorrected. Of the THREE artifacts compared here, only
+    `camera_parameters.csv` has a committed baseline. `reprojection_residuals.csv`
+    and `reconstruction_errors.csv` are gitignored by deliberate DATA-01b policy
+    (`.gitignore:238-239`) and ship only in the Zenodo archive, so neither
+    `experiments/results/` nor the `experiments/pre_rerun_baseline/` archive
+    holds them. Before this function used `compare_experiment_csv_if_present`,
+    a clean checkout raised `FileNotFoundError` AFTER a 50-87 minute
+    calibration had already run. It now reports those two as N/A.
+
+    The better-anchored alternative, for anyone choosing a reproduction signal:
+    `check_e2_band` already compares `real_rig_metrics.json` NUMERICALLY at
+    `_E2_METRICS_RTOL = 1e-6` (`check_rerun_gates.py:1340`). That is a working
+    mechanism where this `--check` is, on one of three artifacts, not.
 
     Args:
         args: Parsed CLI namespace.
 
     Returns:
-        0 if every CSV matches within tolerance, 1 otherwise.
+        0 if every PRESENT baseline matched within tolerance and at least one
+        was present; 1 otherwise (including the all-absent vacuous case).
     """
     out_dir = resolve_out_dir(args.out)
+    baseline_dir = resolve_baseline_dir(getattr(args, "baseline_dir", None), out_dir)
     result, spatial, _output_dir = _run_real_calibration(args)
 
     df_cameras = build_camera_parameters_df(result)
     df_residuals = build_residuals_df(result)
     df_reconstruction = build_reconstruction_df(spatial)
 
+    camera_params_path = baseline_dir / "camera_parameters.csv"
+    residuals_path = baseline_dir / "reprojection_residuals.csv"
+    reconstruction_path = baseline_dir / "reconstruction_errors.csv"
+
     reports = [
         (
             "camera_parameters.csv",
-            compare_experiment_csv(
+            camera_params_path,
+            compare_experiment_csv_if_present(
                 df_cameras,
-                out_dir / "camera_parameters.csv",
+                camera_params_path,
                 key_columns=CAMERA_PARAMS_KEY_COLUMNS,
                 rtol=CHECK_RTOL,
             ),
         ),
         (
             "reprojection_residuals.csv",
-            compare_experiment_csv(
+            residuals_path,
+            compare_experiment_csv_if_present(
                 df_residuals,
-                out_dir / "reprojection_residuals.csv",
+                residuals_path,
                 key_columns=RESIDUALS_KEY_COLUMNS,
                 rtol=CHECK_RTOL,
             ),
         ),
         (
             "reconstruction_errors.csv",
-            compare_experiment_csv(
+            reconstruction_path,
+            compare_experiment_csv_if_present(
                 df_reconstruction,
-                out_dir / "reconstruction_errors.csv",
+                reconstruction_path,
                 key_columns=RECONSTRUCTION_KEY_COLUMNS,
                 rtol=CHECK_RTOL,
             ),
         ),
     ]
 
-    worst_exit = 0
-    for name, report in reports:
-        print(f"[{name}] {report.message}")
-        worst_exit = max(worst_exit, exit_code_for(report))
-    return worst_exit
+    return _fold_check_reports(reports)
 
 
 def _run_real_calibration(args: argparse.Namespace):
@@ -553,14 +631,21 @@ def _run_real_calibration(args: argparse.Namespace):
     from aquacal.datasets import load_example
 
     if getattr(args, "config", None) is not None:
-        # Explicit-config path (added 2026-07-27). The PUBLISHED Zenodo archive is a
-        # ~4.3x frame-subsampled extraction of the capture that produced the
-        # manuscript's section-3 numbers (60 usable frames -> 12 validation -> 1,817
-        # comparisons, versus ~260 -> 52 -> 7,762). Reproducing section-3 therefore
-        # requires pointing at the full-frameset config; the archive default is kept
-        # so a reader with no local videos still has a working reproducibility path.
+        # Explicit-config path (added 2026-07-27; claim corrected 2026-08-17). The
+        # PUBLISHED Zenodo archive is NO LONGER frame-subsampled. Record 21889922
+        # (4.35 GB), which the manifest was repointed to in 25655f7, ships
+        # 13 x 262 extrinsic frames plus its own config_paper.yaml at
+        # frame_step: 1 / max_calibration_frames: 200, and a fresh run off it
+        # gives 262 usable frames -> 210/52 split -> 200 calibration frames and
+        # reconstruction.num_comparisons = 7762 (verified 2026-08-12). The
+        # ~4.3x-subsampled extraction (60 usable -> 12 validation -> 1,817
+        # comparisons) was the RETIRED record 18645385, not this one. So this
+        # branch is not required to reach the section-3 frameset; it exists to
+        # point at a different capture or a variant config. Whether the current
+        # library reproduces section-3's VALUES is separate and open (MF-19).
         # See .planning/phases/19.1-experiment-suite-consolidation/
-        # 19.1-E2-FRAMESET-PROVENANCE.md and REQUIREMENTS.md DATA-01a.
+        # 19.1-E2-FRAMESET-PROVENANCE.md -- read its supersession header first;
+        # its frameset table describes the retired record.
         config_path = Path(args.config).resolve()
         if not config_path.is_file():
             raise FileNotFoundError(f"--config path does not exist: {config_path}")
@@ -831,6 +916,302 @@ def emit_seed_variant_configs(
     return written
 
 
+# ---------------------------------------------------------------------------
+# D-15/D-16: E2 invocation-config generation (classification/timing/memory)
+# ---------------------------------------------------------------------------
+#
+# WHY GENERATED, NOT HAND-WRITTEN AND COMMITTED: the release config lives at an
+# absolute Windows path OUTSIDE this repo
+# (`C:/Users/tucke/Desktop/Aqua/AquaCal/release_calibration/config.yaml`,
+# `rerun_19_5.sh:209`). Three committed hand-written copies would duplicate that
+# path three times over, and Phase 27 (Linux portability) would have to edit
+# every one of them. Generated from a single `--config` value, Phase 27
+# overrides one variable.
+
+E2_INVOCATION_VARIANTS: tuple[dict, ...] = (
+    {
+        "name": "classification",
+        "filename": "config_e2_classification.yaml",
+        "internals": {
+            "log_all_observation_depths": True,
+            "benchmark_memory": False,
+        },
+        "purpose": (
+            "Production / classification run. Carries Phase 25's per-observation "
+            "h_q sidecar (D-16); carries NO memory instrumentation, because "
+            "peak-RSS sampling perturbs the wall clock this run's artifacts are "
+            "read alongside."
+        ),
+    },
+    {
+        "name": "timing",
+        "filename": "config_e2_timing.yaml",
+        "internals": {
+            "log_all_observation_depths": False,
+            "benchmark_memory": False,
+        },
+        "purpose": (
+            "Timing run. Carries NEITHER perturbing internals key: "
+            "benchmark_memory costs 2.7-5.5% wall clock (D-15) and "
+            "log_all_observation_depths writes an ~11 MB per-stage sidecar on "
+            "the 13-camera rig (D-16). A flag that perturbs the quantity being "
+            "measured cannot ride along with it."
+        ),
+    },
+    {
+        "name": "memory",
+        "filename": "config_e2_memory.yaml",
+        "internals": {
+            "log_all_observation_depths": False,
+            "benchmark_memory": True,
+        },
+        "purpose": (
+            "Memory run. Carries benchmark_memory only. This is a SEPARATE "
+            "invocation from the timing run, inherited and non-negotiable "
+            "(D-15): one run cannot honestly produce both numbers."
+        ),
+    },
+)
+
+
+def _yaml_scalar(value: object) -> str:
+    """Render `value` as a YAML scalar for in-place config rewriting."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return json.dumps(str(value))
+
+
+def _rewrite_output_dir_in_place(
+    lines: list[str], output_dir: str, default_ending: str
+) -> None:
+    """Rewrite the `paths.output_dir` value of `lines` in place.
+
+    A deliberate near-duplicate of the corresponding stanza inside
+    `build_seed_variant_config`: the band generator is production-proven
+    (D-19.5-07) and is not refactored here to serve a sibling.
+
+    Args:
+        lines: Config lines with line endings kept; mutated in place.
+        output_dir: The value to write (as a double-quoted YAML scalar).
+        default_ending: Line ending to use if the target line carries none.
+
+    Raises:
+        ValueError: If no `paths.output_dir` line is found to rewrite.
+    """
+    paths_idx = _find_top_level_index(lines, "paths")
+    output_dir_idx = None
+    indent = None
+    if paths_idx is not None:
+        for i in range(paths_idx + 1, len(lines)):
+            stripped = lines[i].rstrip("\r\n")
+            if stripped == "":
+                continue
+            if _TOP_LEVEL_KEY_RE.match(stripped):
+                break  # left the paths: block
+            match = _OUTPUT_DIR_LINE_RE.match(lines[i])
+            if match:
+                output_dir_idx = i
+                indent = match.group(1)
+                break
+
+    if output_dir_idx is None:
+        raise ValueError(
+            "build_internals_variant_config: no 'paths.output_dir' line found "
+            "in source_text to rewrite"
+        )
+
+    ending = _line_ending(lines[output_dir_idx]) or default_ending
+    lines[output_dir_idx] = f"{indent}output_dir: {json.dumps(output_dir)}{ending}"
+
+
+def build_internals_variant_config(
+    source_text: str, output_dir: str, overrides: dict
+) -> str:
+    """Return `source_text` with `paths.output_dir` and `internals.*` set (D-15).
+
+    A pure text-to-text transform, exactly like `build_seed_variant_config`:
+    each `internals.<key>` in `overrides` is replaced in place when the key
+    already exists, or inserted at the end of the `internals:` block when it
+    does not (the block itself is created at end of file, at top-level
+    indentation, when absent). Every other line -- comments, blank lines, key
+    order, camera lists, video paths -- survives byte-for-byte. When every
+    override key pre-exists, exactly `1 + len(overrides)` lines change.
+
+    A `yaml.safe_load`/`safe_dump` round-trip is deliberately NOT used: it
+    destroys comments and reorders keys, which would make that "only N lines
+    changed" assertion unverifiable. This matters more here than for the seed
+    band, because CONTEXT notes `--smoke` cannot catch a bad production YAML --
+    a human diff is the only review this config gets before a 48-87 minute run.
+
+    Args:
+        source_text: The full text of a source `config.yaml`.
+        output_dir: The value to write into `paths.output_dir`.
+        overrides: Mapping of `internals` key -> value to set.
+
+    Returns:
+        The transformed config text.
+
+    Raises:
+        ValueError: If no `paths.output_dir` line is found to rewrite.
+    """
+    lines = source_text.splitlines(keepends=True)
+    default_ending = "\r\n" if "\r\n" in source_text else "\n"
+
+    # Rewrite output_dir FIRST so a source config without one raises before any
+    # other mutation is attempted.
+    _rewrite_output_dir_in_place(lines, output_dir, default_ending)
+
+    internals_idx = _find_top_level_index(lines, "internals")
+    if internals_idx is None:
+        if lines and _line_ending(lines[-1]) == "":
+            lines[-1] = lines[-1] + default_ending
+        lines.append(f"internals:{default_ending}")
+        internals_idx = len(lines) - 1
+        indent = "  "
+        insert_idx = len(lines)
+        block_end = len(lines)
+    else:
+        indent = None
+        block_end = len(lines)
+        last_child_idx = internals_idx
+        for i in range(internals_idx + 1, len(lines)):
+            stripped = lines[i].rstrip("\r\n")
+            if stripped == "":
+                continue
+            if _TOP_LEVEL_KEY_RE.match(stripped):
+                block_end = i
+                break
+            if indent is None:
+                indent = re.match(r"^(\s+)", lines[i]).group(1)
+            last_child_idx = i
+        indent = indent or "  "
+        insert_idx = last_child_idx + 1
+
+    # Pass 1: replace keys that already exist inside the internals block.
+    missing: list[str] = []
+    for key, value in overrides.items():
+        key_re = re.compile(r"^(\s+)" + re.escape(key) + r":(.*)$")
+        replaced = False
+        for i in range(internals_idx + 1, block_end):
+            match = key_re.match(lines[i].rstrip("\r\n"))
+            if match:
+                ending = _line_ending(lines[i]) or default_ending
+                # Preserve any trailing inline comment: the schema's own
+                # `internals` comments are the only documentation a reviewer
+                # of a generated production config gets. Every `internals` key
+                # this generator sets is a bool, so a `#` in the remainder is
+                # unambiguously a comment and never part of a quoted value.
+                rest = match.group(2)
+                comment = "  " + rest[rest.index("#") :].rstrip() if "#" in rest else ""
+                lines[i] = (
+                    f"{match.group(1)}{key}: {_yaml_scalar(value)}{comment}{ending}"
+                )
+                replaced = True
+                break
+        if not replaced:
+            missing.append(key)
+
+    # Pass 2: insert the keys that were absent, in `overrides` order.
+    for offset, key in enumerate(missing):
+        lines.insert(
+            insert_idx + offset,
+            f"{indent}{key}: {_yaml_scalar(overrides[key])}{default_ending}",
+        )
+
+    return "".join(lines)
+
+
+def emit_invocation_configs(source_path: Path, target_dir: Path) -> list[Path]:
+    """Write E2's three invocation-variant configs into `target_dir` (D-15/D-16).
+
+    Emits exactly `config_e2_classification.yaml`, `config_e2_timing.yaml` and
+    `config_e2_memory.yaml`, in that order, plus an `e2_invocation_scope.json`
+    sidecar recording the source config's sha256, each variant's filename,
+    `internals` settings and output directory. Each variant gets a DISTINCT
+    `paths.output_dir`, so the completeness gate can attribute every E2 artifact
+    to the invocation that produced it (D-16).
+
+    No variant sets both `benchmark_memory` and `log_all_observation_depths`
+    true -- that is the entire point of the split.
+
+    Refuses to write if `target_dir` resolves inside `source_path.parent`, for
+    the same reason `emit_seed_variant_configs` does (T-19.5-07-01): the release
+    tree that produced the manuscript's Section 3 numbers must never be a
+    generated config's write target.
+
+    Args:
+        source_path: Path to the source release `config.yaml` (read-only;
+            never modified by this function).
+        target_dir: Directory to write the three variants and the sidecar into.
+
+    Returns:
+        The three written config paths, in classification/timing/memory order.
+
+    Raises:
+        ValueError: If `target_dir` resolves inside `source_path.parent`, or if
+            the source config has no `paths.output_dir` line.
+    """
+    source_path = Path(source_path).resolve()
+    resolved_target = Path(target_dir).resolve()
+    source_dir = source_path.parent
+
+    if resolved_target == source_dir or source_dir in resolved_target.parents:
+        raise ValueError(
+            f"emit_invocation_configs: target_dir {resolved_target} resolves "
+            f"inside the source config's own directory {source_dir}; a "
+            "generated invocation config would overwrite or pollute the "
+            "release tree that produced the manuscript's Section 3 numbers. "
+            "Choose a target_dir outside it."
+        )
+
+    resolved_target.mkdir(parents=True, exist_ok=True)
+    source_text = source_path.read_text()
+
+    written: list[Path] = []
+    variant_records: list[dict] = []
+    for spec in E2_INVOCATION_VARIANTS:
+        output_dir = resolved_target / f"e2_{spec['name']}"
+        variant_text = build_internals_variant_config(
+            source_text, output_dir.as_posix(), spec["internals"]
+        )
+        variant_path = resolved_target / spec["filename"]
+        variant_path.write_text(variant_text)
+        written.append(variant_path)
+        variant_records.append(
+            {
+                "name": spec["name"],
+                "filename": spec["filename"],
+                "internals": dict(spec["internals"]),
+                "output_dir": output_dir.as_posix(),
+                "purpose": spec["purpose"],
+            }
+        )
+
+    scope_record = {
+        "source_config": str(source_path),
+        "source_config_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+        "variants": variant_records,
+        "n": len(variant_records),
+        "scope": (
+            "E2 is an explicitly multi-invocation stage (D-15). These three "
+            "configs differ from the source config in exactly paths.output_dir "
+            "and two internals keys. Timing and memory are two DISTINCT runs "
+            "because internals.benchmark_memory costs 2.7-5.5% wall clock, so "
+            "one run cannot honestly produce both numbers; and "
+            "internals.log_all_observation_depths (an ~11 MB per-stage sidecar "
+            "on the 13-camera rig) rides the classification run ONLY, never the "
+            "timing run (D-16). Each variant writes its own output_dir so every "
+            "artifact is attributable to its invocation."
+        ),
+    }
+    scope_path = resolved_target / "e2_invocation_scope.json"
+    scope_path.write_text(json.dumps(scope_record, indent=2, sort_keys=True))
+
+    return written
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build E2's CLI parser: the shared five-flag contract, no extra flags.
 
@@ -846,11 +1227,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Run against an explicit config.yaml instead of the published Zenodo "
-            "archive. Required to reproduce the manuscript's section-3 numbers, "
-            "because the published archive is a ~4.3x frame-subsampled extraction "
-            "of the capture that produced them (DATA-01a). Omit to use the "
-            "published archive, which is the path a reader without the raw videos "
-            "follows."
+            "archive's own config_paper.yaml. NOT required to reproduce the "
+            "manuscript's section-3 FRAMESET: record 21889922 (4.35 GB; the "
+            "manifest was repointed to it in 25655f7) ships 13 x 262 extrinsic "
+            "frames plus config_paper.yaml at frame_step: 1 / "
+            "max_calibration_frames: 200, which yields 262 usable frames -> "
+            "210/52 split -> 200 calibration frames and reproduces "
+            "reconstruction.num_comparisons = 7762 exactly (verified 2026-08-12). "
+            "The retired record 18645385 (164 MB) was the ~4.3x subsampled one. "
+            "Whether the CURRENT library reproduces section-3's VALUES is a "
+            "separate, open question (MANUSCRIPT-FINDINGS MF-19); this flag makes "
+            "no claim about it. Use --config to point at a different capture or a "
+            "variant config; omit it to run the published archive as shipped."
         ),
     )
     parser.add_argument(
@@ -886,6 +1274,36 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Section 3 numbers must never be a variant's write target."
         ),
     )
+    parser.add_argument(
+        "--emit-invocation-configs",
+        action="store_true",
+        default=False,
+        help=(
+            "D-15/D-16: emit E2's three invocation-variant config.yaml files "
+            "(classification, timing, memory) plus e2_invocation_scope.json "
+            "into --invocation-dir, and exit without running any calibration. "
+            "They exist because internals.benchmark_memory costs 2.7-5.5%% wall "
+            "clock, so ONE run cannot honestly produce both the timing and the "
+            "memory number; and internals.log_all_observation_depths writes an "
+            "~11 MB per-stage sidecar on the 13-camera rig, so it rides the "
+            "classification run only and NEVER the timing run -- a flag that "
+            "perturbs the quantity being measured cannot ride along with it. "
+            "Requires --config and --invocation-dir; cannot be combined with "
+            "--check, --smoke, --force or --emit-band-configs."
+        ),
+    )
+    parser.add_argument(
+        "--invocation-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory to write the three --emit-invocation-configs variants "
+            "into. Must not resolve inside --config's own directory -- the "
+            "release tree that produced the manuscript's Section 3 numbers "
+            "must never be a generated config's write target."
+        ),
+    )
+    add_baseline_dir_argument(parser)
     return parser
 
 
@@ -912,6 +1330,25 @@ def _validate_e2_args(
         parser.error("--emit-band-configs requires --config")
     if args.emit_band_configs and args.band_dir is None:
         parser.error("--emit-band-configs requires --band-dir")
+
+    # D-15/D-16: --emit-invocation-configs writes configs and runs nothing, so
+    # every flag that implies a run (or a second generator) is a conflict. The
+    # message names the offending pair, not just the flag.
+    if args.emit_invocation_configs:
+        for flag, present in (
+            ("--check", args.check),
+            ("--smoke", args.smoke),
+            ("--force", args.force),
+            ("--emit-band-configs", args.emit_band_configs),
+        ):
+            if present:
+                parser.error(
+                    f"--emit-invocation-configs cannot be combined with {flag}"
+                )
+        if args.config is None:
+            parser.error("--emit-invocation-configs requires --config")
+        if args.invocation_dir is None:
+            parser.error("--emit-invocation-configs requires --invocation-dir")
 
 
 def _run_emit_band_configs(args: argparse.Namespace) -> int:
@@ -958,6 +1395,25 @@ def _run_emit_band_configs(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_emit_invocation_configs(args: argparse.Namespace) -> int:
+    """Emit D-15/D-16's three invocation configs and sidecar; no calibration.
+
+    Args:
+        args: Parsed CLI namespace. `args.config` and `args.invocation_dir` are
+            both required (enforced by `_validate_e2_args`).
+
+    Returns:
+        0. Errors propagate as exceptions/`SystemExit`, not a nonzero return.
+    """
+    source_path = Path(args.config).resolve()
+    target_dir = Path(args.invocation_dir).resolve()
+
+    for path in emit_invocation_configs(source_path, target_dir):
+        print(f"Wrote {path}")
+    print(f"Wrote {target_dir / 'e2_invocation_scope.json'}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python -m experiments.e2_real_rig`.
 
@@ -972,6 +1428,9 @@ def main(argv: list[str] | None = None) -> int:
     _validate_e2_args(parser, args)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if args.emit_invocation_configs:
+        return _run_emit_invocation_configs(args)
 
     if args.emit_band_configs:
         return _run_emit_band_configs(args)

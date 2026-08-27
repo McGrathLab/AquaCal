@@ -1,0 +1,35 @@
+{
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "experiment": "e7_seed_band",
+  "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+  "schema_version": 1,
+  "scope": "This band varies the SEED across the four fixed/refined x shared/per-camera arms, and bounds seed-to-seed variability of camera_height_drift_mm, the per-arm pairing behind MF-05. It is NOT a physical-rig or real-data claim, and this sidecar neither asserts nor denies an accuracy claim for E7.",
+  "seconds": 1305.42443632707,
+  "solver_config": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ]
+  }
+}

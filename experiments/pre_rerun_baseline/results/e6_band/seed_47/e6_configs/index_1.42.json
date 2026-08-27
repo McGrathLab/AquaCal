@@ -1,0 +1,51 @@
+{
+  "config": {
+    "axis": "index",
+    "axis_value": "1.42",
+    "config_key": "index_1.42",
+    "depth_range": null,
+    "is_baseline": false,
+    "layout": "grid",
+    "n_cameras": 12,
+    "n_water": 1.42,
+    "normal_fixed": false,
+    "spacing": null,
+    "xy_extent": null
+  },
+  "degenerate_observations_at_solution": 0,
+  "environment": {
+    "aquacal_version": "1.8.0",
+    "cpu_count_logical": 20,
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "git_sha": "2a2f0faccef4eca243d027023e44e047041a4a1c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.2",
+    "opencv_version": "4.13.0",
+    "os": "Windows 11",
+    "python_version": "3.12.12",
+    "ram_total_bytes": 16857190400,
+    "scipy_version": "1.17.0"
+  },
+  "metrics": {
+    "focal_error_pct_mean": 0.04981886901118129,
+    "num_comparisons": 14692,
+    "num_frames": 100,
+    "optimality_stage3_interface_optimization": 0.0027876021539441354,
+    "optimality_stage3_intrinsic_pass": 0.004107999576149268,
+    "reconstruction_mae_mm": 0.33637390799670125,
+    "reconstruction_rmse_mm": 0.4925267334886814,
+    "reprojection_rms_px": 0.7055600314463367,
+    "signed_mean_mm": 0.032642512719105586,
+    "water_z_error_mm_mean": 0.10309805547059625,
+    "xy_position_error_mm_mean": 0.1478117762714491,
+    "z_position_error_mm_mean": 0.3960820012617938
+  },
+  "n_frames": 100,
+  "schema_version": 1,
+  "seed": 47,
+  "solver_config": {
+    "seed": 47
+  },
+  "status": "ok",
+  "status_reason": ""
+}

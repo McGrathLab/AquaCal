@@ -1,21 +1,28 @@
 {
   "discard_stats": {
     "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 164439,
     "pnp_attempts_refractive": 5621,
     "pnp_attempts_total": 5621
   },
   "environment": {
-    "aquacal_version": "1.8.0",
-    "cpu_count_logical": 20,
-    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "2a623f9d09bc77bbbb1cfbd3188075bc8b8b4395",
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
     "git_sha_source": "git_rev_parse",
-    "numpy_version": "2.4.2",
+    "numpy_version": "2.4.6",
     "opencv_version": "4.13.0",
-    "os": "Windows 11",
-    "python_version": "3.12.12",
-    "ram_total_bytes": 16857190400,
-    "scipy_version": "1.17.0"
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
   },
   "experiment": "e5",
   "holdout_seed_offset": 100000,

@@ -1,22 +1,23 @@
 {
   "environment": {
-    "aquacal_version": "1.8.0",
-    "cpu_count_logical": 20,
-    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "b13a3e038f29594085acb262b174c050d97ec8dd",
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
     "git_sha_source": "git_rev_parse",
-    "numpy_version": "2.4.2",
+    "numpy_version": "2.4.6",
     "opencv_version": "4.13.0",
-    "os": "Windows 11",
-    "python_version": "3.12.12",
-    "ram_total_bytes": 16857190400,
-    "scipy_version": "1.17.0"
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
   },
   "experiment": "e7_seed_band",
-  "git_sha": "b13a3e038f29594085acb262b174c050d97ec8dd",
+  "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
   "schema_version": 1,
   "scope": "This band varies the SEED across the four fixed/refined x shared/per-camera arms, and bounds seed-to-seed variability of camera_height_drift_mm, the per-arm pairing behind MF-05. It is NOT a physical-rig or real-data claim, and this sidecar neither asserts nor denies an accuracy claim for E7.",
-  "seconds": 3491.0320000000065,
+  "seconds": 1311.6026704730466,
   "solver_config": {
     "seeds": [
       42,

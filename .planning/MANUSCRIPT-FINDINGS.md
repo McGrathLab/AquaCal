@@ -975,11 +975,35 @@ stable-anisotropy claim (free: 1.95-2.19, matching the published ~2.3; pinned: d
 
 ### Determinism
 
-**8 of 308 cells moved between repeats, before 63 of 308.** Thirteen of fourteen configurations
-reproduced exactly; all movement is in `index/1.48`. Computed by the same code path that produced
-the pre-fix figure, pinned by a self-test that re-derives 63/308 before reporting anything
-(`determinism_probe.py --report`). The two E6 repeats used structurally isolated output
-directories, and repeat 2 provably re-solved (zero resume-skip lines).
+**16 of 308 cells moved between repeats, before 63 of 308.** Twelve of fourteen configurations
+reproduce exactly; movement is in `index/1.51` and `index/1.55`, eight cells each. On the full
+post-fix schema (25 columns, including the optimality and guard columns the pre-fix pair could not
+carry) it is 20 of 350. Computed by the same code path that produced the pre-fix figure, pinned by
+a self-test that re-derives 63/308 before reporting anything (`determinism_probe.py --report`). The
+two E6 repeats used structurally isolated output directories, and repeat 2 provably re-solved (zero
+resume-skip lines).
+
+> **CORRECTED 2026-08-14 — this entry read "8 of 308 ... all movement in `index/1.48`" until
+> today, which was the phase 19.3 measurement.** Phase 19.4's interface fix requeued **both** E6
+> repeats (`0ffbe15`), so the pair this statistic describes was replaced after the statistic was
+> written; re-running `determinism_probe.py --report` against the current artifacts gives 16 of
+> 308. The self-test still re-derives the 63/308 baseline exactly, so only the post-fix half had
+> aged. MF-08's own 19.4 subsection records that E6 moved under that fix — the determinism figure
+> simply was not re-derived alongside the numbers that were. **The direction of the claim is
+> unchanged and still large (63 → 16); the size is halved.** Found while tracing the figure's
+> provenance for the response letter, which now quotes 16.
+>
+> **The magnitudes, measured the same day, because the cell count alone invites a misreading.**
+> The two runs carry the same `git_sha` (`2a623f9`), version and seed, so this is genuine
+> run-to-run non-determinism on identical inputs — but it is bimodal. Every *accuracy* quantity
+> agrees to **1e-9 relative or better** (`reconstruction_rmse_mm` 3.3e-9 worst, `reprojection_rms_px`
+> 1.2e-10, `reconstruction_mae_mm` 2.7e-9); parameter errors agree to 1e-6–6e-5; and the whole of
+> the visible movement is in the **convergence diagnostic**, where `optimality_stage3_intrinsic_pass`
+> differs by **55%** on `index/1.55` (0.00235 against 0.00519). That is rule 9.1 appearing in the
+> data rather than in the prose: optimality varies ~2× between runs of identical code, which is why
+> it is never quoted beyond one significant figure. **The cause is not established here** — the
+> pre-fix kink explanation no longer applies, and nothing measured rules for or against
+> floating-point summation order, so it is reported as observed.
 
 This is a **reported statistic, not a gate**. There is no tolerance in it and nothing to loosen.
 The pre-fix cross-tabulation of movement against per-configuration degenerate count (correlation
@@ -1093,7 +1117,7 @@ reviewers' own questions prompted, corrected at the source, and all six affected
 re-measured in a single frozen run. Convergence is now readable across the suite: every calibration
 experiment reports a zero degenerate-observation count, E6's three non-converged configurations are
 gone (verified on BOTH the interface and intrinsic optimality columns), and run-to-run reproduction
-improved from 63 to 8 cells of 308. The synthetic results are unchanged in substance: the
+improved from 63 to 16 cells of 308 (corrected 2026-08-14; see the Determinism section above). The synthetic results are unchanged in substance: the
 depth-axis improvement is two orders of magnitude, and the originally published ratio falls inside
 the measured seed band. E7's accuracy is unchanged within its 10-seed band.
 
@@ -1291,9 +1315,9 @@ MF-08 is still outstanding and is deliberately not made here. See
 > We corrected the scenario construction — deriving an explicit depth-clearance floor and
 > re-centring board poses on the board centre — and re-measured all six affected experiments in a
 > single run at one commit. No board corner now reaches the interface in any scenario. All
-> fourteen generalization configurations converge to first-order optimality at or below 1e-2, every
+> fourteen generalization configurations converge to first-order optimality at or below 2e-2, every
 > calibration experiment reports a zero out-of-domain observation count, and run-to-run
-> reproducibility improved from 63 to 8 of 308 compared cells.
+> reproducibility improved from 63 to 16 of 308 compared cells.
 >
 > We note explicitly that this was a defect in benchmark construction and convergence *diagnosis*,
 > not in the calibration result. Before the correction, reconstruction accuracy was statistically
@@ -1308,8 +1332,16 @@ MF-08 is still outstanding and is deliberately not made here. See
 > its edge. We have accordingly rephrased the claim in
 > terms that are stable across seeds: the non-refractive baseline's depth error at the most
 > extrapolated test depth is two orders of magnitude larger than the refractive model's
-> (approximately 205-252 mm against 1.4-2.1 mm). We also now state the random seed used for the
+> (approximately 199-252 mm against 1.4-2.3 mm). We also now state the random seed used for the
 > reported run, which the original submission omitted.
+
+> **CORRECTED 2026-08-14 — this block said "205-252 mm against 1.4-2.1 mm" until today.** Both
+> outer bounds were wrong against the committed band: recomputing the deepest test point from
+> `experiments/results/exp1_band.csv` gives non-refractive **199.29-252.06 mm** (mean 228.83) and
+> refractive **1.42-2.25 mm** (mean 1.69) over the ten seeds. The draft's 205 and 2.1 appear to
+> predate the committed band. This block is the one the response letter was to be drafted from, so
+> the error was one paste away from reaching the document a reviewer reads most adversarially; the
+> letter was written from the artifacts instead and quotes 229 mm with the 199-252 band.
 
 ---
 
@@ -2011,3 +2043,698 @@ tutorial's `diagnostics.json` check. Needs fixing before publish; the gate-1 run
 current-library `diagnostics.json` matching the shipped `calibration.json` to 1e-6%.
 
 ---
+
+## MF-20 — Real-rig drift continues across platform, and its mechanism is detection, not the solver
+
+**Status:** CONFIRMED by single-variable OpenCV control — extends MF-19 with a mechanism
+MF-19's library-drift analysis does not cover
+**Found:** 2026-08-12, second-machine re-run of E4 and E2 on 32 GB Linux; confirmed same day
+**Source of truth:** `experiments/results_linux32gb/` (see `linux32gb_scope.json`), at `d27bda7`;
+the OpenCV control is `experiments/results_linux32gb/e2_cv413/`
+**Extends:** MF-19. **Constrains:** MF-14, MF-03.
+
+### The finding
+
+MF-19 established that §3's numbers predate the current library, and proved via a fixed-library
+control (archive images vs Jul-31 video, both `aquacal 1.8.0`, Windows) that the archive
+faithfully reproduces the run — agreement at 1e-6%, so the drift was *entirely* library drift.
+
+Re-running the same archive on a second machine adds a third step to that sequence, and this one
+is **not** attributable to aquacal's calibration code:
+
+| §3 quantity | §3 published (~v1.4.2) | archive ref (1.8.0, Win) | this run (2.0.1, Linux) |
+|---|---:|---:|---:|
+| aux `e3v8250` RMS (px) | 15.134 | 14.856 | **13.970** |
+| `reprojection.rms` (px) | — | 0.92766 | **0.93827** (+1.14%) |
+| `reconstruction.rmse` (m) | 6.74e-04 | 6.2814e-04 | **6.7718e-04** (+7.81%) |
+| `reconstruction.signed_mean` (m) | — | 4.3189e-05 | **4.7840e-05** (+10.8%) |
+| `num_comparisons` | 7762 | 7762 | **7762** (0.00%) |
+
+### The mechanism is upstream of the solver
+
+The solver is not disagreeing — **it is handed a different observation set.** Corner observations
+fell 23028 -> 22578 (-1.95%), and the loss is concentrated, not diffuse:
+
+| camera | aux | archive ref | this run | delta |
+|---|---|---:|---:|---:|
+| `e3v8250` | yes | 3935 | 3587 | **-348 (-8.84%)** |
+| `e3v83ef` | | 1677 | 1638 | -39 (-2.33%) |
+| `e3v83ee` | | 1600 | 1569 | -31 (-1.94%) |
+| `e3v82e0`, `831e`, `832e`, `8334` | | | | **0** |
+
+### Confirmed by direct experiment (2026-08-12, same day)
+
+The elimination argument below was superseded within hours by a **single-variable control**: the
+same E2 run on the same machine in a cloned env differing *only* in OpenCV (4.13.0.92 vs
+4.14.0.94 — identical numpy 2.4.6, scipy 1.17.1, Python 3.11.15, aquacal 2.0.1 off the same
+working tree, same `config_paper.yaml` but `output_dir`).
+
+**Under OpenCV 4.13, Linux reproduces the Windows reference exactly.**
+
+| | Windows ref (4.13) | ours, 4.13 | rel | ours, 4.14 | rel |
+|---|---:|---:|---:|---:|---:|
+| observations, all 13 cameras | 23028 | **23028** | **0** | 22578 | -1.95% |
+| aux `e3v8250` | 3935 | **3935** | **0** | 3587 | -8.84% |
+| `reprojection.num_observations` | 19093 | **19093** | **0** | 18991 | 5.3e-03 |
+| `reprojection.rms` | 0.927660749 | 0.927660731 | **2.0e-08** | 0.938265914 | 1.1e-02 |
+| `reconstruction.rmse` | 6.28138593e-04 | 6.28138581e-04 | **1.9e-08** | 6.77175275e-04 | 7.8e-02 |
+| `reconstruction.signed_mean` | 4.31890151e-05 | 4.31890137e-05 | **3.3e-08** | 4.78402956e-05 | 1.1e-01 |
+| `degenerate_observations_at_solution` | 198 | **198** | **0** | 194 | 2.0e-02 |
+| `water_z` | 1.07384041 | 1.07384040 | **1.1e-08** | 1.07286112 | 9.1e-04 |
+
+Worst relative difference across **all 61** numeric diagnostics quantities: **1.264e-07**.
+Artifacts: `experiments/results_linux32gb/e2_cv413/`.
+
+**Two consequences beyond the attribution.**
+
+1. **The 1.8.0 -> 2.0.1 and Windows -> Linux gaps are inert on real data, not just synthetic.**
+   Holding OpenCV fixed, Linux / aquacal 2.0.1 / numpy 2.4.6 reproduces Windows / aquacal 1.8.0 /
+   numpy 2.4.2 to 1e-07 *through the full real-rig pipeline including detection*. Previously this
+   was only demonstrable on E4's synthetic cells, which never call the detector.
+2. **DATA-01a's undefined tolerance stops mattering.** The eight §3 quantities that moved 1.1-10.8%
+   under 4.14 reproduce at the numerical floor under 4.13. The published archive reproduces §3
+   completely; the drift was never the archive and never the library.
+
+Still open, and now purely internal to OpenCV: whether the change is `CharucoDetector` itself or
+`calibrateCamera` feeding different Stage-1 intrinsics back into detection
+(`detection.py:56-61`, called at `:230`). That distinction no longer affects any attribution.
+
+**Consequence for `pyproject.toml`:** the constraint is `opencv-python>=4.6,<5.0`, which permits
+both versions. Reproducing §3 requires 4.13. See the `2026-08-05-pin-opencv-below-5-0` todo.
+
+### The original elimination argument (superseded, retained for the record)
+
+Five points fixed the attribution before the control above was run, and between them they close
+off every alternative:
+
+1. **Not downstream rejection.** `degenerate_observations_at_solution` moved -4 and
+   `pnp_attempts_total` -6, with `pnp_guard_rejected` and `pose_discarded_by_consumer` unchanged
+   at 10. Rejection accounts for ~10 of the 450; the rest were never detected.
+2. **Not aquacal's detection code.** `git diff 6c7f930b d27bda7 -- src/aquacal/io/detection.py`
+   is **empty**, and nothing matching detect/charuco/aruco/fisheye changed anywhere in `src/`
+   between the two records' commits. Despite 1.8.0 -> 2.0.1, the detection path is byte-identical.
+3. **Not the 1.8.0 -> 2.0.1 gap, and not the platform.** E4's nine synthetic cells crossed the
+   *same* version gap and the *same* Windows -> Linux platform change in the same session and
+   reproduced final stage cost to **1e-13..1e-15** relative. That is a direct empirical control:
+   whatever moved between these library versions, and whatever differs between the two platforms'
+   BLAS and floating-point behaviour, is inert on the solve path at the 1e-13 level. It cannot
+   produce a 1e-02 movement in E2. (E4 is synthetic and never calls the detector, so this
+   controls the *solver*, not detection — which is precisely the point.)
+4. **Not the video -> pre-extracted-image change.** MF-19's fixed-library control already settled
+   this: archive images vs the Jul-31 video run, both `aquacal 1.8.0` on Windows, agree to
+   **1e-6%**. The input is identical in practice.
+5. **Not run-to-run noise.** The two Linux E2 runs differ by ~1e-09 relative on `reprojection_rms`
+   — seven orders of magnitude below the ~1e-02 cross-platform drift. (E4's synthetic cells are
+   *byte-identical* across repeats; only the real-data path shows even 1e-09.)
+
+With the solver, the platform, the library gap, the frame source, and run-to-run noise all
+independently controlled, **OpenCV 4.13.0 -> 4.14.0 is the only remaining candidate**;
+`detection.py:64` constructs `cv2.aruco.CharucoDetector` directly, so its corner output is
+entirely OpenCV's.
+
+**Not isolated:** `detect_charuco` is also parameterized by Stage-1 intrinsics
+(`detection.py:56-61`, called at `:230`), so an OpenCV change to `calibrateCamera` feeds back into
+detection. Separating the detector from the intrinsics it consumes needs 4.13 and 4.14 side by
+side and was **not** done. Relevant to the open `2026-08-05-pin-opencv-below-5-0` todo.
+
+### Contrast with the synthetic cells
+
+E4's nine synthetic cells crossed the *same* platform and version gap and reproduced to
+1e-13..1e-15 relative on final cost and <=2.4e-09 on `reprojection_rms`. Synthetic scenes are
+generated in-process; real data passes through an image-detection front-end whose output is
+version-dependent at the ~2% observation level. **Nothing downstream of that front-end can be
+tighter than it is** — which is the cleanest available statement of why synthetic reproducibility
+does not transfer to real-rig reproducibility.
+
+### Consequence for the manuscript
+
+Any real-rig reproducibility claim must name an **OpenCV version**, and that is now the *only*
+version it must name: with OpenCV pinned, the library version and the platform do not move the
+numbers at all (1e-07 across 61 quantities). MF-19's "current library" column is really
+"current library **with that OpenCV**" — the machine turns out not to matter.
+
+This also removes the reason to doubt the archive. §3 is reproducible from the published bytes
+today, on either platform, provided OpenCV is 4.13.
+
+---
+
+## MF-21 — The DEGEN-05 verdict: both fairness objections against E1 are answered in E1's favour, and the shipped `optimality` scalar now carries its caveat
+
+**Status:** CLOSED — verdict carried forward from three measured probes; **nothing here was
+re-derived** and no solve was run to write this entry
+**Found:** 2026-08-17 (optimality decomposition, warm restart, FD-noise discriminator);
+2026-08-17 (Huber knee). Recorded 2026-08-18, Phase 25 plan 25-05.
+**Source of truth:** `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md` (probe sha
+`a7f0f25`) and `.planning/probes/2026-08-17-huber-knee/FINDINGS.md` (probe sha `054d753`)
+**Opened by:** DEGEN-05, raised in `23-01-SUMMARY.md` § Evidence as an unexplained gap — E1's
+non-refractive arm reported `optimality_intrinsic` = 92.78 against the refractive arm's 0.0247 on
+the same scenario and seed, with no explanation on record.
+**Decisions:** D-15, D-16, D-17, D-18, D-19 (`25-CONTEXT.md`)
+
+### 1. The verdict on E1's comparison — converged, and the caveat that travels with it
+
+**E1's non-refractive baseline is converged, so the 97–178× band is strengthened, not caveated.**
+Restarting each solve from its own solution with the trust region reset (two successive restarts)
+recovers essentially no cost — the largest relative drop across all four solves is **1.8e-9**
+(non-refractive intrinsic pass, 15097.61231 → 15097.61228); the other three are 0, 2.6e-13 and
+2.1e-12. The fairness objection raised when DEGEN-05 was opened — that an under-converged baseline
+would carry larger error than its true optimum and so **inflate** the refractive-to-non-refractive
+ratio — does not materialise. The one caveat that does travel with the band is that the baseline
+arm is **severely ill-conditioned** (directional curvature ~3e8: cost fell 2.7e-5 over a step of
+~3e-7 while the gradient fell ~90). That is a property of fitting a pinhole model to refracted
+data — **expected, not a defect, and explicitly not a reason to qualify the accuracy claim.**
+These two statements belong in the same paragraph and must never be separated: this project's own
+Phase 23 documents already made the misreading once, taking ill-conditioning for under-convergence.
+
+### 2. The Huber knee objection is closed by measurement, not argument
+
+Finding 6 of the optimality probe measured that E1's `f_scale = 1.0` suits the refractive arm
+(4.5% of residuals past the knee) and not the baseline (29.4–47.7% past it), so the baseline was
+being fitted under a robust loss tuned to the *other* arm's residual scale. Measured at `054d753`:
+re-tuning the baseline arm only, to the symmetric rule `f_scale = 3 × median|r|` (**2.8332**
+interface pass, **1.8522** intrinsic pass), moves E1's z_rmse ratio by **-1.09%** at the deepest
+test point (123.87× → 122.52×) and by at most 6.83% anywhere.
+
+- **The risk direction was right; the magnitude is negligible.** The fairly-tuned baseline does fit
+  slightly better (mean z_rmse **-2.12%**), so the ratio does shrink — exactly the predicted sign.
+  Against a committed seed band of **97–178×** (a ~±30% spread), a 1–7% shift is an order of
+  magnitude inside the noise floor and is not a distinguishable effect.
+- **The attribution is validated by an in-run control.** The untouched refractive arm reproduced
+  the control **bit-for-bit** (`max|abs change|` = 0.000e+00 across every refractive metric),
+  confirming the patch reached only the arm it was meant to.
+- **The larger movers carry no published claim.** `xy_rmse_mm` (-10.96% mean) and the baseline's
+  `anisotropy_ratio` (+9.93% mean) are both non-refractive quantities. The published ~2.3
+  anisotropy is the **refractive** arm's, bit-identical between runs (2.4537 at 2.5 m in both).
+- One pass lands within 5% of the rule's self-consistent fixed point (2.8332 → implied 2.9601;
+  1.8522 → 1.8994), so no second iteration is needed.
+
+**The library's `f_scale` is deliberately unchanged.** Nothing measured says the symmetric rule is
+better — only that the choice does not matter at the scale of E1's claim. Re-tuning the robust loss
+is an estimator-design change and stays post-submission.
+
+**Net position: both fairness objections against E1's comparison are now answered in E1's favour**
+— one on convergence (warm restarts recover nothing), one on loss tuning (the knee is worth ~1% on
+the headline ratio). No §3-facing number changes as a result. This is a null result, recorded so
+the objections are not re-litigated.
+
+### 3. The `optimality` caveat, and the mechanism Phase 23 documented wrongly
+
+`optimality_stage3_interface_optimization` ships in `benchmark_grid.csv` / `benchmark_grid.tex` and
+in `generalization_sweep.csv` to Zenodo. It is scipy `trf`'s `max|g · v|` with `v` the Coleman-Li
+scaling vector, and it has three properties a reader must know:
+
+1. **Volatile at a fixed solution.** 92.78 → 27.58 → **2.16** across restarts, a **43×** swing,
+   while cost does not move. The genuine conditioning gap is ~2.16 vs 0.00116, not the 3751× the
+   headline numbers implied.
+2. **Not comparable across parameter blocks.** `v` runs three regimes here — `v = 1` for unbounded
+   extrinsics and board poses, `v ≈ 700` for wide-bounded intrinsics (0.5·fx to 2·fx), `v ≈ 2e-12`
+   for a pinned `water_z`. One scalar mixes all three; it is not a like-for-like maximum.
+3. **Magnitude-dependent in reliability.** Large values are trustworthy — 92.78 agrees with a
+   central-difference reference Jacobian to five significant figures. Small ones are not — a
+   reported 0.001146 against a 3-point reference of 0.001655 is a 44% disagreement. **Differences
+   between two small optimality values carry no information.** This is sharper than the existing
+   "never quote optimality beyond 1 significant figure" rule and supersedes it in practice.
+
+Finite-difference noise was tested as the driver of (1) and **falsified**: the gradient is real,
+and the library's FD step rule tracked the 3-point reference in both the large- and small-gradient
+regimes. No benchmark record needs re-interpreting on those grounds.
+
+**Correction to four Phase 23 documents (Finding 1).** `23-VALIDATION.md:72-74`,
+`23-RESEARCH.md:76`, `23-01-PLAN.md:103` and `23-01-SUMMARY.md:153` all state that
+`optimality_intrinsic` rises *because* `water_z` is pinned against a ~2e-12-wide box. **The pinned
+`water_z` contributes 0.00% of the reported optimality** (1.95e-11 of 92.78): Coleman-Li sets `v`
+to the distance to the bound the negative gradient points toward, so pinning *crushes* that slot's
+contribution rather than inflating it. The raw gradient on the slot is indeed large (9.75–11.57) —
+that half of the intuition was right — but it never reaches the reported number, which is literally
+the max **extrinsic** gradient component. **Those documents' acceptance criteria are unaffected**:
+every one was phrased on recovered `water_z`, deliberately, and all still pass. Per D-18 the four
+documents carry supersession headers pointing at the probe, bodies untouched, so the phase record
+stays honest about what was believed when (landed at `02fe224`).
+
+**Action taken (D-17, plan 25-05):** the caveat now ships inside the artifact the number ships in —
+`OPTIMALITY_CAVEAT_TEX` in `experiments/e4_benchmark_grid.py` is emitted into `benchmark_grid.tex`
+immediately before the two blocks that render the column, with a matching inline comment on
+`GRID_COLUMNS` and a pointer on E6's column list. This is the FIX-04 labelling pattern (MF-17),
+which is the shape the probe itself identified.
+
+### Consequence for the manuscript
+
+**None directly — no §3 number moves.** What this licenses is a *statement*: if a reviewer
+challenges E1's comparison as unfair to the baseline, both available forms of that challenge have
+been measured and closed, with sign and magnitude, and the answer is in E1's favour. Do not quote
+92.78, 2.16 or the 43× swing as a result about the method — they are properties of a diagnostic
+scalar, not of the calibration. Do not describe the baseline's ill-conditioning without the
+converged-baseline sentence beside it.
+
+### Forward note — the seam for anyone picking the re-tuning up later
+
+The two passes want different `f_scale` values (2.83 interface, 1.85 intrinsic), but
+`CalibrationConfig.loss_scale` (`src/aquacal/config/schema.py:335` — D-19 names the class
+`PipelineConfig`; the verified name is `CalibrationConfig`) is a **single field feeding both**,
+reaching `interface_estimation.py:543` and `refinement.py:356` as `f_scale` via
+`pipeline.py:1025,1274`. `optimize_interface` and `joint_refinement` each take `loss_scale`
+separately, so a **direct caller can differentiate the passes while the config path cannot** — any
+real per-pass rule needs that seam widened. E1 currently hardcodes `1.0` at
+`e1_refractive_comparison.py:755, 881, 1124`.
+
+**Cost datum:** a full E1 single-seed run is **400 s of solver time** (refractive 88.6 + 60.1 s;
+non-refractive 158.0 + 93.3 s) — the cheapest solve in the suite, useful for sizing any further E1
+work.
+
+### Why this entry has no verification criterion
+
+By design (D-19; `25-RESEARCH.md` § What is explicitly NOT testable, item 1). There is no
+measurement to schedule, no artifact to produce and no criterion to write — the convergence
+question was already answered and must not be re-derived. The evidence for this entry is that it
+exists and cites the two probes.
+
+---
+
+## MF-22 — E1's accuracy ratio is a function of detection noise, so the claim needs a stated domain (BAND-01)
+
+**Status:** **PROVISIONAL on every magnitude; the direction is settled.** The band of record is
+Phase 28's, verified in Phase 29 — **no number in this entry may be published**
+**Found:** 2026-08-18, Phase 25 plan 25-08's two-seed noise probe
+**Source of truth:** `.planning/probes/2026-08-18-e1-noise-axis/FINDINGS.md` and its
+`exp1_band.csv` (128 rows), produced at sha `211214c`
+**Affects:** any sentence quoting E1's refractive-vs-non-refractive ratio, including the
+abstract's headline number
+
+### The finding
+
+E1's headline ratio was measured at **one** detection-noise level — the `realistic` scenario's
+default of **0.5 px**. It is not a constant of the method. Across `{0.25, 0.5, 0.82, 1.2}` px the
+mean ratio moves by a factor of ~5.5:
+
+| `noise_std` (px) | non-refractive `z_rmse_mm` | refractive `z_rmse_mm` | ratio |
+|---|---|---|---|
+| 0.25 | 76.35 | 1.02 | 74.6× |
+| 0.50 | 77.36 | 2.05 | 37.7× |
+| 0.82 | 76.76 | 3.54 | 21.7× |
+| 1.20 | 78.06 | 5.77 | 13.5× |
+
+The mechanism is asymmetric and favourable to the method: **the non-refractive baseline is flat in
+noise** (76.3 → 78.1 mm, ~2% — its error is model misspecification, which swamps detection noise),
+while **the refractive arm scales nearly linearly** with it (1.02 → 5.77 mm). The ratio therefore
+falls roughly as 1/noise. A correctly-specified model *should* be noise-limited; a misspecified one
+*should* be bias-limited. That is exactly what is observed.
+
+### What this means for the manuscript
+
+**A ratio quoted without its noise level is not a well-defined quantity.** The stated domain
+(D-14) now sits in `e1_refractive_comparison.py`'s module header and in the band provenance
+`scope` string: the `realistic` scenario's single 12-camera synthetic geometry, ten seeds, eight
+test depths, detection noise 0.25–1.2 px. Any §3 or abstract sentence quoting the ratio must carry
+the noise level it was measured at.
+
+### What is NOT licensed by this entry
+
+- **No magnitude above is publishable.** Two seeds cannot separate a noise effect from seed
+  variance, and the two disagree by ~50% at the extreme (93.4× vs 60.5× at 0.25 px).
+- **No comparison to the published 97–178× band may be drawn from this table.** Three things
+  differ at once: statistic (mean-of-means here, not the published band's construction), seed
+  count (2 vs 10), and library version (see below). The 97–178× band is not restated, revised or
+  challenged by this entry.
+- Phase 28's four-level ten-seed run at the frozen sha, verified in Phase 29, is the **sole**
+  source for anything that ships.
+
+### A correction that travels with this entry
+
+**D-13's `normal_fixed` isolator cannot be evaluated against the committed band.** D-13 records
+that the 0.5 px row should reproduce the committed band, isolating the noise axis from FIX-02's
+freed normal. It does not, and the confound is version, not noise: the committed band's provenance
+is `git_sha = 3eb1f4a`, **2026-08-13**, which `git merge-base --is-ancestor` confirms **predates
+FIX-01 (`fb33db4`) and FIX-02 (`57ac430`), both 2026-08-17**. At 0.5 px the non-refractive arm
+differs by up to 13.22 mm (158%) while the refractive arm differs by at most 0.39 mm (21%) — a 34×
+asymmetry concentrated in precisely the arm those two fixes targeted. If the isolation is still
+wanted, both arms must be produced at the same sha.
+
+The noise-axis findings above are unaffected: they are measured within a single probe — same
+library, same seeds, same geometry — and are internally controlled.
+
+
+## MF-23 — `cpr_grouping.tex` is generated on every E3 run and `\input` by nothing; `tab:cpr` is hand-transcribed
+
+**Status:** **SETTLED as a finding; the remedy is OPEN and is the manuscript session's call.**
+Nothing in this entry changes a published number.
+**Found:** 2026-08-18, verified against the live manuscript during Phase 26 context (D-11/D-39)
+**Source of truth:** `.planning/phases/26-full-suite-driver-handoff-readiness/26-CONTEXT.md` D-11
+and D-39; the emitter is `experiments/e3_derived_quantities.py:815` (`--include-per-camera-latex`
+at `:902`)
+**Affects:** `tab:cpr` at `supplement.tex:449`, and any future claim that the supplement's
+parameter/group counts are emitter-backed
+
+### The finding
+
+E3 writes `cpr_grouping.tex` on every run — a LaTeX fragment rendering the `cpr_grouping.csv`
+rows. `tab:cpr` lives at `supplement.tex:449`, has **six rows, all shared-interface**, and the
+generated fragment is **not `\input` anywhere in the manuscript**. The published table is
+**hand-transcribed**.
+
+The two are consistent today. That is the problem: consistency is currently a property of
+somebody having typed carefully, not of a build step. A generated artifact that nothing consumes
+gives *false assurance* — a reader (or a future gate) sees an emitter, a CSV and a `.tex` fragment
+and concludes the table is machine-produced, when the only thing standing between the code and the
+supplement is a transcription.
+
+This is the same class as **"a hand-transcribed parameter count off by ten"**, named in DRIVER-03's
+own "Do not" list. The failure mode is not that the numbers are wrong now; it is that nothing would
+catch them going wrong.
+
+### Why `--include-per-camera-latex` stays OFF (D-11)
+
+The flag renders `shared_interface=False` rows into `cpr_grouping.tex` as well. Since `tab:cpr`'s
+six rows are all shared-interface, turning it on would enlarge a fragment nothing reads and invite
+exactly the wrong inference — that the fragment is the source of a table it does not feed. The flag
+stays off for the v2.1 re-run, and the suite driver's `e6`/`e3` stages say so at the call site.
+
+### The interaction that makes this worth recording now
+
+**Phase 27's pre-freeze gate requires every §3-facing number to have a generating emitter.**
+`tab:cpr` has one — and nothing consumes it. A gate that checks "is there an emitter?" passes here;
+a gate that checks "does the published number come *from* the emitter?" does not. Whichever way
+Phase 27 words that check, this table is the case that distinguishes the two wordings, so it should
+be decided deliberately rather than discovered by a gate.
+
+### What is NOT licensed by this entry
+
+- **No number in `tab:cpr` is challenged.** The six rows were not re-derived here and no discrepancy
+  was found; the finding is about the *provenance path*, not the values.
+- **The manuscript was not edited, and must not be edited on the strength of this entry alone.**
+  `Spinoffs/papers/aquacal/` is read-only from this repo. Whether to `\input` the fragment, to drop
+  it, or to leave the transcription and add a check is the manuscript session's decision.
+- **This does not imply the fragment is wrong.** It implies only that its correctness is currently
+  unverified by anything mechanical.
+
+### Where this is also recorded
+
+`experiments/README.md` §2 previously claimed `cpr_grouping.csv` was the sole origin of `tab:cpr`.
+Plan 26-09 replaced that section with this finding; the README and this entry must agree, and the
+README points here for the derivation.
+
+
+## MF-24 — The 198 unprojectable observations are above-water board corners, settled by the run's own per-observation table
+
+**Status:** **SETTLED as a finding; the prose edit it licenses is the manuscript session's call.**
+No published number changes. What changes is that the §3 disclosure may now name the mechanism
+instead of staying deliberately cause-agnostic. One new caveat is attached: the count is
+**seed-sensitive**, and §3 must not present it as a seed-invariant constant.
+**Found:** the question, 2026-08-14/15 (manuscript goal-4 audit, findings F-009a and F-010, TODO
+ledger T-06). The answer, measured by the 2026-08-20 production run at `rerun-freeze-01`; recorded
+here 2026-08-24 (phase 29.1, plan 05), closing
+`.planning/todos/done/2026-08-15-classify-the-198-unprojectable-observations.md`.
+**Source of truth:**
+`experiments/freeze01_run_output/results_e2_invocations/e2_classification/degenerate_observations.csv`
+— 198 rows × 12 columns, committed in `83da9b3`. Corroborating, all from the same run at the same
+sha:
+`experiments/freeze01_run_output/results/benchmark.json` (`discard_stats`),
+`experiments/freeze01_run_output/results/reconstruction_errors.csv`,
+`experiments/freeze01_run_output/results/camera_parameters.csv`,
+`experiments/freeze01_run_output/results_e2_band/seed_{42,43,44}/diagnostics.json`, and the
+committed stage logs
+`experiments/freeze01_run_output/driver_state/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`
+and `e2_band.log:159,378,597` in the same directory.
+**Where the prose is:** the §3 disclosure of `degenerate_observations_at_solution = 198`.
+
+> **Every artifact path in this entry moved after it was written, and the move is deliberate.**
+> When plan 29.1-05 recorded this entry on 2026-08-24, all of them sat under `experiments/results*/` and
+> `experiments/run_experiment_suite_state.3ab9c13.*`. Plan 29.1-06 then moved the whole 2026-08-20
+> output tree into `experiments/freeze01_run_output/`, because the `rerun-freeze-02` tag must ship
+> an **empty** output directory: the driver's D-24 pre-flight refuses to start a fresh run into a
+> non-empty `OUT_DIR` (`run_experiment_suite.sh:1059-1064`), and the verifier's strongest
+> invariant — everything under `experiments/results/` was produced by *this* run — is only true if
+> the tree starts empty. **Nothing was deleted**; every path in this entry resolves today, and the full-profile
+> gate over `experiments/freeze01_run_output/results` reproduces the run's roll-up unchanged at
+> `TOTAL: 176 PASS, 7 N/A, 0 FAIL`. The citation was updated rather than left to rot because a
+> claim outliving the conditions that produced it is the exact defect class this phase exists to
+> end (D-10) — and a path citation that silently stops resolving is that defect at its purest.
+> Phase 2 of the archive todo purges the archive after the re-run is verified; at that point these
+> citations resolve from git history at `83da9b3`, which is why the sha is named.
+
+> **The premise this entry retires.** The 2026-08-15 TODO opened: *"What the 198 are is not
+> established, and no committed artifact can settle it."* That was true when written and was
+> **overtaken, not wrong** — Phase 24's DEGEN-02 `discard_stats` threading and Phase 25's DEGEN-04
+> per-observation sink did not exist yet. The artifact the TODO said could not exist is now
+> committed, and it is the citation this entry rests on. Every figure below was read out of that
+> file or its named siblings; none is inferred from a summary count.
+
+### The verdict
+
+**The 198 are above-water board corners.** In eight calibration frames, in two episodes during the
+capture session, the board was lifted through the water surface; the corners that broke the surface
+have no refracted path to any camera, so the projector returns NaN and the guard counts them.
+
+The chain has two links, and collapsing them is the error that has already been made once here:
+
+1. **What the flag says by itself.** `h_q = Q_z - z_int` is a statement about the *estimate* —
+   both `Q_z` and `z_int` are free parameters, and it is evaluated at the solution. So a flagged
+   row means "the recovered geometry places this corner at or above the recovered interface", not,
+   on its own, "the physical board was in air". `experiments/_degeneracy.py:36-43` says this
+   explicitly, and it is exactly the conflation that made `19.3-ORCHESTRATOR-NOTES.md` §4 misread
+   the `ideal` preset (see leg 4 below).
+2. **What upgrades it to a physical claim.** An independent dataset — the 52 held-out validation
+   frames, which are not in the stage-3 solve at all — puts corners above the surface in precisely
+   the two frames flanking the two flagged clusters. Two disjoint frame sets, two different
+   estimators, one localized event. That is what licenses "the board was lifted", and it is the
+   part the 2026-08-15 analysis could not have had.
+
+### The decomposition (`experiments/freeze01_run_output/results/benchmark.json`)
+
+`discard_stats`, from the run's own record, is unanimous on every axis:
+
+| key | value |
+|---|---|
+| `degenerate_observations_at_solution` | **198** |
+| `..._cause_above_interface__stage3_intrinsic_pass` | **198** |
+| `..._cause_above_interface__stage3_interface_optimization` | 0 |
+| `..._cause_behind_camera__{intrinsic_pass, interface_optimization}` | 0, 0 |
+| `..._cause_interface_below_camera__{intrinsic_pass, interface_optimization}` | 0, 0 |
+| `..._fate_extended__stage3_intrinsic_pass` | **198** |
+| `..._fate_penalized__{both stages}` | 0, 0 |
+| `observations_evaluated__stage3_intrinsic_pass` | 73,975 |
+
+`problem_shape.degenerate_observations_at_solution` carries the same 198. The rate is
+**198 / 73,975 = 0.268 %**.
+
+Two facts hide in those zeros. Every flagged observation was **continued by the pinhole
+extension**, none **penalized** — and `penalized` is reachable only for points behind the camera,
+where no extension exists (`_optim_common.py:896-906`), so a zero there is a second, independent
+statement that nothing was behind a camera. And the `stage3_interface_optimization` row is **all
+zeros**: the flagged population appears in the intrinsic pass and nowhere else.
+
+### The per-observation table — the load-bearing citation
+
+`experiments/freeze01_run_output/results_e2_invocations/e2_classification/degenerate_observations.csv`, 198 rows,
+columns `camera, frame_idx, corner_id, stage, h_q_m, h_c_m, r_q_m, chord_incidence_deg, extended,
+nan_reason, n_flagged_at_stage, truncated`. Re-measured from the file on 2026-08-24; it is
+committed, so these reproduce exactly.
+
+| measurement | value |
+|---|---|
+| rows | **198**, matching `discard_stats` exactly |
+| `stage` | **`stage3_intrinsic_pass` on all 198 rows**, no other value present |
+| `nan_reason` | **`2` on all 198 rows** — `NAN_REASON_ABOVE_INTERFACE` (`refractive_geometry.py:32`), bucket `above_interface`. Zero rows carry code `1` (`interface_below_camera`) or `3` (`camera_model_failure`) |
+| `extended` | `True` on all 198 |
+| `truncated` | `False` on all 198 — the per-stage row cap never fired, so this is the **complete** flagged population, not a sample |
+| `n_flagged_at_stage` | `198` on every row — the table's own denominator agrees with `benchmark.json` |
+| `h_q_m` | **−0.064021 … −0.001251 m**, negative on all 198 rows |
+| `h_c_m` | 1.047177 … 1.112502 m |
+| `r_q_m` | 0.050834 … 0.597174 m |
+| `chord_incidence_deg` | **2.797 … 29.822°** |
+| frames | **8**: 22, 23, 24, 25, 26, 102, 104, 105 |
+| cameras | **8** of the 12 in the stage-3 solve: `e3v82f9, e3v831e, e3v83e9, e3v83eb, e3v83ee, e3v83ef, e3v83f0, e3v83f1` |
+| distinct (frame, camera) pairs | 35 |
+| `corner_id` | 23 distinct ids, spanning 0 … 78 |
+
+**The signed span is the measurement that matters.** `h_q_m` is not a cause label — it is a
+distance. Every flagged corner sits **past** the interface, by **1.3 mm to 64 mm**. A cause label
+could in principle be a bookkeeping artifact; a signed distance with a consistent sign across 198
+independent rows cannot be.
+
+**The frame structure is the second.** The 198 are not diffuse. They fall in **two clusters —
+22-26 and 102/104/105** — 116 observations in the first and 82 in the second, with per-frame counts
+rising and falling within each (22:35, 23:29, 24:23, 25:19, 26:10 | 102:20, 104:49, 105:13). That
+is the signature of a board passing through the surface twice during a capture session; numerical
+noise would scatter across all 200 calibration frames.
+
+> **Say "two clusters", not "two contiguous runs".** Frame 103 carries no flagged rows, so the
+> second cluster is not contiguous *in this table*. The reason is **not** that frame 103 was clean
+> — see the next section — and a reader must not infer that it was.
+
+**Camera concentration.** Eight of the twelve cameras see it, at very uneven counts (`e3v83f1`: 42,
+down to `e3v831e`: 1). Uneven is what a lifted board predicts: whether a given above-water corner
+is *observed* depends on which cameras detected it in that frame, not on the lift itself.
+
+### Independent corroboration, from a disjoint frame set
+
+`experiments/freeze01_run_output/results/reconstruction_errors.csv` holds the 52 held-out validation frames
+(`problem_shape.n_frames_holdout = 52`), which are **not** in the stage-3 residual vector.
+Measured against `water_z_m = 1.0738404` from `experiments/freeze01_run_output/results/camera_parameters.csv`:
+
+- **31 of 7,762 validation corners (0.399 %) reconstruct above the interface**, by up to
+  **51.73 mm** — against the 198's 0.268 % of 73,975. Two estimators, two populations, the same
+  order of magnitude.
+- Those 31 fall in **2 of 52 frames: 21 and 103**.
+
+Frames 21 and 103 are **exactly** the two frames flanking the two flagged clusters, and the
+calibration and holdout frame sets are **disjoint** (verified: no frame index appears in both). So
+frame 103's absence from the 198 is not evidence that it was clean — frame 103 was *held out of the
+calibration solve entirely*, and the independent estimator that does see it finds corners above the
+surface there. Read together, the two lift episodes span roughly frames 21-26 and 102-105, and each
+artifact sees its own half of them. Neither could establish this alone; this is the single strongest
+piece of evidence in the entry, and it is new with this run.
+
+### The camera-submerged bucket is eliminated by measurement, not by argument
+
+`experiments/freeze01_run_output/results/camera_parameters.csv` gives `h_c_m` for all **13** cameras:
+**1.047177 … 1.112502 m**, every value positive. The `interface_below_camera` cause (`h_c <= 0`)
+cannot fire on this rig, which is why `discard_stats` reports zero for it, and the per-observation
+table's own `h_c_m` column reproduces the same range on the flagged rows. Note what that bucket
+means if it ever *is* non-zero: it is a diagnostic of **solver excursion**, never a claim that
+hardware was submerged (`_degeneracy.py:113-117`).
+
+### The count is seed-sensitive; the cause is not
+
+`experiments/freeze01_run_output/results_e2_band/seed_{42,43,44}/diagnostics.json`, measured 2026-08-24:
+
+| seed | flagged | observations evaluated | rate |
+|---|---|---|---|
+| 42 | **198** | 73,975 | 0.268 % |
+| 43 | **210** | 73,887 | 0.284 % |
+| 44 | **183** | 74,141 | 0.247 % |
+
+In all three, **100 % of the flagged observations are `above_interface` and 100 % are `extended`** —
+zero `behind_camera`, zero `interface_below_camera`, zero `penalized`. So the *verdict* is
+seed-invariant while the *count* moves over a ±7 % range around 198.
+
+**This corrects the 2026-08-15 TODO on a point of fact, and it matters for §3.** That TODO recorded
+the count as appearing "identically" across the archive's band seeds, which invited reading 198 as a
+fixed property of the dataset. On this run it is not: it is seed 42's value under this detection
+seed, and 198 must be quoted as such. The finding it supports — above-water corners at roughly a
+quarter of a percent — is what is stable, and that is the claim §3 should carry.
+
+### The stage-grouping caveat — never quote a stage-agnostic row count
+
+`degenerate_observations_at_solution` is a **cross-stage sum**. The counter is evaluated once per
+stage that runs a counting residual pass, so an observation flagged in both stage-3 passes appears
+twice in a stage-agnostic row count. Here that risk did not materialize — all 198 are in
+`stage3_intrinsic_pass` and `stage3_interface_optimization` contributes zero — but **that is a
+finding, not a formality**. It is the reason "198" is simultaneously the cross-stage total, the
+per-stage count and the table's row count. Any future run whose two stages both flag observations
+breaks that coincidence, and a row count taken without grouping by `stage` will double-count.
+Always group by `stage`.
+
+### Preserved finding 1 — the residual-path-vs-export population trap
+
+*Recorded here because it existed only inside the TODO being closed, and it is a live trap for
+anyone who tries to re-derive any of this from the shipped artifacts.*
+
+**The optimizer's residual vector and the reprojection exports describe different populations.**
+
+| artifact | observations | cameras |
+|---|---|---|
+| stage-3 residual vector (`benchmark.json`: `observations_evaluated__stage3_intrinsic_pass`; `stages.stage3_intrinsic_pass.n_residuals = 147950 = 2 × 73975`) | **73,975** | **12** |
+| `experiments/freeze01_run_output/results/reprojection_residuals.csv` and `per_corner_residuals` in `calibration.json` | **23,028** | **13**, including the auxiliary **fisheye** `e3v8250` |
+
+They differ by more than **3×**, and not only in size: the exports *include* the auxiliary fisheye,
+which is excluded from stages 2 and 3 entirely, while the residual vector excludes it. The exports
+are a **post-hoc reprojection evaluation, not the optimizer's residual vector.** Anything built
+against them silently measures the wrong population. Instrumentation of this question must hook the
+residual path (`_optim_common.py:888` → `refractive_project_batch` →
+`_refractive_project_newton_batch`), which is what DEGEN-04 did.
+
+**The corollary that kills the attractive shortcut.** It is tempting to detect behind-camera cases
+by hunting the flat 100 px `INVALID_PROJECTION_PENALTY_PX` inside `reprojection_residuals.csv`. The
+exports top out at **75.98 px** with nothing at or above 99 — **and that is not evidence.** A
+penalty can fire inside the solve and never reach the export, because the export is a different
+computation over a different population. Recorded so that nobody runs that check again and draws a
+conclusion from it. The behind-camera count here really is zero, but it is `discard_stats` and the
+all-`extended` fate column that say so, not the exports.
+
+### Preserved finding 2 — the obliquity / total-internal-reflection trigger is refuted
+
+*The original TODO framed the guard as having two triggers — breached interface and
+beyond-critical-angle obliquity — and called the remaining work "apportioning them". The second
+trigger does not exist. Three legs of this were argued on 2026-08-15; the fourth is measured by
+this run, and it is the one that closes the question empirically.*
+
+1. **There is no TIR check on the path.** The library's only `sin_t_sq > 1.0` test lives inside
+   `refract_ray`, which has **zero callers anywhere in `src/`**. The residual path never evaluates
+   it. A trigger that is never evaluated cannot fire.
+2. **TIR cannot fire for this direction of travel, by construction.** The Newton solve returns a
+   crossing point satisfying `n_air sin θ_a = n_water sin θ_w` with `θ_a < 90°`, so
+   `sin θ_w < 1/1.333` and **θ_w < 48.61°** always, at the solution. A submerged point viewed from
+   an above-water camera always admits a valid path.
+3. **Ground truth, both presets, seed 42.** `ideal` (4 × 20, 7,040 corner observations) and
+   `realistic` (12 × 30, 31,680) each produced **zero** unprojectable corners — `realistic` at
+   chord incidences up to **61.5°**, well past the 48.61° **critical angle**.
+4. **This run measures the flagged population itself, and it never approaches the limit.**
+   `chord_incidence_deg` across all 198 rows spans **2.797 … 29.822°**. The maximum is **18.8°
+   below** the 48.61° critical angle, and 31.7° below the incidence at which `realistic` projected
+   cleanly. Where 2026-08-15 could only argue that obliquity was unreachable *in principle*, this
+   run shows the flagged corners were nowhere near it *in fact*. **Leg 4 replaces the 2026-08-15
+   argument; it does not repeat it.**
+
+> **Read `chord_incidence_deg` for what it is.** It is a **straight-chord surrogate**, *not* the
+> refracted exit angle: for a flagged observation the Newton loop never runs, so no refraction
+> point exists at which to take an angle (`_degeneracy.py:60-63`). That is why leg 4 is stated as
+> "the flagged population is not even geometrically near obliquity" rather than "the exit angle was
+> measured below θ_c". Legs 1 and 2 are what make the refutation absolute; leg 4 removes the last
+> empirical foothold the alternative had. Do not quote leg 4 as a direct measurement of an exit
+> angle — that would be a new version of the same category error leg 4's own history warns about.
+
+**The `ideal` precedent was misread, and the misreading must not be restored.**
+`19.3-ORCHESTRATOR-NOTES.md` §4 reasoned, from `ideal` showing 12 flagged observations against
+"0 / 1760 corners above the surface", that obliquity must be responsible. But **0 / 1760 is a
+ground-truth statement while the guard counts at the optimizer's solution.** The two are not
+comparable, which is precisely why the note had to reach for obliquity to explain a gap that was
+never there. `experiments/_degeneracy.py:44-49` carries this as a standing falsification note.
+
+### What this licenses for the manuscript — and what it does not
+
+**Licensed.** The disclosure may now name the mechanism plainly — in a small number of frames the
+board was raised through the water surface — instead of the cause-agnostic wording drafted when the
+cause was unknown. The evidence is a committed, complete, per-observation table plus an independent
+corroboration on a disjoint frame set.
+
+**The finding is benign, and the library says so in its own words.** The
+`DegenerateObservationWarning` emitted by this run
+(`src/aquacal/calibration/pipeline.py:1288`; text at
+`interface_estimation.py:160-185`, captured verbatim in
+`experiments/freeze01_run_output/driver_state/run_experiment_suite_state.3ab9c13.stagelogs/e2_production.log:158`) states:
+
+> "198 were continued with the pinhole extension, which is C0 but not C1 at the refractive/pinhole
+> boundary and **carries ZERO water_z gradient** — every other parameter keeps full gradient, so
+> those parameters still contribute to the reported optimality."
+
+The mechanism, from source: `_extend_invalid_projections` (`_optim_common.py:56`) takes **only**
+`camera` and `points_3d` — it never sees the interface — so the extended residual is independent of
+`water_z` and the interface tilt. **Those 198 observations cannot bias the interface estimate.**
+Keep the second half of the sentence attached, though: the extension *does* keep a gradient in the
+pose and intrinsic parameters, and its docstring names that as the restoring gradient that pushes a
+lifted board back underwater. "Zero gradient" is true of the interface parameters specifically and
+false of the residual as a whole.
+
+**Why the count is published rather than treated as a defect to clear.** At 0.268 % the library
+declines to read it as a verdict — below the 1 % `DEGENERACY_WARNING_FRACTION_THRESHOLD`
+(`interface_estimation.py:73`), it is "reported for the record rather than as a verdict on the whole
+solve". And on measured hardware the library's own remedy — *move the board so no corner sits at or
+above the interface* — is unavailable retrospectively, so a re-run of this dataset reports the same
+kind of count. That is why phase 29.1 plan 01 chose to **publish** the value on E4's real-rig row
+with a permanent, documented gate exemption rather than assign a status the project expects to
+clear.
+
+**Not licensed.**
+
+- **No manuscript file was edited, and none may be edited on the strength of this entry alone.**
+  `Spinoffs/papers/aquacal/` is read-only from this repository. The deliverable here is the
+  evidence and its derivation; the sentence belongs to the manuscript session.
+- **No published number is challenged.** 198 is unchanged and was not re-derived — it was
+  *decomposed*. But see the seed-sensitivity section: it must be attributed to seed 42, not
+  presented as invariant.
+- **The OpenCV pin still matters.** The count is 198 at OpenCV 4.13 and 194 at 4.14
+  (`MANUSCRIPT-FINDINGS.md:2102`, in MF-20's table). Everything above is measured at 4.13.0.92. Do
+  not compare a 4.14 count against the published 198.
+- **This says nothing about the synthetic experiments.** E1, E5, E6 and E7 record zero flagged
+  observations in every committed artifact; the classification machinery is always on and simply
+  has nothing to classify there.

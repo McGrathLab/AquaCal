@@ -6,6 +6,6 @@
     43,
     44
   ],
-  "source_config": "C:\\Users\\tucke\\Desktop\\Aqua\\AquaCal\\release_calibration\\config.yaml",
-  "source_config_sha256": "6aa21c4101c1ba5ed50ed5e980cecf7a1adfb3d1b7284d05f7ee01aed1f9fbe0"
+  "source_config": "/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/configs/e2_release_linux.yaml",
+  "source_config_sha256": "ba9dc474f22968200c77fab54907ae8e425807a101c108bcfbaca1c568426b82"
 }

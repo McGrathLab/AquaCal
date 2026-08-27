@@ -1,0 +1,29 @@
+{
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "experiment": "e1_seed_band",
+  "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+  "schema_version": 1,
+  "scope": "STATED DOMAIN (BAND-01, D-14): E1's absolute-accuracy numbers are to be quoted ONLY over the 'realistic' scenario's single 12-camera synthetic geometry, ten seeds, detection noise from 0.25 px to 1.2 px, and the eight test depths 1.10-2.50 m. That is the domain the claim WILL BE quoted over, not a measured result of the phase that wrote this sentence: the four-level ten-seed band establishing it (640/960 rows) is executed in Phase 28 at the frozen sha and verified in Phase 29 (D-21). Supporting evidence, already measured: warm restarts recover no cost (largest relative drop 1.8e-9), so the non-refractive baseline is converged and the comparison is fair. The caveat travelling with it, stated together so it cannot be read as under-convergence: that baseline arm is severely ill-conditioned (~3e8 directional curvature), which is a property of fitting a pinhole model to refracted data -- expected, not a defect, and not a reason to qualify the accuracy claim (D-16). This band varies the SEED and (BAND-01) the DETECTION NOISE across E1's depth-generalization and xy-vs-z anisotropy sweep on the 'realistic' synthetic scenario, and bounds seed-to-seed variance of exp1_band.csv's metrics -- including z_rmse_mm, the column the manuscript's deepest-test-point refractive-vs-non-refractive ratio is computed from -- on that synthetic scenario only. It ALSO bounds seed-to-seed variance of the parameter-level columns emitted in exp1_parameter_band.csv (focal_length_error_pct, reprojection_rms_px, and the per-camera position errors), over the same seeds and the same scenario. It is NOT a physical-rig or real-data claim: D-19.3-17's demotion of E1's own accuracy claim is qualified, not reversed, by the stated domain above -- E1 bounds estimator variance under stated noise, and E2 carries the accuracy claim against reality.",
+  "seconds": 2059.6589310729178,
+  "solver_config": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "42": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 164439,
+    "pnp_attempts_refractive": 5621,
+    "pnp_attempts_total": 5621
+  },
+  "43": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 165088,
+    "pnp_attempts_refractive": 5874,
+    "pnp_attempts_total": 5874
+  },
+  "44": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 163977,
+    "pnp_attempts_refractive": 5830,
+    "pnp_attempts_total": 5830
+  },
+  "45": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 181379,
+    "pnp_attempts_refractive": 6347,
+    "pnp_attempts_total": 6347,
+    "pnp_guard_rejected": 44,
+    "pose_discarded_by_consumer": 44
+  },
+  "46": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 174614,
+    "pnp_attempts_refractive": 6061,
+    "pnp_attempts_total": 6061,
+    "pnp_guard_rejected": 33,
+    "pose_discarded_by_consumer": 33
+  },
+  "47": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 182545,
+    "pnp_attempts_refractive": 6325,
+    "pnp_attempts_total": 6325,
+    "pnp_guard_rejected": 33,
+    "pose_discarded_by_consumer": 33
+  }
+}

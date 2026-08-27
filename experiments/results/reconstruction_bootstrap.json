@@ -1,46 +1,48 @@
 {
   "ci_95": {
     "reconstruction_mae_mm": [
-      0.21534863231889842,
-      0.3115045930362214
+      0.21534863264079257,
+      0.3115045951586153
     ],
     "reconstruction_rmse_mm": [
-      0.41823682597857825,
-      0.8269663214421463
+      0.41823683619067353,
+      0.8269663333720608
     ],
     "signed_mean_mm": [
-      0.015275526209482772,
-      0.07891755165541987
+      0.015275526948503334,
+      0.07891755438720265
     ]
   },
   "cluster_column": "frame_idx",
   "environment": {
-    "aquacal_version": "1.8.0",
-    "cpu_count_logical": 20,
-    "cpu_model": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
-    "git_sha": "72dbc36fa49ea23a8f6e9788557e72b2f562d152",
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
     "git_sha_source": "git_rev_parse",
-    "numpy_version": "2.4.2",
+    "numpy_version": "2.4.6",
     "opencv_version": "4.13.0",
-    "os": "Windows 11",
-    "python_version": "3.12.12",
-    "ram_total_bytes": 16857190400,
-    "scipy_version": "1.17.0"
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
   },
   "experiment": "reconstruction_bootstrap",
-  "git_sha": "72dbc36fa49ea23a8f6e9788557e72b2f562d152",
+  "git_sha": "7005a2771aa115e4f4c1284cec7e145739586a4a",
   "n_frames": 52,
   "n_resamples": 10000,
   "n_rows": 7762,
   "point_estimate_matches_real_rig_metrics": true,
   "point_estimates": {
-    "reconstruction_mae_mm": 0.2581771755739236,
-    "reconstruction_rmse_mm": 0.628138580850984,
-    "signed_mean_mm": 0.043189012764625896
+    "reconstruction_mae_mm": 0.2581771773787865,
+    "reconstruction_rmse_mm": 0.628138596646187,
+    "signed_mean_mm": 0.04318901477836542
   },
+  "real_rig_metrics_resolution": "native: resolved relative to --out (/home/tlancaster/aquacal-frozen-rerun-freeze-02-prod/experiments/results/real_rig_metrics.json)",
   "schema_version": 1,
   "scope": "metric sampling variance only -- this interval resamples the inter-corner comparisons of ONE calibration; it is not a calibration band and must never be presented as one (D-19.5-05).",
-  "seconds": 24.40600000001723,
+  "seconds": 10.24969200300984,
   "seed": 42,
   "solver_config": {
     "seed": 42

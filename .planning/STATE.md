@@ -1,518 +1,471 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Publication Prep
+milestone: v2.1
+milestone_name: Clean Experimental Suite
+current_phase: 29.2
+current_phase_name: merge-release-and-publish
 status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-08-10T15:35:20.269Z"
-last_activity: 2026-08-10 -- Phase 21 execution started
+stopped_at: Completed 29.2-04-PLAN.md
+last_updated: "2026-08-27T04:55:00.000Z"
+last_activity: 2026-08-27
+last_activity_desc: 29.2-04 ran CI's whole-tree `pre-commit run --all-files` for the first time anywhere in this project and asserted FOUR invariants at three successive shas -- exit 0 with all seven hooks Passed, `git status` byte-identical before and after, both md5 anchors matched by string equality, and the driver-state TSV still the single field count 5 with its 20 tab-terminated lines. **PR #3 into `main` is OPEN and UNMERGED** (`mergedAt` null, asserted). **CI's `pre-commit` job went SUCCESS in 33s -- ROADMAP criterion 1 is CONFIRMED on the real runner**, alongside `experiments-smoke`. The board returned SEVEN rows against a predicted six: the surplus `build-docs` had failed on four docutils faults inherited from phases 24/25, which the author ruled be repaired in-plan (docstring prose only; AST-identical with docstrings stripped) and CI then confirmed green. **BOARD RULED NOT GREEN: all four `test` matrix cells fail identically at 5 failed / 2319 passed / 23 skipped**, every failure in `tests/unit/test_run_manifest.py`, caused by CI's environment -- `fetch-depth: 1, fetch-tags: false` leaves `git describe` nothing to anchor to, and `psutil` sits in the `bench` extra while CI installs only `.[dev]`. NOT repaired: no author ruling exists for it, and nothing was skipped, xfailed, deselected, re-run or cancelled. Evidence: `29.2-precommit-allfiles-proof.txt` §§1-11.
 progress:
-  total_phases: 12
-  completed_phases: 9
-  total_plans: 106
-  completed_plans: 94
-  percent: 75
+  total_phases: 10
+  completed_phases: 8
+  total_plans: 71
+  completed_plans: 67
+  percent: 80
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-23)
+See: .planning/PROJECT.md (updated 2026-08-15)
 
-**Core value:** Accurate refractive camera calibration from standard ChArUco board observations — researchers can pip install aquacal, point it at their videos, and get a calibration result they trust.
-**Current focus:** Phase 21 — new-feature-documentation-dataset-refresh
+**Core value:** Accurate refractive camera calibration from standard ChArUco board
+observations — researchers can `pip install aquacal`, point it at their videos, and get a
+calibration result they trust.
+
+**Current focus:** Phase 29.2 — merge-release-and-publish
+experiment-suite fix that changes what the suite measures, records, or can claim; freeze one sha;
+hand a complete full-suite driver to a larger Linux machine for the run; reconcile the returned
+single-version results. **E2 is in the re-run.** Phases 23-30, all 23 requirements mapped 1:1
+into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 21 (new-feature-documentation-dataset-refresh) — EXECUTING
-  11/11 plans. COV-01..COV-09 all discharged with a per-requirement artifact table in
-  REQUIREMENTS.md. Findings MF-11..MF-17 written; MF-09's edit map updated.
-  Next phase: **21** (Phase 20 deferred — see below). Next command: `/gsd:discuss-phase 21`.
+Phase: 29.2 (merge-release-and-publish) — EXECUTING (4/8 plans complete)
+Plan 29.2-01 COMPLETE 2026-08-26 — the phase tracer. Release toolchain pinned; the whole release
+rehearsed in /tmp and the 2.1.0 bump asserted by string equality. Evidence:
+`29.2-release-rehearsal.txt`, `29.2-sdist-listing.txt`. The scratch root
+`/tmp/aquacal-29.2-rehearsal` is deliberately LEFT IN PLACE — plan 29.2-05 must re-run against it
+(D-29.2-28b: the GitPython/PSR break is a live upstream situation).
+Plan 29.2-02 COMPLETE 2026-08-26 — all three hooks that would fail CI's `pre-commit run --all-files`
+are repaired in `.pre-commit-config.yaml`: both formatting hooks now share D-29.2-02b's corrected
+exclude (the superseded mirrored pattern covered NONE of the ten files `trailing-whitespace` would
+have rewritten), and `detect-secrets` gained a `.planning/` arm whose cost — the planning tree stops
+being secret-scanned — is written at the constant. No hook was run; the whole-tree proof is 29.2-04.
+Plan 29.2-03 COMPLETE 2026-08-26 — the one D4 member that is NOT `@pytest.mark.slow` now passes, so
+no D4 failure can redden a cell of CI's `test` job on the release PR. Its two drifting assertions
+became hard bounds of 4 and 8 representable steps with the mechanism written at the assertion (the
+library evaluates `r_q` vectorized, the test scalar — a SAME-MACHINE dispatch asymmetry, correcting
+the D4 todo's cross-platform framing); the two that measured 0/22 keep exact equality. Measured, not
+assumed: not-slow **0 failed**, whole suite **exactly 2 failed** (collected total unchanged at 2418,
+passed exactly one higher), all seven `experiments-smoke` invocations exit 0 with `experiments/`
+byte-unchanged and both md5 anchors unmoved. Evidence: `29.2-smoke-runs.txt`. **TWO is the new
+expected whole-suite count; zero and three are both anomalies** — the superseding statement is
+routed to `29.2-PHASE-RECORD.md` (plan 29.2-08), and the tag message and 29.1-PREPUSH-AUDIT.md were
+NOT rewritten.
+Plan 29.2-04 COMPLETE 2026-08-27 — the whole-tree hook sweep is proved and **PR #3 is open into
+`main`, unmerged**. CI's `pre-commit` job SUCCESS in 33s: **ROADMAP criterion 1 confirmed on the real
+runner**, not merely predicted. **The board is NOT GREEN.** Seven rows arrived against a predicted
+six; the surplus `build-docs` failed on four inherited docutils faults, was repaired on the author's
+explicit ruling (docstring prose only, AST-identical with docstrings stripped) and is now green. All
+four `test` cells fail identically — 5 failed / 2319 passed / 23 skipped, every one in
+`tests/unit/test_run_manifest.py`, from CI environment facts (`fetch-depth: 1`, `fetch-tags: false`;
+`psutil` in the `bench` extra, CI installs `.[dev]`). **Left unrepaired deliberately** — no author
+ruling exists for it and every candidate fix is a decision, not a correction. **Plan 29.2-05 must
+reconcile a known divergence: the evidence commits are deliberately NOT pushed, so local HEAD is
+ahead of PR #3's head `f300c55`; pushing them re-fires the board and it must be re-read.** Evidence:
+`29.2-precommit-allfiles-proof.txt` §§1-11.
+criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
+Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
+Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
+Status: Executing Phase 29.2
 
-  **Runtime, actual.** Six seeds were approved before launch (not five: 2 x 2^-5 = 0.0625 fails a
-  two-sided test, 2 x 2^-6 = 0.031 clears it), which moved the budget to ~17 h nominal and the
-  ceiling 26 h -> 30 h. The queue ran **16 h 31 m, 0.97x of nominal** — nothing like 19.4's 1.6x.
-  Seeds: E6 42-47, E5 42-47, E2 42-44; E4 repeat = the three 100-frame cells at two repeats.
+**Phase 29 outcome — read
+`.planning/phases/29-gate-verification-results-commit/29-PHASE-RECORD.md` first**, and its
+§ *WHAT REMAINS* section before anything else. Measured: gate `TOTAL: 176 PASS, 7 N/A, 0 FAIL` at
+exit 0 over both the returned and the committed tree, `gate3_git_sha_consistency` PASS on the single
+sha `7005a2771aa115e4f4c1284cec7e145739586a4a`; E2 same-seed control (seed 42 vs seed 42) worst
+scalar drift **2.5146e-08**, §3 headline **4.8962e-09**, `n_comparisons` exact at **7762**; E7's
+published primary sign test **HELD** at 10/10, p = 0.00098; **227** artifacts committed at
+`70e783f` (147 under `experiments/results/`, a strict superset of attempt 1's 209, zero deletions),
+pushed; provenance rails **8 → 0** and the full suite **11 → 3** (D4's ruled anchors — three is the
+expected count, zero and four are both anomalies).
 
-  **Three correctness traps found during planning, each now enforced by an acceptance criterion
-  rather than prose:** (a) E6's `_SCENARIO_IDENTITY_KEYS` omits `seed`, so a `--seeds` loop
-  sharing one `--out` silently resumes seed 42's cached result — per-seed isolated directories
-  are mandatory, the same workaround `rerun_19_4.sh` already used; (b) E2's `--seed` is never
-  read on the `--config` path, so COV-07 generates config copies instead of sweeping a CLI flag,
-  and the variant changes **two** keys (`seed`, and `paths.output_dir`, which otherwise points at
-  the `release_calibration` tree holding the paper's §3 numbers); (c) the COV-08 bootstrap must
-  resample `frame_idx` clusters, not rows — 7,762 comparisons span 52 frames, and a per-row
-  bootstrap would understate the interval.
+**One published conclusion moved.** E7's *secondary refined* pairing went **8/10 (p = 0.05469) →
+7/10 (p = 0.17188)**, both figures published in supplement §14 / MF-05. The conclusion is unchanged
+(already non-significant, now more clearly so), and `interface_ablation_band.csv` is byte-identical
+between the two run attempts (md5 `b6515ed77ed04268608b74217716020b`), so it is a **FIX-02 effect,
+not a re-run artefact**. **Routed to POST-01, Phase 30.** §3 edits stay the author's; no manuscript
+file was touched.
 
-  **Wave 4 (plan 10) was the orchestrator's, and that held** — one queue, no code change, no
-  commit between launch and completion, one frozen sha `2a2f0fa` across 92 of 114 run-window
-  files and no other sha anywhere.
+**Criterion 6 / RUN-05 — DEFERRED, author's ruling 2026-08-26.** Record A is **published** (version
+DOI `10.5281/zenodo.22116461`, concept DOI `10.5281/zenodo.22116460`). Record B is built, uploaded
+and byte-verified but **UNPUBLISHED** at deposition **22117061**
+(`https://zenodo.org/deposit/22117061`). Reason: Record B cites **`2.1.0`** and **v2.1.0 does not
+exist** — `origin/main` is 0 commits ahead of `results/rerun-freeze-02`, which is 406 ahead.
+**RUN-05 remains `Pending`.** What remains, in order: (1) cut v2.1.0 — fix CI's `pre-commit` job,
+PR into `main` with a **merge commit, never a squash**, confirm `secrets.RELEASE_TOKEN`, verify
+`release.yml` tags v2.1.0; (2) **read Record B's rendered description**, then Publish; (3) add
+Record A's `isSourceOf` back-link by hand at `https://zenodo.org/records/22116461`; (4) confirm
+publication preceded submission; (5) report both DOIs to the manuscript session (D-29-19).
 
-  **Why it exists.** Phases 19.2-19.4 established that the experiments are *correct*. This phase
-  establishes what may be *claimed* from them. Only E1 and E7 have seed bands; E4, E5 and E6 are
-  single-seed and therefore carry no accuracy claim under D-19.3-17 — and E6 is the entire R1.4
-  substitute *and* content that appears nowhere in the submitted manuscript. Two reviewer
-  comments (R1.2 accuracy, R1.3 scaling) still have no experimental answer at all.
+**Phase 28 outcome — attempt 2's run, at `rerun-freeze-02` / `7005a27`.** Ran
+2026-08-25T00:47:07Z → 06:48:28Z, **6 h 01 m 21 s** (attempt 1: 6 h 00 m 21 s). All three hard
+signals green: roll-up **`TOTAL: 176 PASS, 7 N/A, 0 FAIL`** (zero `NOT FOUND`), **0** `STAGE
+FAILED` lines, **20/20** stages complete at exit 0. 17 `GATE FAIL` findings, expected by
+construction — one per stage except `e4`, whose gate saw the finished tree and reported
+`112 PASS, 8 N/A, 0 FAIL`. The driver exited non-zero, as a healthy run does; `$?` was never read
+as the verdict. Post-run re-run of the gate over the returned tree agrees exactly: `176/7/0`,
+zero `[FAIL]` lines. `gate3_git_sha_consistency`, `gate3_run_manifest_fields` and
+`gate3_run_manifest_clean_tree` all PASS. Output archived read-only at
+`~/rerun-freeze-02-output.tar.gz` (461 files, 31,838,334 B, completeness proven by count) with
+`suite_run_freeze02.log.preserved`; both sha256'd. **Read
+`.planning/phases/28-full-suite-production-run/28-RUN-RECORD.md` first.**
+(annotated tag `533f79fb…`), verified from a fresh clone before the push — 72 PASS / 18 N/A /
+0 FAIL, 20/20 stages at exit 0, pre-flight frameset MATCH, library imported from inside the
+clone, environment built by executing the tag's own corrected install command. `rerun-freeze-01`
+untouched at `b31c8020…` / `3ab9c137…`; `v[0-9]*` tag count still 20; no workflow fired
+(measured against the public Actions API). **The v2.1 re-run is licensed.**
+CAVEAT the re-run's verifier must carry: the tag was cut with a known, ruled-on 3-test failure
+(D4) — `pytest tests/` reports 2407 passed, 26 skipped, **3 failed** on Linux. See
+`.planning/phases/29.1-post-run-fixes-re-freeze/29.1-PREPUSH-AUDIT.md` §1. Also expect D1's 8
+provenance failures to return once `experiments/results/` is repopulated.
+7 N/A, 2 FAIL); output preserved to ~/rerun-freeze-01-output.tar.gz (31 MB, 507 files, sha256 in
+.planning/phases/28-full-suite-production-run/); results committed and pushed on branch
+`results/rerun-freeze-01`; E2 sanity control PASSES (seed 42 reproduces real_rig_metrics.json
+within rtol=1e-6). OPEN: the E7 before/after comparison (success criterion 3) and the Zenodo
+results package (RUN-05) — the latter deliberately deferred until after 29.1's re-freeze and
+re-run, so the archive is built from clean output.
+NEXT: `/gsd-plan-phase 29` — grade the returned run and commit it. Phase 29 carries RUN-03,
+RUN-04 and RUN-05: the gate verification, the E2 same-seed sanity control (seed 42 vs seed 42,
+~1e-8 — never across seeds), the E7 before/after ablation comparison, the
+`results/rerun-freeze-02` branch, manuscript traceability, and the Zenodo results package.
 
-  **The enabler, and it was a side effect.** 19.4's fix made the grid family's clearance floor
-  seed-invariant — `generate_camera_array` now returns one shared `height_above_water`, so
-  `GRID_DEPTH_RANGE` is correct by construction. The ~5.8%-of-seeds legality trap that made E4
-  and E6 un-sweepable is **gone**. The bands D-19.3-17 demands are now only a runtime cost.
+Four things Phase 29 must carry in, all recorded in 28-RUN-RECORD.md:
 
-  **Scope decided by the user 2026-08-05:** Tier A (zero-runtime) + Tier B (overnight sweeps) +
-  the E2 replicate band are IN. The Stage-2 basin-of-attraction study for R4.3 is **OUT**.
-  **Sequencing:** cheap-first, then ONE risk-first queue under one frozen git sha (19.4 pattern).
-  **Constraint:** experiment scripts only; any unavoidable hook takes the inert D-32/E3 pattern.
+1. **D1's 8 `test_experiments_provenance.py` failures should now reappear.** They went dormant
+   only because 29.1-06 emptied `experiments/results/`; that tree is repopulated as of this run.
+   Predicted in 29.1-VERIFICATION-BAR, not caused by the run.
 
-  ---
-  *Historical context from the preceding phase, retained:*
+2. **D4's 3 exact-equality anchor failures stand as ruled on.** `pytest tests/` reports
+   `3 failed, 2407 passed, 26 skipped`. **Three is the expected count — zero or four are both
+   anomalies.**
 
-Phase: **19.4 — Single Flat Interface — CLOSED 2026-08-05.** All 10 plans complete; plan 10's
-  Task 3 human checkpoint APPROVED with all six honesty checks PASS. SC-1..SC-8 discharged and
-  mapped in REQUIREMENTS.md. Authoritative record: `19.4-10-SUMMARY.md`.
+3. **Phase 29's success criterion 6 is unsatisfiable as written.** It requires the Zenodo package
+   published *"before the 2026-08-21 submission"*; that date has passed and this run finished
+   2026-08-25. Needs re-dating or re-scoping by the author before Phase 29 can close against it.
 
-  **The verdict.** Only E4 and E6 moved. E1, E3, E5 and E7 are UNCHANGED by byte-comparison
-  (`2a623f9..0ffbe15`) — their data CSVs are absent from the diff entirely, and their sidecars
-  differ only in `git_sha` and `seconds`. E5's runtime check, deferred since plan 04, is done.
-  **E4 and E6 report movement with NO accuracy claim** (D-19.3-17 — neither has a seed band).
-  E6's signature: `water_z_error_mm_mean` was *exactly* 3.4057 in 10 of 14 configs pre-fix —
-  unresponsive to index, layout and scale alike — and 0.027–2.518 mm after. MF-05 reproduced
-  exactly from the new committed band; MF-10 records the defect and its correction.
+4. **The two attempts' environments are NOT byte-identical.** Five dev-tooling packages drifted
+   (`filelock`, `packaging`, `platformdirs`, `python-discovery`, `ruff`). The numerical stack is
+   identical — numpy 2.4.6, scipy 1.17.1, opencv-python 4.13.0.92 — which is what licenses
+   comparing the two runs' numbers.
 
-  **Next: Phase 20** (Refractive Index Helper), then 21, 22. Deadline: SoftwareX **2026-08-21**.
+Do not reuse `~/aquacal-frozen-rerun-freeze-02` for anything that runs the suite (D5). The
+production clone `~/aquacal-frozen-rerun-freeze-02-prod` is on a detached HEAD at the tag with the
+run output untracked in it; it has no `results/*` branch and nothing has been pushed from it.
+Last activity: 2026-08-26 — Phase 29.2 execution started
 
-  ---
-  *Historical context from this phase, retained:*
+**Phase 28 planning gates (2026-08-24) — and the one number not to over-read.**
+Requirements coverage: 1/1 (RUN-02, in all five plans). Plan-checker: PASSED, 0 blockers.
+Decision coverage gate: **2/2 passed — this is a NARROW pass.** The gate counts only IDs in the
+hyphenated `D-NN` form, so 2/2 means **`D-28` and `D-12` only**. The other five rulings in
+`28-CONTEXT.md` (`D5`, `D4`, `D1`, `D6`, and the no-override-flags rule) are not pattern-trackable
+and did **not** pass on the gate; they were verified instead by the planner's multi-source coverage
+audit and the plan-checker's independent locked-decision check. Do not read `2/2` as "all decisions
+verified". The IDs are inherited from Phase 29.1 and are cited across `28-RESEARCH.md`, all five
+plans, and prior-phase docs — **they must not be renumbered** to make the gate broader.
 
-Phase: **19.4 — Single Flat Interface — (executed).** 10 plans in 6 waves, plan-checker PASSED.
-  (Preceded by Phase 19.3, CLOSED 2026-08-04, commit `d406001` (`feat!:`), suite 1283 passed /
-  6 skipped / 0 failed — GEOM-01..06 all satisfied. **Only E7 carries an accuracy claim**;
-  D-19.3-17 applied strictly demoted E1 and E5.)
+Phase 27 discussion found a blocking driver defect and reopened two Phase 26 deferrals:
+`_preflight_frameset` uses `p.is_file()`, so the target's IMAGE set reads as ABSENT and would
+force `--skip-e2` (synthetic-only). Also in scope now: `is_stage_complete` ignoring the exit-code
+column on resume, and `reconstruction_bootstrap.py:56`'s hardcoded output path. Smoke is being made
+truthful so it can exit 0, because on-target smoke is the chosen verification venue. See
+`.planning/phases/27-frozen-single-sha-handoff-package/27-CONTEXT.md`.
 
-  **The clearance-floor scope is CANCELLED.** `generate_camera_array` applied its per-camera
-  jitter to `water_z` — the world-frame Z of the water *surface* — giving each camera its own
-  water plane, while the paper's whole premise is a single flat interface. The clearance floor
-  only moved with the seed because of that. Measured: mean **1.42 px**, max **6.33 px** over
-  31,680 corner observations, against an E4/E6 reprojection RMS of ~0.4–0.9 px — the modelling
-  error exceeded the residual being reported. Affects **E4 and E6 only**; E1/E3/E5/E7 are clean.
+Phase 26 closed at sha `88512b7`. Plans 26-01..26-09 delivered the driver, manifest, gates and
+archive-aside; 26-11 added the reduced-scale path; 26-10 recorded the D-33 form-1 acceptance pass.
+Three gap-closure plans came out of that pass and are the reason the phase ran to 14:
 
-  **CORRECTION 2026-08-04 (during planning): E7 is INERT, not affected.** E7 runs the
-  `"realistic"` scenario (`e7_interface_ablation.py:212`), which resolves to
-  `generate_real_rig_array()`'s frozen shared `WATER_Z`, and never calls `generate_camera_array`.
-  Same for E1, whose inertness this file (and CONTEXT.md) previously justified via the wrong
-  preset. **MF-05 does not move.** E7 still gains its `--seeds` band — that decision was always
-  about reproducibility, not movement. See `19.4-CONTEXT.md` § CORRECTION.
+- **26-12** — `e3` was scheduled five stages before `e2_production` wrote the record it reads, and
+  crashed stage 3 on `int(NaN)`. Dependency edge + a non-numeric marker for the absent-record case.
 
-  **DO NOT implement D-19.4-01..08** (the `max(GRID_DEPTH_RANGE[0], derived)` form, the
-  checkpoint-payload work). They existed to preserve seed-42 bit-inertness, which this phase
-  deliberately gives up. Live decisions are **D-19.4-09..17** in `19.4-CONTEXT.md`.
+- **26-13** — E1's and E7's benchmark records carried no seed, so `gate3_provenance` failed on six
+  artifacts unconditionally, which would have made Phase 29's RUN-03 unsatisfiable.
 
-  **Plan 19.4-03 is a blocking gate:** the D-19.4-17 reviewer-intent coverage matrix must be
-  approved before any production stage runs, and an AMENDED verdict changes the queue's stage
-  list. Plan 19.4-09 is the ~9 h 30 min overnight queue and changes no code.
+- **26-14** — the committed-baseline test rails were pinned to the archive by 26-01 and would have
+  passed green against history once Phase 28 repopulated `experiments/results/`.
 
-  Superseded planning input (mechanism still correct, "fix" section is not):
-  `.planning/debug/e6-seed-locked-clearance-floor.md` — root cause, all six call sites, the
-  consequential changes, and a costed 6-9 h verification plan. Do NOT apply the guard's own
-  suggested remedy (`depth_range=None`); it is not inert. After that, Phase 20.
+Full suite green at close: **2190 passed, 25 skipped, 0 failed** (1:08:55).
 
-Superseded position (retained for orientation):
-Phase: 19.3 (scenario-geometry-and-convergence) — was EXECUTING
-  Requirements GEOM-01..06. Context at
-  `.planning/phases/19.3-scenario-geometry-and-convergence/19.3-CONTEXT.md` (18 locked
-  decisions, D-19.3-01..18); source brief `19.3-SEED.md`; raw evidence under `evidence/`.
-  Goal: synthetic scenarios become physically valid (board corners stay submerged) so
-  first-order optimality is a trustworthy convergence diagnostic, then E1/E4/E5/E6/E7 are
-  re-measured (~9 h, chained, detached) and the correction reported as MF-08.
-  **Ships a breaking public-API change -- the milestone cuts v2.0.0, not v1.9.x.**
-  Phase 19.3 was created mid-session during 19.2 as a directory plus a seed and never went
-  through phase creation; its roadmap entry and requirements were backfilled 2026-08-01.
-Plan: 1 of 12
-  **`workflow.auto_advance` is false** (set 2026-07-25 at the user's request) so the
-  discuss -> plan chain stops before execute. Restore with
-  `gsd-sdk query config-set workflow.auto_advance true` if you want chaining back.
-Status: Executing Phase 21
-  Phase 19.2 COMPLETE and verified 2026-08-01: 29/29 plans, 7/7 truths, suite 1168 passed /
-  0 failed. All four disclosed defects closed. Its `.continue-here.md` was deleted once its
-  Critical Anti-Patterns table was preserved in 19.3-CONTEXT.md.
-  Phases 16, 17, 18, 19, 19.1 and 19.2 COMPLETE, verification PASSED.
-Last activity: 2026-08-10 -- Phase 21 execution started
-  not a v1.9.x: `generate_board_trajectory` and `generate_real_rig_trajectory` gained a
-  required `board` parameter and both are public exports. Phases 21 and 22 resolve version
-  strings and must read the handoff blockquote in ROADMAP.md's Phase 19.3 entry.
-  Before that: Phase 19.2 closed 2026-08-01 (29/29). Phase 18 closed 2026-07-24 (8/8).
-Unreleased on main: everything from Phases 16-19.2 plus quick task 3's `perf:` commit.
-  Nothing is pushed yet. Note `34497f9 fix(18):` is a mistyped docstring-only repair that
-  should have been `docs(18):` -- no version impact, one misleading CHANGELOG line, left
-  unrewritten pending a user decision.
+### Open, deliberately, at close
 
-Milestone v1.6 Refinement API: COMPLETE (shipped 2026-03-09), phases 13-15.
-v1.7–v1.8 shipped outside the milestone framework (see MILESTONES.md).
-v1.9 phase numbering continues from **16** and spans **16-22** (7 phases).
+1. The `smoke` profile expects three artifacts the smoke code paths never write
+   (`structural_scaling.csv`, `e5_provenance.json`, `fd_jacobian_accuracy.json`), so a smoke pass
+   can never exit 0. Diagnosed in 26-10-SUMMARY; not a driver defect.
 
-v1.9 phase structure (revised order — experiment blocker first):
+2. Automatic resume skips a stage that ran AND FAILED — `is_stage_complete`
+   (`run_experiment_suite.sh:669`) matches a completion line and ignores the exit-code column. The
+   end-of-run roll-up still catches the missing artifact. User deferred this 2026-08-18.
 
-- ✅ Phase 16: Experiment Observability Hooks (HOOK-01..06) — COMPLETE 2026-07-23
-- ✅ Phase 17: Per-Camera Interface Ablation Mode (IFACE-01..05) — COMPLETE 2026-07-23.
-  Depended on Phase 16 (HOOK-03 conditioning diagnostics as the WP6 metric). Phases 16-17
-  together were the milestone's longest pole and only true experiment blocker; sequenced
-  first so WP5/WP6 experiments could start as early as possible against the deadline.
-  **That chain is now closed — experiment execution is no longer gated on library work.**
+3. `reconstruction_bootstrap.py:56` hardcodes `experiments/results/real_rig_metrics.json` instead
+   of `--out`; smoke-only, correct in production.
 
-- Phase 18: Documentation Corrections & Stage-Model Reconciliation (DOCS-01,02,03,04,06)
-  — no dependency, independent of 16-17, may run in parallel. DOCS-01 (live ~12x vs
-  43-52x error) can and should be fixed at any point regardless of scheduling.
+## Roadmap Summary (v2.1)
 
-- Phase 19: Benchmark Instrumentation (BENCH-01..05) — depends on Phase 18 (DOCS-06
-  settles the stage-key schema before benchmark.json locks it in; this constraint is
-  preserved from the original roadmap and still binding)
+Eight phases, phase numbering continues from 23. Full detail in `.planning/ROADMAP.md` §
+Phase Details.
 
-- Phase 20: Refractive Index Helper (INDEX-01..03) — fully standalone
-- Phase 21: New-Feature Documentation & Dataset Refresh (DOCS-05, DATA-01,02,03) —
-  depends on 16-20
+| Phase | Goal | Requirements |
+|-------|------|--------------|
+| 23. Experiment Correctness Fixes | E1/E6/E7/E4/E2/synthetic outputs are numerically and textually correct | FIX-01..06 |
+| 24. Degeneracy Instrumentation | The degeneracy counter reaches artifacts, split by kind and stage, warning narrowed | DEGEN-01..03 |
+| 25. Degeneracy Classification & Claim Licensing | The 198 unprojectable observations classified; E1's noise_std axis added | DEGEN-04, BAND-01 |
+| 26. Full-Suite Driver & Handoff Readiness | One driver covers every invocation, one manifest, decided `--check`, stale outputs moved aside | DRIVER-01..04 |
+| 27. Frozen Single-Sha Handoff Package | Code, driver, gates, environment requirements frozen and verified portable | RUN-01 |
+| 28. Suite Execution on Linux Machine | Full suite — E1-E7, band runs, E2 — executes once at the frozen sha | RUN-02 |
+| 29. Gate Verification & Results Commit | Gates pass, E2 sanity control and E7 before/after clear, results committed, Zenodo results package published pre-submission | RUN-03, RUN-04, RUN-05 |
+| 30. Post-Submission Reconciliation | §3/tutorial re-cut against the archive, stale outputs purged, MF-19 closed | POST-01, POST-03, POST-04 |
 
-- Phase 22: Release Cut (DOCS-07) — depends on Phase 21
+**Sequencing constraints honored:** all FIX/DEGEN/DRIVER/BAND phases (23-26) land before the RUN
+phases (27-29); RUN-01 (freeze) precedes RUN-02 (execute, on the Linux machine) precedes RUN-03/04
+(gate + commit); DRIVER-04 (move stale outputs aside) lands in Phase 26, before Phase 28's
+execution; Phase 30 (POST) is gated on both Phase 29 and the 2026-08-21 SoftwareX submission.
 
-**Hard deadline:** revised SoftwareX manuscript due 2026-08-21. This milestone builds
-the tooling only — experiment execution (WP5/WP6) and manuscript prose happen separately,
-so the code work must land with room to spare. The Hooks → Per-Camera Interface chain
-(phases 16-17) is the true blocker for that experiment execution, hence sequenced first.
+**Revised 2026-08-15 after external roadmap review** (four findings taken, one re-scoped):
+Phase 26 now depends on Phase 25 (DEGEN-04 emits a per-observation table and needs a driver-passed
+E2 `h_q` flag); Phase 27 gained a pre-freeze gate that every §3-facing number has a generating
+emitter, since that is unfixable after the freeze; Phase 29 gained the E2 sanity control (E2's
+schema does not change, so it should reproduce to ~1e-8 — and because DEGEN-02 touches
+`_optim_common.py`, that check is also what proves the instrumentation did not perturb the solve)
+and an explicit E7 before/after comparison (FIX-02's two extra free parameters could soften a
+published 10-of-10 result); and POST-02 was re-timed to RUN-05 in Phase 29, because the paper
+cannot be submitted citing an archive that contradicts its own §3.
+
+**Revised 2026-08-17 after pre-planning recon on Phase 23** (read-only measurement, no source
+changed). Four corrections landed in ROADMAP.md, REQUIREMENTS.md and the todos:
+
+1. **FIX-01's acceptance criterion was vacuous and is now the recovered `water_z` against ground
+   truth 1.031 m.** Measured: FIX-02 alone drives E1's guard count 14,949 → 0 with `water_z` at
+   0.0120 m, at a cost identical to the unpinned solve to 10 significant figures. A criterion
+   phrased on the count passes whether or not the pin exists. FIX-01 now lands **before** FIX-02
+   in the non-refractive arm, and the combined pinned/normal-free configuration — the one the
+   re-run executes — is still unmeasured and must be emitted first.
+
+2. **E4's `--check` is structurally always-red** on `exit_code` and `status_reason` while its 33
+   metric columns reproduce to 1e-6, so it cannot verify FIX-05; and `_run_check` is itself on the
+   defective path (**two** call sites). DRIVER-03 must settle the contract early — Phase 23
+   consumes it.
+
+3. **FIX-06 is four code sites, not three**, the unfiled one being `e2_real_rig.py:555-563`'s
+   "60 → 12 → 1,817" against the verified 262 → 52 → 7,762.
+   `19.1-E2-FRAMESET-PROVENANCE.md` gets a supersession header, not an edit.
+
+4. **Phase 29's E2 sanity control is same-seed only** — 3.07e-09 across platforms at seed 42, but
+   a 0.761→0.910 px band across seeds.
+
+Also narrowed: DEGEN-01 (E6's band already persists the counter; the gap is E5/E1/E7), and FIX-03
+(the layout axis already runs all six seeds — MF-12's hand analysis was seed-43-only, not the
+sweep; the reproducible difference is 0.3592 mm, not 0.3600). **Phase 23's "six independent
+single-file fixes" framing does not survive:** three of the six interact. The phase boundary is
+unchanged, the plan decomposition is not six-way parallel.
+
+**Coverage:** 23/23 v2.1 requirement IDs mapped to exactly one phase, no orphans. (The milestone
+brief's "19 todos" is the pending-todo backlog file count; the discrete requirement IDs derived
+from those todos number 23 — see REQUIREMENTS.md § Traceability for the note.)
+
+## Deferred Items
+
+Acknowledged and deferred at milestone close on 2026-08-15. These are inputs to the next
+milestone, not losses.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | e6-seed-locked-clearance-floor | diagnosed (fix landed via Phase 19.4; session never formally closed) |
+| debug | stage3-diverges-new-geometry | awaiting_human_verify |
+| quick_task | 1-add-calibration-file-based-synthetic-rig | no SUMMARY on disk |
+| quick_task | 2-add-explicit-reject-outlier-frames-param | no SUMMARY on disk |
+| quick_task | 3-use-a-structural-column-grouping-for-the | no SUMMARY on disk |
+| quick_task | 260807-dcv-e1-e7-band-provenance-emit-z-rmse-column | no SUMMARY on disk |
+| quick_task | 260813-clj-land-four-pre-run-todo-fixes-provenance- | no SUMMARY on disk |
+| todo | 15 pending todos in `.planning/todos/pending/` | discharged into v2.1 requirements above (23 IDs); see ROADMAP.md and REQUIREMENTS.md |
+| verification_gap | Phase 04 (`04-VERIFICATION.md`) | gaps_found |
+| verification_gap | Phase 10 (`10-VERIFICATION.md`) | human_needed |
+| verification_gap | Phase 19.2 (`19.2-VERIFICATION.md`) | human_needed |
+| requirement | INDEX-01, INDEX-02, INDEX-03 | Phase 20, deferred on MF-13; not part of v2.1 |
+| requirement | DOCS-07 | Phase 22, manuscript-side; not part of v2.1 |
+
+**Three todos were verified complete against the tree and closed 2026-08-15** (`d5eba65`) — the
+Zenodo dataset upload, the OpenCV pin (landed tighter, as `==4.13.*`), and the band-sidecar
+collision (band-owned `e{1,5,6,7}_seed_band_provenance.json`). Each carries a `## Resolved` block
+in `.planning/todos/done/` naming the evidence.
+
+**A fourth was closed by author decision the same day:**
+`2026-08-05-verify-non-refractive-baseline-supports-paper-claims`. Its titled question is settled
+by MF-18 (at unit index the refractive projector *is* the pinhole projector, so the baseline is
+converged and `main.tex:268`'s "sole experimental variable" framing stands). Its two residual
+steps have owners: step 2 → DEGEN-01 (Phase 24), and step 3 → FIX-01 (Phase 23), which is the
+same experiment with a better rationale and has **already been measured** (guard count 14,949 →
+0, optimality 9e+02 → 5e-01, reconstruction numbers reproduced to ~4 significant figures).
+
+**The misleading degeneracy now has a root cause and a fix.** `water_z` is an **exact null
+direction** in the `n_water = 1.0` arm — cost constant to 13 significant figures over a 1.5 m
+sweep while the guard count climbs to 14,949. The solver is estimating a parameter that provably
+cannot influence the fit. FIX-01 (Phase 23) pins it, arm-locally, and explicitly overrides the
+HANDOFF deferral gate: the author decided 2026-08-15 that it lands **before** the 2026-08-21
+submission, because the shift is −0.019% against a manuscript that quotes 2–3 significant
+figures. **Do not pin `water_z` in the refractive arm** — there it is genuinely observable, and
+pinning inflates the headline ratio to a flattering 168×.
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Phase 19.1 inserted after Phase 19: Experiment Suite Consolidation — X1/X2/X3/X6 plus E2, E7, and E1 (EXP-01..06) from the desktop brief; every manuscript number traces to one script/output/figure (URGENT). Rescoped the same day when the phase was split; the execution half became 19.2.
-- Phase 19.2 inserted after Phase 19.1: Experiment Execution and Provenance — E3/E4/E5/E6 + provenance close-out (EXP-07..11), split out of the original 19.1 along the source brief's wave 3/wave 4 boundary so E2's real-rig re-run is a phase gate rather than one item among eleven (URGENT)
-- Phase 19.3 inserted after Phase 19.2: Scenario Geometry and Convergence - synthetic boards protrude through the water surface, invalidating optimality as a convergence diagnostic (URGENT)
-- Phase 19.4 inserted after Phase 19.3: Grid-Family Clearance Floor Fix -- GRID_DEPTH_RANGE frozen at import from a seed-42 array makes E4/E6 legal at only ~6% of seeds (URGENT)
-- Phase 19.5 inserted after Phase 19.4 (the SDK placed it after Phase 19; relocated by hand so it
-  reads in sequence): Experiment Coverage and Uncertainty Bands -- seed bands for E4/E5/E6
-  (unlocked by 19.4's shared-interface fix making the clearance floor seed-invariant), an E2
-  real-rig replicate band, and the first experimental answer to R1.2 and R1.3, before Phase 20
-  (URGENT)
+v2.0 inserted five decimal phases mid-milestone, each because the previous one exposed the next
+defect. Full narrative in `.planning/milestones/v2.0-ROADMAP.md` § Milestone Summary and in
+`.planning/RETROSPECTIVE.md`. Not duplicated here.
+
+v2.1's roadmap (2026-08-15) was planned as a straight-line eight-phase sequence: fixes and
+instrumentation (23-26) → freeze (27) → execute off-repo (28) → gate and commit (29) → reconcile
+after submission (30). It was expected to insert no siblings, on the reasoning that the code-side
+work was fully scoped by 19 already-filed todos rather than discovered mid-run.
+
+**That held until the run itself.** Phase 28's execution surfaced four defects no todo predicted —
+two of them the roll-up's only real FAILs — so 29.1 was inserted on 2026-08-20. The reasoning was
+sound for code-side work and did not extend to what executing the suite end to end would reveal.
+
+- Phase 29.1 inserted after Phase 29: Post-Run Fixes & Re-Freeze -- four defects from the 2026-08-20 production run, the deferred install-extras documentation fix, and a new frozen tag (URGENT)
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Key v1.6 decisions:
+Logged in PROJECT.md § Key Decisions. The load-bearing one from v2.0: **D-19.3-17 — an
+experiment may carry an accuracy claim only where a measured seed band supports it.** BAND-01
+(Phase 25) applies this to E1's noise axis.
 
-- Refinement API accepts abstract float weights — caller defines "goodness"
-- No CLI command for refinement — library API only
-- Local _pack/_unpack in point_refinement.py (separate from board-pose _optim_common)
-- Parameterized extensions on single function (refine_intrinsics, loss, normal_fixed)
-- Any-fail accept/reject logic — conservative validation
-
-Key v1.9 roadmap decisions:
-
-- Reordered so Phase 16 (Hooks) and Phase 17 (Per-Camera Interface) run first — this
-  chain is the only true experiment blocker (WP5/WP6), and the deadline requires
-  experiments to start as early in the milestone as possible
-
-- HOOK-03 (conditioning diagnostics) treated as a hard prerequisite for Phase 17 (IFACE),
-  not a convenience — it's the only metric for the WP6 degeneracy argument
-
-- Docs reconciliation (Phase 18, was 16) and Benchmark Instrumentation (Phase 19, was 17)
-  moved after the experiment-blocker chain; DOCS-06 → BENCH-04 ordering constraint
-  preserved (now Phase 18 → Phase 19)
-
-- DOCS-01 (the ~12x vs 43-52x error) called out as fixable at any point independent of
-  phase scheduling, even though it's formally grouped into Phase 18
-
-- DOCS-05 and DATA-01/02/03 merged into one phase (21) — both need every other code
-  phase finished first, so splitting them added a phase without adding sequencing value
-
-- DOCS-07 (release cut) kept as its own single-requirement final phase — it's a capstone
-  step, not incoherent with anything else
-
-- [Phase 16]: HOOK-06 gap closure: config.seed now threaded into split_detections and recorded in CalibrationMetadata (backward-compatible via .get); config_hash distinguishes seed-only differences
-
-Key v1.9 Phase 17 decisions:
-
-- Every packing/structure function takes a trailing `shared_interface: bool = True` kwarg;
-  the `True` branch is the untouched historical path, locked by exact-equality tests
-
-- N per-camera `water_z` columns collapse into the *single* `water_z` FD group slot (two
-  cameras' water_z columns never share a residual row), so the structural group count stays
-  13 / 17-with-intrinsics — unchanged from shared mode
-
-- The `initial_water_z` "must cover all cameras" hard-fail is gated on `shared_interface`
-  in both dict branches, so a partial dict survives to the per-camera seed resolver
-
-- Per-camera seeding is always individual (`water_z_per_camera`), never collapsed to a mean
-  or to the reference camera (IFACE-04)
-
-- The ablation headline number (per-camera water_z spread) is unconditional in per-camera
-  mode: mm to console, meters to `internals/interface_spread.json`, no gating flag
-
-- Per-camera tilt / interface normal explicitly out of scope — only `water_z` goes per-camera
-- Full new-feature documentation for `shared_interface` (worked example, WP6 interpretation)
-  deferred to Phase 21; Phase 17 shipped only an ablation-framed stub
-
-- [Phase 19.2]: 19.2-06: E2 re-run under D-26 -- every section-3 number reproduced at 0.000% delta; benchmark.json now carries a memory block (peak growth concentrated in stage3_interface_optimization, +8.54 GiB), solver_config.seed=42, and stages.*.n_residuals=147950
-
-### Pending Todos
-
-Tracked as files in `.planning/todos/pending/` — see `/gsd-capture --list`. Do not
-duplicate the list here; the two copies drifted apart between v1.6 and v1.8.
-
-Open as of 2026-07-23:
-
-- Reduce memory and CPU load during calibration (dense `.toarray()` Jacobian peak;
-  CPU side partially addressed by quick task 3). **v1.9 measures and reports this
-  peak but does not reduce it** — deliberate, see PROJECT.md Key Decisions. Stays open.
-
-- Upload new Zenodo dataset with image-based inputs (confirmed still the 2026-02-14
-  upload; serves the deprecated `initial_distances` key, which currently loads fine
-  via the compat shim). **Now Phase 21 (DATA-01/02/03)** — do not action standalone;
-  it carries a sequencing constraint (after all code phases + DOCS-06, before DOCS-07).
-  Close it when Phase 21 lands.
+- [Phase 29.1]: Phase 29.1 work happens on branch phase/29.1-post-run-fixes, based on results/rerun-freeze-01 (D-13). Merge it back; never check out around it, or the 147 tracked files under experiments/results/ leave the tree. **SUPERSEDED 2026-08-25 — the branch was renamed `results/rerun-freeze-02` once Phase 28 landed on it, matching attempt 1's `results/rerun-freeze-NN` convention; `origin/phase/29.1-post-run-fixes` was deleted after verifying its tip `0898c53` is an ancestor of the new ref (0 commits lost). The checkout warning still holds but the file count moved: 29.1-06 relocated the 147 tracked files to `experiments/freeze01_run_output/` (now 227 files), and `experiments/results/` is empty at HEAD.**
+- [Phase 29.1]: E4 gate 1 exempts record_source="pipeline" rows inside the existing gate rather than gaining a second gate id, because the roll-up PASS/N/A/FAIL totals are an audited number (D-02). The exemption is keyed to row kind, never to a count magnitude, so synthetic (assembled) rows are gated exactly as before.
+- [Phase 29.1]: E4 real-rig row publishes the guard count E2 measured (198 above-water board corners) and is exempt from the > 0 status downgrade at both the writer and the gate (D-01). Reverting means re-nulling a number the manuscript may cite.
+- [Phase 29.1]: D-04 resolved by removal: the 2026-08-15 design table has --seeds sidecar rows for E5 and E7 and deliberately none for E1, so the expectation was unclaimed rather than a writer added
+- [Phase 29.1]: D-07 resolved in favour of the :1209 comment: band mode may CREATE e1_benchmark_<model>.json and never overwrites it, enforced by a literal force=False that ignores the run's --force
+- [Phase 29.1]: D-08 fixed as a class not an instance: e1_seed_band_provenance.json's scope field is derived at write time rather than re-frozen at four seeds and 256/384 rows (D-10)
+- [Phase 29.1]: E7's identical band-overwrite hazard is filed as a pending todo, not fixed: it surfaced by reading rather than by a failing gate and is out of this phase's scope
+- [Phase 29.1]: Plan 29.1-04: took todo option 1 (doc-only) in full — HANDOFF §1.2 now installs ".[dev,bench]"; options 2 (move DECLARED_CONSTANTS out of the test module) and 3 (promote psutil to runtime) left explicitly open because both touch src/ and need the suite re-run behind them (D-11).
+- [Phase 29.1]: Plan 29.1-04: `pip install -e . --no-deps` metadata-refresh sites must NOT gain extras — five sites ruled 'correct as-is — not a first install'; adding extras would change what the command does.
+- [Phase 29.1]: Plan 29.1-04: install-instruction correctness is verified by building an environment from the command read out of HANDOFF.md, not by diffing the string — aquacal-freeze02-cleanenv left in place for plan 29.1-07.
+- [Phase 29.1]: Plan 29.1-05: The 198 unprojectable observations are settled as above-water board corners in MANUSCRIPT-FINDINGS.md MF-24, by citation of the committed 198-row per-observation table rather than by inference from summary counts
+- [Phase 29.1]: Plan 29.1-05: The degeneracy count is seed-sensitive (198/210/183 across band seeds 42/43/44) while the cause decomposition is not -- 198 must be attributed to seed 42 in the manuscript, not presented as a dataset constant
+- [Phase 29.1]: Plan 29.1-05: The E4 aggregator path defect (E2_BENCHMARK_PATH not following --out) is confirmed fixed by Phase 23's FIX-05/D-09 at BOTH build_grid_dataframe call sites, verified by AST and by the run's own e4.log:12 announcement
+- [Phase ?]: 29.1-03: the stale-string sweep's enumeration command was widened mid-pass after its own blind spot was found by hand -- a pre-filter for comment/string lines silently dropped wrapped docstring lines, one of which was a defect. A boundary with a blind spot is not a boundary.
+- [Phase ?]: 29.1-03: retired measurements are retained under an explicit owner, never scrubbed and never swapped for the current value -- MF-12's digits stay in e6 under its name, because a corrected literal reproduces the defect one run later.
+- [Phase ?]: 29.1-03: two twin sites outside D-09's bound (_expectations.py, check_rerun_gates.py) were corrected rather than only recorded; the sweep did not widen but a twin of a corrected claim is the partial-fix shape the gate module exists to catch.
+- [Phase ?]: 29.1-09: mechanism A of D-18's three -- correct the manifest dir and evaluate the predicate; the only candidate keeping src/ untouched, moving no published artifact, creating no second copy of a measurement and avoiding the 10.9 MB hazard
+- [Phase ?]: 29.1-09: an absent conditional artifact scores PASS only on a machine-evaluated predicate; an unevaluable predicate is N/A, never PASS, and a misplaced artifact is a FAIL naming both paths
+- [Phase ?]: 29.1-09: the predicate asks whether the flagged count is non-zero, never whether it is 198 -- MF-24 measured that count to be seed- and OpenCV-sensitive
+- [Phase ?]: 29.1-09: the misplacement search set is bounded to directories the manifest declares, with the bound stated in the docstring rather than closed by a filesystem walk
+- [Phase ?]: 29.1-06: the 2026-08-20 run output is archived at experiments/freeze01_run_output/ -- named for the tag whose run produced it, so two archives stay distinguishable. 499 files moved, 0 deleted.
+- [Phase ?]: 29.1-06: experiments/results/ must be EMPTY at tag time -- D-24's pre-flight refuses a non-empty OUT_DIR, and 'everything here was produced by this run' is only true if it starts empty. Never --allow-nonempty-out.
+- [Phase ?]: 29.1-06: suite_expectations.json's two conditional entries deliberately did NOT follow the move -- they describe where a fresh run writes. Proved: archive gates PASS/PASS, emptied tree gates N/A/N/A.
+- [Phase ?]: 29.1-06: _baseline_paths.ARCHIVE still points at pre_rerun_baseline/ -- its subject is six Phase-19.1 seedless records that live there. No code changed; the live-or-archive rule repointed the rails by itself.
+- [Phase ?]: 29.1-07: the verification bar is recorded as NOT cleared -- the full suite reports 3 failures on Linux against attempt 1's 0, and nothing was deselected, xfailed or loosened to reach green
+- [Phase ?]: 29.1-07: the three failures are pre-existing exact-equality anchor misses (1 ULP to 1.4e-9), proven by byte-identity of every input to rerun-freeze-01; they are the first Linux evaluation of anchors captured on Windows
+- [Phase ?]: 29.1-07: the --smoke roll-up matches attempt 1 at 72 PASS / 18 N/A / 0 FAIL once the empty experiments/results_e2_band/ left by 29.1-06's git mv is removed; both the 72/17/2 and 72/18/0 runs are reported
+- [Phase ?]: 29.1-08: D4 ruled on, not resolved: rerun-freeze-02 was cut with three known exact-equality anchor test failures, recorded as a reasoned exception (29.1-PREPUSH-AUDIT.md section 1). They fail at rerun-freeze-01 too -- attempt 1's '0 failed' was a Windows measurement.
+- [Phase ?]: 29.1-08: rerun-freeze-02 cut at 7005a27 as an annotated tag; rerun-freeze-01 not moved; version-tag count and the git describe semver anchor both unchanged.
+- [Phase ?]: 29.1-08: SC-5 proven by execution rather than by a string diff: a new conda env built by running the tag's own corrected HANDOFF section 1.2 command produced e3 exit 0 and all 17 manifest fields non-null.
+- [Phase ?]: 29.1-08: results/rerun-freeze-01 deliberately left at 89c2092 on the remote (author's ruling) as attempt 1's preserved endpoint -- same principle that never moves a tag. Recorded in all three freeze records so the lagging pointer is not later read as an oversight.
+- [Phase ?]: 28-01: the production clone was taken from the GitHub remote (git clone --branch rerun-freeze-02) at /home/tlancaster/aquacal-frozen-rerun-freeze-02-prod -- the -prod suffix is load-bearing; the plain name is 29.1-08's rehearsal clone and must be neither reused nor shadowed
+- [Phase ?]: 28-01: the freshly resolved dependency set is IDENTICAL to attempt 1's -- numpy 2.4.6, scipy 1.17.1, cv2 4.13.0.92, python 3.11.15, BLAS scipy-openblas 0.3.31.188.0, pytest 9.1.1, psutil 7.2.2. Assumption A2's unpinned-resolve drift did not materialise, so Phase 29's E2 sanity control compares like with like
+- [Phase ?]: 28-01: D4 confirmed in the new environment BEFORE launch -- 3 failed, 2407 passed, 26 skipped (0:27:18), the three registered node ids verbatim and the disagreement values bit-for-bit. The suite is NOT clean at this sha and no artifact of this phase says otherwise
+- [Phase ?]: 28-01: pytest tests/ creates an EMPTY experiments/results/ in the clone; it was moved aside to /home/tlancaster/AquaCal_prod_aside/2026-08-24-7005a27-pytest-created-results/, never deleted and never overridden. Re-check that directory before pre-flight if pytest is run again in the production clone
+- [Phase ?]: 28-01: NOTHING HAS BEEN LAUNCHED. The dry run walked all 20 stages at exit 0 into the .dryrun.tsv path only; the real state file is still absent. The production run is plan 28-03 and remains gated behind a human decision not yet given
+- [Phase ?]: 28-02: cleanliness asserted with git status --porcelain --untracked-files=no, the form _run_manifest.py:183 uses to derive git_dirty -- asserting the bare form would be the wrong gate and would send an operator hunting a defect that does not exist
+- [Phase ?]: 28-02: the residue enumeration used --untracked-files=all --ignored, because every residue entry in this clone is gitignored and the bare form reports an EMPTY residue -- an enumeration that shows nothing proves nothing. 190 entries, 0 unclassified, 0 matching experiments/results*
+- [Phase ?]: 28-02: a third residue category (src/aquacal.egg-info/, 6 files) was found outside the plan's permitted set; recorded on the record and ruled benign (it is what HANDOFF.md:49's own editable install writes; gitignored; moving it aside would damage the install assertion 6 depends on) rather than halted on or silently absorbed
+- [Phase ?]: 28-02: pre-launch assertion record written at /home/tlancaster/freeze02-prelaunch-assertions.txt -- 15 PASS / 0 FAIL, every line carrying its measured value, all-passed line emitted conditionally on the FAIL count. NOTHING LAUNCHED; RUN-02 deliberately left Pending
+- [Phase 29]: 29-02: the returned run is landed in the working clone but deliberately left uncommitted — plan 29-05 owns the results commit, which is what keeps that commit byte-pure
+- [Phase 29]: 29-02: ROADMAP criterion 1 demonstrated in the real working clone — TOTAL: 176 PASS, 7 N/A, 0 FAIL at exit 0, gate3_git_sha_consistency green on the single sha 7005a277…, path-normalised diff against 28's freeze02-gates-full.txt empty
+- [Phase 29]: 29-02: the admitted commit set is exactly 227 files (147 under experiments/results/), a strict superset of attempt 1's 209 — 18 added stagelogs, 0 lost; say 227 in 29-05's commit message
+- [Phase 29]: 29-02: RUN-03/RUN-04 left unmarked — RUN-04's commit is 29-05's and RUN-03's E2 control is 29-03's; 29-08 closes them
+- [Phase 29]: 29-03: ROADMAP criterion 2 PASSES: E2 same-seed control, seed 42 vs seed 42, worst scalar relative drift 2.5146e-08 on inter_corner_rmse_mm against the pre-run baseline (headline mean_per_camera_reprojection_px 4.8962e-09), exactly 0.0 against attempt 1. D-29-10 stop-list item 1 does not fire.
+- [Phase 29]: 29-03: ROADMAP criterion 3 / D-29-16: E7's primary fixed-intrinsics pairing HELD at 10/10, p = 1/1024 = 0.00098 in both trees; the secondary refined pairing MOVED 8/10 (56/1024 = 0.05469) to 7/10 (176/1024 = 0.17188). Both published in supplement 14 / MF-05. FLAG TO AUTHOR — section 3 edits stay the author's.
+- [Phase 29]: 29-03: The E7 refined move is a Phase 23-26 (FIX-02) effect, not a re-run artefact: attempt 1 and attempt 2 share md5 b6515ed77ed04268608b74217716020b on interface_ablation_band.csv.
+- [Phase 29]: 29-03: The E2 control reports two worst-case figures per comparison (scalar fields, and all flattened leaves) and gates its exit code on the larger; three compound fields would otherwise have gone unchecked in the phase's only solver-correctness control.
+- [Phase ?]: 29-05: Committed 227 files, not attempt 1's 209 — the 18-file delta is .gitignore:507's deliberate Phase 28 widening (commit f399615), and the commit message carries the arithmetic so it cannot be misread as drift.
+- [Phase ?]: 29-05: Used git commit --no-verify and stated the reason in the message — end-of-file-fixer and trailing-whitespace would rewrite 147 of the 227 artifacts. Only check-added-large-files, detect-secrets and check-yaml were run, each --files-scoped.
+- [Phase ?]: 29-05: The 8 test_experiments_provenance.py failures are recorded as the documented D1 flip and repaired by nothing — plan 29-06 owns them in a separate fix(29): commit, which keeps 70e783f artifact-pure.
+- [Phase 29]: 29-01: D-29-01a (2026-08-26, author): Record A = extrinsic/ + intrinsic/ + README.md (~4.1 GB); Record B = config_paper.yaml + config_quickstart_not_paper.yaml + reference_calibration.json + this run own reference_outputs/ + run_manifest.json (~21 MB). Option research-default. Record A must be a complete self-contained input set; the archived calibration is a result, so it travels with the results package. Ruling at 29-RECORD-COMPOSITION.md — nothing else authorises a byte into either record.
+- [Phase 29]: 29-01: scripts/zenodo_upload.py has NO publish and NO discard code path at all — enforced by grep gates in the acceptance criteria and independently by a deposit:write-only token that omits the publish-actions scope, so a publish call fails at Zenodo rather than at code review (D-29-01). The token is read from os.environ only, never a CLI argument, never a file.
+- [Phase 29]: 29-01: A<->B cross-link uses isSourceOf (on A) / isDerivedFrom (on B), never isNewVersionOf against record 21889922 — Zenodo versioning is a first-class mechanism and asserting it against a different concept record misrepresents the relationship. Supersession of 21889922 is prose in Record B description plus a bare-DOI references related_identifier.
+- [Phase 29]: 29-01: RUN-05 left UNMARKED. This plan makes no production Zenodo call and publishes nothing — it drives RUN-05 only to tooling-proven-on-sandbox. RUN-05 completes at published-before-submission, an event Phase 29 cannot observe; 29-04 and 29-07 create the production drafts and 29-08 closes the ordering half by explicit human confirmation.
+- [Phase 29]: Plan 29-06: the eight D1 provenance-rail failures were repaired by correcting assertions, never artifacts (D-29-13). Provenance module 8 failed -> 0; full suite 11 failed -> 3, the three being D4's ruled exact-equality anchors. Nothing deselected, xfailed, skipped or loosened.
+- [Phase 29]: Plan 29-06: run_manifest.json is DRIVER-02's flat SUITE-level manifest (schema owner experiments/_run_manifest.py:82), not an assemble_benchmark_record, so it is carved out of the benchmark-record rails via a new SUITE_LEVEL_MANIFEST_JSON frozenset rather than being made to satisfy a schema it never claimed.
+- [Phase 29]: Plan 29-06: _discover_json_files() gained the _is_tracked filter its CSV sibling always had, so a gitignored 2.1 MB calibration.json no longer reaches a rail scoped to committed artifacts. rglob was preserved -- only the filter changed -- so E4's nested e4_cells records stay discoverable. calibration.json was deliberately NOT added to any carve-out.
+- [Phase 29]: Plan 29-06: E1's band map text corrected from 'seeds 42-51' to 'seeds 42-45' per Ruling A1 of 2026-08-15, annotated in the project's dated '# CORRECTED <date> (plan NN).' style so the superseded ten-seed claim survives rather than being deleted.
+- [Phase ?]: 29-04: Record A's Zenodo archive uses a flat root (extrinsic/, intrinsic/, README.md) with no real-rig/ wrapper, unlike published record 21889922 — Phase 30's loader must strip no prefix
+- [Phase 29]: 29-07: Record B's isDerivedFrom points at Record A's VERSION DOI 10.5281/zenodo.22116461, not the concept DOI — Record B derives from those exact bytes, and a concept DOI follows the latest version, so it would silently re-point provenance if Record A were re-versioned
+- [Phase 29]: 29-07: author ruled 'sequential' A<->B linkage and published Record A (version 10.5281/zenodo.22116461, concept 10.5281/zenodo.22116460); the accepted cost is that Record A carries no structured isSourceOf back-link, which the author adds by hand in the Zenodo UI after Record B is published
+- [Phase 29]: 29-07: reference_outputs/diagnostics.json is sourced from experiments/results_e2_invocations/e2_classification/ — the only directory in this run holding both a diagnostics.json and a calibration.json byte-identical to the canonical one
+- [Phase 29.2]: 29.2-01: pin BOTH python-semantic-release==10.6.1 and gitpython==3.1.59 in release.yml — no released PSR works with the current GitPython, so bounding one package does not close the break
+- [Phase 29.2]: 29.2-01: `semantic-release --version` is NOT a valid smoke test for the GitPython break (exits 0 with the broken version); the detecting assertion is `semantic-release version --print` on a branch named main
+- [Phase 29.2]: 29.2-01: the v2.1.0 bump is measured, not assumed — `version --print` string-equals 2.1.0 and PSR's own parser reports MAJOR = 0, settling D-29.2-20 (fd78d77 needs no rewording)
+- [Phase 29.2]: 29.2-01: assert the sdist's member list, never its size — two builds of the identical tree 20s apart differ by 20 bytes with identical member lists (strengthens D-29.2-32)
+- [Phase 29.2]: 29.2-01: pin LC_ALL=C for every member-set comparison; the six-name sort order is collation-dependent and would false-alarm on an en_US.UTF-8 machine
+- [Phase 29.2]: 29.2-02: implemented D-29.2-02b's corrected exclude on both formatting hooks, not the superseded mirrored pattern; extended detect-secrets with a .planning/ arm and recorded that the planning tree stops being secret-scanned
+- [Phase 29.2]: 29.2-03: the two drifting D4 assertions (r_q_m, chord_incidence_deg) are bounded as a hard count of representable steps -- np.testing.assert_array_max_ulp at maxulp=4 and 8, four times the measured worst cases -- not a relative tolerance, which cannot express a step count. h_c_m and h_q_m measured 0/22 mismatches and keep exact equality.
+- [Phase 29.2]: 29.2-03: TWO is the new expected whole-suite failure count (measured 2 failed, 2395 passed, 21 skipped; collected total unchanged at 2418). Zero and three are both anomalies. The not-slow selection CI runs reports ZERO, so no D4 member can redden a PR cell.
+- [Phase 29.2]: 29.2-03: the D4 todo now names two members. The third had no captured anchor at all -- its gap was the library's vectorized r_q against the test's scalar r_q on the SAME machine, a dispatch asymmetry, not a Windows pin. Recorded as a correction of the todo, not of the phase that filed it; no prior artifact was rewritten.
 
 ### Blockers/Concerns
 
-None.
+- **MF-19** — §3's numbers predate the current library. This is the manuscript-level blocker and
+  the direct reason v2.1 ends in a single-version suite re-run (Phases 27-29), closed out in
+  Phase 30.
 
-### Phase 16 Plan Progress
+- **The DOI freezes the reference numbers.** Section 3, the archive's `reference_outputs/`, and
+  the tutorial's expected-value table are a matched set of three. Phase 28 re-runs E2 by design,
+  so Phase 30 (POST-01) must re-cut all three together against the new numbers before another
+  Zenodo version is cut.
 
-- Plan 16-01 (Conditioning diagnostics, HOOK-03) — COMPLETE 2026-07-23. Commits
-  `cd5dd00` (compute_conditioning core), `67f38b9` (JSON/NPZ writer + exports). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-01-SUMMARY.md`. Added
-  `aquacal.validation.conditioning` (blocked tall-skinny QR + single SVD of the (n,n) R
-  factor); 12 new unit tests; no regressions (675 passed). `chunk_rows` left at the
-  plan-specified default (8192), flagged for re-tuning against a real `result.jac` once
-  plan 16-05 wires this into the pipeline.
-
-- Plan 16-02 (Datasets: synthetic sweep-axis support, HOOK-05/HOOK-06) — COMPLETE
-  2026-07-23. Commits `85e60c2` (feat), `25cf08a` (test). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-02-SUMMARY.md`.
-  Plumbed n_air/n_water through `generate_synthetic_detections`; `SyntheticScenario`
-  now records n_air/n_water/seed; added executable sweep-axis audit
-  (`tests/unit/test_synthetic_sweep_axes.py`). Zero behavior change to existing
-  callers (defaults 1.0/1.333/42 preserved).
-
-- Plan 16-03 (Observability config foundation + Stage-3/rerun/4 calibration dumps) —
-  COMPLETE 2026-07-23. Commits `bb523a7` (config fields + YAML parsing + `aquacal init`),
-  `afe54e8` (`internals/` directory helper), `ce94111` (`_dump_stage_calibration` + three
-  call sites). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-03-SUMMARY.md`. Added
-  `CalibrationConfig.save_stage_calibrations/save_optimization_trace/save_conditioning/seed`,
-  a new `internals:`/`seed:` YAML surface, `aquacal.io.ensure_internals_dir` +
-  `warn_if_overwriting`, and default-on Stage-3/Stage-3-rerun/Stage-4 calibration JSON
-  dumps under `output_dir/internals/`. `calibration_initial.json` (post-Stage-2)
-  deliberately left untouched. Note: this plan's `requirements` frontmatter listed
-  HOOK-02, but only the config *switch* (`save_optimization_trace`) was added here — the
-  actual per-iteration trace is plan 16-04's job (`depends_on: ["16-03"]`), so HOOK-02 was
-  intentionally left unchecked in REQUIREMENTS.md pending 16-04, not marked complete.
-  No regressions: 679 passed (full unit suite), 684 passed/29 deselected
-  (`tests/ -m "not slow"`).
-
-- Plan 16-04 (Optimizer observability trace, HOOK-02) — COMPLETE 2026-07-23. Commits
-  `048f8ba` (OptimizerObserver + scipy>=1.16 floor), `9928deb` (optional observer param
-  on optimize_interface/joint_refinement), `29201f3` (per-stage trace CSVs wired into
-  pipeline). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-04-SUMMARY.md`. Added
-  `aquacal.calibration._observability.OptimizerObserver`/`TraceRow`, wrapping
-  scipy's `least_squares(callback=...)` (new in 1.16) to record per-iteration cost,
-  step norm, and an unconstrained `||J^T f||_inf` optimality proxy (documented as
-  NOT matching scipy's bound-scaled final optimality). `optimize_interface` and
-  `joint_refinement` both gained a trailing `observer=None` param with a verified
-  bit-identical-result guarantee when unset. Pipeline writes
-  `internals/trace_stage3.csv`, `trace_stage3_rerun.csv`, `trace_stage4.csv` (one
-  file per stage, never merged) when `config.save_optimization_trace` is true.
-  `on_solution(result)` defined as a no-op extension point for plan 16-05's
-  conditioning work. No regressions: 696 passed (full unit suite, +17 new),
-  701 passed/29 deselected (`tests/ -m "not slow"`).
-
-- Plan 16-05 (Wire conditioning diagnostics into the pipeline, HOOK-03) —
-  COMPLETE 2026-07-23. Commits `ccc61ac` (labelled conditioning inside
-  `on_solution`), `f5ea190` (enable on final reported stage, write once).
-  Summary: `.planning/phases/16-experiment-observability-hooks/16-05-SUMMARY.md`.
-  Added `build_parameter_labels` (mirrors `_optim_common.pack_params`'s layout
-  exactly) and gave `OptimizerObserver` a `conditioning` flag: when set,
-  `on_solution` calls `compute_conditioning(result.jac, ...)` (built in 16-01)
-  while `result` is still in the optimizer function's scope, storing only the
-  small `ConditioningReport` and letting `ConditioningMemoryError` propagate
-  with the stage name prefixed. Pipeline creates observers when
-  `save_optimization_trace OR save_conditioning` is set, enables conditioning
-  only on whichever stage produces the final reported result (Stage 4 when
-  `refine_intrinsics`, else Stage 3 — initial or the outlier-rejection rerun,
-  whichever ran last), and writes exactly one `internals/conditioning.json` +
-  `.npz` pair via a new pure `_select_conditioning_report` helper, tagged with
-  the producing stage (`save_conditioning_report` gained an additive `stage`
-  kwarg). No real 13-camera rig run was performed this session, so no sharper
-  peak-memory/runtime figure exists yet for the deferred PERF-01 todo — the
-  first `save_conditioning: true` real run will be the first data point.
-  No regressions: 712 passed (full unit suite, +16 new), 717 passed/29
-  deselected (`tests/ -m "not slow"`).
-
-- Plan 16-06 (Seed threading & recording, HOOK-06 gap closure) — COMPLETE
-  2026-07-23. Commits `e92a01d` (thread config.seed into split_detections),
-  `f4f0249` (record seed in CalibrationMetadata). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-06-SUMMARY.md`.
-  Audit-driven plan: five of the six HOOK-06 entry points (all generators,
-  `split_holdout`, `refine_calibration`) were already threaded and needed no
-  code. Closed the two real gaps: `run_calibration_from_config`'s
-  `split_detections` call now passes `seed=config.seed` (was silently always
-  42, no config control), and `CalibrationMetadata` gained `seed: int | None
-  = None`, written to `calibration_initial.json`, the final `calibration.json`,
-  and every stage dump, with `.get("seed")` on deserialize for backward
-  compatibility. `_compute_config_hash` now includes seed so seed-only config
-  differences no longer collide. Zero behavior change verified: default seed
-  (42) reproduces the exact pre-change split. No regressions: 718 passed
-  (full unit suite, +1 net), 723 passed/29 deselected (`tests/ -m "not slow"`).
-
-- Plan 16-07 (Standalone held-out evaluation, HOOK-04) — COMPLETE 2026-07-23. Commits
-  `c5c8218` (feat: evaluate_calibration + move _estimate_validation_poses), `f04a093`
-  (test: standalone behaviour + exact-equality legacy-equivalence regression),
-  `c27c747` (refactor: pipeline calls evaluate_calibration), `375e1a1` (test: retarget
-  mocks + refactor guards). Summary:
-  `.planning/phases/16-experiment-observability-hooks/16-07-SUMMARY.md`. Added
-  `aquacal.evaluate_calibration` (16th top-level public name) and
-  `aquacal.validation.evaluation.HeldOutEvaluation`; moved `_estimate_validation_poses`
-  out of `pipeline.py` into `validation/evaluation.py`; refactored
-  `run_calibration_from_config`'s inline held-out block to call `evaluate_calibration`
-  for both primary and auxiliary cameras (auxiliary reuses primary's poses instead of
-  re-estimating), with a `temp_result`-construction reordering that carries no numerical
-  effect. Guarded by an exact-equality (not approx) regression test proving the refactor
-  changed no numbers, plus an executable WP4 test showing a >2x reprojection-RMS
-  degradation when scoring against a held-out set generated at a different n_water.
-  All six HOOK-01..06 requirements for Phase 16 are now complete. No regressions: 763
-  passed (full unit suite, +45 net), 734 passed/29 deselected (`tests/ -m "not slow"`).
-
-### Phase 17 Plan Progress
-
-Phase 17 (Per-Camera Interface Ablation Mode) — COMPLETE 2026-07-23, all 5 plans, all of
-IFACE-01..05. Verification PASSED (`17-VERIFICATION.md`): full suite **799 passed / 0 failed**
-(40 min, slow tests included); fast suite 768 passed / 31 deselected. Roadmap commit `b2aea44`.
-
-- Plan 17-01 (Per-camera water_z packing/structure layer, IFACE-02/IFACE-03) — COMPLETE.
-  Threaded `shared_interface` through `pack_params`, `unpack_params`, `build_bounds`,
-  `build_jacobian_sparsity`, `build_structural_column_groups`, and `build_parameter_labels`.
-  `pack_params` also gained an optional `water_z_per_camera` dict; when it is None, per-camera
-  mode seeds every camera from the scalar `water_z` (the trivial equal-seed case IFACE-05's
-  recovery test needs). Sparsity emits N per-camera columns, each nonzero only in its own
-  camera's residual rows; grouping collapses them into one slot so the count stays 13/17.
-  IFACE-03 safety net parametrizes all 8 mode combinations.
-
-- Plan 17-02 (`shared_interface` config surface, IFACE-01) — COMPLETE.
-  `CalibrationConfig.shared_interface: bool = True` with an ablation-framed docstring;
-  `load_config` parses `interface.shared_interface` early (right after `normal_fixed`, so it
-  is in scope for the coverage gate) and passes it through with no cross-field validation;
-  `aquacal init` emits a commented template line; `docs/guide/refractive_geometry.md` carries
-  an ablation-only stub. Ablation framing deliberately repeated in three places.
-
-- Plan 17-03 (Optimizer + pipeline integration, IFACE-01/IFACE-02) — COMPLETE.
-  `optimize_interface` (Stage 3) and `joint_refinement` (Stage 4) both accept
-  `shared_interface` and seed each camera from its own value (`initial_water_zs` /
-  `distances_in`). `run_calibration_from_config` wires `config.shared_interface` into both
-  stages and prints exactly one reason-bearing WARNING at pipeline start in per-camera mode.
-  The observer's `water_z_index` formula (`0/2 + 6*(n_cams-1)`) is valid in both modes — it
-  points at `camera_order[0]`'s water_z.
-
-- Plan 17-04 (Per-camera seed resolver + spread report, IFACE-04) — COMPLETE.
-  `_resolve_per_camera_water_z_seeds`: None fills 0.15 silently; a partial dict fills the
-  missing cameras and warns naming them; an unknown key warns as a likely typo; an
-  auxiliary-camera key is silently ignored. Uses `warnings.warn(UserWarning)` rather than
-  `print` so each case is assertable. `_build_interface_spread_report` writes
-  `internals/interface_spread.json` (meters, `std` = population/ddof=0) plus an mm console
-  summary, tagged with the producing stage using the same selection logic as the
-  conditioning report. Both guarded by `if not config.shared_interface`.
-
-- Plan 17-05 (IFACE-05 correctness safety net) — COMPLETE, and it earned its keep.
-  Added `tests/synthetic/test_per_camera_interface.py`: packing-layer bit-identity
-  (rtol=0/atol=0), end-to-end shared-mode Stage-3 determinism, and equal-seed per-camera
-  recovery to ~1e-15 on shared-interface ground truth. **The recovery test exposed a Rule-1
-  bug plans 17-01/17-03 both missed**: `compute_residuals` called `unpack_params` without
-  `shared_interface`, so per-camera mode read a single water_z and misaligned every later
-  parameter block — Stage 3 diverged to RMS ~148 even starting from the noiseless optimum.
-  Fixed (`575bdc8`) by threading `shared_interface` into `compute_residuals` and both
-  optimizers' `cost_args`. See the `shared_interface`-unpack lesson in `knowledge-base.md`.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 2 | add explicit reject_outlier_frames parameter to generated configs | 2026-07-20 | 8b6eb0d | [2-add-explicit-reject-outlier-frames-param](./quick/2-add-explicit-reject-outlier-frames-param/) |
-| 3 | use a structural column grouping for the FD Jacobian | 2026-07-23 | 3c8685c | [3-use-a-structural-column-grouping-for-the](./quick/3-use-a-structural-column-grouping-for-the/) |
-| 260807-dcv | E1 band emits z_rmse_mm (the manuscript's headline ratio) + E1/E7 band-owned sidecars; E1's ten seeds re-run and all reproduce 97.3x-178.0x exactly | 2026-08-07 | cda9d0e, fea64a9 | [260807-dcv-e1-e7-band-provenance-emit-z-rmse-column](./quick/260807-dcv-e1-e7-band-provenance-emit-z-rmse-column/) |
-| 260811-e7s | READ-ONLY pre-2.0.0 release audit — 8 MUST-FIX / 17 SHOULD-FIX / 13 OPTIONAL, ranked by release lock-in. No fixes applied; follow-up task pending user selection | 2026-08-11 | 57eca21 | [260811-e7s-pre-2-0-0-release-audit](./quick/260811-e7s-pre-2-0-0-release-audit/) |
-| 260811-f81 | Applied the selected pre-2.0.0 fixes — all MUST except the Zenodo-gated manifest, all SHOULD except the publish-gated index claim, plus UNV-1 and cosmetics. History rewritten to 6 correctly-typed commits after concurrent executors contaminated one; tree verified byte-identical | 2026-08-11 | d19b3af..f45d278 | [260811-f81-pre-2-0-0-release-fixes](./quick/260811-f81-pre-2-0-0-release-fixes/) |
-
-### Phase 16 HOOK-03 conditioning route (settled by measurement, 2026-07-23)
-
-Blocked tall-skinny QR — row-chunks of `result.jac` maintaining an `(n,n)` R via
-`qr(..., mode='economic')`, then one `svd(R, full_matrices=False)` for spectrum and `V`.
-Measured on a near-degenerate synthetic problem, this is not a preference:
-
-- `eigh(J.T @ J)` returns sigma_min = **exactly 0.0** (cond = inf) and `inv(J.T@J)` gives an
-  all-NaN correlation matrix. It fails precisely in the WP6 degeneracy regime HOOK-03 exists
-  to measure. Forbidden in the plans, not even as a fallback.
-
-- `svd(J, compute_uv=False)` gives the spectrum but no `V`, so it cannot produce the
-  correlation matrix success criterion 3 requires.
-
-- Blocked TSQR: peak extra memory is O(chunk·n), independent of m; sigma_min accurate to
-  ~7e-8 relative. Because it is O(chunk), the memory pre-check is a cheap analytic guard —
-  no `psutil` dependency.
-
-**OOM trap, documented in plan 16-01:** `scipy.linalg.qr(J, mode='r')` returns R shaped
-`(m, n)`, NOT `(n, n)` — only `mode='economic'` gives `(n, n)`. Feeding a `mode='r'` result
-into `svd(R)` with default `full_matrices=True` allocates an m×m `U`: 12.8 GB at m=40000.
-**This is what crashed the machine during the first planning session.** Full derivation in
-the Addendum at the end of `16-RESEARCH.md`.
+- 8 pre-existing failures in tests/unit/test_experiments_provenance.py (not caused by 29.1-01; verified at branch base). They will meet the D-14 full-suite bar in plan 29.1-08 -- resolve there or rule expected-by-construction. Details: .planning/phases/29.1-post-run-fixes-re-freeze/deferred-items.md
+- 29.1-08 BLOCKING (deferred-items D4): three exact-equality anchor tests fail on the Linux run machine, so D-14's full-suite bar is not met. 29.1-08 must resolve them or record an explicit ruling in 29.1-PREPUSH-AUDIT.md; it must not record 'full test suite: 0 failed'.
+- ~~rerun-freeze-02 is cut and verified locally but NOT pushed.~~ RESOLVED 2026-08-24: the author approved 29.1-PREPUSH-AUDIT.md section 7 and the push ran (two ref creations, exit 0, no workflow fired). The v2.1 re-run is licensed. RUN-05 now waits only on that re-run's output.
+- Production zenodo.org unreachable (measured 2026-08-26): all six A records complete TLS with a valid cert, then the backend stalls ~25s or never answers; sandbox.zenodo.org 200 in 0.6s, github.com 200 in 0.16s, doi.org resolves then dies at Zenodo end. Not network/DNS/IPv6/firewall/bad-record-id. BLOCKS 29-04 — it must re-probe reachability before starting the 4.35 GB PUT.
+- OPEN, author decision, blocks 29-07: zenodo_metadata_b.json carries version 2.0.1, but run_manifest.json records git_describe v2.0.1-346-g7005a27 and 14 files in src/aquacal/ changed across that span (+1663/-67, incl. _optim_common.py, interface_estimation.py, refinement.py, pipeline.py, refractive_geometry.py). So 2.0.1 names an installable release that does NOT reproduce Record B numbers. src/ is byte-identical between 7005a277 and HEAD, so a release cut now would legitimately describe the code that ran. Field left untouched pending the ruling. Record A dataset version 1.0.0 is unaffected.
+- Record B (Zenodo deposition 22117061) is an unpublished draft; RUN-05 requires it PUBLISHED before paper submission. Author must publish at https://zenodo.org/deposit/22117061, then add Record A's isSourceOf back-link by hand at https://zenodo.org/records/22116461. Closes at plan 29-08.
+- [Phase 29]: 29-08: criterion 6 / RUN-05 DEFERRED on the author's explicit 2026-08-26 ruling — Record B cites v2.1.0, which does not exist yet (origin/main is 0 commits ahead of results/rerun-freeze-02, which is 406 ahead), so publishing would mint a permanent record naming a version nobody can install. Phase 29.2 owns the release and the publication; RUN-05 stays Pending; the phase closed against criteria 1-5. Deferral is a legitimate outcome, not a failure.
+- [Phase 29]: 29-08: E7's secondary refined pairing moved 8/10 (p = 0.05469) to 7/10 (p = 0.17188), both published in supplement 14 / MF-05. interface_ablation_band.csv is byte-identical across both run attempts (md5 b6515ed77ed04268608b74217716020b), so it is a FIX-02 effect, not a re-run artefact. ROUTED TO POST-01, Phase 30; section 3 edits stay the author's and no manuscript file was touched.
+- [Phase 29]: 29-08: the src/aquacal/datasets manifest pin on Zenodo record 21889922 is scoped to Phase 30 / POST-01, not decided here — four of its ten affected sites are inside the frozen experiments/ tree, and the correct shape is to PROMOTE the dataset identity to a set of records rather than add a second id alongside a still-required first. The ten-site table travels with the todo.
 
 ## Session Continuity
 
-Last session: 2026-08-10T14:43:40.207Z
-Stopped at: Phase 21 context gathered
-  walked and recorded in `19.3-10-SUMMARY.md`. One revision was made before approval: MF-08's
-  E4/E6 subsection carried four statements falsified by the clearance-floor diagnosis (that E6
-  cannot be seed-swept, that only seed 42 completes, that each configuration derives its own
-  floor, and that `depth_range=None` is inert) — corrected in `0054cd9`. E6's verdict did not
-  change; the stated reason did.
-Previously: Phase 19.3 code waves 1-5 COMPLETE (8/10 plans); paused before wave 6's ~9h run for review
-  written and committed (`102acad`). Six gray areas auto-resolved: the three-stage rename
-  cuts through to machine keys (`timings`, `internals/` filenames, JSON stage tags) while
-  Phases 16-17 sit unreleased; ex-Stage-4 becomes "Stage 3's optional intrinsic pass" /
-  `stage3_intrinsic_pass`; the pose-graph figure is regenerated from the paper supplement's
-  heap-replaying generator (renamed `pose_graph.png`); DOCS-04 gets a new
-  `docs/guide/configuration.md`; sweeps cover `src/` + `docs/` + `README.md` only; the
-  DOCS-01 numbers become test-asserted.
-  Two flags carried into planning: (1) the paper's exact stage labels are unconfirmed —
-  the manuscript is not in this repo, so the chosen vocabulary needs checking before the
-  rename lands; (2) the DOCS-01 figures in the source worklist were measured with
-  `group_columns`, which quick task 3 (`3c8685c`) replaced with
-  `build_structural_column_groups` — re-derive against the shipped path.
-  Both matched todos (Zenodo dataset 0.90, memory/CPU 0.40) were reviewed and declined
-  rather than auto-folded; each is sequenced elsewhere by a locked decision.
-  Nothing has been pushed: Phases 16-17 and quick task 3 sit unreleased on local `main`.
-Previously: Phase 17 (Per-Camera Interface Ablation Mode) executed and verified — all 5
-  plans done, all five IFACE-01..05 requirements satisfied, 799 tests passing. With
-  Phase 16 already complete, the milestone's experiment-blocking chain is finished and
-  WP5/WP6 execution is unblocked.
-  Before that: Plan 16-07 (standalone held-out evaluation, HOOK-04) executed and committed,
-  completing Phase 16 (Experiment Observability Hooks) — all 7 plans, all six HOOK-01..06
-  requirements.
-  Before that: Phase 16 context gathered. Roadmap for v1.9 was created and then revised to
-  run the experiment-blocking chain first, so ROADMAP.md carries phases 16-22 in the
-  order: Hooks (16) -> Per-Camera Interface (17) -> Docs Reconciliation (18) ->
-  Benchmark Instrumentation (19) -> Index Helper (20) -> Docs/Dataset Refresh (21) ->
-  Release Cut (22). All 29 requirements map to exactly one phase.
+**Resume file:** None
 
-  Phase 16 CONTEXT.md then settled the observability design: flat per-hook config keys
-  following `save_detailed_residuals`, config-only with no CLI flags, stage dumps on by
-  default with trace and conditioning opt-in, artifacts in `output_dir/internals/`
-  (not `diagnostics/` — a `diagnostics.json` file already sits at that level), trace as
-  CSV, conditioning split across JSON scalars and an NPZ matrix, `evaluate_calibration`
-  as a top-level export with conditioning in `aquacal.validation.*`.
+Last session: 2026-08-27T04:55:00.000Z
+(`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
+(`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
+Stopped at: Completed 29.2-04-PLAN.md — PR #3 open and unmerged, board ruled NOT GREEN
+Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
-  Two flags for planning: conditioning computes the full correlation matrix by explicit
-  choice on a run already peaking at ~3.6 GB, so headroom needs verifying and the
-  pre-check must refuse loudly rather than narrow the metric silently; and HOOK-05/HOOK-06
-  look largely satisfied already, so both are audits rather than assumed work.
+Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
+`.planning/milestones/v2.0-ROADMAP.md`.
 
-Resume file: .planning/phases/21-new-feature-documentation-dataset-refresh/21-CONTEXT.md
-  (it describes the pre-close checkpoint state). Authoritative record is
-  `19.3-10-SUMMARY.md` plus `.planning/MANUSCRIPT-FINDINGS.md` MF-08/MF-09.
-  For the next phase, start from `.planning/debug/e6-seed-locked-clearance-floor.md`.
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 29.1 P01 | 13 min | 3 tasks | 7 files |
+| Phase 29.1 P02 | 78 min | 3 tasks | 10 files |
+| Phase 29.1 P04 | 7 min | 2 tasks | 3 files |
+| Phase 29.1 P05 | 12 min | 2 tasks | 3 files |
+| Phase 29.1 P03 | 72 min | 3 tasks | 12 files |
+| Phase 29.1 P09 | 25 min | 3 tasks | 6 files |
+| Phase 29.1 P06 | 50m | 3 tasks | 11 files |
+| Phase 29.1 P07 | 2h45m | 3 tasks | 2 files |
+| Phase 29.1 P08 | 65m | 3 tasks | 6 files |
+| Phase 28 P01 | 31m | 3 tasks | 7 files |
+| Phase 28 P02 | 5m | 1 tasks | 1 files |
+| Phase 29 P02 | 13min | 3 tasks | 2 files |
+| Phase 29 P03 | 25min | 2 tasks | 5 files |
+| Phase 29 P05 | 12min | 3 tasks | 228 files |
+| Phase 29 P01 | 104min | 4 tasks | 5 files |
+| Phase 29 P06 | 75min | 3 tasks | 3 files |
+| Phase 29 P04 | 48min | 2 tasks | 1 files |
+| Phase 29 P07 | 26min | 3 tasks | 2 files |
+| Phase 29 P08 | 45min | 3 tasks | 8 files |
+| Phase 29.2 P01 | 20min | 3 tasks | 3 files |
+| Phase 29.2 P02 | 25m | 3 tasks | 1 files |
+| Phase 29.2 P03 | 1h15m | 3 tasks | 3 files |
+| Phase 29.2 P04 | 4h20m | 3 tasks | 6 files |

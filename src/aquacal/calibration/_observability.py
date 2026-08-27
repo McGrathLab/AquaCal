@@ -51,9 +51,115 @@ logger = logging.getLogger(__name__)
 # NOTHING HERE MAY BE CALLED FROM A PER-POINT OR PER-RESIDUAL LOOP. Every site
 # instrumented is per-(camera, frame) or per-video-frame. `benchmark.json`'s
 # wall-clock is published and E4's nine-cell grid is already committed at 5b17cd4;
-# a counter in the projection hot path would move those numbers. The three
-# total-internal-reflection branches in core/refractive_geometry.py are silent for
-# exactly this reason and are deliberately left so.
+# a counter in the projection hot path would move those numbers. The failure
+# branches in core/refractive_geometry.py now write an int8 reason code through an
+# opt-in out-parameter that is None on every production iteration, all of them
+# outside the Newton loop -- so the prohibition stated here, that nothing may be
+# COUNTED from a per-point loop, is intact.
+
+# ---------------------------------------------------------------------------
+# Degeneracy split vocabularies (phase 24, DEGEN-02)
+# ---------------------------------------------------------------------------
+#
+# TWO INDEPENDENT AXES, NOT A CROSS PRODUCT. With the failure cause now available
+# per point from the projector's `nan_reason_out` array, cause and fate are
+# independent facts about an invalid observation, and each one partitions the
+# invalid set exactly. They are recorded as MARGINALS.
+#
+# Why not the 3x2 joint: it would be 18 kind keys plus 3 denominators, tripling
+# the vocabulary to answer a question nobody has asked. The per-observation joint
+# is explicitly DEGEN-04's (Phase 25); this phase reports the split and does not
+# interpret it. The two marginals answer both questions that ARE asked -- "what
+# went wrong" and "does it still carry gradient" -- and each yields an exact,
+# derived invariant (relations 3 and 4 in `check_discard_invariants`).
+#
+# THE COLLISION HAZARD AND WHY THE NAMES CARRY THE AXIS. `behind_camera` is a
+# CAUSE (the projector could not place a pixel) while `penalized` is a FATE (the
+# pinhole extension could not place one either). They are correlated but not
+# identical, so a bare `degenerate_observations_behind_camera__stage3_...` would be
+# ambiguous about which axis it meant. The `cause_`/`fate_` prefixes are therefore
+# a mitigation, not cosmetics: plan 24-02 publishes BOTH axes side by side in one
+# CSV, where a reader who summed a cause column and a fate column together would
+# double the true total.
+
+# ---------------------------------------------------------------------------
+# Gate scope: the degeneracy gate is SYNTHETIC-ONLY (phase 25, DEGEN-04, D-04)
+# ---------------------------------------------------------------------------
+#
+# THE DECISION. The production degeneracy gate -- a recorded
+# `degenerate_observations_at_solution > 0` forcing a cell's status to
+# "degenerate" -- applies to the SYNTHETIC harnesses only
+# (`experiments/e4_benchmark_grid.py`, `experiments/e6_generalization_sweep.py`).
+# It does NOT extend to real-rig runs, and the production pipeline deliberately
+# reports no such status.
+#
+# WHY: AUTHORED GEOMETRY VERSUS GIVEN GEOMETRY. A synthetic scenario's geometry
+# is *authored* -- every camera pose, water height and board placement was chosen
+# by the harness. An observation that cannot be projected at the solution
+# therefore means the scenario itself was malformed, and the cell must fail
+# rather than contribute a number. A physical rig's geometry is *given*: the
+# board went where the operator put it, and a small unprojectable fraction is a
+# fact about the deployment -- a calibration board riding at or breaking the
+# water surface on a pass -- not a defect in this library. Gating a real run on
+# it would discard a sound calibration for describing its own session honestly.
+#
+# WHY THIS WAS SETTLED ON MECHANISM, NOT ON A COUNT. The count was never
+# load-bearing. The production rig's published figure is a sum accumulated across
+# solver stages through one un-reset `discard_stats` dict, so it may double-count
+# an observation invalid in two stages; that invalidated the original
+# 0.268%-of-observations argument outright. What licenses the decision is instead
+# WHICH FAILURE KIND DOMINATES. The instrumented probe at
+# `.planning/probes/2026-08-17-degeneracy-classification/` measured it: every
+# flagged observation was `above_interface` (`NAN_REASON_ABOVE_INTERFACE`, a
+# corner sitting millimetres to centimetres ABOVE the water surface, where the
+# refractive projection is undefined by construction), the other two causes were
+# empty -- not small, empty -- and they were confined to a handful of frames in
+# two bursts on an otherwise healthy run. That is a data-geometry condition, not
+# a solver pathology. Every number in that probe is PROVISIONAL: Phase 29's
+# frozen table is the sole source of any count that ships (D-02), and no figure
+# from the probe may be quoted as a published quantity.
+#
+# THE TRIPWIRE THAT RE-OPENS THIS. If Phase 29's frozen table shows a MATERIALLY
+# POPULATED `camera_model_failure` bucket -- `NAN_REASON_BEHIND_CAMERA` recorded
+# with a POSITIVE `h_q`, i.e. the corner was legitimately under water and the
+# camera model still failed to place a pixel -- then the geometry was fine and
+# the projection was not. That is a library limitation rather than a deployment
+# fact, and it is a DIFFERENT decision: this rationale is void and the gate's
+# scope must be revisited. Nothing else re-opens it; a change in the raw count
+# alone does not.
+#
+# WHAT MUST NEVER BE RESTORED. The synthetic gate predicate is exactly
+# `count > 0 -> degenerate`, with a smoke-path carve-out and nothing else
+# (D-05, `19.3-07-PLAN.md`). It must NOT be softened into a threshold, a
+# tolerance or a fraction-of-observations rule. "Real rigs tolerate a few" is an
+# argument about real rigs, which this decision has already removed from the
+# gate's scope -- it is not a reason to loosen the synthetic one.
+#
+# This block is PROSE ONLY. No bucket vocabulary, constant or accessor belongs
+# here: the taxonomy lives in `experiments/_degeneracy.py` (D-06), and the
+# library emits raw reason codes, never classified names.
+
+#: Why the refractive projection failed. Read off the projector's reason array,
+#: never re-derived at the call site.
+_DEGENERACY_CAUSES: tuple[str, ...] = (
+    "above_interface",
+    "behind_camera",
+    "interface_below_camera",
+)
+
+#: What the residual then did. Read off the existing `unextendable` mask.
+#: `extended` = continued by the pinhole extension, keeps a gradient; `penalized`
+#: = flat INVALID_PROJECTION_PENALTY_PX, no gradient at all.
+_DEGENERACY_FATES: tuple[str, ...] = ("extended", "penalized")
+
+#: The solver stages that bump these counters. `"unattributed"` is a declared,
+#: legal bucket (D-03) so an absent stage label is visible rather than merged into
+#: a real stage.
+_DISCARD_STAGES: tuple[str, ...] = (
+    "stage3_interface_optimization",
+    "stage3_intrinsic_pass",
+    "unattributed",
+)
 
 #: Every counter key this module may emit. `diagnostics.json` consumers can rely on
 #: the vocabulary being closed -- an unknown key means someone added a site without
@@ -80,13 +186,143 @@ DISCARD_KEYS: tuple[str, ...] = (
     "frame_no_camera_meets_min_corners",
     "interface_pnp_failed",
     "video_frame_unreadable",
-    # Convergence-diagnostic guard count (plan 19.3-02, D-19.3-11). Counted once,
-    # on the FINAL solution evaluation, per solver stage (optimize_interface's
-    # Stage 3 and joint_refinement's Stage 3 intrinsic pass) -- never a running
-    # per-iteration count. A non-zero value means first-order optimality is
-    # unreliable as a convergence measure for this run (see
-    # DegenerateObservationWarning); the library records this, it never raises.
+    # Convergence-diagnostic guard count (plan 19.3-02, D-19.3-11). Bumped on the
+    # FINAL solution evaluation of each solver stage (optimize_interface's Stage 3
+    # and joint_refinement's Stage 3 intrinsic pass) -- never a running per-iteration
+    # count. Because `_bump` accumulates into one caller dict threaded to both
+    # stages, the value IN AGGREGATE is the cross-stage SUM, not a single stage's
+    # count.
+    #
+    # Phase 24 (DEGEN-02) splits it on two INDEPENDENT axes, each of which
+    # decomposes this same total exactly:
+    #   - CAUSE: why the refractive projection failed (read off the projector's
+    #     `nan_reason_out` array).
+    #   - FATE:  what the residual then did (`extended` keeps a gradient,
+    #     `penalized` is a flat constant with none).
+    # This key equals the sum of the nine `..._cause_*` keys AND, independently,
+    # the sum of the six `..._fate_*` keys. The two axes describe the SAME set of
+    # observations from two angles and MUST NEVER BE ADDED TOGETHER -- summing a
+    # cause column and a fate column doubles the true total.
+    #
+    # This key is never dropped and never renamed: the production gate and
+    # `experiments/check_rerun_gates.py` read it by name. The split keys below are
+    # where the diagnosis lives.
     "degenerate_observations_at_solution",
+    # Phase 24 (DEGEN-02): the cause x stage, fate x stage and per-stage
+    # denominator keys, built from the three closed tuples below so no key string
+    # is ever spelled twice.
+    *tuple(
+        f"degenerate_observations_cause_{cause}__{stage}"
+        for cause in _DEGENERACY_CAUSES
+        for stage in _DISCARD_STAGES
+    ),
+    *tuple(
+        f"degenerate_observations_fate_{fate}__{stage}"
+        for fate in _DEGENERACY_FATES
+        for stage in _DISCARD_STAGES
+    ),
+    # D-10: the observation denominator, produced by the same pass over the same
+    # data at the same moment as the counts it is the denominator for. Never
+    # derived from `n_residuals / 2` (None whenever use_sparse_jacobian=False) nor
+    # from `problem_shape` totals (observations that COULD have existed).
+    *tuple(f"observations_evaluated__{stage}" for stage in _DISCARD_STAGES),
+)
+
+#: Public aliases of the three closed vocabularies (see the private tuples above).
+DEGENERACY_CAUSES: tuple[str, ...] = _DEGENERACY_CAUSES
+DEGENERACY_FATES: tuple[str, ...] = _DEGENERACY_FATES
+DISCARD_STAGES: tuple[str, ...] = _DISCARD_STAGES
+
+
+def degeneracy_cause_key(cause: str, stage: str) -> str:
+    """Build the flat `DISCARD_KEYS` entry for a (cause, stage) pair.
+
+    Args:
+        cause: One of `DEGENERACY_CAUSES`.
+        stage: One of `DISCARD_STAGES`. `"unattributed"` is legal, not an error --
+            an absent stage label is a legitimate call pattern (unit tests, direct
+            calls to `joint_refinement`) and must be visible rather than merged
+            into a real stage.
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If either argument is outside its closed vocabulary. Catching
+            that is what the closed vocabulary is for.
+    """
+    if cause not in _DEGENERACY_CAUSES:
+        raise ValueError(
+            f"unrecognized degeneracy cause {cause!r}; legal causes are "
+            f"{list(_DEGENERACY_CAUSES)}"
+        )
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"degenerate_observations_cause_{cause}__{stage}"
+
+
+def degeneracy_fate_key(fate: str, stage: str) -> str:
+    """Build the flat `DISCARD_KEYS` entry for a (fate, stage) pair.
+
+    Args:
+        fate: One of `DEGENERACY_FATES`.
+        stage: One of `DISCARD_STAGES` (`"unattributed"` included -- see
+            `degeneracy_cause_key`).
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If either argument is outside its closed vocabulary.
+    """
+    if fate not in _DEGENERACY_FATES:
+        raise ValueError(
+            f"unrecognized degeneracy fate {fate!r}; legal fates are "
+            f"{list(_DEGENERACY_FATES)}"
+        )
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"degenerate_observations_fate_{fate}__{stage}"
+
+
+def observations_evaluated_key(stage: str) -> str:
+    """Build the flat per-stage denominator key.
+
+    Args:
+        stage: One of `DISCARD_STAGES`.
+
+    Returns:
+        The flat key string.
+
+    Raises:
+        ValueError: If `stage` is outside the closed vocabulary.
+    """
+    if stage not in _DISCARD_STAGES:
+        raise ValueError(
+            f"unrecognized discard stage {stage!r}; legal stages are "
+            f"{list(_DISCARD_STAGES)}"
+        )
+    return f"observations_evaluated__{stage}"
+
+
+#: The nine cause keys, in declaration order.
+_DEGENERACY_CAUSE_KEYS: tuple[str, ...] = tuple(
+    degeneracy_cause_key(cause, stage)
+    for cause in _DEGENERACY_CAUSES
+    for stage in _DISCARD_STAGES
+)
+
+#: The six fate keys, in declaration order.
+_DEGENERACY_FATE_KEYS: tuple[str, ...] = tuple(
+    degeneracy_fate_key(fate, stage)
+    for fate in _DEGENERACY_FATES
+    for stage in _DISCARD_STAGES
 )
 
 #: Producer-side failure keys whose total must equal `pose_discarded_by_consumer`.
@@ -135,6 +371,18 @@ def check_discard_invariants(stats: dict[str, int]) -> list[str]:
        branch is the failure mode that would send plan 19.2-06's differing-
        denominator halt into an input diagnosis (wrong frameset) for what is
        actually a counter-scoping bug.
+    3. Cause decomposition (phase 24). `degenerate_observations_at_solution` equals
+       the sum of the nine `..._cause_*` keys.
+    4. Fate decomposition (phase 24). The same total equals the sum of the six
+       `..._fate_*` keys. Two independent exact decompositions of one total is a
+       cross-check neither axis provides alone, and it is what makes plan 24-02's
+       six-column CSV self-validating by eye.
+    5. Denominator sanity (phase 24). Each stage's three cause counts sum to at
+       most that stage's `observations_evaluated__*`, when that denominator is
+       present and non-zero.
+
+    Relations 3-5 hold unconditionally, so they flow through
+    `check_denominator_only` unchanged.
 
     Args:
         stats: A populated counter dict.
@@ -162,6 +410,39 @@ def check_discard_invariants(stats: dict[str, int]) -> list[str]:
             f"denominator mismatch: pnp_attempts_total={total} but "
             f"refractive+nonrefractive={split}"
         )
+
+    merged = stats.get("degenerate_observations_at_solution", 0)
+
+    by_cause = sum(stats.get(k, 0) for k in _DEGENERACY_CAUSE_KEYS)
+    if merged != by_cause:
+        violations.append(
+            f"degeneracy cause split mismatch: "
+            f"degenerate_observations_at_solution={merged} but the nine cause keys "
+            f"sum to {by_cause}"
+        )
+
+    by_fate = sum(stats.get(k, 0) for k in _DEGENERACY_FATE_KEYS)
+    if merged != by_fate:
+        violations.append(
+            f"degeneracy fate split mismatch: "
+            f"degenerate_observations_at_solution={merged} but the six fate keys "
+            f"sum to {by_fate}"
+        )
+
+    for stage in _DISCARD_STAGES:
+        denominator = stats.get(observations_evaluated_key(stage), 0)
+        if denominator <= 0:
+            continue
+        stage_causes = sum(
+            stats.get(degeneracy_cause_key(cause, stage), 0)
+            for cause in _DEGENERACY_CAUSES
+        )
+        if stage_causes > denominator:
+            violations.append(
+                f"degeneracy denominator mismatch for stage {stage!r}: cause counts "
+                f"sum to {stage_causes} but only {denominator} observations were "
+                f"evaluated"
+            )
 
     unknown = sorted(set(stats) - set(DISCARD_KEYS))
     if unknown:
@@ -291,6 +572,40 @@ class SolverDiagnostics:
             `n_groups`.
         n_residuals_reason: Explanation for why `n_residuals` is `None`.
             Populated only when `n_residuals` is `None`.
+        optimality_by_block: Per-parameter-block decomposition of `optimality`
+            (DEGEN-05), keyed by the block names `build_parameter_block_slices`
+            returns. Each entry carries `max_scaled` (float), `max_unscaled`
+            (float), `argmax_parameter` (str, from `build_parameter_labels`) and
+            `n_params` (int). `None` with `optimality_by_block_reason` set when
+            the call site could not supply labels, blocks or bounds.
+
+            **Why the decomposition exists.** `optimality` is a single scalar
+            that mixes three Coleman-Li scaling regimes -- ``v = 1`` for
+            unbounded extrinsics and board poses, ``v`` around 700 for
+            wide-bounded intrinsics, and ``v`` around 2e-12 for a pinned slot --
+            so it is NOT a like-for-like maximum across blocks. Reading it as one
+            number invites attributing a large value to whichever block the
+            reader already suspects. The maximum `max_scaled` over blocks equals
+            `result.optimality`, since scipy reports ``norm(g * v, inf)``.
+        optimality_by_block_reason: Explanation for why `optimality_by_block` is
+            `None`. Populated only when it is `None`.
+        parameters_at_bound: Which parameters terminated ON a bound rather than
+            at an interior minimum (D-16), read from scipy's own `active_mask`.
+            Each entry carries `parameter` (str label), `bound` (`"lower"` or
+            `"upper"`), `interval_width` (float), `gap` (float) and
+            `classification` (`"pinned"` or `"traveled"`). `None` with
+            `parameters_at_bound_reason` set when the call site could not supply
+            labels, blocks or bounds.
+
+            **The classification is load-bearing.** A pinned parameter is
+            legitimately at its bound by construction, so a detector that flagged
+            "on a bound" without separating pinned-by-request from
+            ran-into-a-limit would fire on E1's non-refractive arm every single
+            run and be trained away, exactly as the always-red gate in
+            `knowledge-base.md` was. The bound-interval width discriminates them
+            cheaply.
+        parameters_at_bound_reason: Explanation for why `parameters_at_bound` is
+            `None`. Populated only when it is `None`.
     """
 
     nfev: int | None = None
@@ -310,6 +625,10 @@ class SolverDiagnostics:
     n_groups_reason: str | None = None
     n_residuals: int | None = None
     n_residuals_reason: str | None = None
+    optimality_by_block: dict[str, dict] | None = None
+    optimality_by_block_reason: str | None = None
+    parameters_at_bound: list[dict] | None = None
+    parameters_at_bound_reason: str | None = None
 
 
 def build_parameter_labels(
@@ -411,14 +730,21 @@ def capture_solver_diagnostics(
     n_groups_reason: str | None = None,
     n_residuals: int | None = None,
     n_residuals_reason: str | None = None,
+    parameter_labels: list[str] | None = None,
+    parameter_blocks: dict[str, slice] | None = None,
+    bounds: tuple | None = None,
 ) -> None:
     """Populate a `SolverDiagnostics` in place from a returned `OptimizeResult`.
 
-    Must be called only after `least_squares` returns; never read `result.jac`,
-    `result.fun`, or `result.x` here (Research Pitfall 4 -- doing so risks
-    retaining large arrays and inflating the very peak-memory measurement
-    BENCH-02 depends on being honest). Only the small scalar fields SciPy
-    already reports on `OptimizeResult` are read.
+    Must be called only after `least_squares` returns.
+
+    **Pitfall 4, narrowed by phase 24 rather than silently violated.**
+    `result.fun` (length M) and `result.jac` (M x P) remain FORBIDDEN here:
+    retaining them inflates the very peak-memory measurement BENCH-02 depends on
+    being honest. `result.grad`, `result.active_mask` and `result.x` are all
+    length P, and phase 24 reads them -- but only to reduce them immediately to
+    Python scalars and strings via `float()`/`int()`/`str()` at the point of
+    extraction, so no numpy array ever survives on the dataclass.
 
     `njev` is read defensively via `getattr` for reuse-safety, but at every one
     of this codebase's four in-scope call sites (all `method='trf'`) it is
@@ -449,6 +775,17 @@ def capture_solver_diagnostics(
             applicable (EXP-08).
         n_residuals_reason: Explanation recorded when `n_residuals` is `None`
             (D-15).
+        parameter_labels: Labels from `build_parameter_labels`, packed with the
+            same arguments as the solved vector. Required for
+            `optimality_by_block` and `parameters_at_bound`.
+        parameter_blocks: Block slices from
+            `_optim_common.build_parameter_block_slices`, packed with the same
+            arguments. Required for the same two fields.
+        bounds: The `(lower, upper)` tuple passed to `least_squares`. Required
+            for the same two fields.
+
+            When any of these three is `None`, both new fields are recorded as
+            `None` with a `*_reason` naming what was missing (D-15).
     """
     if diagnostics_out is None:
         return
@@ -472,6 +809,137 @@ def capture_solver_diagnostics(
     diagnostics_out.n_groups_reason = n_groups_reason
     diagnostics_out.n_residuals = n_residuals
     diagnostics_out.n_residuals_reason = n_residuals_reason
+
+    missing = [
+        name
+        for name, value in (
+            ("parameter_labels", parameter_labels),
+            ("parameter_blocks", parameter_blocks),
+            ("bounds", bounds),
+        )
+        if value is None
+    ]
+    if missing:
+        reason = (
+            f"call site supplied no {', '.join(missing)}; the packed-vector "
+            f"layout is unavailable at this site"
+        )
+        diagnostics_out.optimality_by_block = None
+        diagnostics_out.optimality_by_block_reason = reason
+        diagnostics_out.parameters_at_bound = None
+        diagnostics_out.parameters_at_bound_reason = reason
+        return
+
+    diagnostics_out.optimality_by_block = _decompose_optimality(
+        result, parameter_labels, parameter_blocks, bounds
+    )
+    diagnostics_out.optimality_by_block_reason = None
+    diagnostics_out.parameters_at_bound = _detect_parameters_at_bound(
+        result, parameter_labels, bounds
+    )
+    diagnostics_out.parameters_at_bound_reason = None
+
+
+#: A bound interval this narrow (relative to its own magnitude) is a pin by
+#: request, not a limit the solver travelled into. The probe measured the pinned
+#: `water_z` slot at a bound gap of 2.000177801164682e-12 with `active_mask = 1`,
+#: while every other block reported 0.
+_PINNED_INTERVAL_RTOL = 1e-9
+
+
+def _coleman_li_scaling(
+    x: NDArray[np.float64],
+    grad: NDArray[np.float64],
+    lower: NDArray[np.float64],
+    upper: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Compute scipy `trf`'s Coleman-Li scaling vector `v`, elementwise.
+
+    `v = upper - x` where the gradient points toward the upper bound and that
+    bound is finite; `v = x - lower` where it points toward a finite lower bound;
+    `1.0` otherwise. scipy reports `optimality` as `norm(grad * v, inf)`, so this
+    is what makes the per-block maxima add up to the reported scalar.
+    """
+    v = np.ones_like(x, dtype=np.float64)
+    toward_upper = (grad < 0) & np.isfinite(upper)
+    toward_lower = (grad > 0) & np.isfinite(lower)
+    v[toward_upper] = upper[toward_upper] - x[toward_upper]
+    v[toward_lower] = x[toward_lower] - lower[toward_lower]
+    return v
+
+
+def _decompose_optimality(
+    result,
+    parameter_labels: list[str],
+    parameter_blocks: dict[str, slice],
+    bounds: tuple,
+) -> dict[str, dict]:
+    """Attribute `result.optimality` to each structural parameter block."""
+    x = np.asarray(result.x, dtype=np.float64)
+    grad = np.asarray(result.grad, dtype=np.float64)
+    lower = np.asarray(bounds[0], dtype=np.float64)
+    upper = np.asarray(bounds[1], dtype=np.float64)
+
+    scaled = np.abs(grad * _coleman_li_scaling(x, grad, lower, upper))
+    unscaled = np.abs(grad)
+
+    by_block: dict[str, dict] = {}
+    for name, block in parameter_blocks.items():
+        block_scaled = scaled[block]
+        if block_scaled.size == 0:
+            continue
+        argmax = int(np.argmax(block_scaled))
+        by_block[name] = {
+            "max_scaled": float(block_scaled[argmax]),
+            "max_unscaled": float(np.max(unscaled[block])),
+            "argmax_parameter": str(parameter_labels[block.start + argmax]),
+            "n_params": int(block_scaled.size),
+        }
+    return by_block
+
+
+def _detect_parameters_at_bound(
+    result,
+    parameter_labels: list[str],
+    bounds: tuple,
+) -> list[dict]:
+    """List parameters scipy's `active_mask` reports as terminating on a bound.
+
+    D-16. `active_mask` is `-1` at a lower bound, `+1` at an upper bound and `0`
+    in the interior, so this is a plumbing job rather than a detection problem --
+    the signal is already computed by scipy on the real solve.
+    """
+    x = np.asarray(result.x, dtype=np.float64)
+    active_mask = np.asarray(result.active_mask)
+    lower = np.asarray(bounds[0], dtype=np.float64)
+    upper = np.asarray(bounds[1], dtype=np.float64)
+
+    at_bound: list[dict] = []
+    for i in np.flatnonzero(active_mask):
+        i = int(i)
+        is_lower = active_mask[i] < 0
+        active_bound = lower[i] if is_lower else upper[i]
+        interval_width = float(upper[i] - lower[i])
+        # An infinite interval is never a pin. Without the isfinite guard,
+        # a one-sided bound gives `inf <= 1e-9 * inf` -> `inf <= inf` -> True,
+        # reporting the WIDEST possible interval as pinned-by-request. That is
+        # silent in exactly the direction D-16 exists to prevent: it trains the
+        # signal away. Scale on both ends, not just `lower`, so a pin at a large
+        # upper bound with a zero lower bound is not measured against 1.0.
+        scale = max(1.0, abs(float(lower[i])), abs(float(upper[i])))
+        pinned = np.isfinite(interval_width) and (
+            interval_width <= _PINNED_INTERVAL_RTOL * scale
+        )
+        at_bound.append(
+            {
+                "parameter": str(parameter_labels[i]),
+                "bound": "lower" if is_lower else "upper",
+                "interval_width": interval_width,
+                "gap": float(abs(x[i] - active_bound)),
+                "classification": "pinned" if pinned else "traveled",
+            }
+        )
+    return at_bound
 
 
 class OptimizerObserver:

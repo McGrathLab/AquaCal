@@ -24,6 +24,38 @@ if TYPE_CHECKING:
     import matplotlib.pyplot as plt
 
 
+#: Column order for degenerate_observations.csv, fixed so the artifact's shape
+#: never depends on dict insertion order. Identity first, provenance
+#: (``stage``) next, then geometry, then the truncation disclosure.
+DEGENERATE_OBSERVATION_COLUMNS = (
+    "camera",
+    "frame_idx",
+    "corner_id",
+    "stage",
+    "h_q_m",
+    "h_c_m",
+    "r_q_m",
+    "chord_incidence_deg",
+    "extended",
+    "nan_reason",
+    "n_flagged_at_stage",
+    "truncated",
+)
+
+#: Column order for all_observation_depths.csv. Same discipline; the geometry
+#: block is only ``h_q_m`` because the full-population sink records depth alone.
+OBSERVATION_DEPTH_COLUMNS = (
+    "camera",
+    "frame_idx",
+    "corner_id",
+    "stage",
+    "h_q_m",
+    "nan_reason",
+    "n_observations_at_stage",
+    "truncated",
+)
+
+
 @dataclass
 class DiagnosticReport:
     """Complete diagnostic report for calibration quality.
@@ -851,16 +883,23 @@ def save_diagnostic_report(
     timings: dict[str, object] | None = None,
     frame_rejection: dict[str, object] | None = None,
     discard_stats: dict[str, int] | None = None,
+    degeneracy_details: list[dict] | None = None,
+    observation_depths: list[dict] | None = None,
 ) -> dict[str, Path]:
     """
     Save diagnostic report to disk.
 
     Creates:
+
     - diagnostics.json: Summary statistics and recommendations
     - spatial_error_{cam}.png: Per-camera error heatmaps (if save_images=True)
     - camera_rig.png: 3D camera rig visualization (if save_images=True)
     - quiver_{cam}.png: Per-camera reprojection error quiver plots (if save_images=True)
     - depth_errors.csv: Depth-stratified error table
+    - degenerate_observations.csv: One row per flagged observation (only when at
+      least one exists; a clean run writes no file at all)
+    - all_observation_depths.csv: One row per evaluated observation (only when
+      full-population logging was requested and produced rows)
 
     Args:
         report: DiagnosticReport to save (contains primary-only stats)
@@ -881,11 +920,43 @@ def save_diagnostic_report(
             (e.g. ``{"enabled": True, "rejected_frames": [...], ...}``) to embed
             under the top-level ``"frame_rejection"`` key in ``diagnostics.json``.
             When ``None``, the key is omitted (backward compatible).
+        degeneracy_details: Optional per-observation rows for the observations
+            the refractive model could not project at the Stage 3 solution
+            (plan 25-01). Written to ``degenerate_observations.csv`` in
+            ``output_dir`` **only when the list is non-empty** -- a clean run
+            writes no file at all, never an empty one. This is how a non-zero
+            degeneracy count in ``diagnostics.json`` stops being a bare number
+            and becomes an answerable question, without the reader having to
+            re-run anything. Columns, in fixed order: ``camera``, ``frame_idx``,
+            ``corner_id``, ``stage``, ``h_q_m``, ``h_c_m``, ``r_q_m``,
+            ``chord_incidence_deg``, ``extended``, ``nan_reason``,
+            ``n_flagged_at_stage``, ``truncated``. ``h_q_m``/``h_c_m``/``r_q_m``
+            are in meters. ``chord_incidence_deg`` is the straight-chord
+            surrogate angle, NOT the refracted exit angle -- no refraction point
+            exists for a flagged observation. ``nan_reason`` is an int8 code
+            whose bucket taxonomy lives in ``experiments/_degeneracy.py``; the
+            library deliberately spells no bucket name. ``truncated`` together
+            with ``n_flagged_at_stage`` is what lets a reader of this file alone
+            detect that the table was capped, without consulting the run log.
+        observation_depths: Optional per-observation rows covering EVERY
+            evaluated observation, not just the flagged ones (opt-in via
+            ``CalibrationConfig.log_all_observation_depths``). Written to
+            ``all_observation_depths.csv`` under the same non-empty-only rule.
+            This is the population a flagged observation's depth is interpreted
+            against. Columns, in fixed order: ``camera``, ``frame_idx``,
+            ``corner_id``, ``stage``, ``h_q_m``, ``nan_reason``,
+            ``n_observations_at_stage``, ``truncated``. ``h_q_m`` is in meters;
+            ``nan_reason`` and ``truncated``/``n_observations_at_stage`` carry
+            the same meanings as above.
 
     Returns:
         Dict mapping output type to file path:
         - "json": Path to diagnostics.json
         - "csv": Path to depth_errors.csv
+        - "degenerate_observations": Path to degenerate_observations.csv
+          (absent when no observation was flagged)
+        - "all_observation_depths": Path to all_observation_depths.csv
+          (absent unless full-population logging was on and produced rows)
         - "images": Dict of camera_name -> spatial error image path (if save_images=True)
         - "rig": Path to camera_rig.png (if save_images=True)
         - "quiver": Dict of camera_name -> quiver image path (if save_images=True)
@@ -952,6 +1023,24 @@ def save_diagnostic_report(
     csv_path = output_dir / "depth_errors.csv"
     report.depth_errors.to_csv(csv_path, index=False)
     result["csv"] = csv_path
+
+    # Per-observation degeneracy sidecars (D-08). The rule is stricter than the
+    # conditional-key precedent above: an empty list means NO FILE, not an empty
+    # file, so the presence of the sidecar is itself the signal that something
+    # was flagged.
+    if degeneracy_details:
+        degen_path = output_dir / "degenerate_observations.csv"
+        pd.DataFrame(degeneracy_details).reindex(
+            columns=list(DEGENERATE_OBSERVATION_COLUMNS)
+        ).to_csv(degen_path, index=False)
+        result["degenerate_observations"] = degen_path
+
+    if observation_depths:
+        depths_path = output_dir / "all_observation_depths.csv"
+        pd.DataFrame(observation_depths).reindex(
+            columns=list(OBSERVATION_DEPTH_COLUMNS)
+        ).to_csv(depths_path, index=False)
+        result["all_observation_depths"] = depths_path
 
     # Save images
     if save_images:

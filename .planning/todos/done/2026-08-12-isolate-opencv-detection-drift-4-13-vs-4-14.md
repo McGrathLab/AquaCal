@@ -1,0 +1,118 @@
+# OpenCV 4.13 -> 4.14 ChArUco detection drift
+
+**Filed:** 2026-08-12, from the second-machine E2 re-run (MF-20)
+**Updated:** 2026-08-12 — the main experiment is **DONE**; only a sub-question remains
+**Relates to:** MF-20, MF-19, `2026-08-05-pin-opencv-below-5-0.md`
+
+## Resolved
+
+OpenCV was confirmed as the **entire** cause by a single-variable control
+(`experiments/results_linux32gb/e2_cv413/`): the same E2 run on the same machine in a cloned env
+differing only in `opencv-python` (4.13.0.92 vs 4.14.0.94).
+
+Under **4.13**, Linux reproduces the Windows reference exactly — all 13 cameras' observation
+counts identical (23028, including the fisheye's 3935 that 4.14 lost 348 of), and **1.264e-07**
+worst-case relative difference across all 61 numeric diagnostics quantities. Under **4.14** the
+same quantities move up to 1.1e-01.
+
+Two consequences, both recorded in MF-20 and `linux32gb_scope.json`:
+
+- The 1.8.0 -> 2.0.1 and Windows -> Linux gaps are **inert on real data**, not just synthetic.
+- DATA-01a's undefined tolerance stops mattering: §3 reproduces from the published archive at the
+  numerical floor, provided OpenCV is 4.13.
+
+## Still open
+
+**1. Which OpenCV change?** Two routes remain confounded *within* OpenCV:
+
+- `cv2.aruco.CharucoDetector` (`src/aquacal/io/detection.py:64`) changed its corner output, and/or
+- `calibrateCamera` produced different Stage-1 intrinsics, fed back into detection via
+  `CharucoParameters` (`detection.py:56-61`, called at `:230`).
+
+To separate them, add an arm that pins Stage-1 intrinsics to the archive's
+`reference_calibration.json` and re-detects under both versions. This no longer affects any
+attribution — it is a mechanism question, worth doing only if the fix needs to be targeted.
+
+**2. ~~Does the pin belong in `pyproject.toml`?~~ RESOLVED 2026-08-13.** It does, and it landed:
+`pyproject.toml:40` and `requirements.txt:12` both read `opencv-python==4.13.*` (`fa9ec3a`,
+quick task 260813-clj). The decision went to *pinning to reproduce §3* rather than re-baselining
+on a current OpenCV. `2026-08-05-pin-opencv-below-5-0.md` is closed.
+
+**3. Packaging-build ambiguity.** PyPI ships both `4.13.0.90` and `4.13.0.92`, and both report
+`cv2.__version__ == 4.13.0`, which is all the Windows record stored. The control used `.92`. Any
+difference between those two builds is unaccounted for — likely nil, not proven.
+
+---
+
+## Re-scoped 2026-08-15 — two of three items are closed; the third moved
+
+**Item 2 (does the pin belong in `pyproject.toml`) — CLOSED.** v2.0.1 pins
+`opencv-python==4.13.*`, and `2026-08-05-pin-opencv-below-5-0.md` has been moved to `done/`.
+
+**Item 3 (packaging-build ambiguity) — MOVED, not closed.** It is a provenance-recording problem,
+not an OpenCV investigation, and it now belongs to
+`2026-08-15-emit-a-single-run-manifest-for-the-full-suite.md`: the manifest must capture the
+**PyPI build suffix**, not just `cv2.__version__`, so the fresh suite cannot reproduce the
+`4.13.0`-means-two-things ambiguity. Nothing to do here.
+
+**Item 1 (which OpenCV change — detector vs. Stage-1 intrinsics) — DEFERRED post-submission.**
+It no longer affects any attribution; the todo already says it is "worth doing only if the fix
+needs to be targeted", and the fix (the pin) is not targeted. The supplement's confirmed §10
+sentence *promises* the separating experiment as future work — "a synthetic target with known
+corner locations would separate the two" — and promising future work is not the same as owing it
+before submission.
+
+**Net: this todo is a record, not a work item, until after submission.** It stays in `pending/`
+only so item 1's open question does not vanish; nothing in it belongs in the fix milestone.
+
+## Re-scoped 2026-08-15 — item 3 becomes a pre-run action
+
+Item 3 (the `4.13.0.90` vs `4.13.0.92` build ambiguity) was filed as an unaccounted-for residual,
+"likely nil, not proven". The committed full-suite re-run promotes it to something cheap and
+worth doing **before** the run, for a reason that did not exist when it was filed:
+
+**The fresh suite will record the same ambiguous string.** `src/aquacal/io/benchmark.py:115`
+captures `cv2.__version__`, which is `"4.13.0"` for both PyPI builds — verified in the committed
+sidecars (`e1_seed_band_provenance.json` → `environment.opencv_version: "4.13.0"`). The pin
+`opencv-python==4.13.*` permits either. So a re-run that is supposed to be the single source of
+truth would re-introduce exactly the gap this todo names, in artifacts nobody can disambiguate
+afterwards.
+
+**Action:** record the full distribution version alongside `cv2.__version__` — e.g. the installed
+`opencv-python` distribution version via `importlib.metadata.version("opencv-python")`, which does
+distinguish `.90` from `.92`. One field, additive, in the environment block. Then the ambiguity is
+closed by construction for every artifact the run produces, and item 3 becomes answerable from the
+record rather than by re-deriving it.
+
+Item 1 (which OpenCV change: `CharucoDetector` output vs `calibrateCamera` intrinsics feedback)
+is **unchanged** — still a mechanism question, still worth doing only if a targeted fix is needed.
+The pin makes it non-blocking.
+
+---
+
+## CLOSED 2026-08-15 — moot while the library is pinned
+
+**Author decision:** the question is moot as long as the library is pinned to one OpenCV version,
+which it will be until at least post-publication. `pyproject.toml:40` and `requirements.txt:12`
+both read `opencv-python==4.13.*` (`fa9ec3a`), and nothing in this milestone relaxes that.
+
+Disposition of the three items:
+
+- **Item 1 — which OpenCV change (`CharucoDetector` output vs `calibrateCamera` intrinsics
+  feedback)?** Closed unanswered, deliberately. It was always scoped as "a mechanism question,
+  worth doing only if the fix needs to be targeted", and with a pin in place there is no fix to
+  target. If the pin is ever relaxed — a post-publication decision — this is the investigation to
+  reopen, and MF-20's single-variable control (`experiments/results_linux32gb/e2_cv413/`) is the
+  method to repeat.
+- **Item 2 — does the pin belong in `pyproject.toml`?** Already resolved 2026-08-13; it landed
+  tighter than asked.
+- **Item 3 — the `4.13.0.90` vs `.92` build ambiguity.** **Transferred**, not dropped:
+  `2026-08-15-emit-a-single-run-manifest-for-the-full-suite.md` owns recording the PyPI build
+  suffix so the fresh suite's artifacts disambiguate themselves. That is the only live remnant and
+  it has a new home.
+
+**What stays true and is worth not re-deriving:** OpenCV was confirmed as the *entire* cause of the
+Windows→Linux real-rig drift by a single-variable control. Under 4.13 the reproduction is at the
+numerical floor (1.264e-07 worst-case relative, all 13 cameras' observation counts identical);
+under 4.14 the same quantities move up to 1.1e-01. That is recorded in MF-20 and in
+`linux32gb_scope.json`, and it is why the pin is load-bearing rather than housekeeping.

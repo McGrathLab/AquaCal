@@ -23,6 +23,7 @@ import logging
 import os
 import platform
 import subprocess
+import tomllib
 import tracemalloc
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -83,7 +84,15 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
         Plain dict with every value already cast to a native Python type
         (`str`/`int`/`None`), matching the numpy-to-JSON cast precedent in
         `aquacal.validation.conditioning`:
-            - `aquacal_version` (str): always a non-empty string.
+            - `aquacal_version` (str): always a non-empty string. Read from
+              INSTALLED distribution metadata, which an editable install
+              refreshes only at `pip install -e .` time.
+            - `aquacal_version_declared` (str | None): the `version` declared
+              in the checkout's `pyproject.toml`, or `None` when no checkout
+              is reachable. Present so a reader diffing two artifacts can SEE
+              a stale editable install rather than infer it: when this differs
+              from `aquacal_version`, the code that ran was the working tree
+              and `aquacal_version` names a different, older release.
             - `python_version` (str)
             - `numpy_version` (str)
             - `scipy_version` (str)
@@ -99,6 +108,7 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
     """
     env = {
         "aquacal_version": "unknown",
+        "aquacal_version_declared": None,
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,
@@ -118,6 +128,26 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
             "Could not resolve aquacal_version for benchmark environment capture."
         )
 
+    # One repo root, used for both the declared-version read below and the
+    # `git rev-parse HEAD` call further down -- the artifact must not describe
+    # two different checkouts.
+    cwd = (
+        repo_hint_path
+        if repo_hint_path is not None
+        else _find_git_root(Path(__file__).resolve().parent)
+    )
+
+    try:
+        pyproject = Path(cwd) / "pyproject.toml"  # type: ignore[arg-type]
+        env["aquacal_version_declared"] = tomllib.loads(
+            pyproject.read_text(encoding="utf-8")
+        )["project"]["version"]
+    except Exception:
+        logger.debug(
+            "aquacal_version_declared unavailable (no reachable checkout, or "
+            "pyproject.toml could not be parsed)."
+        )
+
     try:
         import psutil
 
@@ -128,11 +158,6 @@ def capture_environment(repo_hint_path: Path | None = None) -> dict:
             "psutil unavailable; cpu_count_logical/ram_total_bytes left as None."
         )
 
-    cwd = (
-        repo_hint_path
-        if repo_hint_path is not None
-        else _find_git_root(Path(__file__).resolve().parent)
-    )
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -367,6 +392,7 @@ def assemble_benchmark_record(
     accuracy: dict,
     environment: dict,
     memory_readings: dict | None = None,
+    discard_stats: dict | None = None,
 ) -> dict:
     """Assemble the full `benchmark.json` record (BENCH-01, BENCH-03, BENCH-04).
 
@@ -400,11 +426,24 @@ def assemble_benchmark_record(
             ordered dict keyed by boundary name in temporal order (starting
             with `"_baseline"`), each value the `capture_peak_memory()`
             reading taken at that boundary (D-18).
+        discard_stats: `None` (the default) when the caller has no discard
+            accounting to record -- no `"discard_stats"` key appears anywhere
+            in the returned record, following `memory_readings`' precedent
+            exactly (this function never invents an empty block). Otherwise
+            the run's whole `discard_stats` dict, passed through UNMODIFIED
+            (D-11). Deliberately not a hand-picked field list: DEGEN-01's
+            defect was a counter that lived in `discard_stats` and was never
+            written into the record, and a curated field list reproduces that
+            defect the next time a counter is added. Its vocabulary is the
+            closed `DISCARD_KEYS` set in
+            `aquacal.calibration._observability`, so a new counter reaches
+            `benchmark.json` without this function naming it.
 
     Returns:
         A fully JSON-serializable dict with top-level keys `schema_version`,
         `problem_shape`, `stages`, `solver_config`, `accuracy`, `environment`,
-        and (only when `memory_readings` is not `None`) `memory`.
+        (only when `memory_readings` is not `None`) `memory`, and (only when
+        `discard_stats` is not `None`) `discard_stats`.
     """
     stages: dict[str, dict] = {}
     for stage_name, diag in diagnostics.items():
@@ -436,6 +475,11 @@ def assemble_benchmark_record(
         "accuracy": _to_native(accuracy),
         "environment": _to_native(environment),
     }
+
+    # Own top-level block, whole dict, unmodified (D-11). Omitted entirely when
+    # None -- the same "never invent an empty block" rule `memory` follows.
+    if discard_stats is not None:
+        record["discard_stats"] = _to_native(discard_stats)
 
     if memory_readings is not None:
         previous_reading = memory_readings.get("_baseline")

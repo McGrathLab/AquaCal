@@ -91,6 +91,16 @@ Every number in this table is read from `reference_outputs/diagnostics.json` ins
 archive — the paper run's own output — so you can diff your `output/diagnostics.json` against
 it directly.
 
+**These values were produced under OpenCV 4.13.0.** ChArUco corner detection is entirely
+OpenCV's (AquaCal calls `cv2.aruco.CharucoDetector` directly), so a different OpenCV minor
+version can detect a slightly different corner set and move every number below at the ~1–10%
+level with nothing wrong on either side — measured between 4.13.0 and 4.14.0: 1.95% fewer
+corner observations, `reconstruction.rmse` +7.8%, mean reprojection +1.1%. Check yours with
+`python -c "import cv2; print(cv2.__version__)"`, and note that your own run's
+`output/benchmark.json` records it under `environment.opencv_version`. AquaCal pins
+`opencv-python==4.13.*` so a plain install reproduces the table; if you have deliberately
+installed a different minor, expect small offsets rather than a matching diff.
+
 | Quantity | Reference value | Where it comes from |
 |---|---|---|
 | Mean reprojection error | 0.82404 px | `reference_outputs/diagnostics.json` -> mean of the 12 values in `reprojection.per_camera` |
@@ -165,6 +175,7 @@ comparing multiple runs against each other once you have more than one calibrati
 | `0 frames detected` / video reading returns nothing | Wrong Python environment | Run inside the AquaCal environment, not a bare system Python — OpenCV's video backend can silently fail to decode frames in an unrelated environment |
 | Calibration process killed / out of memory | `config_paper.yaml` needs roughly 11 GiB peak memory | Close other applications before running, or use `config_quickstart_not_paper.yaml` for a lighter first pass |
 | Numbers don't match Section 3 | Ran the wrong config | Confirm you ran `config_paper.yaml`, not `config_quickstart_not_paper.yaml` — only the paper config reproduces Section 3 |
+| Numbers are close but off by ~1–10%, with the right config | Different OpenCV version | The reference values came from **OpenCV 4.13.0**, and corner detection changes across minor versions. Check with `python -c "import cv2; print(cv2.__version__)"` and compare against `environment.opencv_version` in your `output/benchmark.json`; `pip install "opencv-python==4.13.*"` to match. Neither version is more correct — this shifts the numbers, it does not break the calibration |
 | `aquacal calibrate` exits with code `2` | Config file failed validation | Run `aquacal calibrate <config> --dry-run` to see the specific validation error without running the full pipeline |
 | Download stalls indefinitely | No internet access on first run | The archive is fetched from Zenodo on first call to `load_example`; confirm network access, then retry |
 | `output/` from step 2 was overwritten before you could inspect it | Both steps 2 and 3 write to the default `output/` | Re-run step 3 with `-o output_paper/` to keep the two runs' outputs separate |

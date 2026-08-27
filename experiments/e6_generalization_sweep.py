@@ -29,7 +29,12 @@ or name a verdict anywhere (D-12). Interpretation is manuscript work.
 
 Invoked as `python -m experiments.e6_generalization_sweep`. Inherits the
 shared five-flag CLI contract (`--seed`, `--out`, `--force`, `--smoke`,
-`--check`) from `experiments._io.build_experiment_arg_parser` (D-21).
+`--check`) from `experiments._io.build_experiment_arg_parser` (D-21), plus
+`--no-fail-fast`, `--seeds`, and `--axes`. `--axes` (D-40) selects a SUBSET of
+the axes to sweep; it defaults to all of them, so every pre-D-40 invocation is
+unchanged. The frozen re-run passes `--axes index,layout,cameras`, dropping
+the `scale` axis -- 18 of the band's 102 cells, and zero rows of the
+manuscript's `numbers-ledger.tsv`.
 
 Emits `generalization_sweep.csv` (one row per axis value, tidy long format,
 keyed on `(axis, axis_value)`) plus one small per-configuration JSON under
@@ -55,6 +60,7 @@ import shutil
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -257,6 +263,12 @@ E6_COLUMNS: list[str] = [
     # converged/diverged verdict is derived from it anywhere in this module.
     # Null whenever status != "ok"; optimality_stage3_intrinsic_pass is also
     # null whenever refine_intrinsics=False, since that pass never runs.
+    # D-17/DEGEN-05: the same column E4 ships, to the same Zenodo destination.
+    # Read E4's caveat before comparing two of these values -- it is volatile at
+    # a fixed solution, incomparable across parameter blocks, and reliable only
+    # at large magnitudes. Text: `OPTIMALITY_CAVEAT_TEX` in
+    # `experiments/e4_benchmark_grid.py`; derivation:
+    # `.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
     "optimality_stage3_interface_optimization",
     "optimality_stage3_intrinsic_pass",
     "reprojection_rms_px",
@@ -276,8 +288,22 @@ E6_COLUMNS: list[str] = [
     # a fresh run recorded metrics (status in {"ok", "degenerate"}); null
     # on "failed"/"skipped_existing" rows that never resolved a value.
     "degenerate_observations_at_solution",
+    # FIX-03 (23-03): appended, never inserted, so E6_COLUMNS keeps every
+    # prior column's position -- "degenerate_observations_at_solution" is no
+    # longer the last entry, but its own index is unchanged. Both new
+    # columns sit alongside the existing mean-absolute/raw columns rather
+    # than replacing them: MF-12 found that `water_z_error_mm_mean`'s mean-
+    # ABSOLUTE form destroys the sign that separates a harmless global datum
+    # shift from a real standoff failure (an 18.9 mm line-layout reading
+    # that is ~80% gauge, ~20% physical), and E6 never passed
+    # `gauge_correct_z` while E1 already does, so the two experiments
+    # reported Z error on different bases. See `compute_water_z_error_mm_signed`
+    # and `compute_configuration_metrics`'s second `compute_per_camera_errors`
+    # call for the derivation each column comes from.
+    "water_z_error_mm_signed_mean",
+    "z_position_error_mm_gauge_corrected_mean",
 ]
-assert len(E6_COLUMNS) == 31 and len(set(E6_COLUMNS)) == 31
+assert len(E6_COLUMNS) == 33 and len(set(E6_COLUMNS)) == 33
 
 E6_KEY_COLUMNS = ["axis", "axis_value"]
 
@@ -300,7 +326,30 @@ _METRIC_COLUMNS: list[str] = [
     "water_z_error_mm_mean",
     "num_comparisons",
     "num_frames",
+    "water_z_error_mm_signed_mean",
+    "z_position_error_mm_gauge_corrected_mean",
 ]
+
+# Per-camera decomposition table (FIX-03, 23-03): one row per
+# (configuration, seed, camera), spanning the same axis/seed coverage as
+# E6_COLUMNS but never aggregated across cameras -- so a reader can apply or
+# reject MF-12's cam0/cam1 exclusions themselves. `is_reference_camera` is
+# emitted rather than baked into an exclusion, because cam0 is pinned at
+# C_z = 0 by construction (its h_c error is IDENTICALLY its water_z error)
+# while cam1's exclusion in MF-12 was a discretionary, after-the-fact call.
+E6_PER_CAMERA_COLUMNS = [
+    "axis",
+    "axis_value",
+    "config_key",
+    "seed",
+    "camera",
+    "is_reference_camera",
+    "z_position_error_mm_raw",
+    "z_position_error_mm_gauge_corrected",
+    "water_z_error_mm_signed",
+    "h_c_error_mm_signed",
+]
+E6_PER_CAMERA_KEY_COLUMNS = ["seed", "axis", "axis_value", "camera"]
 
 # Smoke mode's held-out/calibration frame count -- small so --smoke completes
 # quickly even though camera count stays at the full BASELINE_N_CAMERAS (D-11
@@ -313,7 +362,73 @@ _SMOKE_N_FRAMES = 8
 # ---------------------------------------------------------------------------
 
 
-def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
+ALL_AXES: tuple[str, ...] = ("index", "layout", "scale", "cameras")
+
+
+def resolve_axes(
+    axes: Sequence[str] | None = None, include_cameras_axis: bool = False
+) -> tuple[str, ...]:
+    """Resolve an `--axes` selection into the axes that will actually be
+    emitted, in `ALL_AXES`'s own emission order (D-40, plan 26-05).
+
+    **Composition rule (the two flags UNION, they never fight).** `axes` and
+    `include_cameras_axis` are both REQUESTS; neither can veto the other's:
+
+    - `index`, `layout` and `scale` are emitted when `axes` is `None` (no
+      restriction) or names them.
+    - `cameras` is emitted when `include_cameras_axis` is True, OR when `axes`
+      is a genuine RESTRICTION (a proper subset of `ALL_AXES`) that names
+      `cameras`.
+
+    Passing the full set is deliberately identical to passing `None` -- it is
+    no restriction at all, so the cameras axis stays gated on
+    `include_cameras_axis` alone. That is what makes the `--axes` CLI default
+    (`"index,layout,scale,cameras"`) inert: `_run_full` still gets 14
+    configurations and `_run_seed_band` still gets 17, exactly as before.
+
+    Args:
+        axes: Axis names to select, or `None` for "all axes" (the default,
+            preserving every existing call site's behaviour).
+        include_cameras_axis: See `build_axis_configurations`.
+
+    Returns:
+        The emitted axis names, ordered as in `ALL_AXES`.
+
+    Raises:
+        ValueError: If `axes` is empty, or names an axis not in `ALL_AXES`. A
+            silently-ignored typo would produce a band that is quietly the
+            wrong shape while still exiting 0 (T-26-16), which is exactly the
+            failure mode E6's all-failed-rows trap already has.
+    """
+    if axes is None:
+        selected = set(ALL_AXES)
+        is_restriction = False
+    else:
+        requested = tuple(axes)
+        if not requested:
+            raise ValueError(
+                "axes must name at least one axis; a zero-configuration sweep "
+                f"is never intended. Valid axes: {', '.join(ALL_AXES)}."
+            )
+        unknown = [name for name in requested if name not in ALL_AXES]
+        if unknown:
+            raise ValueError(
+                f"unknown axis name(s): {', '.join(unknown)}. "
+                f"Valid axes: {', '.join(ALL_AXES)}."
+            )
+        selected = set(requested)
+        is_restriction = selected != set(ALL_AXES)
+
+    emit_cameras = include_cameras_axis or (is_restriction and "cameras" in selected)
+    resolved = [name for name in ("index", "layout", "scale") if name in selected]
+    if emit_cameras:
+        resolved.append("cameras")
+    return tuple(resolved)
+
+
+def build_axis_configurations(
+    include_cameras_axis: bool = False, axes: Sequence[str] | None = None
+) -> list[dict]:
     """Expand the axes into one flat list of configuration dicts.
 
     Each dict carries `axis`, `axis_value` (always a string, since the axes'
@@ -342,6 +457,16 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             rows with `depth_range=None`, `xy_extent=None`, `spacing=None`
             so the geometry derives from `n_cameras` alone, exactly as the
             baseline's own geometry does.
+        axes: D-40 (plan 26-05). Axis names to emit, or `None` (the default)
+            for all of them -- so every pre-D-40 call site is unchanged. The
+            frozen re-run passes `("index", "layout", "cameras")`, dropping
+            the `scale` axis: 3 of the band's 17 configurations, 18 of its 102
+            cells, and zero rows of the manuscript's `numbers-ledger.tsv`.
+            Selection FILTERS -- it never reorders or reshapes -- so each
+            emitted axis's block is element-for-element what the unrestricted
+            call emits. See `resolve_axes` for the (union) composition rule
+            with `include_cameras_axis`, and for the `ValueError` raised on an
+            unknown or empty selection.
 
     Returns:
         A list of length `len(INDEX_AXIS_VALUES) + len(LAYOUT_AXIS_VALUES) +
@@ -350,11 +475,13 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
         `is_baseline=True` (4 when `include_cameras_axis=True`). The first
         14 entries are always identical, element-for-element, to the
         default call's full return value -- the cameras axis only appends,
-        never reorders.
+        never reorders. A restricted `axes` selection drops whole axis
+        blocks from this list and changes nothing else about it.
     """
+    resolved_axes = resolve_axes(axes=axes, include_cameras_axis=include_cameras_axis)
     configs: list[dict] = []
 
-    for value in INDEX_AXIS_VALUES:
+    for value in INDEX_AXIS_VALUES if "index" in resolved_axes else []:
         is_baseline = value == BASELINE_N_WATER
         configs.append(
             {
@@ -371,7 +498,7 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    for value in LAYOUT_AXIS_VALUES:
+    for value in LAYOUT_AXIS_VALUES if "layout" in resolved_axes else []:
         is_baseline = value == BASELINE_LAYOUT
         configs.append(
             {
@@ -388,7 +515,9 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    for label, depth_range, xy_extent, spacing in SCALE_AXIS_VALUES:
+    for label, depth_range, xy_extent, spacing in (
+        SCALE_AXIS_VALUES if "scale" in resolved_axes else []
+    ):
         is_baseline = label == BASELINE_SCALE
         configs.append(
             {
@@ -405,7 +534,7 @@ def build_axis_configurations(include_cameras_axis: bool = False) -> list[dict]:
             }
         )
 
-    if include_cameras_axis:
+    if "cameras" in resolved_axes:
         for value in CAMERAS_AXIS_VALUES:
             is_baseline = value == BASELINE_N_CAMERAS
             configs.append(
@@ -483,6 +612,120 @@ def compute_water_z_error_mm_mean(
     return float(np.mean(errors_mm))
 
 
+def compute_water_z_error_mm_signed(
+    estimated_water_zs: dict[str, float], true_water_zs: dict[str, float]
+) -> float:
+    """Signed mean per-camera water_z recovery error, in millimetres (FIX-03).
+
+    `compute_water_z_error_mm_mean` (above) is a mean ABSOLUTE error, which
+    destroys the sign that separates a harmless global datum shift -- the
+    rig and the water surface sliding through the world frame together --
+    from a real physical standoff failure. MF-12 found the line layout's
+    ~18.9 mm `water_z_error_mm_mean` reading was ~80% gauge: on the tree it
+    was measured on, the signed water_z mean was -18.8547 mm against a
+    camera Z signed mean of -18.4955 mm, leaving `h_c = water_z - C_z` in
+    error by only -0.3592 mm -- the surface and the cameras moved together
+    in Z, and only their small residual difference is a genuine standoff
+    error. Those three digits are MF-12's OWN MEASUREMENT and are quoted
+    here as its citation; every run remeasures all three, so read the
+    current values off `generalization_sweep_per_camera_band.csv` rather
+    than out of this docstring. The DECOMPOSITION is the finding, not the
+    digits. The absolute form cannot show it: it reports the same magnitude
+    regardless of whether the error is common-mode (gauge) or differential
+    (physical).
+
+    Args:
+        estimated_water_zs: Recovered water_z per camera (meters), typically
+            `{cam: cal.water_z for cam, cal in result.cameras.items()}`.
+        true_water_zs: Ground-truth water_z per camera (meters), typically
+            `scenario.water_zs`.
+
+    Returns:
+        The mean, over cameras present in both dicts, of
+        `(estimated - true) * 1000` (millimetres, SIGNED). `nan` if no
+        camera is present in both.
+    """
+    errors_mm = [
+        (estimated_water_zs[cam] - true_water_zs[cam]) * 1000.0
+        for cam in true_water_zs
+        if cam in estimated_water_zs
+    ]
+    if not errors_mm:
+        return float("nan")
+    return float(np.mean(errors_mm))
+
+
+def build_per_camera_rows(
+    config: dict,
+    seed: int,
+    scenario,
+    result,
+) -> list[dict]:
+    """One row per camera, decomposing E6's aggregate Z/water_z errors (FIX-03).
+
+    Emits EVERY camera present in `scenario.intrinsics` -- cam0 and cam1
+    included -- because the per-camera table's whole purpose is to let a
+    reader apply or reject MF-12's exclusions themselves rather than finding
+    them baked into the artifact. `is_reference_camera` is `True` for
+    exactly the reference camera (`cam0`, first by the numeric-suffix sort
+    this project already uses for camera ordering), whose `h_c` error is
+    IDENTICALLY its `water_z` error because it is pinned at `C_z = 0`.
+
+    The identity that makes this table checkable, per camera (because
+    `h_c = water_z - C_z`):
+
+        h_c_error_mm_signed == water_z_error_mm_signed - z_position_error_mm_raw
+
+    Check it against the run's own output rather than against a number
+    quoted here: mean those three columns over the seed-43, layout=line rows
+    of `generalization_sweep_per_camera_band.csv` and the identity holds to
+    floating point. MF-12 reports the same decomposition on the tree it was
+    measured on (see `compute_water_z_error_mm_signed` above); a literal
+    here would state one run's digits as this table's contract, which is the
+    FIX-06 defect class (`tests/unit/test_stale_provenance_strings.py`).
+
+    Args:
+        config: One entry from `build_axis_configurations()`.
+        seed: The run seed.
+        scenario: The `SyntheticScenario` the configuration was built from.
+        result: The `CalibrationResult` returned by `calibrate_synthetic`.
+
+    Returns:
+        A list of dicts, each with exactly `E6_PER_CAMERA_COLUMNS`' keys,
+        one per camera present in both `scenario.intrinsics` and
+        `result.cameras`.
+    """
+    raw_errors = compute_per_camera_errors(result, scenario)
+    corrected_errors = compute_per_camera_errors(result, scenario, gauge_correct_z=True)
+
+    camera_names = sorted(scenario.intrinsics, key=lambda s: int(s.replace("cam", "")))
+    reference_camera = camera_names[0] if camera_names else None
+
+    rows: list[dict] = []
+    for cam in camera_names:
+        if cam not in result.cameras or cam not in raw_errors:
+            continue
+        z_raw = raw_errors[cam]["z_position_error_mm"]
+        z_corrected = corrected_errors[cam]["z_position_error_mm"]
+        water_z_signed = (result.cameras[cam].water_z - scenario.water_zs[cam]) * 1000.0
+        h_c_signed = water_z_signed - z_raw
+        rows.append(
+            {
+                "axis": config["axis"],
+                "axis_value": config["axis_value"],
+                "config_key": config["config_key"],
+                "seed": seed,
+                "camera": cam,
+                "is_reference_camera": cam == reference_camera,
+                "z_position_error_mm_raw": z_raw,
+                "z_position_error_mm_gauge_corrected": z_corrected,
+                "water_z_error_mm_signed": water_z_signed,
+                "h_c_error_mm_signed": h_c_signed,
+            }
+        )
+    return rows
+
+
 def compute_configuration_metrics(
     scenario,
     result,
@@ -516,9 +759,22 @@ def compute_configuration_metrics(
         A dict with exactly the keys in `_METRIC_COLUMNS`.
     """
     per_camera_errors = compute_per_camera_errors(result, scenario)
+    # FIX-03 (23-03): a second call with gauge_correct_z=True, alongside the
+    # unchanged raw call above -- `compute_per_camera_errors`' own
+    # gauge_correct_z=False default is untouched, this is the call site
+    # opting in. The raw column is what a user sees in their own
+    # diagnostics; the corrected column is what supports a geometric claim.
+    # Publishing only the corrected one would hide the datum shift this
+    # decomposition exists to explain.
+    per_camera_errors_corrected = compute_per_camera_errors(
+        result, scenario, gauge_correct_z=True
+    )
     focal_vals = [e["focal_length_error_pct"] for e in per_camera_errors.values()]
     xy_vals = [e["xy_position_error_mm"] for e in per_camera_errors.values()]
     z_vals = [e["z_position_error_mm"] for e in per_camera_errors.values()]
+    z_vals_corrected = [
+        e["z_position_error_mm"] for e in per_camera_errors_corrected.values()
+    ]
     estimated_water_zs = {cam: cal.water_z for cam, cal in result.cameras.items()}
 
     reconstruction = evaluation.reconstruction
@@ -555,6 +811,12 @@ def compute_configuration_metrics(
             reconstruction.num_comparisons if reconstruction is not None else None
         ),
         "num_frames": evaluation.num_frames,
+        "water_z_error_mm_signed_mean": compute_water_z_error_mm_signed(
+            estimated_water_zs, scenario.water_zs
+        ),
+        "z_position_error_mm_gauge_corrected_mean": (
+            float(np.mean(z_vals_corrected)) if z_vals_corrected else None
+        ),
     }
 
 
@@ -742,6 +1004,7 @@ def run_configuration(
     force: bool = False,
     environment: dict | None = None,
     is_smoke: bool = False,
+    per_camera_rows_out: list[dict] | None = None,
 ) -> dict:
     """Run (or skip, if already cached) one distinct scene, checkpointing to JSON.
 
@@ -817,6 +1080,14 @@ def run_configuration(
             configuration (the plain, non-`--smoke` sweep) always passes
             `is_smoke=False` (the default), so the gate below is exactly
             `count > 0 -> degenerate` for every published number.
+        per_camera_rows_out: FIX-03 (23-03)'s `*_out` sink, matching this
+            project's `diagnostics_out`/`timings_out`/`discard_stats_out`
+            idiom. When not `None`, extended with `build_per_camera_rows()`'s
+            output on the fresh-run path, and with the checkpoint's cached
+            `per_camera_rows` on the resume path. A resumed
+            `schema_version: 1` checkpoint (or any checkpoint missing the
+            key) contributes no rows and logs one warning naming the config
+            key -- never a silent gap, and never a raise.
 
     Returns:
         A dict with `status` (one of `STATUS_VALUES`), `status_reason`,
@@ -846,6 +1117,19 @@ def run_configuration(
                 config_key,
                 config_path,
             )
+            if per_camera_rows_out is not None:
+                if cached.get("schema_version") == 2 and "per_camera_rows" in cached:
+                    per_camera_rows_out.extend(cached["per_camera_rows"])
+                else:
+                    logger.warning(
+                        "Checkpoint %s for configuration %s predates the "
+                        "per-camera table (schema_version %s); the "
+                        "per-camera table will be incomplete for this "
+                        "configuration (FIX-03, 23-03).",
+                        config_path,
+                        config_key,
+                        cached.get("schema_version"),
+                    )
             return {
                 "status": cached.get("status", "failed"),
                 "status_reason": cached.get("status_reason", ""),
@@ -855,6 +1139,7 @@ def run_configuration(
                 ),
             }
 
+    per_camera_rows: list[dict] = []
     try:
         scenario = build_grid_scenario(
             n_cameras=config["n_cameras"],
@@ -909,8 +1194,25 @@ def run_configuration(
         metrics = compute_configuration_metrics(
             scenario, result, evaluation, diag_stage3, diag_intrinsic_pass
         )
+        per_camera_rows = build_per_camera_rows(config, seed, scenario, result)
 
         n_degenerate = discard_stats.get("degenerate_observations_at_solution", 0)
+        # GATE SCOPE (D-04, phase 25), covering all three branches below: this
+        # gate is SYNTHETIC-ONLY and does not extend to real-rig runs. E6's
+        # geometry is *authored*, so an unprojectable observation means the
+        # configuration was malformed and it must not be reported as "ok"; a
+        # physical rig's geometry is *given*, so a small unprojectable fraction
+        # is a fact about the deployment rather than a library defect. That was
+        # settled on MECHANISM -- which failure kind dominates -- not on a count,
+        # because the real rig's published count is a sum accumulated across
+        # solver stages. The tripwire that re-opens it is a materially populated
+        # camera_model_failure bucket (NAN_REASON_BEHIND_CAMERA with a positive
+        # h_q) in Phase 29's frozen table. Long form: the "Gate scope" block in
+        # src/aquacal/calibration/_observability.py; evidence (PROVISIONAL,
+        # D-02): .planning/probes/2026-08-17-degeneracy-classification/. None of
+        # that loosens the predicate here -- the condition stays exactly
+        # "any nonzero count is degenerate", with the is_smoke carve-out and
+        # nothing else, never a threshold or tolerance (D-05).
         if n_degenerate > 0 and is_smoke:
             # Smoke carve-out (D-19.3-11, plan 19.3-07): still recorded and
             # still warned about, but a --smoke configuration must never be
@@ -924,6 +1226,8 @@ def run_configuration(
             )
             outcome = {"status": "ok", "status_reason": "", "metrics": metrics}
         elif n_degenerate > 0:
+            # The production branch the gate-scope note above governs: authored
+            # geometry, so any count at all is a malformed configuration.
             status_reason = (
                 f"{n_degenerate} degenerate observation(s) recorded at the final "
                 "solution -- first-order optimality is unreliable for this "
@@ -949,17 +1253,25 @@ def run_configuration(
             "degenerate_observations_at_solution": None,
         }
 
+    if per_camera_rows_out is not None:
+        per_camera_rows_out.extend(per_camera_rows)
+
     config_path.parent.mkdir(parents=True, exist_ok=True)
     checkpoint = {
         **outcome,
         "seed": seed,
         "n_frames": n_frames,
-        "schema_version": 1,
+        # FIX-03 (23-03): bumped 1 -> 2 for the new `per_camera_rows` key.
+        # The resume branch above treats any checkpoint whose
+        # schema_version != 2 (or missing "per_camera_rows" entirely) as not
+        # carrying the table -- warned, never raised.
+        "schema_version": 2,
         "environment": environment
         if environment is not None
         else capture_environment(),
         "solver_config": {"seed": seed},
         "config": _resolve_config_identity(config),
+        "per_camera_rows": per_camera_rows,
     }
     with open(config_path, "w") as f:
         json.dump(checkpoint, f, indent=2, sort_keys=True)
@@ -977,6 +1289,7 @@ def run_sweep(
     environment: dict | None = None,
     is_smoke: bool = False,
     fail_fast: bool = False,
+    per_camera_rows_out: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Run every distinct scene in `configs` once, then build one row per config.
 
@@ -1010,6 +1323,13 @@ def run_sweep(
             its row and continuing. `_run_smoke_configs` never passes `True`
             (--smoke is unaffected in either mode); only `_run_full` gates
             on it, via `not args.no_fail_fast`.
+        per_camera_rows_out: FIX-03 (23-03)'s `*_out` sink, forwarded to each
+            `run_configuration` call. `run_sweep` caches by `config_key`
+            (see above), so a configuration reached three times (the
+            baseline rows) contributes its camera rows via `run_configuration`
+            exactly ONCE -- the cache lookup below only calls
+            `run_configuration` on a miss, so the sink is only extended once
+            per distinct scene, never once per row built.
 
     Returns:
         A `DataFrame` with exactly `E6_COLUMNS`, one row per entry in `configs`.
@@ -1029,6 +1349,7 @@ def run_sweep(
                 force=force,
                 environment=environment,
                 is_smoke=is_smoke,
+                per_camera_rows_out=per_camera_rows_out,
             )
         outcome = cache[config_key]
         if fail_fast and outcome["status"] == "failed":
@@ -1084,12 +1405,31 @@ def _band_smoke_configurations() -> list[dict]:
     return [baseline, cameras_non_baseline]
 
 
+def _band_scope_string(resolved_axes: Sequence[str]) -> str:
+    """The band provenance sidecar's `scope` string, naming the axes that were
+    ACTUALLY run (D-19.5-05, D-40).
+
+    Built from the resolved selection rather than hardcoded: a scope string
+    claiming coverage the run did not have -- e.g. still saying
+    "index/layout/scale/cameras" after `--axes index,layout,cameras` dropped
+    the scale axis -- is precisely the class of defect FIX-06 cleaned up
+    (T-26-15).
+    """
+    return (
+        "varies: seed (scenario/detection-generation randomness) across "
+        f"every {'/'.join(resolved_axes)} axis configuration. bounds: "
+        "seed-to-seed accuracy variance on this synthetic sweep only -- not "
+        "a physical-rig or real-data claim (D-19.5-05)."
+    )
+
+
 def _run_seed_band(
     seeds: list[int],
     out_dir: Path,
     smoke: bool,
     force: bool,
     fail_fast: bool,
+    axes: Sequence[str] | None = None,
 ) -> None:
     """`--seeds`: run E6's per-configuration sweep once per seed, over the
     17-configuration axis set (index + layout + scale + cameras), and emit
@@ -1097,11 +1437,22 @@ def _run_seed_band(
 
     Never writes `generalization_sweep.csv` at `out_dir` -- only
     `generalization_sweep_band.csv` and `e6_seed_band_provenance.json`.
+
+    `axes` (D-40) narrows that set: `("index", "layout", "cameras")` drops the
+    scale axis for 14 configurations per seed rather than 17. The resolved
+    selection is recorded in the sidecar's `axes` field AND in its `scope`
+    string, so a narrowed band never claims coverage it does not have.
     """
     environment = capture_environment()
+    resolved_axes = resolve_axes(axes=axes, include_cameras_axis=True)
     n_frames = _SMOKE_N_FRAMES if smoke else BASELINE_N_FRAMES
     refine_intrinsics = not smoke
     per_seed_status_counts: dict[int, dict[str, int]] = {}
+    # FIX-03 (23-03): accumulated across every seed in ONE list -- the
+    # `seed` column each row carries (from build_per_camera_rows) is what
+    # distinguishes them, turning MF-12's single-seed (seed 43) hand
+    # analysis into a six-seed band with no extra solve.
+    all_per_camera_rows: list[dict] = []
 
     def _runner(seed: int) -> pd.DataFrame:
         # E6's checkpoint cache is seed-blind: _SCENARIO_IDENTITY_KEYS omits
@@ -1121,7 +1472,7 @@ def _run_seed_band(
             shutil.rmtree(seed_dir)
         seed_dir.mkdir(parents=True, exist_ok=True)
 
-        configs = build_axis_configurations(include_cameras_axis=True)
+        configs = build_axis_configurations(include_cameras_axis=True, axes=axes)
         if smoke:
             configs = _band_smoke_configurations()
         df = run_sweep(
@@ -1137,6 +1488,7 @@ def _run_seed_band(
             environment=environment,
             is_smoke=smoke,
             fail_fast=fail_fast,
+            per_camera_rows_out=all_per_camera_rows,
         )
         per_seed_status_counts[seed] = df["status"].value_counts().astype(int).to_dict()
         return df
@@ -1154,6 +1506,13 @@ def _run_seed_band(
         # of it being reproducible.
         force=True,
     )
+    write_experiment_csv(
+        pd.DataFrame(all_per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera_band.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
+        # Force-implied, matching the band CSV's own convention above.
+        force=True,
+    )
 
     with open(out_dir / "e6_seed_band_provenance.json", "w") as f:
         json.dump(
@@ -1165,27 +1524,27 @@ def _run_seed_band(
                 "environment": environment,
                 "solver_config": {"seeds": list(seeds)},
                 "include_cameras_axis": True,
+                # D-40: the axes this band ACTUALLY swept, resolved from
+                # --axes. Read this alongside the row count -- a 14-
+                # configuration band is a deliberate scale-axis drop, not a
+                # truncated run.
+                "axes": list(resolved_axes),
                 "status_counts_by_seed": {
                     str(seed): counts for seed, counts in per_seed_status_counts.items()
                 },
                 # D-19.5-05: this band varies ONLY the seed (scenario/
                 # detection-generation randomness), across every
                 # configuration in build_axis_configurations(
-                # include_cameras_axis=True) -- it bounds seed-to-seed
-                # accuracy variance on E6's index/layout/scale/cameras
-                # axes. It does NOT bound anything about a real physical
+                # include_cameras_axis=True, axes=axes) -- it bounds
+                # seed-to-seed accuracy variance on whichever of E6's
+                # index/layout/scale/cameras axes the `axes` field above
+                # names. It does NOT bound anything about a real physical
                 # rig, tank, or medium (E2 anchors that separately), and a
                 # `status != "ok"` count in status_counts_by_seed means
                 # that seed did not converge for at least one
                 # configuration -- read the counts, never the process exit
                 # code (E4/E6's silent-failure trap).
-                "scope": (
-                    "varies: seed (scenario/detection-generation "
-                    "randomness) across every index/layout/scale/cameras "
-                    "axis configuration. bounds: seed-to-seed accuracy "
-                    "variance on this synthetic sweep only -- not a "
-                    "physical-rig or real-data claim (D-19.5-05)."
-                ),
+                "scope": _band_scope_string(resolved_axes),
             },
             f,
             indent=2,
@@ -1230,7 +1589,36 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "mandatory, not tidiness, since E6's checkpoint cache is seed-blind "
         "(see _run_seed_band's docstring).",
     )
+    parser.add_argument(
+        "--axes",
+        type=_parse_axes_argument,
+        default=ALL_AXES,
+        help="D-40: comma-separated subset of the axes to sweep (valid: "
+        + ",".join(ALL_AXES)
+        + "). Defaults to all of them, so a bare invocation is unchanged. "
+        "The frozen re-run passes --seeds <list> --axes index,layout,cameras, "
+        "dropping the scale axis for 14 x 6 = 84 band rows instead of 17 x 6 "
+        "= 102: scale is 18 of the 102 cells (~1.9h of a ~22-26h serial "
+        "budget) and appears in ZERO rows of the manuscript's "
+        "numbers-ledger.tsv -- all 11 numbers backed by "
+        "generalization_sweep_band.csv sit on the cameras, index or layout "
+        "axes. An unknown or empty selection is an error, never a silently "
+        "mis-shaped band. Note the cameras axis is additionally requested by "
+        "band mode itself, so omitting it here does not drop it from a "
+        "--seeds run (see resolve_axes).",
+    )
     return parser
+
+
+def _parse_axes_argument(raw: str) -> tuple[str, ...]:
+    """argparse type for `--axes`: a comma-separated axis list to a tuple.
+
+    Validation happens here, so a typo fails at parse time with argparse's own
+    error path rather than mid-sweep (T-26-16).
+    """
+    names = tuple(part.strip() for part in raw.split(",") if part.strip())
+    resolve_axes(axes=names)
+    return names
 
 
 def _validate_e6_args(
@@ -1338,6 +1726,7 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
     """Run the reduced smoke config set, then probe the skip-if-exists path (review M7)."""
     environment = capture_environment()
     configs = build_smoke_configurations()
+    per_camera_rows: list[dict] = []
     df = run_sweep(
         configs,
         seed,
@@ -1347,9 +1736,16 @@ def _run_smoke_configs(out_dir: Path, seed: int) -> int:
         force=True,
         environment=environment,
         is_smoke=True,
+        per_camera_rows_out=per_camera_rows,
     )
     write_experiment_csv(
         df, out_dir / "generalization_sweep.csv", key_columns=E6_KEY_COLUMNS, force=True
+    )
+    write_experiment_csv(
+        pd.DataFrame(per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
+        force=True,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
         json.dump(
@@ -1438,7 +1834,12 @@ def _run_full(args: argparse.Namespace) -> int:
     """
     out_dir = resolve_out_dir(args.out)
     environment = capture_environment()
-    configs = build_axis_configurations()
+    # D-40: `--axes`'s default is the full set, which resolve_axes treats as
+    # no restriction at all -- so the single-seed sweep is unchanged (14
+    # configurations, cameras still band-mode-only) unless a subset is asked
+    # for explicitly.
+    configs = build_axis_configurations(axes=args.axes)
+    per_camera_rows: list[dict] = []
     try:
         df = run_sweep(
             configs,
@@ -1449,6 +1850,7 @@ def _run_full(args: argparse.Namespace) -> int:
             force=args.force,
             environment=environment,
             fail_fast=not args.no_fail_fast,
+            per_camera_rows_out=per_camera_rows,
         )
     except FailFastAbort as exc:
         print(
@@ -1460,6 +1862,12 @@ def _run_full(args: argparse.Namespace) -> int:
         df,
         out_dir / "generalization_sweep.csv",
         key_columns=E6_KEY_COLUMNS,
+        force=args.force,
+    )
+    write_experiment_csv(
+        pd.DataFrame(per_camera_rows, columns=E6_PER_CAMERA_COLUMNS),
+        out_dir / "generalization_sweep_per_camera.csv",
+        key_columns=E6_PER_CAMERA_KEY_COLUMNS,
         force=args.force,
     )
     with open(out_dir / "e6_provenance.json", "w") as f:
@@ -1492,6 +1900,7 @@ def main(argv: list[str] | None = None) -> int:
             smoke=args.smoke,
             force=args.force,
             fail_fast=not args.no_fail_fast,
+            axes=args.axes,
         )
         return 0
 

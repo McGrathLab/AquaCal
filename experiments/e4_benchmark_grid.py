@@ -73,6 +73,15 @@ CSV against the records, NOT the reproducibility of the nine calibrations
 themselves (that would be a multi-hour operation). A reader must not read a
 green `--check` as evidence the nine solves reproduce.
 
+**`optimality_stage3_interface_optimization` ships with a caveat, and the
+caveat travels inside the artifact** (D-17, DEGEN-05): the emitted
+`benchmark_grid.tex` carries `OPTIMALITY_CAVEAT_TEX` as a LaTeX comment block
+immediately before the two blocks that render the column, because the quantity
+is volatile at a fixed solution (43x across restarts at unchanged cost),
+incomparable across parameter blocks (three Coleman-Li scaling regimes), and
+reliable only at large magnitudes. Derivation:
+`.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md`.
+
 Emits `benchmark_grid.csv` and `benchmark_grid.tex` into `--out`. The tenth
 row -- the real 13-camera rig -- is never run here: it is E2's own
 pipeline-written `experiments/results/benchmark.json` (`E2_BENCHMARK_PATH`),
@@ -184,6 +193,27 @@ GRID_BOARD_CONFIG = BoardConfig(
 
 CHECK_RTOL = 1e-6
 
+# D-07/D-08: --check's named exclusion list, declared here (not in
+# experiments/_io.py, which owns the shared MECHANISM only -- see
+# compare_experiment_csv's exclude_columns docstring) because putting the
+# list in the shared module would silently grant the exemption to every
+# experiment's --check, including ones nobody has audited for always-red
+# columns. Measured 2026-08-17 (.planning/probes/2026-08-17-phase-23-recon/
+# e4_check_detail.py, 35 columns x 10 rows): all 33 OTHER columns reproduce
+# to 1e-6 on the committed tree; only these two fail, and can never pass:
+#
+# - "exit_code": _run_check hardcodes "exit_code": None (no subprocess runs
+#   under --check) while the committed CSV holds 0.0 from the real run that
+#   produced it. Synthesizing "exit_code: 0" from the committed record was
+#   considered and rejected -- it fabricates a field in a provenance
+#   artifact (D-07).
+# - "status_reason": an empty-string-versus-NaN round-trip through CSV.
+#
+# A third entry here is a deliberate decision requiring the same
+# measurement-backed justification, not a silent inheritance (D-07: a named
+# list beats a heuristic).
+CHECK_EXCLUDED_COLUMNS: tuple[str, ...] = ("exit_code", "status_reason")
+
 # The exit code run_grid_cell's --cell child returns when
 # write_direct_call_benchmark skipped an existing file (force=False). Lets
 # run_cell_subprocess map a skip onto status="skipped_existing" without
@@ -226,6 +256,57 @@ _ALLOWED_CELL_VALUES = frozenset(DECLARED_CELLS) | frozenset(SMOKE_CELLS)
 E2_BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "experiments" / "results" / "benchmark.json"
 )
+
+
+def resolve_e2_benchmark_path(out_dir: Path) -> tuple[Path | None, str]:
+    """Resolve E2's real-rig `benchmark.json` relative to the active `--out`.
+
+    FIX-05 (D-09): the module-level `E2_BENCHMARK_PATH` constant describes
+    only the DEFAULT output tree. Passing it directly to `build_grid_dataframe`
+    at every caller, regardless of `out_dir`, means a non-default `--out`
+    either silently drops the real-rig row or -- worse -- pairs one machine's
+    synthetic cells with another machine's real-rig row imported from the
+    repo tree. This resolver is the single source of truth both
+    `build_grid_dataframe` callers (`_run_check`, `_run_full`) must use.
+
+    Three branches, in order:
+
+    1. `out_dir/benchmark.json` exists: the native case -- E2 wrote its
+       record into the same tree this grid run is writing into. Use it.
+    2. `out_dir` resolves to the same directory as `E2_BENCHMARK_PATH`'s
+       parent (i.e. the default tree): use the `__file__`-anchored constant.
+       Kept as an explicit branch, even though it is path-equal to branch 1
+       for the default directory, because it is what preserves the
+       deliberate `__file__` anchoring documented on `E2_BENCHMARK_PATH` --
+       a cwd-relative path silently resolves to nothing when the module is
+       invoked from anywhere but the repo root.
+    3. Otherwise: no native record exists under a non-default `--out`.
+       Return `None` rather than falling back to the repo tree's record,
+       which describes a different machine's run. **Never fall back across
+       machines.**
+
+    Args:
+        out_dir: The active `--out` directory (already resolved by
+            `resolve_out_dir`).
+
+    Returns:
+        A `(path_or_None, provenance_note)` tuple. `path_or_None` is `None`
+        exactly when branch 3 applies; `provenance_note` is a human-readable
+        string suitable for logging that names which branch was taken.
+    """
+    out_dir = Path(out_dir)
+    candidate = out_dir / "benchmark.json"
+    if candidate.exists():
+        return candidate, "native: resolved relative to --out"
+    if out_dir.resolve() == E2_BENCHMARK_PATH.parent:
+        return E2_BENCHMARK_PATH, "default tree: __file__-anchored E2_BENCHMARK_PATH"
+    return (
+        None,
+        f"absent: no benchmark.json under {out_dir} and --out is not the default "
+        f"tree; refusing to import {E2_BENCHMARK_PATH}, which describes a "
+        "different machine's run",
+    )
+
 
 # ---------------------------------------------------------------------------
 # D-29: grid-family optical geometry -- real-rig-like rather than the
@@ -445,6 +526,20 @@ GRID_COLUMNS: list[str] = [
     "jacobian_elements_stage3_intrinsic_pass",
     "nfev_stage3_interface_optimization",
     "njev_stage3_interface_optimization",
+    # D-17/DEGEN-05: a MEASUREMENT, never a converged/diverged verdict, and one
+    # that must not be read as a like-for-like scalar. Measured 2026-08-17
+    # (.planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md): it is
+    # VOLATILE at a fixed solution (92.78 -> 2.16 across restarts, 43x, at
+    # unchanged cost -- the problem's directional curvature is ~3e8),
+    # BLOCK-INCOMPARABLE (scipy trf reports max|g . v| and the Coleman-Li v runs
+    # v = 1 unbounded extrinsics, v ~ 700 wide-bounded intrinsics, v ~ 2e-12
+    # pinned water_z), and MAGNITUDE-DEPENDENT in reliability (92.78 is real to
+    # 5 s.f.; 0.001146 against a 3-point reference of 0.001655 is not, so
+    # differences between two SMALL values carry no information). The caveat
+    # ships to the reader in benchmark_grid.tex as OPTIMALITY_CAVEAT_TEX --
+    # keep the two in sync. Do NOT add a `#` comment line to the CSV instead
+    # (it breaks pd.read_csv and --check), and do NOT co-opt the cell-status
+    # reason column, which the status gate owns.
     "optimality_stage3_interface_optimization",
     "reprojection_rms",
     "validation_3d_error_mean",
@@ -880,6 +975,21 @@ def run_grid_cell(
             # build_grid_dataframe, which only declared production cells
             # ever reach (SMOKE_CELLS never call it, see _run_smoke_cells),
             # so --smoke can never see a false failure from this count.
+            #
+            # GATE SCOPE (D-04, phase 25): this gate is SYNTHETIC-ONLY and does
+            # not extend to real-rig runs. E4's geometry is *authored*, so an
+            # unprojectable observation means the scenario was malformed and the
+            # cell must fail; a physical rig's geometry is *given*, so a small
+            # unprojectable fraction is a fact about the deployment rather than a
+            # library defect. That was settled on MECHANISM -- which failure kind
+            # dominates -- not on a count, because the real rig's published count
+            # is a sum accumulated across solver stages. The tripwire that
+            # re-opens it is a materially populated camera_model_failure bucket
+            # (NAN_REASON_BEHIND_CAMERA with a positive h_q) in Phase 29's frozen
+            # table. Long form: the "Gate scope" block in
+            # src/aquacal/calibration/_observability.py; evidence (PROVISIONAL,
+            # D-02): .planning/probes/2026-08-17-degeneracy-classification/.
+            # None of that loosens the predicate here -- see D-05.
             logger.warning(
                 "Cell %s recorded %d degenerate observation(s) at the final "
                 "solution -- first-order optimality is unreliable for this "
@@ -1252,6 +1362,38 @@ def _extract_pipeline_row(record: dict) -> dict:
     solver_config = record.get("solver_config", {})
     accuracy = record.get("accuracy", {})
     memory = record.get("memory", {})
+    # D-01/D-03: the real-rig row's guard count is READ FROM E2's OWN RECORD.
+    # Since Phase 24's DEGEN-02 instrumentation, E2's benchmark.json carries
+    # `degenerate_observations_at_solution` twice -- under `discard_stats`
+    # (canonical, read first) and under `problem_shape` (fallback) -- together
+    # with the full cause/fate decomposition. Absent from both stays `None`, so
+    # an un-instrumented record remains distinguishable from a measured zero;
+    # that distinction is the property gate 1 rests on.
+    #
+    # What the count physically is, for the committed 2026-08-20 record: 198
+    # real-hardware board corners that sat ABOVE the water interface at the
+    # final solution -- 198 of 198 `above_interface`, 0 `behind_camera`,
+    # 0 `interface_below_camera`, all of them in `stage3_intrinsic_pass`, and
+    # all continued via the pinhole extension (`fate_extended`, none
+    # penalized). Per-observation evidence:
+    # results_e2_invocations/e2_classification/degenerate_observations.csv
+    # (198 rows, `h_q_m` from -0.0640 to -0.0013 m, in two contiguous frame
+    # clusters -- the board being lifted through the surface twice, not a
+    # diffuse numerical effect).
+    #
+    # This row is DELIBERATELY EXEMPT from the `> 0` status downgrade applied
+    # to the declared synthetic cells (see the publish rule in
+    # `build_grid_dataframe`), and its published count is likewise exempt from
+    # gate 1 in `check_rerun_gates._check_guard_column`, which keys the
+    # exemption on `record_source == "pipeline"`. Publishing the value without
+    # both exemptions would only convert one gate failure into another.
+    degenerate_at_solution = _get_nested(
+        record, "discard_stats", "degenerate_observations_at_solution"
+    )
+    if degenerate_at_solution is None:
+        degenerate_at_solution = _get_nested(
+            record, "problem_shape", "degenerate_observations_at_solution"
+        )
 
     return {
         "seed": solver_config.get("seed"),
@@ -1263,11 +1405,7 @@ def _extract_pipeline_row(record: dict) -> dict:
         # D-26: E2 never recorded a memory_pressure classification (its
         # benchmark.json predates D-33); None rather than invented (D-14).
         "memory_pressure": None,
-        # D-26: E2's benchmark.json predates this plan's discard_stats
-        # threading and stays out of this phase's re-run scope (E2 is real
-        # data, unaffected by a synthetic scenario-geometry change); None
-        # rather than invented (D-14).
-        "degenerate_observations_at_solution": None,
+        "degenerate_observations_at_solution": degenerate_at_solution,
         "seconds_stage3_interface_optimization": stage1.get("seconds"),
         "seconds_stage3_intrinsic_pass": stage2.get("seconds"),
         "peak_bytes_baseline": None,
@@ -1302,7 +1440,7 @@ def _extract_pipeline_row(record: dict) -> dict:
 
 
 def build_grid_dataframe(
-    out_dir: Path, cell_statuses: list[dict], e2_benchmark_path: Path
+    out_dir: Path, cell_statuses: list[dict], e2_benchmark_path: Path | None
 ) -> pd.DataFrame:
     """Build the ten-row grid frame: nine declared cells plus E2's real-rig row.
 
@@ -1321,8 +1459,12 @@ def build_grid_dataframe(
         cell_statuses: One dict per declared cell (as `run_grid_cell`/
             `run_cell_subprocess` return), each with `n_cameras`, `n_frames`,
             `status`, `status_reason`, and (optionally) `exit_code`.
-        e2_benchmark_path: Path to E2's pipeline-written `benchmark.json`
-            (`E2_BENCHMARK_PATH` by default at the CLI layer).
+        e2_benchmark_path: Path to E2's pipeline-written `benchmark.json`, or
+            `None`. Callers should supply the output of the module's
+            `resolve_e2_benchmark_path` resolver rather than a bare constant
+            (FIX-05, D-09) -- `None` means no native record exists for this
+            `out_dir` and the row is emitted absent-and-marked rather than
+            imported from another tree.
 
     Returns:
         A `DataFrame` with exactly `GRID_COLUMNS`, in order: nine synthetic
@@ -1403,6 +1545,34 @@ def build_grid_dataframe(
             # a resumed `skipped_existing` cell with a positive count is
             # gated too, since its on-disk record is exactly as degenerate as
             # a freshly-run one would be.
+            # D-01: this downgrade is scoped to `record_source="assembled"`
+            # rows -- the nine DECLARED_CELLS synthetic cells assembled in this
+            # loop. E2's real-rig row (`record_source="pipeline"`) is built in
+            # the separate branch below and never reaches here; that exemption
+            # is INTENTIONAL, not an accident of control flow, so do not unify
+            # the two branches without re-deciding it. Why: the library that
+            # produced the real-rig count declines to read it as a verdict:
+            # on the committed 2026-08-20 record (seed 42, OpenCV 4.13.0.92)
+            # that count is 0.268% of 73,975 observations, below
+            # `pipeline.py:1288`'s 1% threshold, and is therefore "reported
+            # for the record rather than as a verdict on the whole solve".
+            # And on measured hardware the library's own remedy -- reposition
+            # the board so no corner sits at or above the interface -- is
+            # unavailable retrospectively, so a re-run keeps reporting a count
+            # of the same ORDER.
+            #
+            # It does NOT report the same count, and nothing here may assume
+            # it does (MF-24, plan 29.1-05): the same run's E2 band measured
+            # 198, 210 and 183 flagged observations for seeds 42, 43 and 44 --
+            # a ~+/-7% spread -- and the count is 194 under OpenCV 4.14. What
+            # is seed-invariant is the VERDICT (100% `above_interface`, 100%
+            # `extended`, in every seed) and the ~0.25% rate; the integer is
+            # seed 42's, under this run's pinned OpenCV.
+            #
+            # The anchor row's status must therefore be one the project can
+            # live with permanently, not one it expects to clear. The
+            # gate-side counterpart is
+            # `check_rerun_gates._check_guard_column`.
             n_degenerate = row.get("degenerate_observations_at_solution")
             if row["status"] in ("ok", "skipped_existing") and (
                 n_degenerate is not None and n_degenerate > 0
@@ -1416,28 +1586,35 @@ def build_grid_dataframe(
 
         rows.append(row)
 
-    e2_benchmark_path = Path(e2_benchmark_path)
     e2_record: dict | None = None
-    if not e2_benchmark_path.exists():
+    if e2_benchmark_path is None:
         logger.warning(
-            "E2 benchmark record not found at %s; emitting a null real-rig row "
-            "(record_source=missing_e2_benchmark) instead of raising after all "
-            "declared cells have solved (CR-03).",
-            e2_benchmark_path,
+            "No E2 benchmark record resolved for this out_dir; emitting a null "
+            "real-rig row (record_source=missing_e2_benchmark) instead of "
+            "importing another machine's record (FIX-05, D-09)."
         )
     else:
-        try:
-            with open(e2_benchmark_path) as f:
-                e2_record = json.load(f)
-        except (OSError, json.JSONDecodeError) as exc:
+        e2_benchmark_path = Path(e2_benchmark_path)
+        if not e2_benchmark_path.exists():
             logger.warning(
-                "E2 benchmark record at %s could not be read (%s: %s); "
-                "emitting a null real-rig row (record_source=missing_e2_benchmark) "
-                "instead of raising (CR-03).",
+                "E2 benchmark record not found at %s; emitting a null real-rig row "
+                "(record_source=missing_e2_benchmark) instead of raising after all "
+                "declared cells have solved (CR-03).",
                 e2_benchmark_path,
-                type(exc).__name__,
-                exc,
             )
+        else:
+            try:
+                with open(e2_benchmark_path) as f:
+                    e2_record = json.load(f)
+            except (OSError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "E2 benchmark record at %s could not be read (%s: %s); "
+                    "emitting a null real-rig row (record_source=missing_e2_benchmark) "
+                    "instead of raising (CR-03).",
+                    e2_benchmark_path,
+                    type(exc).__name__,
+                    exc,
+                )
 
     if e2_record is None:
         e2_row = {
@@ -1465,6 +1642,60 @@ def build_grid_dataframe(
     rows.append(e2_row)
 
     return pd.DataFrame(rows, columns=GRID_COLUMNS)
+
+
+# ---------------------------------------------------------------------------
+# D-17 (DEGEN-05): the optimality caveat, shipped inside benchmark_grid.tex.
+#
+# `optimality_stage3_interface_optimization` reaches Zenodo in both
+# benchmark_grid.csv and benchmark_grid.tex. A reader who meets the number must
+# meet its caveat in the same artifact, so the caveat travels as a LaTeX comment
+# block emitted immediately before the two blocks that carry the column. This is
+# the FIX-04 labelling pattern (e7_focal_standoff.csv's `scope` column) applied
+# to the .tex: no schema change, no CSV comment line (a leading `#` breaks
+# pd.read_csv and E4's own --check), and no co-opting of the cell-status
+# reason column, which the status gate owns.
+#
+# Every line MUST start with `%`. The block is concatenated verbatim into a
+# LaTeX document; a non-comment line here would corrupt it.
+# ---------------------------------------------------------------------------
+OPTIMALITY_CAVEAT_TEX = """\
+% ---------------------------------------------------------------------------
+% CAVEAT on optimality_stage3_interface_optimization (D-17, DEGEN-05).
+% Measured 2026-08-17; derivation and raw data in
+% .planning/probes/2026-08-17-optimality-decomposition/FINDINGS.md
+%
+% This column is scipy trf's first-order optimality, max|g . v| over the
+% parameter vector, with v the Coleman-Li scaling vector. It is a MEASUREMENT,
+% never a converged/diverged verdict, and it has three properties a reader must
+% know before comparing two of these values:
+%
+%   (1) VOLATILE AT A FIXED SOLUTION. Restarting a converged solve from its own
+%       solution moves the reported value 92.78 -> 27.58 -> 2.16 -- a 43x swing
+%       -- while the cost does not move at all (largest relative drop 1.8e-9).
+%       The problem is genuinely, severely ill-conditioned: directional
+%       curvature ~3e8, a narrow valley whose floor is flat in cost while the
+%       gradient swings. A single reported value therefore locates a point on
+%       that floor, not a distance from the minimum.
+%
+%   (2) NOT COMPARABLE ACROSS PARAMETER BLOCKS. The Coleman-Li vector v runs
+%       three regimes in this problem: v = 1 for the unbounded extrinsics and
+%       board poses, v ~ 700 for the wide-bounded intrinsics (0.5x fx to 2x fx),
+%       and v ~ 2e-12 for a pinned water_z. One scalar mixes all three, so a
+%       value dominated by one block cannot be read against a value dominated by
+%       another. It is not a like-for-like maximum.
+%
+%   (3) MAGNITUDE-DEPENDENT IN RELIABILITY. Large values are trustworthy: 92.78
+%       agrees with a central-difference reference Jacobian to five significant
+%       figures. Small values are not: a reported 0.001146 sits against a
+%       3-point reference of 0.001655, a 44% disagreement. DIFFERENCES BETWEEN
+%       TWO SMALL OPTIMALITY VALUES CARRY NO INFORMATION.
+%
+% None of this is a defect in any number in the tables below. Finite-difference
+% Jacobian noise was tested as the driver and falsified -- the gradient this
+% column reports is real -- and the library's FD step rule tracked the 3-point
+% reference in both the large- and small-gradient regimes.
+% ---------------------------------------------------------------------------"""
 
 
 def write_grid_latex(df: pd.DataFrame, path: Path) -> None:
@@ -1504,6 +1735,11 @@ def write_grid_latex(df: pd.DataFrame, path: Path) -> None:
         blocks = [
             "% E4 compact summary (nine synthetic cells, main-text table)",
             summary_path.read_text(),
+            # D-17: the caveat sits immediately before the only two blocks that
+            # carry optimality_stage3_interface_optimization (the compact
+            # summary above does not -- GRID_SUMMARY_COLUMNS omits it), so a
+            # reader meets it before the number in every rendering order.
+            OPTIMALITY_CAVEAT_TEX,
             "% E4 full grid (nine synthetic cells, supplement table)",
             full_path.read_text(),
             # See this function's docstring: the real-rig row is its own
@@ -1873,9 +2109,27 @@ def _run_check(args: argparse.Namespace) -> int:
             }
         )
 
-    df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)
+    e2_path, e2_note = resolve_e2_benchmark_path(out_dir)
+    logger.info("E2 real-rig record: %s (%s)", e2_path, e2_note)
+    print(f"E2 real-rig record: {e2_path} ({e2_note})")
+
+    # D-07: print what --check skips, unconditionally, pass or fail -- so a
+    # reader of a green --check knows exactly what green does not cover.
+    print(
+        "--check excludes these columns from cell comparison (never "
+        f"reproducible under --check, D-07): {', '.join(CHECK_EXCLUDED_COLUMNS)} "
+        "-- exit_code: _run_check hardcodes None (no subprocess runs under "
+        "--check) while the committed CSV holds the real run's exit code; "
+        "status_reason: empty-string-versus-NaN round-trip through CSV."
+    )
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     report = compare_experiment_csv(
-        df, committed_path, key_columns=GRID_KEY_COLUMNS, rtol=CHECK_RTOL
+        df,
+        committed_path,
+        key_columns=GRID_KEY_COLUMNS,
+        rtol=CHECK_RTOL,
+        exclude_columns=CHECK_EXCLUDED_COLUMNS,
     )
     print(report.message)
     return exit_code_for(report)
@@ -1951,7 +2205,10 @@ def _run_full(args: argparse.Namespace) -> int:
             )
             return 1
 
-    df = build_grid_dataframe(out_dir, cell_statuses, E2_BENCHMARK_PATH)
+    e2_path, e2_note = resolve_e2_benchmark_path(out_dir)
+    logger.info("E2 real-rig record: %s (%s)", e2_path, e2_note)
+
+    df = build_grid_dataframe(out_dir, cell_statuses, e2_path)
     write_experiment_csv(
         df,
         out_dir / "benchmark_grid.csv",

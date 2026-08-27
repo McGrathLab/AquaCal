@@ -1,0 +1,62 @@
+{
+  "discard_stats": {
+    "degenerate_observations_at_solution": 0,
+    "degenerate_observations_cause_above_interface__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_behind_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_cause_interface_below_camera__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_extended__stage3_interface_optimization": 0,
+    "degenerate_observations_fate_penalized__stage3_interface_optimization": 0,
+    "observations_evaluated__stage3_interface_optimization": 1032042,
+    "pnp_attempts_refractive": 36058,
+    "pnp_attempts_total": 36058,
+    "pnp_guard_rejected": 110,
+    "pose_discarded_by_consumer": 110
+  },
+  "environment": {
+    "aquacal_version": "2.0.1",
+    "aquacal_version_declared": "2.0.1",
+    "cpu_count_logical": 32,
+    "cpu_model": "x86_64",
+    "git_sha": "3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c",
+    "git_sha_source": "git_rev_parse",
+    "numpy_version": "2.4.6",
+    "opencv_version": "4.13.0",
+    "os": "Linux 6.8.0-136-generic",
+    "python_version": "3.11.15",
+    "ram_total_bytes": 33351241728,
+    "scipy_version": "1.17.1"
+  },
+  "experiment": "e5",
+  "holdout_seed_offset": 100000,
+  "n_assumed_band": [
+    1.323,
+    1.325,
+    1.327,
+    1.329,
+    1.331,
+    1.333,
+    1.335,
+    1.337,
+    1.339,
+    1.341,
+    1.343
+  ],
+  "n_frames": 30,
+  "n_true": 1.333,
+  "normal_fixed": false,
+  "refine_intrinsics": false,
+  "schema_version": 1,
+  "scope": "This band varies the SEED across the fixed N_ASSUMED_BAND sweep of the assumed refractive index, and bounds seed-to-seed noise in E5's scale-bias measurement. It is DISTINCT from n_assumed_band (also present in this sidecar), which varies the assumed index at ONE seed and bounds nothing about seed noise -- conflating the two is exactly what demoted E5's accuracy claim under D-19.3-17 (D-19.5-05).",
+  "seed": 47,
+  "solver_config": {
+    "seed": 47,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ]
+  }
+}

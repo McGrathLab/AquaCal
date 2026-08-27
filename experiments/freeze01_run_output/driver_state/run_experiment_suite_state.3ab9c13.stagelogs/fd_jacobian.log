@@ -1,0 +1,62 @@
+[2026-08-20T00:14:11Z] >>> STAGE 3/20: fd_jacobian starting
+Experiment output directory: /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results
+Wrote /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.csv
+Wrote /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.json
+fd_jacobian_accuracy: 1.7s, plateau_detected=True
+[2026-08-20T00:14:13Z] <<< STAGE 3/20: fd_jacobian finished exit=0
+----- GATE VERDICT: stage=fd_jacobian out_dir=experiments/results -----
+[FAIL] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json not found
+[FAIL] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[FAIL] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json not found
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[FAIL] E3  gate3_provenance:e3_provenance.json           e3_provenance.json not found
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[FAIL] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json not found
+[FAIL] E5  gate3_provenance:e5_provenance.json           e5_provenance.json not found
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[FAIL] E6  gate1_guard_count                             no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_configs
+[FAIL] E6  gate3_provenance                              no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_configs
+[FAIL] E6  gate4_optimality                              no per-configuration checkpoint under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_configs
+[FAIL] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv not found
+[FAIL] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json not found
+[FAIL] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[FAIL] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json not found
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[N/A ] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[N/A ] E2  gate_e2_band                                  /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_band not present (its stage has not run yet)
+[PASS] ALL gate3_git_sha_consistency                     no git_sha values found across any artifact to compare
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha is 3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c; no artifact carries a git_sha to compare against
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] fd_jacobian completeness:fd_jacobian_accuracy.csv         fd_jacobian_accuracy.csv: 8 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.csv, as expected.
+[PASS] fd_jacobian completeness:fd_jacobian_accuracy.json        fd_jacobian_accuracy.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/fd_jacobian_accuracy.json; no row count is pinned for it (companion record, not a table. full-only (P27-D-20 class 1): fd_jacobian_accuracy.py:652-666 (_run_smoke) writes fd_jacobian_accuracy.csv and returns without writing this sidecar -- the write at :631 is on the full path only. Note the sibling fd_jacobian_accuracy.csv IS written under smoke and stays ["smoke","full"]; only this .json sidecar moves.)
+
+TOTAL: 7 PASS, 14 N/A, 31 FAIL
+----- END GATE VERDICT: stage=fd_jacobian exit=1 -----

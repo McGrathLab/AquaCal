@@ -1,0 +1,915 @@
+================================================================================
+29.2-release-rehearsal.txt -- the ENTIRE v2.1.0 release, executed end to end in a
+throwaway /tmp clone against a local bare remote, so that every fact ROADMAP
+criteria 2 and 3 depend on is measured BEFORE anyone touches an irreversible
+control. Plan 29.2-01, task 2 (the phase tracer). Reads with
+29.2-sdist-listing.txt, which enumerates the artifact this run built.
+================================================================================
+
+Question:       After a real --no-ff merge of results/rerun-freeze-02 into a
+                branch literally named `main`, does python-semantic-release --
+                installed at the exact versions .github/workflows/release.yml
+                pins -- compute a next version of 2.1.0, and does it produce the
+                release commit, the annotated tag, both bumped version files,
+                the generated changelog and a built sdist?
+
+Pass condition: `semantic-release version --print` prints a string that
+                STRING-EQUALS "2.1.0". Not "a version appeared"; not "3.0.0"
+                (which is what a matched BREAKING CHANGE footer on fd78d77 would
+                produce -- D-29.2-20); not "2.0.2" (which is what a squash, or a
+                traversal that never reached the feat commits, would produce).
+                Secondary: an annotated v2.1.0 tag exists, pyproject.toml and
+                CITATION.cff both read 2.1.0 at that tag, and dist/ holds an
+                aquacal-2.1.0.tar.gz.
+
+                The pass condition is stated here, above every number in this
+                file, so the bar cannot be retrofitted to the result.
+
+--------------------------------------------------------------------------------
+PROVENANCE
+--------------------------------------------------------------------------------
+
+Measured           : 2026-08-26
+Working repository : /home/tlancaster/aquacal-frozen-rerun-freeze-01
+                     branch results/rerun-freeze-02 @ 7ab969e
+                     (7ab969e is this plan's own task-1 commit, the release.yml
+                     pin -- so the rehearsal tests the pinned workflow, not the
+                     pre-pin one)
+origin/main        : d27bda76fe7c765b3c975b2052ca1f8f7b286068
+                     refreshed by a read-only `git fetch origin` immediately
+                     before the clone; unchanged by it
+Scratch root       : /tmp/aquacal-29.2-rehearsal
+  clone            : /tmp/aquacal-29.2-rehearsal/repo
+  fake remote      : /tmp/aquacal-29.2-rehearsal/fakeremote.git   (bare, local)
+  pinned venv      : /tmp/aquacal-29.2-rehearsal/venv
+  control venv     : /tmp/aquacal-29.2-rehearsal/venv-unpinned-control
+Merge commit       : 5399d2b  "Merge pull request #3 from McGrathLab/results/rerun-freeze-02"
+                     parents d27bda7 (main) + 7ab969e (the branch)
+Release commit     : b411449  "chore(release): 2.1.0"  author semantic-release
+Toolchain          : python-semantic-release 10.6.1, GitPython 3.1.59, build 1.5.0
+                     -- the two pinned specifiers were EXTRACTED BY grep FROM
+                     .github/workflows/release.yml, never retyped (D-29.2-28b),
+                     and the merged release.yml in the clone was diffed against
+                     the file they were grepped from and found byte-identical.
+                     Interpreter: python3.12 venv on Linux.
+Control            : python-semantic-release 10.6.1 + GitPython 3.1.60 (what an
+                     UNPINNED `pip install` resolves to today), installed
+                     separately to prove the pin is load-bearing rather than
+                     decorative.
+
+--------------------------------------------------------------------------------
+RESULT: PASS
+--------------------------------------------------------------------------------
+
+`semantic-release version --print` printed exactly "2.1.0" -- five bytes, no
+trailing newline, confirmed with od -c. The full release then ran and produced
+every element of ROADMAP criterion 3. The working repository was not touched:
+its `git status --porcelain` and `git branch --list` are byte-identical before
+and after.
+
+--------------------------------------------------------------------------------
+HEADLINE NUMBERS, MEASURED BESIDE EXPECTED
+--------------------------------------------------------------------------------
+
+                                          MEASURED           EXPECTED
+  semantic-release version --print        2.1.0              exactly "2.1.0"
+  merge commit parents                    2                  2 (never a squash)
+  v2.1.0 object type                      tag                tag (annotated)
+  pyproject.toml at v2.1.0                2.1.0              2.1.0
+  CITATION.cff at v2.1.0                  2.1.0              2.1.0
+  sdist built by build_command            aquacal-2.1.0.tar.gz   present
+  PSR parse of v2.0.1..main: MAX BUMP     MINOR              MINOR
+  PSR parse of v2.0.1..main: MAJOR        0                  0 (D-29.2-20)
+
+  Commit / type figures, RE-DERIVED at rehearsal time (D-29.2-19) -- the
+  ROADMAP's numbers are carried alongside, not replaced silently:
+
+                              REHEARSAL   RESEARCH 2026-08-26   ROADMAP (stale)
+  commits ahead of main         438            429 / 431            406
+  feat                           47             47                   43
+  fix                            30             30                   29
+  breaking-change markers         0              0                    0
+
+  The commit count has drifted AGAIN, from 431 to 438, in the hours since
+  RESEARCH ran -- which is precisely why D-29.2-19 exists and why D-29.2-28b
+  requires this rehearsal be re-run immediately before the merge. The feat/fix
+  counts and the bump are unaffected. NO NUMBER ABOVE WAS ADJUSTED TOWARD ITS
+  EXPECTATION; where the rehearsal and RESEARCH disagree, both are printed.
+
+  Changelog, generated (D-29.2-29 -- recorded, NOT gated):
+
+                              REHEARSAL   RESEARCH Q6e
+  lines inserted                1,219        1,196
+  entries                         400          393
+  sub-headings                      7            6
+
+  The extra sub-heading is "Continuous Integration", and it exists because this
+  plan's own task-1 commit is a `ci(...)` commit. The 23 extra lines and 7 extra
+  entries are the commits that landed after RESEARCH ran.
+
+--------------------------------------------------------------------------------
+THREE THINGS THIS RUN MEASURED THAT THE PLAN AND THE RESEARCH DID NOT
+--------------------------------------------------------------------------------
+
+These are recorded because each one would have let a defect through.
+
+1. `semantic-release --version` DOES NOT DETECT FINDING 1.
+   The plan's task-2 step 4 says: "assert `semantic-release --version` exits 0.
+   That single assertion is what Finding 1 costs to detect." Measured, that is
+   false. With the broken GitPython 3.1.60 installed, `semantic-release
+   --version` prints "semantic-release, version 10.6.1" and exits 0, because
+   `--version` never loads the config and therefore never reaches
+   semantic_release/cli/config.py:745. The break surfaces only on a subcommand
+   that loads config. A CI smoke test built on `--version` would have passed and
+   the release would still have died.
+   THE ASSERTION THAT DOES DETECT IT is `semantic-release version --print` on a
+   release-group branch -- exit code 1, "::ERROR:: type object 'Actor' has no
+   attribute 'name_email_regex'". That is measured below, both ways.
+
+2. AND IT DOES NOT DETECT IT ON A NON-RELEASE BRANCH EITHER.
+   With the same broken GitPython, `semantic-release version --print` run on
+   `results/rerun-freeze-02` exits 0 with "branch ... isn't in any release
+   groups; no release will be made" -- PSR short-circuits on the branch check
+   BEFORE constructing the runtime context that reads the missing attribute. So
+   the pre-merge check has to happen on a branch named `main`, which is exactly
+   what the /tmp clone is for. Two independent reasons the clone is not optional.
+
+3. THE MERGE'S PR NUMBER IS #3, NOT #1.
+   PATTERNS records "no PR has ever been opened on this repo (`gh pr list
+   --state open` -> [])". That query was scoped to OPEN pull requests. `gh pr
+   list --state all` returns #1 and #2, both closed. The next PR is #3. This is
+   cosmetic for the bump -- PSR's `ignore_merge_commits` default means the merge
+   commit's own message is not parsed at all -- but plan 29.2-04 opens the real
+   PR and should not expect #1.
+
+--------------------------------------------------------------------------------
+ONE DEVIATION, RECORDED RATHER THAN HIDDEN
+--------------------------------------------------------------------------------
+
+The FIRST full `semantic-release version --no-vcs-release` invocation ABORTED at
+build_command. It is transcribed below in full, together with the state it left
+behind, because pretending it did not happen would waste the most useful thing it
+produced: an exact, accidental reproduction of RESEARCH Q6f's half-way abort.
+
+  Q6f predicted: PSR writes the three version files, runs build_command, and
+  aborts BEFORE the commit, the tag and the push.
+  Measured after the abort: HEAD still the merge commit; ` M CHANGELOG.md
+  M CITATION.cff  M pyproject.toml`; `git tag --list v2.1.0` empty; fake-remote
+  ref count 0. The prediction holds to the letter. The abort is benign.
+
+  Cause, read from the installed source rather than guessed: PSR runs
+  build_command through `bash -c` with a curated environment that forwards the
+  CALLER's PATH verbatim (semantic_release/cli/commands/version.py:278,
+  `"PATH": os.getenv("PATH", "")`). This shell's `python` is the anaconda base
+  interpreter, which has no `build` module; the pinned venv's bin directory was
+  not on PATH.
+
+  THIS IS A DEFECT IN THE REHEARSAL HARNESS, NOT IN THE REPOSITORY AND NOT IN
+  release.yml. On the runner, actions/setup-python puts its interpreter first on
+  PATH and `pip install ... build` installs into that same interpreter, so
+  `python -m build` resolves correctly there. No workflow change is warranted and
+  none was made.
+
+  Fix applied: the clone's tree was reset to the merge commit with a targeted
+  `git checkout -- CHANGELOG.md CITATION.cff pyproject.toml` (three named files,
+  inside the /tmp clone -- no blanket reset, no `git clean`, and nothing in the
+  working repository), the earlier manual build output was removed so that dist/
+  could only contain build_command's own product, and the release was re-run with
+  the venv's bin first on PATH. It then completed.
+
+================================================================================
+TRANSCRIPT -- every command verbatim, its raw output, and its exit code
+================================================================================
+
+Convention (PATTERNS S3): `  $ <command>` -> raw output -> `(exit code N)`.
+Where a command was piped through `tail`/`grep`, the recorded exit code is the
+PIPELINE's, i.e. the last stage's; the three places where that mattered are
+re-measured unpiped and flagged inline.
+
+--------------------------------------------------------------------------------
+0. WORKING-REPOSITORY STATE, BEFORE ANYTHING
+--------------------------------------------------------------------------------
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 status --porcelain
+   M .planning/STATE.md
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 branch --list --format='%(refname:short)'
+  results/rerun-freeze-01
+  results/rerun-freeze-02
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse --abbrev-ref HEAD
+  results/rerun-freeze-02
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse HEAD
+  7ab969e2cc5479cb300630697244b534fd06357a
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse refs/remotes/origin/main
+  d27bda76fe7c765b3c975b2052ca1f8f7b286068
+  (exit code 0)
+
+  $ python3 -m venv --help >/dev/null 2>&1 && echo 'python3 -m venv available'
+  python3 -m venv available
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+1. READ-ONLY FETCH, THEN CLONE INTO /tmp (D-29.2-31)
+--------------------------------------------------------------------------------
+
+  $ cd /home/tlancaster/aquacal-frozen-rerun-freeze-01 && timeout 120 git fetch origin 2>&1 | tail -5; echo fetch-rc=${PIPESTATUS[0]}
+  fetch-rc=0
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse refs/remotes/origin/main
+  d27bda76fe7c765b3c975b2052ca1f8f7b286068
+  (exit code 0)
+
+  $ git clone --no-hardlinks --no-local /home/tlancaster/aquacal-frozen-rerun-freeze-01 /tmp/aquacal-29.2-rehearsal/repo 2>&1 | tail -6
+  Cloning into '/tmp/aquacal-29.2-rehearsal/repo'...
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo branch --list --format='%(refname:short)' | tr '\n' ' '
+  results/rerun-freeze-02 
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo show-ref | grep -c . 
+  26
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+2. MATERIALISE A BRANCH LITERALLY NAMED main INSIDE THE CLONE (RESEARCH Q1e)
+--------------------------------------------------------------------------------
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo for-each-ref --format='%(refname)' refs/remotes/ | tr '\n' ' '; echo '<- no origin/main: a clone of a local repo copies LOCAL heads only'
+  refs/remotes/origin/HEAD refs/remotes/origin/results/rerun-freeze-01 refs/remotes/origin/results/rerun-freeze-02 <- no origin/main: a clone of a local repo copies LOCAL heads only
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo fetch origin refs/remotes/origin/main:refs/heads/main 2>&1 | tail -4
+  From /home/tlancaster/aquacal-frozen-rerun-freeze-01
+   * [new ref]         origin/main -> main
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo rev-parse main
+  d27bda76fe7c765b3c975b2052ca1f8f7b286068
+  (exit code 0)
+
+  $ test "$(git -C /tmp/aquacal-29.2-rehearsal/repo rev-parse main)" = "d27bda76fe7c765b3c975b2052ca1f8f7b286068" && echo 'ASSERT OK: clone main == working repo origin/main == d27bda7'
+  ASSERT OK: clone main == working repo origin/main == d27bda7
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+3. SAFETY GATE -- RE-POINT origin AT A LOCAL BARE REPOSITORY, AND PROVE IT (T-29.2-02)
+--------------------------------------------------------------------------------
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo remote get-url origin; echo '^^ INHERITED from the source repo. semantic-release PUSHES. This must not stand.'
+  /home/tlancaster/aquacal-frozen-rerun-freeze-01
+  ^^ INHERITED from the source repo. semantic-release PUSHES. This must not stand.
+  (exit code 0)
+
+  $ git init --bare -q /tmp/aquacal-29.2-rehearsal/fakeremote.git && echo created && ls /tmp/aquacal-29.2-rehearsal/fakeremote.git | tr '\n' ' '
+  created
+  branches config description HEAD hooks info objects refs 
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo remote set-url origin /tmp/aquacal-29.2-rehearsal/fakeremote.git && echo set-url ok
+  set-url ok
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo remote get-url origin
+  /tmp/aquacal-29.2-rehearsal/fakeremote.git
+  (exit code 0)
+
+  $ [ "$(git -C /tmp/aquacal-29.2-rehearsal/repo remote get-url origin)" = "/tmp/aquacal-29.2-rehearsal/fakeremote.git" ] && echo 'ASSERT OK (string equality): origin is the local bare repo. GATE PASSED -- execution may proceed.' || { echo 'GATE FAILED'; exit 1; }
+  ASSERT OK (string equality): origin is the local bare repo. GATE PASSED -- execution may proceed.
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo remote -v
+  origin	/tmp/aquacal-29.2-rehearsal/fakeremote.git (fetch)
+  origin	/tmp/aquacal-29.2-rehearsal/fakeremote.git (push)
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/fakeremote.git show-ref | wc -l; echo '^^ refs in the fake remote before the release (0 = empty)'
+  0
+  ^^ refs in the fake remote before the release (0 = empty)
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+4. BUILD THE PINNED VENV FROM THE WORKFLOW'S OWN LITERALS (D-29.2-28b)
+--------------------------------------------------------------------------------
+
+  $ grep -nE '^\s+run: pip install python-semantic-release' /home/tlancaster/aquacal-frozen-rerun-freeze-01/.github/workflows/release.yml
+  63:        run: pip install python-semantic-release==10.6.1 gitpython==3.1.59 build
+  (exit code 0)
+
+  $ grep -oE '(python-semantic-release|gitpython)==[0-9][0-9.]*' /home/tlancaster/aquacal-frozen-rerun-freeze-01/.github/workflows/release.yml | sort -u | tr '\n' ' '; echo '<- extracted by grep, NOT retyped'
+  gitpython==3.1.59 python-semantic-release==10.6.1 <- extracted by grep, NOT retyped
+  (exit code 0)
+
+  $ python3 -m venv /tmp/aquacal-29.2-rehearsal/venv && echo venv created at /tmp/aquacal-29.2-rehearsal/venv
+  venv created at /tmp/aquacal-29.2-rehearsal/venv
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/pip install -q --upgrade pip 2>&1 | tail -2; echo pip-upgraded
+  pip-upgraded
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/pip install -q gitpython==3.1.59 python-semantic-release==10.6.1  build 2>&1 | tail -20; echo 'install finished'
+  install finished
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/pip show python-semantic-release gitpython build 2>/dev/null | grep -E '^(Name|Version):'
+  Name: python-semantic-release
+  Version: 10.6.1
+  Name: GitPython
+  Version: 3.1.59
+  Name: build
+  Version: 1.5.0
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release --version
+  semantic-release, version 10.6.1
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release --version >/dev/null && echo 'ASSERT OK: semantic-release runs. This one assertion is what FINDING 1 costs to detect.'
+  ASSERT OK: semantic-release runs. This one assertion is what FINDING 1 costs to detect.
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+4b. THE FINDING-1 CONTROL -- what the UNPINNED install would have done
+--------------------------------------------------------------------------------
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo checkout -q main && git -C /tmp/aquacal-29.2-rehearsal/repo rev-parse --abbrev-ref HEAD
+  main
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/pip index versions gitpython 2>&1 | sed -n '1p' ; /tmp/aquacal-29.2-rehearsal/venv/bin/pip index versions gitpython 2>&1 | sed -n '3p'
+  gitpython (3.1.60)
+    INSTALLED: 3.1.59
+  (exit code 0)
+
+  $ python3 -m venv /tmp/aquacal-29.2-rehearsal/venv-unpinned-control 2>/dev/null; /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/pip show python-semantic-release gitpython 2>/dev/null | grep -E '^(Name|Version):'
+  Name: python-semantic-release
+  Version: 10.6.1
+  Name: GitPython
+  Version: 3.1.60
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/python -c "import git; print('gitpython', git.__version__, '| Actor.name_email_regex present:', hasattr(git.Actor,'name_email_regex'))"
+  gitpython 3.1.60 | Actor.name_email_regex present: False
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/python -c "import git; print('gitpython', git.__version__, '| Actor.name_email_regex present:', hasattr(git.Actor,'name_email_regex'))"
+  gitpython 3.1.59 | Actor.name_email_regex present: True
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/semantic-release --version
+  semantic-release, version 10.6.1
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/semantic-release version --print 2>&1 | tail -6
+  ::ERROR:: type object 'Actor' has no attribute 'name_email_regex'
+  Run semantic-release in very verbose mode (-vv) to see the full traceback.
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release --version
+  semantic-release, version 10.6.1
+  (exit code 0)
+
+  (the three exit codes above where a pipe was used are tail's, not the command's; re-measured unpiped below)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/semantic-release --version
+  semantic-release, version 10.6.1
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/semantic-release version --print
+  ::ERROR:: type object 'Actor' has no attribute 'name_email_regex'
+  Run semantic-release in very verbose mode (-vv) to see the full traceback.
+  (exit code 1)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && git checkout -q results/rerun-freeze-02 && /tmp/aquacal-29.2-rehearsal/venv-unpinned-control/bin/semantic-release version --print; git checkout -q main
+  branch 'results/rerun-freeze-02' isn't in any release groups; no release will be
+  made
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+5. SIMULATE THE PR MERGE -- --no-ff, GitHub-shaped message (ROADMAP criterion 2)
+--------------------------------------------------------------------------------
+
+  $ timeout 60 gh pr list --state all --json number,title 2>&1 | head -3; echo '^^ PRs #1 and #2 are CLOSED; PATTERNS said "no PR has ever been opened" from a --state open query. The next number is therefore #3, not #1.'
+  [{"number":2,"title":"Dev"},{"number":1,"title":"ci: exclude tutorial notebooks from detect-secrets"}]
+  ^^ PRs #1 and #2 are CLOSED; PATTERNS said "no PR has ever been opened" from a --state open query. The next number is therefore #3, not #1.
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo rev-parse --abbrev-ref HEAD
+  main
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo merge --no-ff results/rerun-freeze-02 -m 'Merge pull request #3 from McGrathLab/results/rerun-freeze-02' 2>&1 | tail -4
+   create mode 100644 tests/unit/test_run_experiment_suite_dryrun.py
+   create mode 100644 tests/unit/test_run_manifest.py
+   create mode 100644 tests/unit/test_stale_provenance_strings.py
+   create mode 100644 tests/unit/test_suite_stage_list.py
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log -1 --format='%H%n%s%nparents: %P'
+  5399d2b80be592b6f6e6af55ec3851653a4c930d
+  Merge pull request #3 from McGrathLab/results/rerun-freeze-02
+  parents: d27bda76fe7c765b3c975b2052ca1f8f7b286068 7ab969e2cc5479cb300630697244b534fd06357a
+  (exit code 0)
+
+  $ [ "$(git -C /tmp/aquacal-29.2-rehearsal/repo rev-list --parents -n1 HEAD | wc -w)" = 3 ] && echo 'ASSERT OK: the merge commit has exactly TWO parents -- it is a real merge commit, not a squash.'
+  ASSERT OK: the merge commit has exactly TWO parents -- it is a real merge commit, not a squash.
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo show --stat --oneline -s HEAD
+  5399d2b Merge pull request #3 from McGrathLab/results/rerun-freeze-02
+  (exit code 0)
+
+  $ diff <(git -C /tmp/aquacal-29.2-rehearsal/repo show HEAD:.github/workflows/release.yml) /home/tlancaster/aquacal-frozen-rerun-freeze-01/.github/workflows/release.yml && echo 'ASSERT OK: the merged release.yml is byte-identical to the pinned file the venv specs were grepped from.'
+  ASSERT OK: the merged release.yml is byte-identical to the pinned file the venv specs were grepped from.
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+6. RE-DERIVE D-29.2-19's FIGURES AT REHEARSAL TIME (they were stale once already)
+--------------------------------------------------------------------------------
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo rev-list --count d27bda76fe7c765b3c975b2052ca1f8f7b286068..results/rerun-freeze-02
+  438
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log --format='%s' d27bda76fe7c765b3c975b2052ca1f8f7b286068..results/rerun-freeze-02 | grep -cE '^feat(\([^)]*\))?!?:'
+  47
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log --format='%s' d27bda76fe7c765b3c975b2052ca1f8f7b286068..results/rerun-freeze-02 | grep -cE '^fix(\([^)]*\))?!?:'
+  30
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log --format='%s' d27bda76fe7c765b3c975b2052ca1f8f7b286068..results/rerun-freeze-02 | grep -cE '^[a-zA-Z]+(\([^)]*\))?!:' || echo 0
+  0
+  0
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log --format='%s' d27bda76fe7c765b3c975b2052ca1f8f7b286068..results/rerun-freeze-02 | sed -E 's/^([a-zA-Z]+)(\(.*)?!?:.*/\1/' | sort | uniq -c | sort -rn | head -20
+      269 docs
+       47 feat
+       40 chore
+       30 fix
+       26 test
+       16 merge
+        3 probe
+        2 results
+        2 refactor
+        2 Merge remote-tracking branch 'origin/experiments/full-suite-rerun' into results/rerun-freeze-01
+        1 ci
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo rev-parse v2.0.1 2>/dev/null; git -C /tmp/aquacal-29.2-rehearsal/repo rev-list --count v2.0.1..main
+  f7bf729f6e4207b3041a025834f1cbec96a8c2cb
+  440
+  (exit code 0)
+
+  $ /tmp/aquacal-29.2-rehearsal/venv/bin/python /tmp/aquacal-29.2-rehearsal/parse_range.py /tmp/aquacal-29.2-rehearsal/repo v2.0.1..main
+  commits traversed        : 440
+    NO_RELEASE            : 323
+    PATCH                 : 30
+    MINOR                 : 47
+    MAJOR                 : 0
+    ParseError -- Ignoring merge commit           : 35
+    ParseError -- Unable to parse commit message  : 5
+  MAX BUMP                 : MINOR
+  MAJOR                    : 0
+  (exit code 0)
+
+
+  The two ranges differ by 2: d27bda7..results/rerun-freeze-02 is 438 (branch commits only),
+  v2.0.1..main is 440 (the same 438, plus the simulated merge commit, plus one commit that
+  already sat on main between the v2.0.1 tag and d27bda7). Both are recorded; neither was
+  adjusted toward the other, and neither changes the bump -- MAX BUMP is MINOR either way.
+
+--------------------------------------------------------------------------------
+7. THE ASSERTION -- semantic-release version --print STRING-EQUALS 2.1.0 (D-29.2-18/20/30)
+--------------------------------------------------------------------------------
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && env -u GH_TOKEN -u GITHUB_TOKEN /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release version --print
+  [19:13:55] WARNING  Token value is missing!                        config.py:805
+             WARNING  Couldn't parse tag v1.6 as as Version: '1.6' algorithm.py:49
+                      is not a valid Version                                      
+  2.1.0
+             WARNING  Couldn't parse tag v1.6 as as Version: '1.6' algorithm.py:49
+                      is not a valid Version                                      
+  (exit code 0)
+
+  $ [ "$(cd /tmp/aquacal-29.2-rehearsal/repo && env -u GH_TOKEN -u GITHUB_TOKEN /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release version --print 2>/dev/null)" = '2.1.0' ] && echo 'ASSERT OK (string equality): output == "2.1.0". Not 3.0.0, so the breaking-change footer regex did NOT match fd78d77 (D-29.2-20 settled). Not 2.0.2, so the 47 feat commits were reached.'
+  ASSERT OK (string equality): output == "2.1.0". Not 3.0.0, so the breaking-change footer regex did NOT match fd78d77 (D-29.2-20 settled). Not 2.0.2, so the 47 feat commits were reached.
+  (exit code 0)
+
+  $ printf '%s' "$(cd /tmp/aquacal-29.2-rehearsal/repo && env -u GH_TOKEN -u GITHUB_TOKEN /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release version --print 2>/dev/null)" | od -c | head -3
+  0000000   2   .   1   .   0
+  0000005
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && git status --porcelain | head; echo '^^ empty: --print mutated nothing'
+  ^^ empty: --print mutated nothing
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && git tag --list 'v2.1.0'; echo '^^ empty: --print created no tag'
+  ^^ empty: --print created no tag
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+8. RUN THE FULL RELEASE, FOR REAL, IN THE CLONE (ROADMAP criterion 3)
+--------------------------------------------------------------------------------
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && env -u GH_TOKEN -u GITHUB_TOKEN /tmp/aquacal-29.2-rehearsal/venv/bin/semantic-release version --no-vcs-release 2>&1 | tail -25
+                      │   202 │   │   },                          │               
+                      │   203 │   )                               │               
+                      │   204 │                                   │               
+                      │ ❱ 205 │   return subprocess.run(  # noqa: │               
+                      │   206 │   │   [shell, shell_cmd_param[she │               
+                      │   207 │   │   env=(env or {}),            │               
+                      │   208 │   │   check=check,                │               
+                      │                                           │               
+                      │ /home/tlancaster/anaconda3/lib/python3.12 │               
+                      │ /subprocess.py:571 in run                 │               
+                      │                                           │               
+                      │    568 │   │   │   raise                  │               
+                      │    569 │   │   retcode = process.poll()   │               
+                      │    570 │   │   if check and retcode:      │               
+                      │ ❱  571 │   │   │   raise CalledProcessErr │               
+                      │    572 │   │   │   │   │   │   │   │   │  │               
+                      │    573 │   return CompletedProcess(proces │               
+                      │    574                                    │               
+                      ╰───────────────────────────────────────────╯               
+                      CalledProcessError: Command '['bash', '-c',                 
+                      'python -m build']' returned non-zero exit                  
+                      status 1.                                                   
+             ERROR    Build command failed with exit code 1         version.py:305
+  
+  Build failed, aborting release
+  (exit code 0)
+
+  THE FIRST INVOCATION ABORTED AT build_command. Recorded rather than hidden: this is
+  RESEARCH Q6f's measured half-way abort, reproduced exactly, and it is benign.
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && git log -1 --oneline; git status --porcelain; echo "tag v2.1.0: [$(git tag --list v2.1.0)]"; echo "fakeremote refs: $(git -C /tmp/aquacal-29.2-rehearsal/fakeremote.git show-ref | wc -l)"
+  5399d2b Merge pull request #3 from McGrathLab/results/rerun-freeze-02
+   M CHANGELOG.md
+   M CITATION.cff
+   M pyproject.toml
+  tag v2.1.0: []
+  fakeremote refs: 0
+  (exit code 0)
+
+  ^^ Q6f's prediction holds to the letter: PSR wrote the three version files, ran
+  build_command, and aborted BEFORE the commit, the tag and the push. HEAD is still the
+  merge commit, no v2.1.0 tag exists, and the fake remote has zero refs.
+
+  CAUSE (read from the installed source, not guessed): PSR runs build_command through
+  `bash -c` with a curated environment that forwards the CALLER's PATH verbatim --
+  semantic_release/cli/commands/version.py:278, `"PATH": os.getenv("PATH", "")`. This
+  shell's `python` is the anaconda base interpreter, which has no `build` module; the
+  venv's bin directory was not on PATH. It is a defect in the REHEARSAL HARNESS, not in
+  the repository and not in release.yml: on the runner, actions/setup-python puts its
+  interpreter first on PATH and `pip install ... build` installs into that same
+  interpreter, so `python -m build` resolves correctly there.
+  FIX: put the pinned venv's bin first on PATH, which is what CI's PATH already looks
+  like. Re-run from a clean tree.
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && git checkout -- CHANGELOG.md CITATION.cff pyproject.toml && rm -rf dist build src/*.egg-info && git status --porcelain; echo 'clone tree reset to the merge commit; the earlier manual build output removed so dist/ can only contain PSR build_command output'
+  clone tree reset to the merge commit; the earlier manual build output removed so dist/ can only contain PSR build_command output
+  (exit code 0)
+
+  $ which python; /tmp/aquacal-29.2-rehearsal/venv/bin/python -c 'import build' 2>&1 | tail -1; echo '---'; PATH=/tmp/aquacal-29.2-rehearsal/venv/bin:$PATH bash -c 'command -v python; python -c "import build,sys; print(\"build importable by\", sys.executable)"'
+  /home/tlancaster/anaconda3/bin/python
+  ---
+  /tmp/aquacal-29.2-rehearsal/venv/bin/python
+  build importable by /tmp/aquacal-29.2-rehearsal/venv/bin/python
+  (exit code 0)
+
+  $ cd /tmp/aquacal-29.2-rehearsal/repo && env -u GH_TOKEN -u GITHUB_TOKEN PATH=/tmp/aquacal-29.2-rehearsal/venv/bin:$PATH semantic-release version --no-vcs-release 2>&1 | grep -vE '^\s*$' | tail -30
+  adding 'aquacal/io/__init__.py'
+  adding 'aquacal/io/benchmark.py'
+  adding 'aquacal/io/detection.py'
+  adding 'aquacal/io/frameset.py'
+  adding 'aquacal/io/images.py'
+  adding 'aquacal/io/internals.py'
+  adding 'aquacal/io/serialization.py'
+  adding 'aquacal/io/video.py'
+  adding 'aquacal/triangulation/__init__.py'
+  adding 'aquacal/triangulation/triangulate.py'
+  adding 'aquacal/utils/__init__.py'
+  adding 'aquacal/utils/transforms.py'
+  adding 'aquacal/validation/__init__.py'
+  adding 'aquacal/validation/comparison.py'
+  adding 'aquacal/validation/conditioning.py'
+  adding 'aquacal/validation/diagnostics.py'
+  adding 'aquacal/validation/evaluation.py'
+  adding 'aquacal/validation/reconstruction.py'
+  adding 'aquacal/validation/reprojection.py'
+  adding 'aquacal-2.1.0.dist-info/licenses/LICENSE'
+  adding 'aquacal-2.1.0.dist-info/METADATA'
+  adding 'aquacal-2.1.0.dist-info/WHEEL'
+  adding 'aquacal-2.1.0.dist-info/entry_points.txt'
+  adding 'aquacal-2.1.0.dist-info/top_level.txt'
+  adding 'aquacal-2.1.0.dist-info/RECORD'
+  removing build/bdist.linux-x86_64/wheel
+  Successfully built aquacal-2.1.0.tar.gz and aquacal-2.1.0-py3-none-any.whl
+  Build completed successfully!
+  No upstream branch found for 'main'; cannot verify upstream state!
+  Unable to verify upstream due to error!
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo log -2 --format='%h %an <%ae>  %s'
+  b411449 semantic-release <semantic-release>  chore(release): 2.1.0
+  5399d2b tlancaster <tuckerlancaster@gmail.com>  Merge pull request #3 from McGrathLab/results/rerun-freeze-02
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo show --stat --format='%H%n%s%nauthor: %an <%ae>' HEAD | head -12
+  b411449d8bf150eba8e984d61e5705adc3563d46
+  chore(release): 2.1.0
+  author: semantic-release <semantic-release>
+  
+   CHANGELOG.md   | 1219 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   CITATION.cff   |    2 +-
+   pyproject.toml |    2 +-
+   3 files changed, 1221 insertions(+), 2 deletions(-)
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo cat-file -t v2.1.0; echo '^^ "tag", not "commit": this is an ANNOTATED tag, which is what tag_format="v{version}" produces and what publish.yml keys off'
+  tag
+  ^^ "tag", not "commit": this is an ANNOTATED tag, which is what tag_format="v{version}" produces and what publish.yml keys off
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo for-each-ref --format='%(refname) %(objecttype) %(taggername) %(subject)' refs/tags/v2.1.0
+  refs/tags/v2.1.0 tag semantic-release v2.1.0
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo show v2.1.0:pyproject.toml | grep -n '^version = ' | head -2
+  7:version = "2.1.0"
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo show v2.1.0:CITATION.cff | grep -n '^version:' | head -2
+  18:version: 2.1.0
+  (exit code 0)
+
+  $ [ "$(git -C /tmp/aquacal-29.2-rehearsal/repo show v2.1.0:pyproject.toml | sed -n 's/^version = "\(.*\)"$/\1/p' | head -1)" = '2.1.0' ] && [ "$(git -C /tmp/aquacal-29.2-rehearsal/repo show v2.1.0:CITATION.cff | sed -n 's/^version: *//p' | head -1)" = '2.1.0' ] && echo 'ASSERT OK: BOTH version files read 2.1.0 at the tag (ROADMAP criterion 3, both halves)'
+  ASSERT OK: BOTH version files read 2.1.0 at the tag (ROADMAP criterion 3, both halves)
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo diff --stat HEAD~1 HEAD
+   CHANGELOG.md   | 1219 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   CITATION.cff   |    2 +-
+   pyproject.toml |    2 +-
+   3 files changed, 1221 insertions(+), 2 deletions(-)
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo status --porcelain; echo '^^ empty: the clone tree is clean after the release'
+  ^^ empty: the clone tree is clean after the release
+  (exit code 0)
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/fakeremote.git show-ref; echo "^^ fake remote ref count: $(git -C /tmp/aquacal-29.2-rehearsal/fakeremote.git show-ref | wc -l). PSR reported 'No upstream branch found for main' and did NOT push. Nothing left the clone."
+  ^^ fake remote ref count: 0. PSR reported 'No upstream branch found for main' and did NOT push. Nothing left the clone.
+  (exit code 0)
+
+  $ ls -l /tmp/aquacal-29.2-rehearsal/repo/dist
+  total 420
+  -rw-rw-r-- 1 tlancaster tlancaster 222107 Aug 26 19:15 aquacal-2.1.0-py3-none-any.whl
+  -rw-rw-r-- 1 tlancaster tlancaster 200871 Aug 26 19:15 aquacal-2.1.0.tar.gz
+  (exit code 0)
+
+--------------------------------------------------------------------------------
+9. READ THE GENERATED CHANGELOG BEFORE THE TAG IS PUBLIC (D-29.2-29, RESEARCH Q6e)
+--------------------------------------------------------------------------------
+
+  $ git -C /tmp/aquacal-29.2-rehearsal/repo diff --numstat HEAD~1 HEAD -- CHANGELOG.md
+  1219	0	CHANGELOG.md
+  (exit code 0)
+
+  $ wc -l /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md
+  3772 /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md
+  (exit code 0)
+
+  $ sed -n '1,12p' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md
+  # CHANGELOG
+  
+  <!-- version list -->
+  
+  ## v2.1.0 (2026-08-26)
+  
+  ### Bug Fixes
+  
+  - **23**: Correct four stale provenance strings and supersede the E2 frameset doc (FIX-06)
+    ([`3f867c2`](https://github.com/tmp/aquacal-29.2-rehearsal/fakeremote/commit/3f867c213233677c565b7437f6269d9b8a1fe16a))
+  
+  - **23-02**: Named --check exclusion contract, plus the always-red-gate finding
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -c '^- '
+  400
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -E '^### '
+  ### Bug Fixes
+  ### Chores
+  ### Continuous Integration
+  ### Documentation
+  ### Features
+  ### Refactoring
+  ### Testing
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -E '^- \*\*([0-9]|merge\(|wave|phase)' | wc -l
+  355
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -E '^- \*\*([0-9]|merge\()' | head -4
+  - **23**: Correct four stale provenance strings and supersede the E2 frameset doc (FIX-06)
+  - **23-02**: Named --check exclusion contract, plus the always-red-gate finding
+  - **23-02**: Resolve E2 real-rig record relative to --out at both call sites
+  - **24**: Close three review warnings on the degeneracy instrumentation
+  (exit code 0)
+
+  $ grep -c 'github.com/tmp/aquacal-29.2-rehearsal/fakeremote' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md
+  400
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -cE '^- \*\*[^*]+\*\*:'
+  386
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | grep -E '^- ' | grep -cvE '^- \*\*[^*]+\*\*:'
+  14
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | sed -nE 's/^- \*\*([^*]+)\*\*:.*/\1/p' | sort | uniq -c | sort -rn | head -12
+       18 24
+       15 25
+       13 29
+       13 26
+       12 state
+       12 28
+       11 29.1-08
+       10 27
+        9 29.1
+        9 29-07
+        8 29.1-02
+        7 29.1-09
+  (exit code 0)
+
+  $ awk '/^## v2.1.0/{f=1} /^## v2.0.1/{f=0} f' /tmp/aquacal-29.2-rehearsal/repo/CHANGELOG.md | sed -nE 's/^- \*\*([^*]+)\*\*:.*/\1/p' | sort -u | wc -l
+  85
+  (exit code 0)
+
+  READ THIS FIGURE AS MEASURED, NOT AS EXPECTED. The plan's step 9 anticipated "a
+  substantial minority" of entries carrying internal plan scopes, and RESEARCH Q6e
+  measured 79 of 393. This rehearsal measures 355 of 400 entries whose scope begins with
+  a digit or is a `merge(...)` scope -- a large MAJORITY, not a minority. The two figures
+  are not in conflict about the artifact; they are two different definitions counted over
+  nearly the same text. RESEARCH's 79 is the narrower reading (wave/worktree-agent noise);
+  355 is every entry scoped to a GSD phase or plan identifier (`**23**`, `**23-02**`,
+  `**29.1-06**`, `**merge(worktree-agent-...)**`) -- identifiers that mean nothing to a
+  package consumer. Neither number was adjusted toward the other. D-29.2-29 rules the
+  changelog ships as generated regardless; this is recorded for the author's information,
+  and it is NOT a gate.
+
+--------------------------------------------------------------------------------
+10. THE WORKING REPOSITORY, AFTER (compare with section 0)
+--------------------------------------------------------------------------------
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 status --porcelain
+   M .planning/STATE.md
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 branch --list --format='%(refname:short)'
+  results/rerun-freeze-01
+  results/rerun-freeze-02
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse --abbrev-ref HEAD
+  results/rerun-freeze-02
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 rev-parse HEAD
+  7ab969e2cc5479cb300630697244b534fd06357a
+  (exit code 0)
+
+  $ diff /tmp/aquacal-29.2-rehearsal/porcelain.before /tmp/aquacal-29.2-rehearsal/porcelain.after >/dev/null && echo 'ASSERT OK: git status --porcelain is BYTE-IDENTICAL before and after the rehearsal.'
+  ASSERT OK: git status --porcelain is BYTE-IDENTICAL before and after the rehearsal.
+  (exit code 0)
+
+  $ diff /tmp/aquacal-29.2-rehearsal/branches.before /tmp/aquacal-29.2-rehearsal/branches.after >/dev/null && echo 'ASSERT OK: git branch --list is BYTE-IDENTICAL before and after -- no branch created, renamed, switched or deleted.'
+  ASSERT OK: git branch --list is BYTE-IDENTICAL before and after -- no branch created, renamed, switched or deleted.
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 tag --list 'v2.1.0'; echo "^^ empty: no v2.1.0 tag exists in the working repository. Tag count unchanged: $(git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 tag --list | wc -l)"
+  ^^ empty: no v2.1.0 tag exists in the working repository. Tag count unchanged: 22
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 diff --quiet -- pyproject.toml CITATION.cff CHANGELOG.md && echo 'ASSERT OK: pyproject.toml, CITATION.cff and CHANGELOG.md are untouched in the working repository -- semantic-release wrote them only in the clone.'
+  ASSERT OK: pyproject.toml, CITATION.cff and CHANGELOG.md are untouched in the working repository -- semantic-release wrote them only in the clone.
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 status --porcelain -- src tests experiments; echo '^^ empty: nothing under src/, tests/ or experiments/ was touched'
+  ^^ empty: nothing under src/, tests/ or experiments/ was touched
+  (exit code 0)
+
+  $ ls -d /home/tlancaster/aquacal-frozen-rerun-freeze-01/dist 2>&1 | tail -1; echo '^^ no dist/ in the project tree: the build happened in the clone'
+  ls: cannot access '/home/tlancaster/aquacal-frozen-rerun-freeze-01/dist': No such file or directory
+  ^^ no dist/ in the project tree: the build happened in the clone
+  (exit code 0)
+
+  $ git -C /home/tlancaster/aquacal-frozen-rerun-freeze-01 reflog -3 --date=iso | sed 's/^/  /'
+    7ab969e HEAD@{2026-08-26 19:09:58 -0400}: commit: ci(29.2-01): pin the release toolchain to a verified-working PSR/GitPython pair
+    c61500b HEAD@{2026-08-26 19:01:27 -0400}: commit: docs(state): record phase 29.2 planning session
+    a7a3d41 HEAD@{2026-08-26 19:01:27 -0400}: commit: docs(todo): file the decision-coverage gate's dotted-phase blindness
+  (exit code 0)
+
+================================================================================
+PROHIBITIONS HONOURED (D-29.2-23, D-29.2-24, D-29.2-31, D-29-08) -- each line
+backed by a measurement in the transcript above
+================================================================================
+
+  No branch created, renamed, switched, merged or deleted in the working repo.
+      git branch --list before and after: BYTE-IDENTICAL, diff exit 0.
+      Still exactly results/rerun-freeze-01 and results/rerun-freeze-02.
+      HEAD still results/rerun-freeze-02, still 7ab969e.
+      The merge simulation happened on a branch named `main` that exists only
+      inside /tmp/aquacal-29.2-rehearsal/repo.
+
+  No push, no tag, no GitHub release.
+      The clone's origin was re-pointed to /tmp/aquacal-29.2-rehearsal/fakeremote.git
+      and the re-point was gated on a STRING-EQUALITY assertion of `git remote
+      get-url origin` before ANY semantic-release invocation.
+      Fake-remote ref count after the full release: 0.
+      Working repository tag count: 22, unchanged; `git tag --list v2.1.0` empty.
+      Every PSR invocation ran with GH_TOKEN and GITHUB_TOKEN stripped from the
+      environment (`env -u GH_TOKEN -u GITHUB_TOKEN`) and with --no-vcs-release,
+      so no API call could be made even had the remote been wrong.
+
+  No committed artifact regenerated, no frozen tree touched.
+      git status --porcelain before and after: BYTE-IDENTICAL, diff exit 0.
+      (Both show ` M .planning/STATE.md` -- a pre-existing edit made by the
+      execution orchestrator before this task began, not by the rehearsal. The
+      assertion is identity, and identity holds.)
+      git status --porcelain -- src tests experiments: empty.
+      No experiment stage was re-run; no file under experiments/results*/ was
+      read for writing.
+
+  No hand-edit of pyproject.toml, CITATION.cff or CHANGELOG.md.
+      git diff --quiet -- pyproject.toml CITATION.cff CHANGELOG.md: exit 0.
+      semantic-release wrote all three, and only inside the clone.
+
+  No commit on results/rerun-freeze-02 reworded, amended, rebased or dropped.
+      The branch tip is 7ab969e, the commit this plan's task 1 added; every
+      earlier sha is untouched. fd78d77 was read, never rewritten -- and the
+      parser tabulation above shows MAJOR = 0, so nothing requires rewriting it.
+
+  No build in the project tree.
+      /home/tlancaster/aquacal-frozen-rerun-freeze-01/dist does not exist.
+      Both distributions live in /tmp/aquacal-29.2-rehearsal/repo/dist.
+
+  No irreversible act performed by the agent (D-29.2-24).
+      Nothing in this file required a button. Everything it establishes was
+      established in a directory that can be deleted with `rm -rf`.
+
+================================================================================
+SCOPE -- what this rehearsal does NOT establish
+================================================================================
+
+It proves the BUMP ARITHMETIC and the ARTIFACT. It does not prove GitHub's
+behaviour. Specifically:
+
+  * THE PUSH PATH WAS NOT EXERCISED. PSR reported "No upstream branch found for
+    'main'; cannot verify upstream state!" and did not push. That is a stronger
+    safety property than was asked for, but it means the commit+tag push -- the
+    step that on the real day triggers publish.yml -- is unproven here. Its
+    evidence is RESEARCH Q6c, taken from this repository's own history.
+
+  * NO WORKFLOW RAN. release.yml's `on: push: branches: [main]` trigger, its
+    `chore(release):` loop-breaker, its concurrency group, the validity of
+    secrets.RELEASE_TOKEN, and the whole publish.yml chain are all outside this
+    file. The loop-breaker was only asserted to be textually unchanged.
+
+  * THE CHANGELOG'S COMMIT LINKS ARE WRONG IN THE CLONE. All 400 point at
+    github.com/tmp/aquacal-29.2-rehearsal/fakeremote/... because PSR derives them
+    from the origin URL, which was deliberately re-pointed at the bare repo. In
+    CI they will be real McGrathLab/AquaCal URLs. The link TARGETS are a
+    rehearsal artifact; the entry text, counts and ordering are not.
+
+  * NOTHING WAS UPLOADED ANYWHERE. TestPyPI and PyPI were not contacted. The
+    sdist's fitness for upload is Task 3's subject, not this file's.
+
+  * THE UPSTREAM SITUATION IS LIVE. GitPython 3.1.60 was released 2026-08-25 and
+    python-semantic-release's fix (PR 1477) is still open and unmerged. This
+    rehearsal is valid for the toolchain as it stood on 2026-08-26. Per
+    D-29.2-28b it MUST BE RE-RUN IMMEDIATELY BEFORE THE MERGE, from this same
+    scratch root, which plan 29.2-05 owns and which is why the scratch root is
+    left in place rather than cleaned up.
+
+This file makes the merge a mechanical act against numbers already proven, rather
+than a discovery. The author presses the buttons; the agent has now seen, once,
+exactly what they will do.

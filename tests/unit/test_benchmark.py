@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import json
 import subprocess
 import sys
@@ -451,6 +452,69 @@ class TestAssembleBenchmarkRecord:
         )
         assert "memory" not in record
         assert all("memory" not in v for v in record["stages"].values())
+
+    def test_discard_stats_block_is_omitted_when_none(self, real_solver_diagnostics):
+        """D-11/D-14: `discard_stats=None` (the default) leaves no
+        `"discard_stats"` key at all -- the same "never invent an empty block"
+        convention `memory_readings` already follows."""
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+        )
+        assert "discard_stats" not in record
+
+        explicit_none = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            discard_stats=None,
+        )
+        assert "discard_stats" not in explicit_none
+
+    def test_discard_stats_block_is_passed_through_unmodified(
+        self, real_solver_diagnostics
+    ):
+        """D-11: the WHOLE dict is passed through as its own top-level block.
+        A hand-picked field list is precisely DEGEN-01's defect shape, so the
+        assertion is on the entire dict, not on a chosen subset."""
+        discard_stats = {
+            "degenerate_observations_at_solution": 7,
+            "degenerate_observations_cause_above_interface"
+            "__stage3_interface_optimization": 7,
+            "degenerate_observations_fate_extended__stage3_interface_optimization": 7,
+            "observations_evaluated__stage3_interface_optimization": 1760,
+            # A key nobody has invented yet: passing the whole dict means it
+            # arrives without this function naming it.
+            "some_future_counter": 1,
+        }
+        record = assemble_benchmark_record(
+            problem_shape={},
+            timings={},
+            diagnostics={"stage3": real_solver_diagnostics},
+            solver_config={},
+            accuracy={},
+            environment={},
+            discard_stats=discard_stats,
+        )
+        assert record["discard_stats"] == discard_stats
+        # Still JSON-serializable.
+        assert json.loads(json.dumps(record))["discard_stats"] == discard_stats
+
+    def test_assemble_benchmark_record_has_keyword_only_discard_stats(self):
+        """The parameter is keyword-only and defaults to None, matching the
+        rest of this function's signature style."""
+        parameter = inspect.signature(assemble_benchmark_record).parameters[
+            "discard_stats"
+        ]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is None
 
     def test_memory_attribution_exact_field_names_and_deltas(
         self, real_solver_diagnostics

@@ -29,7 +29,15 @@ classifiers = [
 dependencies = [
     "numpy",
     "scipy>=1.16",
-    "opencv-python>=4.6,<5.0",
+    # Pinned to a single minor, not a range: ChArUco corner detection is
+    # entirely OpenCV's, and it changes across minor versions. A controlled
+    # single-variable experiment (2026-08-12) measured 4.14.0 detecting 1.95%
+    # fewer corners than 4.13.0 on the published real-rig dataset, moving the
+    # paper's reconstruction RMSE by +7.8%. The published numbers, the Zenodo
+    # archive's reference_outputs/ and the tutorial's expected-value table are
+    # a matched set behind a DOI, so the environment that produced them is
+    # pinned rather than the numbers restated.
+    "opencv-python==4.13.*",
     "pyyaml",
     "matplotlib",
     "pandas",

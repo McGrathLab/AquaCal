@@ -1,0 +1,46 @@
+{
+  "upload_type": "dataset",
+  "title": "AquaCal real-rig calibration results package (Record B): configuration, reference outputs and run manifest",
+  "version": "2.1.0",
+  "publication_date": "2026-08-26",
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "language": "eng",
+  "creators": [
+    {
+      "name": "Lancaster, Tucker",
+      "affiliation": "Georgia Institute of Technology",
+      "orcid": "0000-0003-4074-7128"
+    }
+  ],
+  "keywords": [
+    "calibration",
+    "multi-camera",
+    "underwater",
+    "refraction",
+    "computer-vision",
+    "charuco",
+    "snell-law",
+    "reproducibility"
+  ],
+  "description": "<p><strong>Results package</strong> for the AquaCal 13-camera underwater production rig calibration: the configuration that produced the published numbers, the reference outputs themselves, the archived calibration comparison target, and the run manifest recording the exact software environment. A few megabytes, re-versioned whenever the results change.</p><p><strong>Contents:</strong></p><ul><li><code>config_paper.yaml</code> &mdash; the configuration behind the published results.</li><li><code>config_quickstart_not_paper.yaml</code> &mdash; the faster quickstart configuration, which does <em>not</em> reproduce the published numbers.</li><li><code>reference_calibration.json</code> &mdash; the archived calibration used as a comparison target.</li><li><code>reference_outputs/</code> &mdash; <code>calibration.json</code>, <code>diagnostics.json</code>, <code>exp2_spatial_errors.csv</code>, <code>interface_ablation_conditioning.npz</code>, <code>reconstruction_errors.csv</code>, <code>reprojection_residuals.csv</code>.</li><li><code>run_manifest.json</code> &mdash; interpreter, library versions, host and git revision for the run that produced the outputs above.</li></ul><p><strong>Supersession notice &mdash; please read before comparing numbers.</strong> This record supersedes the <code>reference_outputs/</code> contained in Zenodo record <a href=\"https://doi.org/10.5281/zenodo.21889922\">10.5281/zenodo.21889922</a>. Record 21889922 is retained as the historical submitted package and still contains the <em>older</em> reference outputs, which do not match the current paper. Any comparison against the published numbers must use the <code>reference_outputs/</code> in <em>this</em> record, not the ones inside 21889922.</p><p><strong>Inputs.</strong> These results were computed from the calibration frames published as Record A: <a href=\"https://doi.org/10.5281/zenodo.22116461\">10.5281/zenodo.22116461</a> (concept DOI, version-independent: 10.5281/zenodo.22116460). Reproducing them requires both records: the frames from Record A and the configuration from this one.</p><p><strong>Provenance.</strong> Produced by AquaCal 2.1.0 at git revision 7005a2771aa115e4f4c1284cec7e145739586a4a, Python 3.11.15, NumPy 2.4.6, SciPy 1.17.1, OpenCV 4.13.0 (pinned to a single minor: ChArUco corner detection changes across OpenCV minor versions and moves the published error metrics).</p><p>Software: <a href=\"https://github.com/McGrathLab/AquaCal\">AquaCal</a>.</p>",
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.22116461",
+      "relation": "isDerivedFrom",
+      "scheme": "doi",
+      "resource_type": "dataset"
+    },
+    {
+      "identifier": "10.5281/zenodo.21889922",
+      "relation": "references",
+      "scheme": "doi",
+      "resource_type": "dataset"
+    },
+    {
+      "identifier": "https://github.com/McGrathLab/AquaCal",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

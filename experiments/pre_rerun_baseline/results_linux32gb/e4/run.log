@@ -1,0 +1,10 @@
+Experiment output directory: /home/tlancaster/PycharmProjects/AquaCal/tmp/e4_rerun
+cell cameras_8_frames_50: status=ok exit_code=0 elapsed=87.3s
+cell cameras_8_frames_100: status=ok exit_code=0 elapsed=148.6s
+cell cameras_8_frames_200: status=ok exit_code=0 elapsed=787.6s
+cell cameras_12_frames_50: status=ok exit_code=0 elapsed=59.9s
+cell cameras_12_frames_100: status=ok exit_code=0 elapsed=156.5s
+cell cameras_12_frames_200: status=ok exit_code=0 elapsed=390.6s
+cell cameras_16_frames_50: status=ok exit_code=0 elapsed=104.9s
+cell cameras_16_frames_100: status=ok exit_code=0 elapsed=291.4s
+cell cameras_16_frames_200: status=ok exit_code=0 elapsed=589.8s

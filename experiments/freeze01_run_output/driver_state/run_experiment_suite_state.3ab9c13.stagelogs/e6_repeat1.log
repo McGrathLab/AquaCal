@@ -1,0 +1,194 @@
+[2026-08-20T00:15:59Z] >>> STAGE 8/20: e6_repeat1 starting
+[2026-08-20T00:15:59Z] e6_repeat1: clearing any partial E6 state under experiments/results before running
+Experiment output directory: /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 20, initial cost 8.7406e+04, final cost 9.2362e+03, first-order optimality 9.44e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.2362e+03, final cost 9.2304e+03, first-order optimality 2.14e-03.
+axis=index axis_value=1.333 status=ok reprojection_rms_px=0.706462043079634
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 38, initial cost 2.5816e+05, final cost 9.1355e+03, first-order optimality 4.16e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.1355e+03, final cost 9.1314e+03, first-order optimality 1.85e-03.
+axis=index axis_value=1.36 status=ok reprojection_rms_px=0.7061280526684334
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 25, initial cost 1.2611e+05, final cost 9.0531e+03, first-order optimality 3.94e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 9.0531e+03, final cost 9.0473e+03, first-order optimality 5.27e-03.
+axis=index axis_value=1.39 status=ok reprojection_rms_px=0.7054774531243344
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 9.0027e+04, final cost 8.9605e+03, first-order optimality 1.58e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.9605e+03, final cost 8.9535e+03, first-order optimality 1.39e-03.
+axis=index axis_value=1.42 status=ok reprojection_rms_px=0.7057738764272649
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 18, initial cost 9.1026e+04, final cost 8.8636e+03, first-order optimality 1.59e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.8636e+03, final cost 8.8579e+03, first-order optimality 3.10e-03.
+axis=index axis_value=1.45 status=ok reprojection_rms_px=0.7055812550679771
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 8.4471e+04, final cost 8.7631e+03, first-order optimality 2.92e-02.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7631e+03, final cost 8.7567e+03, first-order optimality 2.02e-03.
+axis=index axis_value=1.48 status=ok reprojection_rms_px=0.7057542723959271
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 19, initial cost 6.4117e+04, final cost 8.7001e+03, first-order optimality 1.98e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.7001e+03, final cost 8.6937e+03, first-order optimality 1.66e-03.
+axis=index axis_value=1.51 status=ok reprojection_rms_px=0.705288061318526
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 6.6774e+04, final cost 8.5927e+03, first-order optimality 2.36e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 8.5927e+03, final cost 8.5873e+03, first-order optimality 1.19e-03.
+axis=index axis_value=1.55 status=ok reprojection_rms_px=0.7055874731907077
+axis=layout axis_value=grid status=ok reprojection_rms_px=0.706462043079634
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 13, initial cost 2.2215e+04, final cost 5.2008e+03, first-order optimality 4.17e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 5.2008e+03, final cost 5.1953e+03, first-order optimality 3.75e-03.
+axis=layout axis_value=ring status=ok reprojection_rms_px=0.7047698167656985
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 21, initial cost 4.9099e+03, final cost 1.0414e+03, first-order optimality 2.15e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 5, initial cost 1.0414e+03, final cost 1.0369e+03, first-order optimality 1.46e-02.
+axis=layout axis_value=line status=ok reprojection_rms_px=0.7566243809754257
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 9, initial cost 4.6306e+04, final cost 1.8543e+04, first-order optimality 1.90e-03.
+Stage 3's second pass: Intrinsic refinement...
+Both `ftol` and `xtol` termination conditions are satisfied.
+Function evaluations 4, initial cost 1.8543e+04, final cost 1.8536e+04, first-order optimality 2.01e-03.
+axis=scale axis_value=half_scale status=ok reprojection_rms_px=0.7063377699276128
+axis=scale axis_value=default status=ok reprojection_rms_px=0.706462043079634
+Stage 2: Extrinsic initialization...
+Stage 3: Joint refractive optimization...
+`ftol` termination condition is satisfied.
+Function evaluations 26, initial cost 3.2665e+04, final cost 4.2007e+03, first-order optimality 3.66e-03.
+Stage 3's second pass: Intrinsic refinement...
+`ftol` termination condition is satisfied.
+Function evaluations 4, initial cost 4.2007e+03, final cost 4.1934e+03, first-order optimality 1.13e-02.
+axis=scale axis_value=double_scale status=ok reprojection_rms_px=0.7045914857941928
+[2026-08-20T00:52:46Z] <<< STAGE 8/20: e6_repeat1 finished exit=0
+----- GATE VERDICT: stage=e6_repeat1 out_dir=experiments/results -----
+[PASS] E1  gate1_guard_count:e1_benchmark_refractive.json e1_benchmark_refractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_refractive.json e1_benchmark_refractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_refractive.json e1_benchmark_refractive.json: optimality present per stage
+[PASS] E1  gate1_guard_count:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: count=0
+[PASS] E1  gate3_provenance:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E1  gate4_optimality:e1_benchmark_nonrefractive.json e1_benchmark_nonrefractive.json: optimality present per stage
+[N/A ] E1  gate2_status                                  E1's exp1/exp2/exp3 CSVs are fixed byte-identical-header contracts with no status column (record-only per plan 19.3-07)
+[PASS] E3  gate3_provenance:e3_provenance.json           e3_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E3  gate1_guard_count                             no guard count: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate2_status                                  no per-cell status: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[N/A ] E3  gate4_optimality                              no optimality: E3 runs no calibration (N/A per this gate script's design, see plan 19.3-08)
+[FAIL] E4  gate1_guard_count                             no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate3_provenance                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate4_optimality                              no per-cell benchmark.json under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e4_cells
+[FAIL] E4  gate1_guard_count:benchmark_grid.csv          benchmark_grid.csv not found
+[FAIL] E4  gate2_status:benchmark_grid.csv               benchmark_grid.csv not found
+[PASS] E5  gate1_guard_count:e5_provenance.json          e5_provenance.json: count=0 [dominant cause=above_interface (0), 0.000% of the 164439 observation(s) evaluated; by fate: 0 extended, 0 penalized (cause and fate are separate axes over the same observations; never add them together)]
+[PASS] E5  gate3_provenance:e5_provenance.json           e5_provenance.json: git_sha/seed/water-index present (timestamp = file mtime)
+[N/A ] E5  gate4_optimality                              E5's committed artifacts record no per-stage optimality (record-only experiment; see plan 19.3-07)
+[N/A ] E5  gate2_status                                  index_sensitivity.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E6  gate1_guard_count:e6_configs/baseline.json    e6_configs/baseline.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/baseline.json     e6_configs/baseline.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/baseline.json     e6_configs/baseline.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.36.json  e6_configs/index_1.36.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.36.json   e6_configs/index_1.36.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.36.json   e6_configs/index_1.36.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.39.json  e6_configs/index_1.39.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.39.json   e6_configs/index_1.39.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.39.json   e6_configs/index_1.39.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.42.json  e6_configs/index_1.42.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.42.json   e6_configs/index_1.42.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.42.json   e6_configs/index_1.42.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.45.json  e6_configs/index_1.45.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.45.json   e6_configs/index_1.45.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.45.json   e6_configs/index_1.45.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.48.json  e6_configs/index_1.48.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.48.json   e6_configs/index_1.48.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.48.json   e6_configs/index_1.48.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.51.json  e6_configs/index_1.51.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.51.json   e6_configs/index_1.51.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.51.json   e6_configs/index_1.51.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/index_1.55.json  e6_configs/index_1.55.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/index_1.55.json   e6_configs/index_1.55.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/index_1.55.json   e6_configs/index_1.55.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_line.json e6_configs/layout_line.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_line.json  e6_configs/layout_line.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_line.json  e6_configs/layout_line.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/layout_ring.json e6_configs/layout_ring.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/layout_ring.json  e6_configs/layout_ring.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/layout_ring.json  e6_configs/layout_ring.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_double_scale.json e6_configs/scale_double_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: count=0
+[PASS] E6  gate3_provenance:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E6  gate4_optimality:e6_configs/scale_half_scale.json e6_configs/scale_half_scale.json: optimality present per stage
+[PASS] E6  gate1_guard_count:generalization_sweep.csv    generalization_sweep.csv: 14 row(s), guard count zero everywhere
+[PASS] E6  gate2_status:generalization_sweep.csv         generalization_sweep.csv: no row published with status=='degenerate'
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_fixed.json e7_benchmark_shared_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_shared_refined.json e7_benchmark_shared_refined.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_fixed.json e7_benchmark_percamera_fixed.json: optimality present per stage
+[PASS] E7  gate1_guard_count:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: count=0
+[PASS] E7  gate3_provenance:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: git_sha/seed/water-index present (timestamp = file mtime)
+[PASS] E7  gate4_optimality:e7_benchmark_percamera_refined.json e7_benchmark_percamera_refined.json: optimality present per stage
+[N/A ] E7  gate2_status                                  interface_ablation.csv carries no status column (record-only per plan 19.3-07)
+[PASS] E7  gate4_band:interface_ablation_band.csv        interface_ablation_band.csv: 10 distinct seed(s) [42, 43, 44, 45, 46, 47, 48, 49, 50, 51] match e7_seed_band_provenance.json's recorded seed list
+[N/A ] E1  gate4_band:exp1_band.csv                      exp1_band.csv not present (its stage has not run yet)
+[N/A ] E1  gate4_band:exp1_parameter_band.csv            exp1_parameter_band.csv not present (its stage has not run yet)
+[N/A ] E6  gate_e6_seed_band                             generalization_sweep_band.csv not present (its stage has not run yet)
+[N/A ] E5  gate_e5_seed_band                             index_sensitivity_seed_band.csv not present (its stage has not run yet)
+[N/A ] E4  gate_e4_repeat                                benchmark_grid_repeat.csv not present (its stage has not run yet)
+[FAIL] E2  gate_e2_band:seed_42_e2_out                   seed_42_e2_out/real_rig_metrics.json missing or unreadable
+[FAIL] E2  gate_e2_band:record_count                     found 0 per-seed metric record(s) under /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results_e2_band, expected exactly 3
+[PASS] E2  gate_e2_band:scope                            e2_band_scope.json scope states both required phrases
+[PASS] ALL gate3_git_sha_consistency                     every artifact carries the same git_sha (3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c)
+[PASS] ALL gate3_run_manifest_present                    run_manifest.json found and parsed
+[PASS] ALL gate3_run_manifest_fields                     all 17 required environment fields are present and non-null
+[PASS] ALL gate3_run_manifest_git_sha                    manifest git_sha matches every artifact (3ab9c13723202a58bb50e351b0b6bc0c0ffcd59c)
+[PASS] ALL gate3_run_manifest_clean_tree                 the working tree was clean when this run started
+[PASS] e6_repeat1 completeness:generalization_sweep.csv         generalization_sweep.csv: 14 data row(s) at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep.csv, as expected.
+[PASS] e6_repeat1 completeness:generalization_sweep_per_camera.csv generalization_sweep_per_camera.csv: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/generalization_sweep_per_camera.csv; no row count is pinned for it (new in Phase 23-03 and absent from the committed tree, so no baseline row count exists to assert; existence only until Phase 28 measures it.)
+[PASS] e6_repeat1 completeness:e6_provenance.json               e6_provenance.json: present at /home/tlancaster/aquacal-frozen-rerun-freeze-01/experiments/results/e6_provenance.json; no row count is pinned for it (provenance sidecar, not a table.)
+
+TOTAL: 69 PASS, 12 N/A, 7 FAIL
+----- END GATE VERDICT: stage=e6_repeat1 exit=1 -----

@@ -20,7 +20,13 @@ Four gates, applied per experiment:
                                own filesystem mtime is used as that evidence). Every
                                git_sha found across the WHOLE run must be IDENTICAL --
                                a split sha means something was committed while a stage was
-                               still running.
+                               still running. Gate 3 also verifies the suite-level
+                               `run_manifest.json` (DRIVER-02): it exists, every required
+                               environment field is non-null (including the OpenCV PyPI
+                               build suffix `cv2.__version__` drops), its git_sha agrees
+                               with the artifacts', and the tree was not dirty. Those four
+                               are ALL hard FAIL and never N/A -- a provenance mismatch
+                               that only warns is a provenance mismatch that ships (D-21).
     Gate 4 (optimality):       first-order optimality is present (not null) per stage.
 
 E3 runs no calibration at all, so gates 1, 2 and 4 are N/A for it -- reported explicitly
@@ -51,9 +57,38 @@ from typing import Literal
 
 import pandas as pd
 
+try:
+    from experiments._run_manifest import (
+        REQUIRED_MANIFEST_FIELDS,
+        RUN_MANIFEST_FILENAME,
+    )
+except ModuleNotFoundError:  # pragma: no cover - script-path invocation
+    # The driver invokes this file BY PATH (`"${GATE_PYTHON}"
+    # experiments/check_rerun_gates.py <out_dir>`, rerun_19_5.sh:257), which
+    # puts `experiments/` on sys.path but NOT the repository root, so the
+    # sibling package import above cannot resolve. Adding the root here keeps
+    # both invocation styles working; a bare `from _run_manifest import ...`
+    # would instead break `python -m` and the unit tests.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from experiments._run_manifest import (
+        REQUIRED_MANIFEST_FIELDS,
+        RUN_MANIFEST_FILENAME,
+    )
+
+# DRIVER-01 / D-04's completeness gate. Its ~100 lines live in their own module
+# rather than in this 1,800-line one; this is the single import that wires them
+# in. The sys.path fallback above has already run, so script-path invocation
+# resolves it too.
+from experiments._expectations import PROFILES, check_completeness
+
 Verdict = Literal["PASS", "FAIL", "N/A"]
 
 _GUARD_COLUMN = "degenerate_observations_at_solution"
+# D-02: gate 1's exemption key. A row tagged with this `record_source` carries a
+# guard count the gate reports but does not gate on -- see `_check_guard_column`
+# for why, and `e4_benchmark_grid._extract_pipeline_row` for the writer side.
+_RECORD_SOURCE_COLUMN = "record_source"
+_EXEMPT_RECORD_SOURCE = "pipeline"
 _STATUS_COLUMN = "status"
 _DEGENERATE_STATUS = "degenerate"
 
@@ -219,6 +254,108 @@ def _guard_count_from_record(record: dict) -> int | None:
     return None
 
 
+#: The two axes plan 24-01 split the merged counter on, and the per-stage
+#: denominator it records beside them. `cause` answers "what do I fix?";
+#: `fate` answers "can I trust this record's optimality?". They are two
+#: INDEPENDENT decompositions of the SAME set of invalid observations, not
+#: disjoint buckets -- summing across the two axes double-counts.
+_CAUSE_PREFIX = "degenerate_observations_cause_"
+_FATE_PREFIX = "degenerate_observations_fate_"
+_DENOMINATOR_PREFIX = "observations_evaluated__"
+
+
+def _guard_breakdown_from_record(record: dict) -> dict | None:
+    """Extract plan 24-01's split counters and per-stage denominators.
+
+    Uses the SAME three read shapes as `_guard_count_from_record` -- a
+    direct-call benchmark record's `problem_shape`, the record's top level, or
+    a `discard_stats` block -- rather than a parallel lookup, because those
+    three are exactly the shapes this project's provenance records carry
+    discard accounting in.
+
+    Args:
+        record: A loaded provenance/benchmark record.
+
+    Returns:
+        A dict holding every `degenerate_observations_cause_*`,
+        `degenerate_observations_fate_*` and `observations_evaluated__*` entry
+        found, or `None` when the record carries none of them (any artifact
+        predating plan 24-01's split).
+    """
+    for candidate in (
+        record.get("discard_stats"),
+        record.get("problem_shape"),
+        record,
+    ):
+        if not isinstance(candidate, dict):
+            continue
+        breakdown = {
+            key: value
+            for key, value in candidate.items()
+            if key.startswith((_CAUSE_PREFIX, _FATE_PREFIX, _DENOMINATOR_PREFIX))
+        }
+        if breakdown:
+            return breakdown
+    return None
+
+
+def _sum_by_axis(breakdown: dict, prefix: str) -> dict[str, int]:
+    """Collapse one axis's `<prefix><name>__<stage>` entries to `{name: count}`."""
+    totals: dict[str, int] = {}
+    for key, value in breakdown.items():
+        if not key.startswith(prefix):
+            continue
+        name = key[len(prefix) :].split("__", 1)[0]
+        totals[name] = totals.get(name, 0) + int(value)
+    return totals
+
+
+def _format_guard_breakdown(breakdown: dict) -> str:
+    """Render the split for the gate's report line.
+
+    Reports the dominant CAUSE and its fraction against the per-stage
+    `observations_evaluated__*` denominator -- the number that retires the
+    hand-reconstructed `198 / 73,975 = 0.268%`, because the denominator is now
+    recorded by the same pass that produced the count instead of being
+    reconstructed by hand. Also reports the fate split, with both axes
+    LABELLED, so the two are never summed together.
+
+    Deliberately descriptive only. Classifying what the production rig's 198
+    actually are is DEGEN-04's (Phase 25); nothing here interprets either axis
+    or feeds a verdict.
+    """
+    parts: list[str] = []
+    causes = _sum_by_axis(breakdown, _CAUSE_PREFIX)
+    if causes:
+        dominant, dominant_count = max(causes.items(), key=lambda kv: kv[1])
+        denominator = sum(
+            int(value)
+            for key, value in breakdown.items()
+            if key.startswith(_DENOMINATOR_PREFIX)
+        )
+        fraction = (
+            f", {dominant_count / denominator:.3%} of the {denominator} "
+            "observation(s) evaluated"
+            if denominator
+            else ""
+        )
+        parts.append(f"dominant cause={dominant} ({dominant_count}){fraction}")
+    fates = _sum_by_axis(breakdown, _FATE_PREFIX)
+    if fates:
+        rendered = ", ".join(f"{count} {name}" for name, count in sorted(fates.items()))
+        parts.append(f"by fate: {rendered}")
+    if not parts:
+        return ""
+    # "by cause"/"by fate" are two views of the SAME observations -- never add
+    # one axis's numbers to the other's.
+    return (
+        " ["
+        + "; ".join(parts)
+        + " (cause and fate are separate axes over the same observations; "
+        "never add them together)]"
+    )
+
+
 def _provenance_gaps(
     record: dict,
     *,
@@ -346,13 +483,26 @@ def _check_json_artifact(
 
     if check_guard:
         count = _guard_count_from_record(record)
+        # The verdict is exactly `count > 0 -> degenerate`: no threshold, no
+        # tolerance. Plan 24-01's fraction threshold scales WARNING VOLUME in
+        # the library and is deliberately absent here -- no fraction of any
+        # size appears in this module as a gate condition. The real-rig
+        # gate-scope question stays deferred -- it cannot be decided until
+        # DEGEN-04 (Phase 25) reports what the production rig's 198 are, so
+        # there is no real-rig carve-out either.
+        breakdown = _guard_breakdown_from_record(record)
+        detail = _format_guard_breakdown(breakdown) if breakdown else ""
         if count is None:
             results.append(
                 GateResult(
                     experiment,
                     f"gate1_guard_count:{label}",
                     "FAIL",
-                    f"{label}: no {_GUARD_COLUMN!r} field found (cannot confirm zero)",
+                    f"{label}: no {_GUARD_COLUMN!r} field found (cannot confirm "
+                    "zero). From Phase 24 onward a clean run emits this field "
+                    "at an explicit 0, so an absent field means an artifact "
+                    "predating the instrumentation, not an unmeasurable run -- "
+                    "regenerate it rather than reading the absence as clean",
                 )
             )
         elif count == 0:
@@ -361,7 +511,7 @@ def _check_json_artifact(
                     experiment,
                     f"gate1_guard_count:{label}",
                     "PASS",
-                    f"{label}: count=0",
+                    f"{label}: count=0{detail}",
                 )
             )
         else:
@@ -371,7 +521,7 @@ def _check_json_artifact(
                     f"gate1_guard_count:{label}",
                     "FAIL",
                     f"{label}: non-zero guard count ({count}) at the final solution -- "
-                    "optimality is unreliable here",
+                    f"optimality is unreliable here{detail}",
                 )
             )
 
@@ -422,10 +572,75 @@ def _check_json_artifact(
     return results
 
 
+def _validate_profile(profile: str | None, *, caller: str) -> None:
+    """Reject an unknown profile name, naming the offender (P27-D-20).
+
+    Mirrors `_expectations.check_completeness`'s validation exactly -- the only
+    profile-aware checker that predates this one. `None` means "no profile
+    selected" and every checker must then keep its pre-existing, strictest
+    behaviour, so it is always legal.
+
+    Args:
+        profile: The caller's `profile` argument.
+        caller: The checker's name, for the error message.
+
+    Raises:
+        ValueError: If `profile` is neither `None` nor a member of `PROFILES`.
+    """
+    if profile is None or profile in PROFILES:
+        return
+    raise ValueError(
+        f"{caller}: unknown profile '{profile}'; valid profiles: {', '.join(PROFILES)}"
+    )
+
+
+def _format_guard_count(value) -> str:
+    """Render one guard-count cell for a gate message: `missing` for NaN/None."""
+    if value is None or pd.isna(value):
+        return "missing"
+    try:
+        as_float = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if as_float.is_integer():
+        return str(int(as_float))
+    return str(value)
+
+
 def _check_guard_column(
     experiment: str, label: str, df: pd.DataFrame | None, column: str = _GUARD_COLUMN
 ) -> GateResult:
-    """Gate 1 over an aggregated CSV: every row's guard-count column is zero."""
+    """Gate 1 over an aggregated CSV: every GATED row's guard-count column is zero.
+
+    A row whose `record_source` is `"pipeline"` is EXEMPT from the predicate
+    (D-01/D-02). E4's `benchmark_grid.csv` carries one such row -- the
+    real-hardware anchor harvested from E2 -- and since D-01 that row publishes
+    the count E2 measured (198) instead of a null. The count is real, so gating
+    on it would convert the pre-D-01 "missing" FAIL into a "non-zero" FAIL
+    rather than resolving anything, and the library that produced the number
+    explicitly declines to read it as a verdict: on the committed 2026-08-20
+    record (seed 42, OpenCV 4.13.0.92) that is 0.268% of 73,975 observations,
+    below `pipeline.py:1288`'s 1% threshold and therefore "reported for the
+    record rather than as a verdict on the whole solve". The RATE is what
+    carries across runs, not the integer -- MF-24 measured 198/210/183 for
+    seeds 42/43/44 -- so this gate reports the row's own count rather than
+    comparing it against a number frozen here.
+
+    Mechanism, stated here so the next reader does not re-derive it: ONE gate
+    result is kept rather than a second gate id, because the roll-up's
+    PASS/N/A/FAIL arithmetic is an audited number. The exemption instead
+    narrows `bad_mask` and is made visible in the gate's own message, which
+    names how many rows were gated, how many were exempt, each exempt row's
+    `cell_key` and its count, and why a pipeline row is exempt.
+
+    Rows with any other `record_source` -- `"assembled"` above all -- are gated
+    exactly as before: a non-zero count FAILs, and a MISSING count still FAILs,
+    since an un-instrumented artifact is not evidence of a clean solve. When
+    the frame carries no `record_source` column at all (E6's
+    `generalization_sweep.csv`, and every ad-hoc frame predating this change),
+    behaviour is byte-identical to the pre-D-02 gate: every row is gated and
+    the messages are unchanged.
+    """
     if df is None:
         return GateResult(
             experiment, f"gate1_guard_count:{label}", "FAIL", f"{label} not found"
@@ -437,21 +652,56 @@ def _check_guard_column(
             "FAIL",
             f"{label}: no {column!r} column present (cannot confirm zero)",
         )
-    bad_mask = df[column].isna() | (df[column].fillna(1) != 0)
-    if not bad_mask.any():
-        return GateResult(
-            experiment,
-            f"gate1_guard_count:{label}",
-            "PASS",
-            f"{label}: {len(df)} row(s), guard count zero everywhere",
+
+    has_record_source = _RECORD_SOURCE_COLUMN in df.columns
+    if has_record_source:
+        exempt_mask = df[_RECORD_SOURCE_COLUMN] == _EXEMPT_RECORD_SOURCE
+    else:
+        exempt_mask = pd.Series(False, index=df.index)
+
+    gated = df.loc[~exempt_mask]
+    n_gated = len(gated)
+    n_exempt = int(exempt_mask.sum())
+    bad_mask = gated[column].isna() | (gated[column].fillna(1) != 0)
+
+    if n_exempt:
+        exempt_rows = df.loc[exempt_mask]
+        described = ", ".join(
+            f"{row.get('cell_key', '<no cell_key>')}={_format_guard_count(row[column])}"
+            for _, row in exempt_rows.iterrows()
         )
+        exemption = (
+            f"; {n_exempt} row(s) exempt ({described}) -- a "
+            f"record_source={_EXEMPT_RECORD_SOURCE!r} row is a real-hardware "
+            "anchor row whose count the library itself declines to treat as a "
+            "verdict below pipeline.py:1288's 1% threshold, so it is published "
+            "and reported here rather than gated on (D-01/D-02)"
+        )
+    else:
+        exemption = ""
+
+    if not bad_mask.any():
+        if has_record_source:
+            detail = (
+                f"{label}: {n_gated} of {len(df)} row(s) gated, guard count zero "
+                f"everywhere{exemption}"
+            )
+        else:
+            detail = f"{label}: {len(df)} row(s), guard count zero everywhere"
+        return GateResult(experiment, f"gate1_guard_count:{label}", "PASS", detail)
+
     n_bad = int(bad_mask.sum())
-    return GateResult(
-        experiment,
-        f"gate1_guard_count:{label}",
-        "FAIL",
-        f"{label}: {n_bad} of {len(df)} row(s) have a non-zero or missing guard count",
-    )
+    if has_record_source:
+        detail = (
+            f"{label}: {n_bad} of {n_gated} gated row(s) have a non-zero or "
+            f"missing guard count{exemption}"
+        )
+    else:
+        detail = (
+            f"{label}: {n_bad} of {len(df)} row(s) have a non-zero or missing "
+            "guard count"
+        )
+    return GateResult(experiment, f"gate1_guard_count:{label}", "FAIL", detail)
 
 
 def _check_status_column(
@@ -544,9 +794,23 @@ def check_e3(out_dir: Path) -> list[GateResult]:
     return results
 
 
-def check_e4(out_dir: Path) -> list[GateResult]:
+def check_e4(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E4 -- cameras x frames synthetic benchmark grid. Nine per-cell
-    direct-call benchmark records plus the aggregated `benchmark_grid.csv`."""
+    direct-call benchmark records plus the aggregated `benchmark_grid.csv`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` relaxes the two `benchmark_grid.csv` column gates
+            from FAIL to `N/A` when the file is ABSENT -- E4's `--smoke` path
+            writes no grid, and the manifest already tags that artifact
+            `full`-only (P27-D-20). A grid that is PRESENT but malformed still
+            FAILs at every profile. `None` (the default) and `"full"` keep the
+            pre-existing behaviour exactly.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e4")
     results: list[GateResult] = []
     cells_dir = out_dir / "e4_cells"
     cell_paths = (
@@ -570,26 +834,66 @@ def check_e4(out_dir: Path) -> list[GateResult]:
             check_optimality=True,
             require_water_index=True,
         )
-    df = _load_csv(out_dir / "benchmark_grid.csv")
+    grid_path = out_dir / "benchmark_grid.csv"
+    if profile == "smoke" and not grid_path.exists():
+        # The gate stays VISIBLE, it just cannot judge: E4's --smoke path never
+        # writes the grid, so its absence carries no information about the run.
+        detail = (
+            "benchmark_grid.csv not written by E4's collapsed smoke path "
+            "(the manifest tags it full-only); nothing to judge at this profile"
+        )
+        results.append(
+            GateResult("E4", "gate1_guard_count:benchmark_grid.csv", "N/A", detail)
+        )
+        results.append(
+            GateResult("E4", "gate2_status:benchmark_grid.csv", "N/A", detail)
+        )
+        return results
+    df = _load_csv(grid_path)
     results.append(_check_guard_column("E4", "benchmark_grid.csv", df))
     results.append(_check_status_column("E4", "benchmark_grid.csv", df))
     return results
 
 
-def check_e5(out_dir: Path) -> list[GateResult]:
+def check_e5(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E5 -- refractive-index sensitivity band. One environment-only
     provenance sidecar summing the guard count across the whole band; no
-    per-row status or optimality is recorded for this experiment."""
-    record = _load_json(out_dir / "e5_provenance.json")
-    results = _check_json_artifact(
-        "E5",
-        "e5_provenance.json",
-        record,
-        check_guard=True,
-        check_optimality=False,
-        require_water_index=True,
-        water_index_keys=("n_true", "n_water"),
-    )
+    per-row status or optimality is recorded for this experiment.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` relaxes `gate1_guard_count` and `gate3_provenance`
+            from FAIL to `N/A` when `e5_provenance.json` is ABSENT --
+            `e5_index_sensitivity.py:871-889` (`_run_smoke_at`) returns before
+            the sidecar write, and the manifest tags it `full`-only
+            (P27-D-20). A sidecar that is PRESENT but bad still FAILs at every
+            profile. `None` and `"full"` keep the pre-existing behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e5")
+    sidecar_path = out_dir / "e5_provenance.json"
+    if profile == "smoke" and not sidecar_path.exists():
+        detail = (
+            "e5_provenance.json not written by E5's collapsed smoke path "
+            "(the manifest tags it full-only); nothing to judge at this profile"
+        )
+        results = [
+            GateResult("E5", "gate1_guard_count:e5_provenance.json", "N/A", detail),
+            GateResult("E5", "gate3_provenance:e5_provenance.json", "N/A", detail),
+        ]
+    else:
+        record = _load_json(sidecar_path)
+        results = _check_json_artifact(
+            "E5",
+            "e5_provenance.json",
+            record,
+            check_guard=True,
+            check_optimality=False,
+            require_water_index=True,
+            water_index_keys=("n_true", "n_water"),
+        )
     results.append(
         GateResult(
             "E5",
@@ -610,9 +914,24 @@ def check_e5(out_dir: Path) -> list[GateResult]:
     return results
 
 
-def check_e6(out_dir: Path) -> list[GateResult]:
+def check_e6(out_dir: Path, *, profile: str | None = None) -> list[GateResult]:
     """E6 -- index/layout/scale generalization sweep. Twelve per-configuration
-    checkpoints plus the aggregated `generalization_sweep.csv`."""
+    checkpoints plus the aggregated `generalization_sweep.csv`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` suppresses gate 4 over `e6_configs/*.json`: a
+            collapsed smoke solve records no meaningful first-order
+            optimality (P27-D-20). The gate is still EMITTED, as `N/A` naming
+            that reason -- a suppressed gate must stay visible in the verdict
+            block, never vanish. Gates 1 and 3 over the same record are
+            unaffected. `None` and `"full"` keep the pre-existing behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
+    """
+    _validate_profile(profile, caller="check_e6")
+    check_optimality = profile != "smoke"
     results: list[GateResult] = []
     configs_dir = out_dir / "e6_configs"
     config_paths = sorted(configs_dir.glob("*.json")) if configs_dir.exists() else []
@@ -634,9 +953,21 @@ def check_e6(out_dir: Path) -> list[GateResult]:
             label,
             record,
             check_guard=True,
-            check_optimality=True,
+            check_optimality=check_optimality,
             require_water_index=True,
         )
+        if not check_optimality:
+            results.append(
+                GateResult(
+                    "E6",
+                    f"gate4_optimality:{label}",
+                    "N/A",
+                    f"{label}: a collapsed smoke solve records no meaningful "
+                    "first-order optimality, so this gate cannot judge at the "
+                    "smoke profile (it is suppressed, not deleted -- it FAILs "
+                    "on the same record under full)",
+                )
+            )
     df = _load_csv(out_dir / "generalization_sweep.csv")
     results.append(_check_guard_column("E6", "generalization_sweep.csv", df))
     results.append(_check_status_column("E6", "generalization_sweep.csv", df))
@@ -830,11 +1161,19 @@ _E6_BAND_SIDECAR = "e6_seed_band_provenance.json"
 # before the production launch on 2026-08-06 and approved with the runtime cost
 # stated (the ceiling moved 26 h -> 30 h to pay for it). This constant stayed at
 # 5 through that change and FAILed the run it was meant to certify.
+# AUTHORITY: experiments/suite_expectations.json is the single source of truth
+# for this band's shape (D-05). Keep this in step with that file's
+# generalization_sweep_band.csv `rows.full`, which is configurations x seeds --
+# 84 = 14 x 6 after D-40 dropped the scale axis. The coupling is a red test
+# (tests/unit/test_expectations.py::TestShapeConstantReconciliation), not a plea.
 _E6_EXPECTED_SEED_COUNT = 6
+# NOT derived from the manifest and NOT changed: the `cameras` axis survives D-40.
 _E6_EXPECTED_CAMERA_VALUES = (8, 12, 16)
 
 
-def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
+def check_e6_seed_band(
+    out_dir: Path, *, profile: str | None = None
+) -> list[GateResult]:
     """COV-03/COV-04's E6 seed band: `generalization_sweep_band.csv` against
     `e6_seed_band_provenance.json`.
 
@@ -844,7 +1183,22 @@ def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
     naming the offending seed -- E6 exits 0 even when every configuration
     failed, MF-07), the sidecar's `solver_config["seeds"]` matches the CSV's
     distinct seeds, and the sidecar carries a `git_sha`.
+
+    Args:
+        out_dir: The run's primary output directory.
+        profile: `"smoke"` makes the `cameras`-axis EXPECTATION
+            profile-dependent -- a collapsed smoke band carries one camera
+            count, so a short axis is `N/A` rather than FAIL (P27-D-20).
+            `_E6_EXPECTED_CAMERA_VALUES` itself is NOT changed: that constant
+            records that the axis survives P26-D-40, and it still governs at
+            `full`. An absent `axis`/`axis_value` column pair stays FAIL at
+            every profile. `None` and `"full"` keep the pre-existing
+            behaviour.
+
+    Raises:
+        ValueError: On an unknown profile.
     """
+    _validate_profile(profile, caller="check_e6_seed_band")
     csv_path = out_dir / _E6_BAND_CSV
     if not csv_path.exists():
         return [
@@ -929,7 +1283,20 @@ def check_e6_seed_band(out_dir: Path) -> list[GateResult]:
         cameras_rows = band[band["axis"] == "cameras"]
         cameras_values = sorted({int(v) for v in cameras_rows["axis_value"].tolist()})
         missing = [v for v in _E6_EXPECTED_CAMERA_VALUES if v not in cameras_values]
-        if missing:
+        if missing and profile == "smoke":
+            # The axis EXPECTATION is profile-dependent; the constant is not.
+            results.append(
+                GateResult(
+                    "E6",
+                    "gate_e6_seed_band:cameras_axis",
+                    "N/A",
+                    f"cameras axis present at {cameras_values}; the collapsed "
+                    f"smoke band does not run {missing}, so the production "
+                    "axis cannot be asserted at this profile (it still FAILs "
+                    "on the same CSV under full)",
+                )
+            )
+        elif missing:
             results.append(
                 GateResult(
                     "E6",
@@ -1073,6 +1440,8 @@ _E5_BAND_CSV = "index_sensitivity_seed_band.csv"
 _E5_BAND_SIDECAR = "e5_seed_band_provenance.json"
 # Six for the same reason as _E6_EXPECTED_SEED_COUNT above -- E5's band runs the
 # same seed list (42-47).
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with that file's
+# index_sensitivity_seed_band.csv `rows.full` (66 = 11 configurations x 6 seeds).
 _E5_EXPECTED_SEED_COUNT = 6
 
 
@@ -1224,6 +1593,9 @@ _E2_BAND_SCOPE_JSON = "e2_band_scope.json"
 _E2_METRICS_FILENAME = "real_rig_metrics.json"
 _E2_METRICS_RTOL = 1e-6
 _E2_SEED_DIR_RE = re.compile(r"seed_(\d+)_e2_out")
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with the
+# e2_band stage's seed list; the manifest's e2_band entry is where that list is
+# written down.
 _E2_EXPECTED_RECORD_COUNT = 3
 
 
@@ -1437,6 +1809,8 @@ def check_e2_band(
 
 
 _E4_REPEAT_CSV = "benchmark_grid_repeat.csv"
+# AUTHORITY: experiments/suite_expectations.json. Keep in step with that file's
+# benchmark_grid_repeat.csv `rows.full` (6 = 2 repeats x these 3 cells).
 _E4_REPEAT_CELLS = ((8, 100), (12, 100), (16, 100))
 _E4_REPEAT_SECONDS_COLUMN = "seconds_stage3_interface_optimization"
 _E4_REPEAT_NFEV_COLUMN = "nfev_stage3_interface_optimization"
@@ -1614,10 +1988,14 @@ def _collect_all_json_paths(out_dir: Path) -> list[Path]:
     return paths
 
 
-def _check_git_sha_consistency(out_dir: Path) -> GateResult:
-    """Gate 3's cross-artifact form: every git_sha found across the WHOLE run
-    must be identical. This is the machine-checkable form of "commit nothing
-    while a run is in flight" -- a split sha means exactly that happened.
+def _collect_artifact_shas(out_dir: Path) -> dict[str, list[str]]:
+    """Map every distinct `environment.git_sha` under `out_dir` to the artifacts
+    carrying it.
+
+    Factored out of `_check_git_sha_consistency` so the run-manifest gate can
+    compare against the SAME sha set rather than re-deriving one. D-21 is
+    explicit that Gate 3 already establishes sha agreement and does it better
+    than a per-experiment assertion, so the manifest check reuses it.
     """
     shas: dict[str, list[str]] = {}
     for path in _collect_all_json_paths(out_dir):
@@ -1627,6 +2005,15 @@ def _check_git_sha_consistency(out_dir: Path) -> GateResult:
         sha = (record.get("environment") or {}).get("git_sha")
         if sha:
             shas.setdefault(sha, []).append(str(path.relative_to(out_dir)))
+    return shas
+
+
+def _check_git_sha_consistency(out_dir: Path) -> GateResult:
+    """Gate 3's cross-artifact form: every git_sha found across the WHOLE run
+    must be identical. This is the machine-checkable form of "commit nothing
+    while a run is in flight" -- a split sha means exactly that happened.
+    """
+    shas = _collect_artifact_shas(out_dir)
 
     if len(shas) <= 1:
         only_sha = next(iter(shas), None)
@@ -1650,11 +2037,176 @@ def _check_git_sha_consistency(out_dir: Path) -> GateResult:
     return GateResult("ALL", "gate3_git_sha_consistency", "FAIL", detail)
 
 
-def run_all_gates(out_dir: Path) -> list[GateResult]:
+def _check_run_manifest(out_dir: Path) -> list[GateResult]:
+    """Gate 3's suite-level form (DRIVER-02, D-21): verify the run manifest.
+
+    Four assertions, ALL of them hard FAIL and never "not applicable":
+
+        1. `run_manifest.json` exists under `out_dir` and parses.
+        2. Every name in `REQUIRED_MANIFEST_FIELDS` is present and non-null.
+        3. Its `git_sha` agrees with the single sha `_check_git_sha_consistency`
+           already establishes across the run's artifacts.
+        4. The working tree was NOT dirty when the run started.
+
+    A missing manifest is reported FAIL rather than skipped, on purpose. The todo
+    DRIVER-02 comes from is explicit: a provenance mismatch that only warns is a
+    provenance mismatch that ships, and an absent manifest is the loudest
+    mismatch there is -- it is a run nobody can attribute to a commit.
+
+    Note on assertion 4: dirtiness is recorded post-hoc only. D-47 cut the
+    dirty-tree pre-flight REFUSAL because `experiments/results/` is tracked, so
+    the run dirties its own tree and a refusal would kill every resume after the
+    first crash. A gate verdict can never kill a run.
+    """
+    gate_prefix = "gate3_run_manifest"
+    path = out_dir / RUN_MANIFEST_FILENAME
+    manifest = _load_json(path)
+
+    if manifest is None:
+        return [
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_present",
+                "FAIL",
+                f"no {RUN_MANIFEST_FILENAME} under {out_dir} -- this run cannot be "
+                "attributed to a commit or a machine (DRIVER-02, D-19)",
+            )
+        ]
+    if "_load_error" in manifest:
+        return [
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_present",
+                "FAIL",
+                f"{RUN_MANIFEST_FILENAME} could not be parsed: "
+                f"{manifest['_load_error']}",
+            )
+        ]
+
+    results = [
+        GateResult(
+            "ALL",
+            f"{gate_prefix}_present",
+            "PASS",
+            f"{RUN_MANIFEST_FILENAME} found and parsed",
+        )
+    ]
+
+    # 2. Required-field completeness. The field list is IMPORTED from the
+    # emitter -- a second copy here is exactly the drift D-05 exists to prevent.
+    null_fields = sorted(
+        name for name in REQUIRED_MANIFEST_FIELDS if manifest.get(name) is None
+    )
+    if null_fields:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_fields",
+                "FAIL",
+                "required manifest fields are missing or null: "
+                + ", ".join(null_fields),
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_fields",
+                "PASS",
+                f"all {len(REQUIRED_MANIFEST_FIELDS)} required environment fields "
+                "are present and non-null",
+            )
+        )
+
+    # 3. Agreement with the sha set Gate 3 already collects.
+    manifest_sha = manifest.get("git_sha")
+    artifact_shas = _collect_artifact_shas(out_dir)
+    disagreeing = sorted(sha for sha in artifact_shas if sha != manifest_sha)
+    if not artifact_shas:
+        # An empty set cannot disagree. Covering an empty tree is the
+        # completeness gate's job, not Gate 3's -- do not widen this here.
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "PASS",
+                f"manifest git_sha is {manifest_sha}; no artifact carries a "
+                "git_sha to compare against",
+            )
+        )
+    elif disagreeing:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "FAIL",
+                f"manifest git_sha ({manifest_sha}) disagrees with the sha(s) the "
+                f"artifacts carry ({', '.join(disagreeing)}) -- the manifest does "
+                "not describe the code that produced these artifacts",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_git_sha",
+                "PASS",
+                f"manifest git_sha matches every artifact ({manifest_sha})",
+            )
+        )
+
+    # 4. Dirty-tree state.
+    git_dirty = manifest.get("git_dirty")
+    if git_dirty is None:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "FAIL",
+                "manifest records no git_dirty state, so the run cannot be shown "
+                "to have come from a committed tree",
+            )
+        )
+    elif git_dirty:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "FAIL",
+                "the working tree was DIRTY when this run started "
+                f"(git_describe: {manifest.get('git_describe')}) -- the recorded "
+                "git_sha does not fully describe the code that ran",
+            )
+        )
+    else:
+        results.append(
+            GateResult(
+                "ALL",
+                f"{gate_prefix}_clean_tree",
+                "PASS",
+                "the working tree was clean when this run started",
+            )
+        )
+
+    return results
+
+
+def run_all_gates(
+    out_dir: Path, *, stage: str | None = None, profile: str | None = None
+) -> list[GateResult]:
     """Run every gate over every experiment's artifacts under `out_dir`.
 
     Args:
         out_dir: Root output directory (e.g. `experiments/results/`).
+        stage: Restrict the completeness gate to one stage's expected
+            artifacts. Ignored when `profile` is not supplied.
+        profile: The expectation profile (`"smoke"` or `"full"`). It selects
+            the completeness gate -- `None`, the default, skips that gate
+            entirely -- and, since P27-D-20, is also threaded into `check_e4`,
+            `check_e5`, `check_e6` and `check_e6_seed_band`, where `"smoke"`
+            turns four assertions a collapsed smoke run cannot satisfy from
+            FAIL into a VISIBLE `N/A`. Nothing is suppressed at `"full"` or at
+            `None`, so no pre-existing invocation changes behaviour.
 
     Returns:
         The full list of `GateResult`s across all six experiments plus the
@@ -1663,9 +2215,9 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
     results: list[GateResult] = []
     results += check_e1(out_dir)
     results += check_e3(out_dir)
-    results += check_e4(out_dir)
-    results += check_e5(out_dir)
-    results += check_e6(out_dir)
+    results += check_e4(out_dir, profile=profile)
+    results += check_e5(out_dir, profile=profile)
+    results += check_e6(out_dir, profile=profile)
     results += check_e7(out_dir)
     # D-19.4-14's band artifacts. Only E7 and E1 have bands this phase -- E4 and
     # E6 bands cost ~39 h together and neither carries an accuracy claim, so
@@ -1684,6 +2236,17 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
         "e1_benchmark_*.json",
         band_sidecar="e1_seed_band_provenance.json",
     )
+    # E1's SECOND band artifact: the parameter-level frame, keyed
+    # (seed, camera, model) rather than (seed, test_depth_m, model). Same band,
+    # same seeds, same sidecar -- only the CSV name differs, so check_band_csv
+    # is reused as-is rather than widened.
+    results += check_band_csv(
+        "E1",
+        out_dir,
+        "exp1_parameter_band.csv",
+        "e1_benchmark_*.json",
+        band_sidecar="e1_seed_band_provenance.json",
+    )
     # Phase 19.5's four new band gates (plan 19.5-09, COV-03/04/05/06/07).
     # check_e6_seed_band/check_e5_seed_band/check_e4_repeat all read directly
     # under out_dir. check_e2_band's artifacts live under an ISOLATED sibling
@@ -1692,7 +2255,7 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
     # this queue keeps the band in-repo but out of out_dir's own tree so a
     # `--check`/gate run against out_dir never confuses band output with the
     # single production run's own artifacts.
-    results += check_e6_seed_band(out_dir)
+    results += check_e6_seed_band(out_dir, profile=profile)
     results += check_e5_seed_band(out_dir)
     results += check_e4_repeat(out_dir)
     results += check_e2_band(
@@ -1700,16 +2263,47 @@ def run_all_gates(out_dir: Path) -> list[GateResult]:
         committed_metrics_path=out_dir / "real_rig_metrics.json",
     )
     results.append(_check_git_sha_consistency(out_dir))
+    # DRIVER-02 / D-21: the suite-level run manifest, all hard FAIL.
+    results += _check_run_manifest(out_dir)
+    # DRIVER-01 / D-04: the completeness gate, last, and only when a profile
+    # selects it. Every gate above judges artifacts it FINDS; this one is the
+    # only one that notices an artifact that was never produced (F-001).
+    if profile is not None:
+        results += check_completeness(out_dir, profile=profile, stage=stage)
     return results
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build this script's single-argument CLI parser."""
+    """Build this script's CLI parser.
+
+    `out_dir` is positional and unchanged. `--profile` and `--stage` are both
+    OPTIONAL so every pre-existing call site -- including `rerun_19_5.sh:257`
+    and its successor in the new driver -- keeps working unchanged.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "out_dir",
         type=Path,
         help="Output directory containing the re-run's artifacts (e.g. experiments/results/).",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=PROFILES,
+        default=None,
+        help=(
+            "Also run the completeness gate under this expectation profile. "
+            "'smoke' asserts artifact existence only; 'full' asserts row "
+            "counts. Omitted: the completeness gate does not run."
+        ),
+    )
+    parser.add_argument(
+        "--stage",
+        default=None,
+        help=(
+            "Restrict the completeness gate to one stage id from "
+            "experiments/suite_expectations.json. Omitted: the end-of-run "
+            "roll-up over the whole manifest. Ignored without --profile."
+        ),
     )
     return parser
 
@@ -1718,7 +2312,7 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point for `python experiments/check_rerun_gates.py <out_dir>`."""
     args = build_arg_parser().parse_args(argv)
     out_dir = Path(args.out_dir).resolve()
-    results = run_all_gates(out_dir)
+    results = run_all_gates(out_dir, stage=args.stage, profile=args.profile)
 
     for result in results:
         print(

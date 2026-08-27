@@ -9,9 +9,84 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # Byte-integrity exclude, shared verbatim by the two rewriting hooks below.
+      # What it governs: the generated run artifacts committed by 70e783f
+      # "results(29): full production suite at rerun-freeze-02" -- 227 files, of
+      # which 143 deliberately end WITHOUT a final newline (measured:
+      # `git show 70e783f | grep -c '^.No newline at end of file'` == 143) and
+      # which carry 439 trailing-whitespace advisories in their own bytes. Those
+      # bytes ARE the record: plan 29-05 proved them byte-for-byte, so a hook
+      # that "fixes" them destroys the evidence rather than tidying it. Both
+      # hooks below rewrite in place, which is why this lives here and not in
+      # CI: a local `pre-commit run --all-files` is then armed identically to
+      # .github/workflows/test.yml, which runs exactly that command on push to
+      # `main` and on every pull_request into it. CI-only scoping was rejected
+      # for that reason (D-29.2-01).
+      #
+      # Measured 2026-08-26 over all 1,693 tracked files by re-implementing
+      # pre-commit-hooks v5.0.0's own fix_file()/_process_line(): end-of-file-fixer
+      # would rewrite 300 files and trailing-whitespace 19. This pattern leaves
+      # ZERO leftovers for either hook. Each arm, by name:
+      #
+      #   \.planning/    Needed by BOTH hooks, not only trailing-whitespace,
+      #                  which carried it alone before. eof-fixer would rewrite 5
+      #                  planning files, two of them .gitkeep placeholders that
+      #                  are exactly 1 byte -- a lone b'\n' -- and v5.0.0
+      #                  TRUNCATES an all-newline file to zero bytes rather than
+      #                  normalising it. Retires when .planning/ leaves the
+      #                  repository; not planned.
+      #   run_experiment_suite_state\.
+      #                  experiments/run_experiment_suite_state.7005a27.tsv has 40
+      #                  lines, every one 5 TAB-separated fields, and 20 of them
+      #                  END IN A TAB. That trailing tab IS the empty 5th column:
+      #                  the exit-code field, empty on the `start` rows. Stripping
+      #                  it makes those 20 lines 4-field while the other 20 stay
+      #                  5-field -- schema corruption, not whitespace. The prefix
+      #                  also covers the sibling .stagelogs/ directory, four scipy
+      #                  least_squares verbose tables whose column padding would be
+      #                  stripped on 185 of 723 lines in e2_band.log alone; that
+      #                  padding is the column structure. Retires when the
+      #                  driver-state files are purged with the run outputs they
+      #                  describe.
+      #   driver_state/  The same two artifact families at their archived path,
+      #                  where plan 29.1-06's archive-aside move relocated them
+      #                  byte-identically. Same files, same reason. Retires with
+      #                  Phase 2 of the archive-stale-outputs todo.
+      #   results[^/]*/  The committed results trees, same glob and same reasoning
+      #                  as the detect-secrets hook below -- see its block for why
+      #                  the sibling-sweep `[^/]*` form is there (D-19.3-20).
+      #   ((pre_rerun_baseline|freeze01_run_output)/)?
+      #                  The optional archive segment, exactly as in the
+      #                  detect-secrets block: the two archive-aside moves relocate
+      #                  these same trees byte-identically to a new path. Each
+      #                  archive's purge drops its own alternative -- Phase 30 /
+      #                  POST-03 for pre_rerun_baseline/, Phase 2 of the
+      #                  archive-stale-outputs todo for freeze01_run_output/.
+      #
+      # A correction worth keeping, because the wrong framing produced a pattern
+      # that protected nothing. The two md5 anchors this repo's gates rest on --
+      # experiments/results/real_rig_metrics.json = 57279708f6106f411d1fe03ed2698291
+      # and experiments/results/interface_ablation_band.csv =
+      # b6515ed77ed04268608b74217716020b, which gate3_git_sha_consistency and the
+      # interface-ablation band check are asserted against -- live under the
+      # committed results tree and were ALREADY covered by the results arm. They
+      # were never the bytes at risk from THESE two hooks. The bytes at risk are
+      # the driver-state TSV and the stage logs, which no results-shaped pattern
+      # reaches: mirroring the detect-secrets regex onto these hooks, as was first
+      # proposed, contributes exactly 0 coverage to trailing-whitespace (measured).
+      #
+      # Hook-level on purpose, and pre-commit takes exactly ONE exclude per hook,
+      # so trailing-whitespace's former `^\.planning/` is hand-alternated in above
+      # rather than added as a second key, which would silently drop one of them.
+      # A top-level exclude would COMBINE with rather than replace these and
+      # silently de-scope ruff, check-yaml and detect-secrets too; this file has
+      # none and must not gain one.
+      # None of these file types is a place a formatting fix belongs: their exact
+      # bytes are the record.
       - id: trailing-whitespace
-        exclude: ^\.planning/
+        exclude: ^(\.planning/|experiments/((pre_rerun_baseline|freeze01_run_output)/)?(driver_state/|results[^/]*/|run_experiment_suite_state\.))
       - id: end-of-file-fixer
+        exclude: ^(\.planning/|experiments/((pre_rerun_baseline|freeze01_run_output)/)?(driver_state/|results[^/]*/|run_experiment_suite_state\.))
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']
@@ -38,7 +113,47 @@ repos:
         # run (D-19.3-20) -- inherit the same reasoning. They hold the same
         # artifact types, produced by the same code, with the same
         # regenerated-every-run `git_sha`.
-        exclude: ^(docs/tutorials/.*\.ipynb|experiments/results[^/]*/.*|tests/fixtures/.*\.json)$
+        # The optional archive segment covers the two archive-aside moves, each
+        # of which relocates the same trees, byte-identical, to a new path:
+        #   pre_rerun_baseline/   Phase 26 / DRIVER-04 (D-28..D-32)
+        #   freeze01_run_output/  Phase 29.1 / plan 29.1-06, the 2026-08-20 run
+        # Without the segment the pure-rename commit trips this hook on ~200
+        # `git_sha` and `config_hash` fields that were already committed and
+        # already excluded at the old path. This is NOT hypothetical for the
+        # second one: measured on 29.1-06's staged move, detect-secrets reported
+        # Hex High Entropy String findings across the e6_configs records before
+        # the segment was widened, and none after.
+        # Each archive's purge drops its own alternative: Phase 30 / POST-03 for
+        # pre_rerun_baseline/, and Phase 2 of the archive-stale-outputs todo for
+        # freeze01_run_output/.
+        # The `.planning/` arm, added 2026-08-26, is the same species of finding
+        # one tree over. Measured: this hook exits 123 with 10 findings on
+        # `--all-files`, every one under .planning/ -- nine Hex High Entropy
+        # String hits that are the 40-hex frozen commit SHAs (7005a27..., 3ab9c13...)
+        # quoted inside plan prose, plus one Basic Auth Credentials hit on a row
+        # of an audit table that *documents* the credential form it is inventorying
+        # (`| URL with inline credentials (https://user:pass@...) | 0 |`) -- a
+        # finding whose own count is zero. The reasoning above applies unchanged:
+        # high-entropy by design, and a new value on every legitimate regeneration.
+        # Why the baseline cannot hold, in the same shape as above: every phase
+        # lands new commit SHAs into new plan documents, so a baseline entry would
+        # have to be re-pinned every phase. .secrets.baseline is
+        # generated_at 2026-07-28T19:55:27Z, names 6 files, and holds ZERO
+        # .planning/ entries -- it predates phases 28, 29 and 29.1 entirely. The
+        # author ruled 2026-08-26 (D-29.2-27) to extend this exclude rather than
+        # regenerate the baseline, the same one-shape-one-reasoning move the
+        # byte-integrity arms above make.
+        # THE COST, stated plainly: the planning tree stops being secret-scanned.
+        # A real credential pasted into a plan document will not be caught here.
+        # That is accepted deliberately, against the lesson this file already
+        # records at the bottom for the removed pytest hook: a gate that cries
+        # wolf gets bypassed wholesale -- with --no-verify, which skips every other
+        # hook too -- and that costs the whole scan, not one tree. A permanently
+        # red detect-secrets is the same failure mode, one step earlier.
+        # Retires when .planning/ leaves the repository, or if detect-secrets
+        # gains a way to exempt a finding *type* per path prefix, at which point
+        # the Hex High Entropy arm can be narrowed to that type alone.
+        exclude: ^(docs/tutorials/.*\.ipynb|experiments/(pre_rerun_baseline/|freeze01_run_output/)?results[^/]*/.*|tests/fixtures/.*\.json|\.planning/.*)$
 
   - repo: local
     hooks:
@@ -56,9 +171,18 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
-      - id: tests
-        name: Run tests
-        entry: bash .hooks/pre-push-tests.sh
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+      # The `pytest tests/ -m "not slow"` pre-push hook was removed 2026-08-20.
+      # It duplicated .github/workflows/test.yml, which runs the same command on
+      # 3.11/3.12 x ubuntu/windows for pushes to `main` and PRs into it. Locally
+      # it cost ~50 min per push, which trained us out of pushing -- and this
+      # repo has already paid for that once, when 674 unpushed commits turned two
+      # trivial CI fixes into a release-day emergency. It also invoked bare
+      # `python`, so it failed with ~62 collection errors whenever the conda env
+      # was off PATH: an environment fault wearing a test-failure costume, and a
+      # gate that cries wolf gets bypassed with --no-verify, which skips the two
+      # ruff hooks above as well.
+      #
+      # Note the gap this leaves: test.yml triggers only on `main` and PRs into
+      # it, so pushes to a long-lived branch like experiments/* now have no
+      # automated test gate. If that stops being acceptable, widen test.yml's
+      # push trigger rather than reinstating a slow local hook.

@@ -1,0 +1,19 @@
+GATE FAIL: fd_jacobian (stage 3) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e1 (stage 4) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e7 (stage 5) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e5 (stage 6) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e7_band (stage 13) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e2_production (stage 7) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e3 (stage 9) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: reconstruction_bootstrap (stage 10) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e6_repeat1 (stage 8) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e1_band (stage 16) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e7_focal_standoff (stage 19) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e5_band (stage 14) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e2_band (stage 15) -- check_rerun_gates.py reported at least one FAIL against experiments/results_e2_band at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e6_band (stage 18) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e2_timing (stage 11) -- check_rerun_gates.py reported at least one FAIL against experiments/results_e2_timing at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e2_memory (stage 12) -- check_rerun_gates.py reported at least one FAIL against experiments/results_e2_memory at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e4 (stage 17) -- check_rerun_gates.py reported at least one FAIL against experiments/results at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+GATE FAIL: e4_repeat (stage 20) -- check_rerun_gates.py reported at least one FAIL against experiments/results_e4_repeat at profile 'full'. The queue continued (D-01); the final exit code is non-zero.
+ROLL-UP FAIL: the end-of-run completeness roll-up over experiments/results at profile 'full' reported at least one FAIL. Read the verdict block above: every 'NOT FOUND' line names an artifact this run was expected to produce and did not.
