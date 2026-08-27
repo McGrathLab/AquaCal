@@ -564,3 +564,259 @@ The body prints 451 as the live figure with all three prior figures beside it.
 This is exactly the drift D-29.2-28b exists for, and it is why plan 29.2-05
 re-runs the rehearsal immediately before the merge rather than trusting this
 row.
+
+--------------------------------------------------------------------------------
+10. THE BOARD FOUND A SEVENTH JOB, AND IT WAS RED -- build-docs
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. The first read of the board returned SEVEN rows, not the six
+this plan predicted. The unpredicted row was `build-docs`, and it had already
+FAILED. This section records the finding, its provenance, the author's ruling on
+it, the repair, and the re-proof the repair forced.
+
+THE ROW COUNT WAS WRONG, AND THE PREDICTION IS WHAT MADE THAT VISIBLE
+
+Predicted before the board was read, from `.github/workflows/test.yml` alone:
+four `test` cells (ubuntu/windows x 3.11/3.12) + `pre-commit` + `experiments-smoke`
+= SIX. The board reported SEVEN. The extra row comes from a SECOND workflow file
+that the prediction did not consult:
+
+  $ ls -1 .github/workflows/
+
+docs.yml
+publish.yml
+release.yml
+slow-tests.yml
+test.yml
+(exit code 0)
+
+  $ sed -n '1,10p' .github/workflows/docs.yml
+
+name: Documentation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+(exit code 0)
+
+`docs.yml` triggers on `pull_request` into `main` and on NOTHING ELSE -- no
+`push`, no schedule. So, exactly like the whole-tree hook sweep this file's
+sections 1-4 prove, IT HAS NEVER FIRED AGAINST THIS TREE. Its last run anywhere
+was 2026-04-20 against `dev`. Opening this pull request is what fired it, and
+that is why a four-month-old defect surfaced today.
+
+T-29.2-17 IS WHAT CAUGHT THIS. The threat register requires the expected row
+count be stated BEFORE the board is read, so that a mismatch is visible as a
+shortfall rather than invisible as a silence. The register anticipated a MISSING
+job; what turned up was a SURPLUS one. The mitigation worked in the direction it
+was not designed for, which is worth recording: an exact predicted count catches
+a surplus row for the same reason it catches a missing one.
+
+THE FAILURE
+
+  Job     : build-docs
+  Run     : 33028275063  (Documentation, pull_request, head cf14d0e)
+  Job link: https://github.com/McGrathLab/AquaCal/actions/runs/33028275063/job/98374620368
+  Step    : "Build documentation" -- `sphinx-build -W --keep-going -b html docs docs/_build/html`
+
+The build completed every page, copied both notebooks, dumped the search index
+and the object inventory -- and then died on the `-W`:
+
+  build finished with problems, 4 warnings (with warnings treated as errors).
+  ##[error]Process completed with exit code 1.
+
+The four problems, extracted verbatim from the run log, are all reStructuredText
+prose faults in docstrings under `src/`:
+
+  src/aquacal/calibration/interface_estimation.py:docstring of
+    aquacal.calibration.interface_estimation.DEGENERACY_WARNING_FRACTION_THRESHOLD:10:
+    WARNING: Definition list ends without a blank line; unexpected unindent. [docutils]
+
+  src/aquacal/calibration/refinement.py:docstring of
+    aquacal.calibration.refinement.DEGENERACY_WARNING_FRACTION_THRESHOLD:13:
+    WARNING: Definition list ends without a blank line; unexpected unindent. [docutils]
+
+  src/aquacal/validation/diagnostics.py:docstring of
+    aquacal.validation.diagnostics.save_diagnostic_report:10:
+    ERROR: Unexpected indentation. [docutils]
+
+  src/aquacal/validation/diagnostics.py:docstring of
+    aquacal.validation.diagnostics.save_diagnostic_report:11:
+    WARNING: Block quote ends without a blank line; unexpected unindent. [docutils]
+
+PROVENANCE -- INHERITED, NOT INTRODUCED
+
+This is a PRE-EXISTING DEFECT that this phase MEASURED, not a regression this
+phase CAUSED. The distinction is the difference between a finding and a mistake,
+and it is asserted rather than assumed:
+
+  $ git log --name-only 12291c6...cf14d0e -- src/
+
+(no output -- phase 29.2 had touched no file under src/ at all before the repair
+below)
+(exit code 0)
+
+The docstrings themselves were last written in phases 24 and 25 (a212d5a,
+34b4354, ba59f84). `DEGENERACY_WARNING_FRACTION_THRESHOLD` entered at d6b55ed,
+"feat(24-01): narrow the degenerate-observation warning by cause and fraction
+(DEGEN-03)", and is absent from `main` entirely -- so two of the four faults have
+never been seen by any docs build, on any branch, ever.
+
+THE AUTHOR'S RULING
+
+Plan 29.2-04's own instruction for a red job is "report it and stop; the repair
+belongs in its own plan against a fresh measurement". That instruction was
+followed to the letter: the failure was reported to the author WITHOUT being
+touched. THE AUTHOR THEN RULED OTHERWISE -- fix the docstrings inside this plan
+and re-run the checks -- and constrained the fix to docstring prose with no
+value, signature, default, threshold or behaviour permitted to move.
+
+Recorded as an explicit scope deviation. This plan's `files_modified` names only
+this evidence file; three files under `src/` were changed on the author's
+instruction. The ruling is the author's; the constraint is the author's; the
+record of both is here so neither is inferred later.
+
+THE REPAIR
+
+  interface_estimation.py and refinement.py (the two are held line-for-line
+  parallel by design, so both take the identical edit): the bullet list under
+  "Justified by two measurements..." sat indented and hard against the sentence
+  above it, so docutils read the sentence as a DEFINITION-LIST TERM and the
+  bullets as its definition -- then hit the unindented sentence below with no
+  blank line between. Blank lines added on both sides and the bullets dedented to
+  the surrounding column, which is a paragraph followed by a bullet list: what
+  the prose always meant, and what it now parses as.
+
+  diagnostics.py: `save_diagnostic_report`'s "Creates:" lead-in had no blank line
+  before its list. One blank line added.
+
+NO BEHAVIOUR CHANGED -- ASSERTED, NOT PROMISED
+
+  $ git diff --stat HEAD~1 HEAD
+
+ src/aquacal/calibration/interface_estimation.py | 8 +++++---
+ src/aquacal/calibration/refinement.py           | 8 +++++---
+ src/aquacal/validation/diagnostics.py           | 1 +
+ 3 files changed, 11 insertions(+), 6 deletions(-)
+(exit code 0)
+
+Every one of those 17 lines is a comment or a docstring line. The two constant
+blocks are `#:` autodoc COMMENTS, which never reach the parser as code at all.
+The strongest available assertion, run over all three files -- parse both the
+parent and the child, strip every docstring, and compare the dumped syntax trees:
+
+  $ python3 -c "...ast.dump(strip_docs(ast.parse(old))) == ast.dump(strip_docs(ast.parse(new)))..."
+
+IDENTICAL  src/aquacal/calibration/interface_estimation.py   (AST, docstrings stripped)
+IDENTICAL  src/aquacal/calibration/refinement.py             (AST, docstrings stripped)
+IDENTICAL  src/aquacal/validation/diagnostics.py             (AST, docstrings stripped)
+(exit code 0)
+
+And the value the author named specifically:
+
+  $ python3 -c "...ast.literal_eval of DEGENERACY_WARNING_FRACTION_THRESHOLD..."
+
+src/aquacal/calibration/interface_estimation.py -> 0.01
+(exit code 0)
+
+Unmoved. `refinement.py` re-exports that same object under an alias and was not
+touched below its comment block.
+
+LOCAL VERIFICATION BEFORE PUSHING -- AND EXACTLY WHERE IT STOPS
+
+The author required the fix be verified locally rather than pushed hopefully.
+THE FULL SPHINX BUILD COULD NOT BE REPRODUCED ON THIS MACHINE, and that is stated
+plainly rather than papered over: `nbsphinx` converts the two tutorial notebooks
+through `pandoc`, `pandoc` is absent here, and `sudo` is password-gated, so the
+`apt-get install pandoc` step CI runs cannot be reproduced.
+
+What WAS reproduced is the exact sub-pipeline that emitted all four messages:
+napoleon (Google style, per `docs/conf.py:65`) transforms each docstring, then
+docutils parses it. Both messages are `[docutils]`-domain, so this is the same
+parser producing the same text. Run in an isolated venv at
+/tmp/aquacal-29.2-docutils-venv (docutils 0.23, sphinx 9.1.0, both unpinned):
+
+  $ python /tmp/dcheck.py          # BEFORE the repair
+
+1 message(s)  src/aquacal/calibration/interface_estimation.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+    <string>:10: (WARNING/2) Definition list ends without a blank line; unexpected unindent.
+1 message(s)  src/aquacal/calibration/refinement.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+    <string>:13: (WARNING/2) Definition list ends without a blank line; unexpected unindent.
+2 message(s)  src/aquacal/validation/diagnostics.py :: save_diagnostic_report
+    <string>:11: (ERROR/3) Unexpected indentation.
+    <string>:12: (WARNING/2) Block quote ends without a blank line; unexpected unindent.
+TOTAL: 4
+(exit code 1)
+
+  $ python /tmp/dcheck.py          # AFTER the repair
+
+0 message(s)  src/aquacal/calibration/interface_estimation.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+0 message(s)  src/aquacal/calibration/refinement.py :: DEGENERACY_WARNING_FRACTION_THRESHOLD
+0 message(s)  src/aquacal/validation/diagnostics.py :: save_diagnostic_report
+TOTAL: 0
+(exit code 0)
+
+FOUR BEFORE, ZERO AFTER. The harness reproduces CI's count exactly and reproduces
+the two constant line numbers -- 10 and 13 -- VERBATIM. The `diagnostics.py` pair
+lands at 11/12 here against CI's 10/11: a constant one-line offset, because
+`ast.get_docstring(clean=False)` keeps the newline directly after the opening
+quotes that sphinx's `prepare_docstring` drops. Same two messages, same order,
+same text, shifted by one. Recorded rather than smoothed.
+
+Scope of this local check, stated so no one credits it with more: it covers the
+three docstrings that failed, not the whole documentation set. It cannot see a
+notebook-conversion fault, a broken cross-reference, or any warning arising
+outside these three objects. CI's `build-docs` job is the confirmation, and
+section 11 records what it did.
+
+THE SWEEP RE-RUN THE REPAIR FORCED
+
+Section 7 states that any commit pushed to this branch after the proof's sha
+changes the tree the proof describes. The docstring repair is such a commit -- and
+unlike every prior one it touches `src/`, which is INSIDE what the formatting
+hooks and `ruff --fix` operate on. So the sweep was re-run from scratch at the
+new sha. All four invariants were re-asserted, not just the exit code.
+
+  Head sha: 3ffebe39279a2c2d9064c05793a939ba5711123f
+  Runner  : pre-commit 4.6.2 (same isolated venv, hook envs from ~/.cache/pre-commit)
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+                                                BEFORE              AFTER
+  git status --porcelain                     0 lines      ->     0 lines
+  git status --porcelain -uall               0 lines      ->     0 lines
+  md5 real_rig_metrics.json          57279708f610...  ->  57279708f610...
+  md5 interface_ablation_band.csv    b6515ed77ed0...  ->  b6515ed77ed0...
+  TSV distinct field count                   {5}          ->     {5}
+  TSV lines ending in a tab                    20         ->       20
+
+  $ diff <baseline-status> <post-run-status>            -> byte-identical (exit 0)
+  $ [ "$(md5sum .../real_rig_metrics.json ...)" = "57279708f6106f411d1fe03ed2698291" ]
+MD5-A: MATCH (exit code 0)
+  $ [ "$(md5sum .../interface_ablation_band.csv ...)" = "b6515ed77ed04268608b74217716020b" ]
+MD5-B: MATCH (exit code 0)
+  $ [ "$(awk -F'\t' '{print NF}' .../run_experiment_suite_state.7005a27.tsv | sort -u | tr '\n' ',')" = "5," ]
+NF: SINGLE VALUE 5 (exit code 0)
+
+ONE RESULT HERE IS NEW INFORMATION AND NOT A REPEAT. `ruff (legacy alias)` runs
+with `args: [--fix]`, and this is the first sweep in which it had freshly edited
+`src/` files to look at. Had it disliked the reformatted docstrings it would have
+REWRITTEN them, and the status assertion above would have failed. It passed and
+the status is unchanged, so the repair is lint-clean as well as parse-clean.
+
+The proof of sections 1-4 therefore stands at 3ffebe3, re-measured rather than
+carried forward.
