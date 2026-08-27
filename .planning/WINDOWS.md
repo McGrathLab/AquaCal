@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 8
 waived_count: 0
 fixed_count: 0
-total_count: 6
-last_updated: 2026-08-26T23:24:30.970Z
+total_count: 8
+last_updated: 2026-08-27T00:35:22.814Z
 ---
 
 # Broken Windows Ledger
@@ -21,6 +21,8 @@ last_updated: 2026-08-26T23:24:30.970Z
 | 4 | 29.1 | unmet-truth | tests/unit/test_pipeline.py |  | D4: TestSolverConfigSeedIsInert::test_matches_pre_change_anchor fails by 2.4e-16 on Linux; ruled on, not fixed | open |  | 2026-08-24T18:49:04.593Z |  |
 | 5 | 29 | unrun-verify | .planning/phases/29-gate-verification-results-commit/29-03-PLAN.md |  | 29-03 verification item 'python -m pytest tests/unit/test_experiments_provenance.py -q is unchanged by this plan' could not be run in the active aquacal env (no pytest); run via aquacal-freeze02-prod interpreter gave 4 failed / 251 passed against the untracked tree — pre-existing, owned by 29-06 | open |  | 2026-08-26T15:42:24.003Z |  |
 | 6 | 29.2 | deviation | .github/workflows/release.yml |  | 29.2-01: release.yml pin is a temporary narrowing; retire once a released python-semantic-release ships the GitPython 3.1.60 fix (upstream 1475/1476, PR 1477) | open |  | 2026-08-26T23:24:30.970Z |  |
+| 7 | 29.2 | deviation | .planning/phases/29.2-merge-release-and-publish/29.2-03-PLAN.md |  | Task 1 verify regex 'h_c_m..] == h_c' has one dot too many and can never match; acceptance run with the corrected single-dot pattern | open |  | 2026-08-27T00:35:22.750Z |  |
+| 8 | 29.2 | deviation | .planning/phases/29.2-merge-release-and-publish/29.2-smoke-runs.txt |  | Task 2's two pytest verify gates evaluated against captured transcripts of the same verbatim commands rather than re-run (~50 min duplicate of a deterministic suite); the five cheap gates were re-executed live | open |  | 2026-08-27T00:35:22.814Z |  |
 
 ````json
 [
@@ -94,6 +96,30 @@ last_updated: 2026-08-26T23:24:30.970Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-26T23:24:30.970Z",
+    "resolved_at": null
+  },
+  {
+    "id": 7,
+    "kind": "deviation",
+    "phase": "29.2",
+    "file": ".planning/phases/29.2-merge-release-and-publish/29.2-03-PLAN.md",
+    "line": null,
+    "description": "Task 1 verify regex 'h_c_m..] == h_c' has one dot too many and can never match; acceptance run with the corrected single-dot pattern",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-27T00:35:22.750Z",
+    "resolved_at": null
+  },
+  {
+    "id": 8,
+    "kind": "deviation",
+    "phase": "29.2",
+    "file": ".planning/phases/29.2-merge-release-and-publish/29.2-smoke-runs.txt",
+    "line": null,
+    "description": "Task 2's two pytest verify gates evaluated against captured transcripts of the same verbatim commands rather than re-run (~50 min duplicate of a deterministic suite); the five cheap gates were re-executed live",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-27T00:35:22.814Z",
     "resolved_at": null
   }
 ]
