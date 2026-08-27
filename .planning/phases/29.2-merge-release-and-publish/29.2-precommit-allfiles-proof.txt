@@ -820,3 +820,258 @@ the status is unchanged, so the repair is lint-clean as well as parse-clean.
 
 The proof of sections 1-4 therefore stands at 3ffebe3, re-measured rather than
 carried forward.
+
+--------------------------------------------------------------------------------
+11. THE CHECK BOARD -- RULED **NOT GREEN**. FOUR OF SEVEN ROWS RED.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27, after every check settled. Head sha the board describes:
+f300c55d8cf261db4ef95365d71a8131966e7a21, which is both local HEAD and
+`origin/results/rerun-freeze-02` -- asserted in the closing block of this section.
+
+THE EXPECTED ROW COUNT, STATED BEFORE THE BOARD WAS READ
+
+Six: four `test` matrix cells (ubuntu-latest / windows-latest x 3.11 / 3.12) plus
+`pre-commit` plus `experiments-smoke`, all from `.github/workflows/test.yml`.
+SEVEN arrived. The surplus row is `build-docs`, whose provenance, failure and
+repair are section 10. The count is restated here because T-29.2-17 requires the
+prediction precede the reading, and because a reader of this section alone should
+not have to take the row count on trust.
+
+THE BOARD, EVERY ROW VERBATIM
+
+  $ gh pr checks 3 --json name,state,bucket,link
+
+  NAME                          STATE     BUCKET  LINK
+  ----------------------------  --------  ------  --------------------------------------------------------------------------
+  build-docs                    SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751470/job/98379291277
+  experiments-smoke             SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291522
+  pre-commit                    SUCCESS   pass    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291367
+  test (ubuntu-latest, 3.11)    FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291310
+  test (ubuntu-latest, 3.12)    FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291405
+  test (windows-latest, 3.11)   FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291196
+  test (windows-latest, 3.12)   FAILURE   fail    https://github.com/McGrathLab/AquaCal/actions/runs/33029751474/job/98379291497
+
+  rows: 7   pass: 3   fail: 4   pending: 0
+(exit code 0)
+
+THE RULING
+
+  **NOT GREEN.** Case one of the three this plan distinguishes: A FAILING JOB --
+  four of them, the entire `test` matrix. Not case two (a missing job: every
+  expected job fired, and one more besides). Not case three (a zero-check board:
+  seven rows were reported).
+
+  The zero-check rule was not exercised and is restated so it stays on the
+  record: a board reporting no checks at all would be ruled NOT GREEN and would
+  halt, because a workflow that never fired proves nothing about the tree. NO
+  SOURCE ARTIFACT IN THIS PHASE SPECIFIES WHAT A ZERO-CHECK BOARD MEANS -- that
+  rule is a FLAGGED PLANNER ASSUMPTION, not a measured behaviour, and it is
+  recorded as an assumption here for the same reason it was recorded as one in
+  the plan.
+
+WHAT WENT GREEN, AND WHY TWO OF THE THREE MATTER MORE THAN THEY LOOK
+
+  pre-commit          SUCCESS in 33 seconds on ubuntu-latest. THIS IS ROADMAP
+                      CRITERION 1, CONFIRMED ON THE REAL RUNNER. Sections 1-4 of
+                      this file predicted it from a local sweep and section 7
+                      said plainly that it remained a prediction until the job
+                      reported. It has now reported. The three hook repairs plan
+                      29.2-02 wrote hold on a fresh checkout with hook
+                      environments rebuilt from scratch, on ubuntu-latest rather
+                      than this machine, with `pip install pre-commit` resolving
+                      independently. The local proof is confirmed, not merely
+                      consistent.
+
+  experiments-smoke   SUCCESS. Matches 29.2-03's local measurement of 7/7
+                      invocations exit 0.
+
+  build-docs          SUCCESS -- RED ON THE PREVIOUS SHA, GREEN HERE. This is the
+                      confirmation section 10's local napoleon+docutils check
+                      explicitly could not provide, because pandoc is absent on
+                      this machine and the notebook half of the build could not
+                      be reproduced. The full build, notebooks and all, now
+                      passes under `-W`. Four docutils problems before, zero
+                      after, measured by CI itself.
+
+WHAT WENT RED -- ALL FOUR `test` CELLS, IDENTICALLY
+
+Every one of the four cells failed with THE SAME FIVE TESTS and an otherwise
+identical tally. The four summary lines, verbatim:
+
+  test (ubuntu-latest, 3.11)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 33 warnings in 4300.58s (1:11:40) =
+  test (ubuntu-latest, 3.12)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 31 warnings in 5088.54s (1:24:48) =
+  test (windows-latest, 3.11)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 22 warnings in 9434.83s (2:37:14) =
+  test (windows-latest, 3.12)
+    = 5 failed, 2319 passed, 23 skipped, 71 deselected, 22 warnings in 11689.68s (3:14:49) =
+
+The five, identical on all four cells:
+
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_every_required_field_is_non_null
+         - AssertionError: null required manifest fields: ['cpu_count_logical', 'git_describe', 'ram_total_bytes']
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_describe_is_a_version_anchor
+         - TypeError: expected string or bytes-like object, got 'NoneType'
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_describe_distinguishes_commits_the_dist_version_cannot
+         - TypeError: argument of type 'NoneType' is not iterable
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_git_dirty_is_a_bool_agreeing_with_the_describe_suffix
+         - AttributeError: 'NoneType' object has no attribute 'endswith'
+  FAILED tests/unit/test_run_manifest.py::TestBuildRunManifest::test_platform_fields_are_populated
+         - assert False  (isinstance(None, int))
+
+THIS IS NEW INFORMATION AND IT IS REPORTED AS SUCH
+
+29.2-03 measured `pytest -m "not slow"` on THIS TREE at **0 failed**, 2326
+passed, 21 skipped. CI ran the same selection and got **5 failed**, 2319 passed,
+23 skipped. THE PLAN SAID A RED NOT-SLOW CELL WOULD BE NEW INFORMATION AND MUST
+BE REPORTED RATHER THAN EXPLAINED AWAY. It is red, and this is the report. Both
+numbers are printed; neither is adjusted toward the other:
+
+                          LOCAL (29.2-03)     CI (all four cells)
+  failed                        0                     5
+  passed                     2326                  2319
+  skipped                      21                    23
+  deselected                    -                    71
+
+THE DIAGNOSIS -- MEASURED, WITH THE INFERENCE LABELLED
+
+All three null fields are environment facts the runner cannot supply. Both causes
+are measured from the run logs, not surmised:
+
+  `git_describe` is None because THE RUNNER HAS NO TAGS AND NO HISTORY. From the
+  checkout step's own log, verbatim:
+
+      fetch-depth: 1
+      fetch-tags: false
+      [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune \
+        --no-recurse-submodules --depth=1 origin \
+        +1c8234fefc3050e2aa0cffbeaab2cdc265a7ba87:refs/remotes/pull/3/merge
+
+  `.github/workflows/test.yml` uses a bare `- uses: actions/checkout@v4` with no
+  `with:` block, so it takes the action's defaults: depth 1, no tags.
+  `experiments/_run_manifest.py:115` resolves the field with
+  `git describe --match 'v[0-9]*'`, which has nothing to anchor to in a
+  one-commit, zero-tag clone. Note also that the ref fetched is
+  `refs/remotes/pull/3/merge` -- GitHub's synthetic merge commit -- not the
+  branch head.
+
+  `cpu_count_logical` and `ram_total_bytes` are None because PSUTIL IS NOT
+  INSTALLED. `pyproject.toml` puts `psutil>=5.9` in the **`bench`** extra
+  (line 68), while `test.yml:31` installs `pip install -e ".[dev]"`. The string
+  `psutil` does not appear ANYWHERE in the job's install log -- grep count 0.
+  `src/aquacal/io/benchmark.py:158` documents this exact outcome: "psutil
+  unavailable; cpu_count_logical/ram_total_bytes left as None."
+
+  So the production code behaves as its own docstrings specify. What fails is
+  five TESTS that assert those fields are always populated, in an environment
+  that by construction cannot populate them.
+
+  LABELLED AS INFERENCE, NOT MEASUREMENT: that these tests would go green if the
+  checkout fetched tags and the test extra carried psutil is a PREDICTION. It has
+  not been executed. Nothing in this plan changed either, and this plan proposes
+  no repair -- see the ruling on scope below.
+
+PROVENANCE -- INHERITED, LIKE build-docs, AND NEVER BEFORE EXERCISED BY CI
+
+  $ git cat-file -e origin/main:tests/unit/test_run_manifest.py
+
+ABSENT from main
+(exit code 1)
+
+  $ git log --oneline --diff-filter=A -1 -- tests/unit/test_run_manifest.py
+
+1674883 test(26-02): add failing tests for the suite run-manifest emitter
+(exit code 0)
+
+The module arrived in phase 26 and does not exist on `main`, so no CI run has
+ever executed it -- `test.yml` fires on push to `main` and on pull requests into
+`main`, and this is the first pull request since the module was written. The
+pattern is now the second instance of the same shape section 10 recorded for
+`build-docs`: A GATE THAT ONLY FIRES ON A PULL REQUEST INTO `main` ACCUMULATES
+LATENT FAILURES FOR AS LONG AS NO PULL REQUEST IS OPENED. Two such failures
+surfaced within an hour of each other on this, the first such request.
+
+NO REPAIR WAS ATTEMPTED, AND WHY
+
+This plan's instruction for a red job is explicit: report it and stop; the repair
+belongs in its own plan against a fresh measurement, not in a workaround here.
+The `build-docs` repair in section 10 happened ONLY because the author ruled on
+it directly after being shown the failure. NO SUCH RULING EXISTS FOR THIS ONE, so
+nothing was changed. Any fix here would touch either the workflow's checkout
+configuration or the dependency extras or the tests' own semantics -- each a
+decision, none an obvious correction, and the sweep proof would need re-taking
+again afterwards.
+
+Specifically NOT done: no test was skipped, xfailed or deselected to obtain a
+green board (D-29.2-09, D-29-13); no job was re-run; nothing was cancelled.
+
+THE UNPROTECTED DEFAULT BRANCH -- CONTEXT, AND EXPLICITLY NOT A LICENCE
+
+`main` carries neither classic branch protection (`gh api
+repos/.../branches/main/protection` -> 404 Branch not protected) nor a newer
+ruleset (`gh api repos/.../rulesets` -> `[]`). SO THESE FOUR RED CHECKS DO NOT
+MECHANICALLY BLOCK A MERGE. The green button will be available.
+
+STATE IT IN AS MANY WORDS: THAT IS EXACTLY WHY THE REPAIRS EXIST -- so the board
+goes green ON ITS MERITS, not so that a red one can be merged past. T-29.2-18
+accepts the unprotected branch as the repository's standing configuration and
+names the compensating control: the merge is gated behind a human decision in
+plan 29.2-05. This section is input to that decision, not a substitute for it.
+The author decides; this file only reports.
+
+A DIVERGENCE THE NEXT PLAN MUST KNOW ABOUT
+
+The commit carrying THIS section is not pushed, and must not be. Pushing it would
+move the head, fire a fresh run, and the board recorded above would describe a
+tree that no longer exists -- the plan prohibits exactly that, and it is the same
+reasoning section 8 used to refuse a request against a stale remote. So from this
+commit forward, LOCAL HEAD IS AHEAD OF THE PULL REQUEST'S HEAD by the evidence
+commits alone. At the moment the board was read the two were equal:
+
+  $ git rev-parse HEAD ; git rev-parse origin/results/rerun-freeze-02
+
+f300c55d8cf261db4ef95365d71a8131966e7a21
+f300c55d8cf261db4ef95365d71a8131966e7a21
+(exit code 0)
+
+Plan 29.2-05 owns the reconciliation: before merging, the remaining `.planning/`
+commits must be pushed, which re-fires the board and requires it be re-read.
+D-29.2-28b already requires the release rehearsal be re-run immediately before
+the merge for an unrelated reason; this is a second reason to re-measure rather
+than to trust this page.
+
+THE SWEEP, RE-ASSERTED AT THE SHA THE BOARD DESCRIBES
+
+Run once more at f300c55 so that sections 1-4 and section 11 speak about the same
+tree:
+
+  $ pre-commit run --all-files
+
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+Detect secrets...........................................................Passed
+
+(exit code 0)
+
+  $ diff <baseline -uall> <post-run -uall>     -> byte-identical (exit 0)
+  MD5-A: MATCH   MD5-B: MATCH   NF: SINGLE VALUE 5
+
+ONE HONEST CHANGE FROM EVERY PRIOR RUN, RECORDED RATHER THAN ROUNDED AWAY:
+`git status --porcelain -uall` reported **2 lines**, not 0, both before and after
+the sweep. They are two untracked todo files under `.planning/todos/pending/`,
+written while this plan ran and unrelated to the hooks:
+
+  ?? .planning/todos/pending/2026-08-26-docs-yml-only-runs-on-pull-requests-into-main.md
+  ?? .planning/todos/pending/2026-08-26-no-local-gate-builds-the-docs-so-docstring-markup-is-unchecked.md
+
+The assertion that matters is unaffected and is the one actually taken: the
+before and after outputs are BYTE-IDENTICAL, so the sweep neither created,
+deleted nor modified anything. Both files are committed together with this
+section, so the tree returns to fully-tracked. Reporting 0 here would have been
+false, and the four-assertion discipline is worth more than a tidy number.
