@@ -6,6 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+# Three full grids ran concurrently on main during the v2.1.0 release burst
+# (the merge commit, semantic-release's `chore(release):` commit, and a ci
+# commit, all inside six minutes), because this workflow had no group at all.
+#
+# cancel-in-progress is deliberately PR-ONLY. On a PR the newest push is the
+# only one anyone reads, so killing the older run is free. On main it is NOT:
+# a cancelled run leaves that commit with no recorded result, and this project
+# treats the per-commit check board as evidence. Grouping without cancelling
+# still fixes the burst -- the runs queue and execute one at a time instead of
+# three abreast -- while every commit keeps its own verdict.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}

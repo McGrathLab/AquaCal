@@ -27,7 +27,14 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # Same two causes edfaa5a fixed in test.yml, which this job also has:
+      # tests/unit/test_run_manifest.py asserts on `git describe`, which needs
+      # the tag AND the graph back to it. This job runs the FULL suite
+      # (`pytest tests/`, no `-m "not slow"`), so it runs all 33 of those
+      # tests, none of which is slow-marked.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ inputs.python-version || '3.12' }}
         uses: actions/setup-python@v5
@@ -36,10 +43,15 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
 
+      # The `bench` extra carries psutil, which src/aquacal/io/benchmark.py
+      # needs for cpu_count_logical and ram_total_bytes; without it both
+      # degrade to None (benchmark.py:151-159) and the manifest assertions
+      # fail. workflow_dispatch-only, so this has never fired since the
+      # manifest tests landed -- the breakage was latent, not observed.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,bench]"
 
       - name: Run full test suite
         run: pytest tests/ --cov=aquacal --cov-report=xml --cov-report=term

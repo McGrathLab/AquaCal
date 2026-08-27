@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
 
+# pull_request-only, so cancelling a superseded run is unconditionally safe
+# here: there is no main-branch check board to leave a hole in.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-docs:
     runs-on: ubuntu-latest

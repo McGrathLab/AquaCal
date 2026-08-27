@@ -5,6 +5,14 @@ on:
     tags:
       - 'v*'
 
+# cancel-in-progress is false ON PURPOSE. This workflow uploads to PyPI, which
+# is irreversible; two runs racing the same tag (which a force-updated tag can
+# produce) must serialise, never cancel each other mid-upload. The group only
+# guarantees one at a time.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
