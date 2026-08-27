@@ -393,3 +393,174 @@ the driver-state TSV's distinct field count the single value 5. The evidence
 file is under .planning/, which both formatting hooks and detect-secrets
 exclude, so it cannot be rewritten by the hooks it documents.
 
+
+--------------------------------------------------------------------------------
+9. THE PULL REQUEST -- CREATED. SUPERSEDES SECTION 8's BLOCKED STATUS.
+--------------------------------------------------------------------------------
+
+Recorded 2026-08-27. Section 8 is left exactly as written, unedited, because it
+records what was true when it was written and the scope gate it describes is
+part of this phase's record (S6 -- superseding statements never rewrite the
+record). This section states what is true now.
+
+WHAT CLEARED THE GATE
+
+The author ran option 1 of the three routes section 8 offered:
+
+  $ gh auth refresh -h github.com -s workflow        (author action, interactive)
+
+Verified afterwards, read-only, without printing any token value:
+
+  $ gh auth status
+
+  ✓ Logged in to github.com account tlancaster6 (keyring)
+  - Active account: true
+  - Git operations protocol: ssh
+  - Token: gho_************************************
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+
+(exit code 0)
+
+`workflow` is present where section 8 recorded it absent. That is the only thing
+that changed; no credential was created, no token was written to disk by this
+agent, and no value was printed.
+
+THE PUSH THAT SECTION 8 RECORDED AS REJECTED
+
+  $ git push origin results/rerun-freeze-02
+
+To https://github.com/McGrathLab/AquaCal.git
+   2205eeb..cf14d0e  results/rerun-freeze-02 -> results/rerun-freeze-02
+
+(exit code 0)
+
+The same command, the same commit range, the same remote -- now accepted. The
+commit that triggered the rejection, 7ab969e "ci(29.2-01): pin the release
+toolchain to a verified-working PSR/GitPython pair", is in this range and did
+push, which is the direct confirmation that the scope was the whole cause.
+
+Asserted, rather than inferred from the absence of an error:
+
+  $ git rev-parse origin/results/rerun-freeze-02
+
+cf14d0e6fb9b79167c57930455817a1a42985ca6
+(exit code 0)
+
+  $ git rev-parse HEAD
+
+cf14d0e6fb9b79167c57930455817a1a42985ca6
+(exit code 0)
+
+REMOTE AND LOCAL ARE THE SAME SHA. This matters more than it looks: section 7's
+scope paragraph says this proof describes THIS tree at THIS sha, and section 8
+refused to open a request against the stale remote state 2205eeb precisely
+because a board describing an unproven tree is not evidence about the proven
+tree. The push moved the remote onto the proven sha rather than moving the proof
+onto a new one. NO COMMIT WAS MADE BETWEEN THE SWEEP AND THE PUSH, so the sweep
+in sections 1-4 did not have to be re-run, and it was not.
+
+THE PULL REQUEST
+
+  $ gh pr create --base main --head results/rerun-freeze-02 --title "..." --body-file <file>
+
+https://github.com/McGrathLab/AquaCal/pull/3
+(exit code 0)
+
+  Number     : 3
+  URL        : https://github.com/McGrathLab/AquaCal/pull/3
+  Base ref   : main
+  Head ref   : results/rerun-freeze-02
+  Head sha   : cf14d0e6fb9b79167c57930455817a1a42985ca6
+  State      : OPEN
+  Draft      : false
+  Created    : 2026-08-27T00:52:32Z
+
+Asserted by string equality against the expected tuple, not read by eye:
+
+  $ PR=$(gh pr list --state open --base main --head results/rerun-freeze-02 --json number,baseRefName,headRefName,state,mergedAt --jq '.[0]')
+  $ [ "$(echo "$PR" | python3 -c '...print(d["baseRefName"], d["headRefName"], d["state"], d["mergedAt"])')" = "main results/rerun-freeze-02 OPEN None" ]
+
+{"baseRefName":"main","headRefName":"results/rerun-freeze-02","mergedAt":null,"number":3,"state":"OPEN"}
+PR-STATE ASSERTION: PASS
+(exit code 0)
+
+`mergedAt` is null. That is the machine-readable form of "nothing was merged",
+and it is asserted rather than promised.
+
+NOTHING IRREVERSIBLE WAS PERFORMED (D-29.2-24, T-29.2-15)
+
+  No merge.          `mergedAt` is null, asserted above by string equality.
+  No auto-merge.     `autoMergeRequest` is null, from the same read.
+  No approval.       No review was submitted, and none was requested -- so no
+                     review exists that could auto-merge on approval.
+  No draft toggle.   `isDraft` is false; created as a normal request.
+  Creation only.     `gh pr create` creates; it has no merging behaviour of any
+                     kind. RESEARCH § Q5a records this and it is why the command
+                     was chosen over any UI route.
+
+A CORRECTION THAT MUST NOT BE SWALLOWED (D-29-16 -- report both numbers)
+
+29.2-PATTERNS.md § No Analog Found states that "No PR has ever been opened on
+this repo", citing `gh pr list --state open` -> `[]` as its evidence. THAT
+CONCLUSION IS WRONG, and the reason is instructive: `--state open` queries only
+OPEN requests, so it cannot see a closed or merged one. Queried across all
+states at creation time:
+
+  $ gh pr list --state all --json number,title,state --jq '.[] | "\(.number) \(.state) \(.title)"'
+
+3 OPEN    Release v2.1.0: the production run, its artifacts, and the release-engineering repairs — MERGE COMMIT ONLY, never squash
+2 MERGED  Dev
+1 MERGED  ci: exclude tutorial notebooks from detect-secrets
+
+(exit code 0)
+
+TWO PULL REQUESTS PREDATE THIS ONE, both merged. This one is #3 for that reason
+and not because GitHub shares its numbering with issues -- the issue list is
+empty.
+
+What the correction does and does not change. It does NOT invalidate Task 2's
+precondition: that precondition asserts `gh pr list --state open` returns an
+empty list, which it did, and the assertion's purpose -- catching an unexpected
+already-open request -- was served exactly. It DOES retire the "no house
+template exists" premise behind the body's shape. Neither prior body is a usable
+template regardless (#1 is a one-line CI tweak, #2 is titled "Dev"), so the
+verdict-first shape borrowed from 29.1-PREPUSH-AUDIT.md stands on its merits.
+The claim is corrected here, in this phase's record, rather than edited into
+29.2-PATTERNS.md, per S6. The general lesson is the one S7 already states:
+query live state, and query it across the state space you actually mean.
+
+WHAT THE BODY CARRIES
+
+The body opens with five bolded one-line verdicts before any evidence, and says
+why that ordering was chosen. Its two load-bearing instructions:
+
+  1. MERGE COMMIT, NEVER SQUASH -- with the consequence in one sentence (a
+     squash collapses all 451 commits into one message and semantic-release
+     parses only that message, so the release silently does not fire), plus the
+     note that all three merge methods are enabled and the split button
+     remembers the last method used, so the method must be POSITIVELY SELECTED.
+  2. DECLINE THE DELETE-BRANCH PROMPT -- the branch and the tag are both kept
+     deliberately; `deleteBranchOnMerge` is already false, so this is declining
+     a button rather than changing a setting.
+
+It links all four of this phase's evidence files at the pushed sha, and closes
+by stating that nothing was merged, approved, auto-merged, re-run or cancelled.
+
+THE COMMIT COUNT, RE-DERIVED (D-29.2-19) -- BOTH NUMBERS, NEITHER ADJUSTED
+
+  $ git rev-list --count origin/main..results/rerun-freeze-02
+
+451
+(exit code 0)
+
+                              THIS PR    REHEARSAL   RESEARCH 08-26   ROADMAP
+  commits ahead of main         451         438        429 / 431        406
+
+The count has now drifted a third time, 438 -> 451, in the day since the
+rehearsal. Every one of the 13 new commits is a `.planning/` documentation
+commit from wave one of this phase, so the feat/fix figures and the computed
+bump are unaffected: 47 feat, 30 fix, 0 breaking-change markers, MINOR, 2.1.0.
+The body prints 451 as the live figure with all three prior figures beside it.
+This is exactly the drift D-29.2-28b exists for, and it is why plan 29.2-05
+re-runs the rehearsal immediately before the merge rather than trusting this
+row.
