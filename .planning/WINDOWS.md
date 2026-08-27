@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 8
+open_count: 9
 waived_count: 0
 fixed_count: 0
-total_count: 8
-last_updated: 2026-08-27T00:35:22.814Z
+total_count: 9
+last_updated: 2026-08-27T04:41:37.993Z
 ---
 
 # Broken Windows Ledger
@@ -23,6 +23,7 @@ last_updated: 2026-08-27T00:35:22.814Z
 | 6 | 29.2 | deviation | .github/workflows/release.yml |  | 29.2-01: release.yml pin is a temporary narrowing; retire once a released python-semantic-release ships the GitPython 3.1.60 fix (upstream 1475/1476, PR 1477) | open |  | 2026-08-26T23:24:30.970Z |  |
 | 7 | 29.2 | deviation | .planning/phases/29.2-merge-release-and-publish/29.2-03-PLAN.md |  | Task 1 verify regex 'h_c_m..] == h_c' has one dot too many and can never match; acceptance run with the corrected single-dot pattern | open |  | 2026-08-27T00:35:22.750Z |  |
 | 8 | 29.2 | deviation | .planning/phases/29.2-merge-release-and-publish/29.2-smoke-runs.txt |  | Task 2's two pytest verify gates evaluated against captured transcripts of the same verbatim commands rather than re-run (~50 min duplicate of a deterministic suite); the five cheap gates were re-executed live | open |  | 2026-08-27T00:35:22.814Z |  |
+| 9 | 29.2 | deviation | .github/workflows/test.yml |  | All four CI test matrix cells fail on tests/unit/test_run_manifest.py: git_describe null (checkout fetch-depth 1, fetch-tags false) and cpu_count_logical/ram_total_bytes null (psutil in bench extra, CI installs .[dev]). Unrepaired, no author ruling. | open |  | 2026-08-27T04:41:37.993Z |  |
 
 ````json
 [
@@ -120,6 +121,18 @@ last_updated: 2026-08-27T00:35:22.814Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-27T00:35:22.814Z",
+    "resolved_at": null
+  },
+  {
+    "id": 9,
+    "kind": "deviation",
+    "phase": "29.2",
+    "file": ".github/workflows/test.yml",
+    "line": null,
+    "description": "All four CI test matrix cells fail on tests/unit/test_run_manifest.py: git_describe null (checkout fetch-depth 1, fetch-tags false) and cpu_count_logical/ram_total_bytes null (psutil in bench extra, CI installs .[dev]). Unrepaired, no author ruling.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-27T04:41:37.993Z",
     "resolved_at": null
   }
 ]

@@ -5,15 +5,15 @@ milestone_name: Clean Experimental Suite
 current_phase: 29.2
 current_phase_name: merge-release-and-publish
 status: executing
-stopped_at: Completed 29.2-03-PLAN.md
-last_updated: "2026-08-27T00:33:23.102Z"
-last_activity: 2026-08-26
-last_activity_desc: 29.2-03 converted the one D4 member CI's not-slow selection runs to documented step-count bounds (np.testing.assert_array_max_ulp, maxulp=4 on r_q_m and 8 on chord_incidence_deg -- 4x the measured worst cases of 1 and 2 steps over all 22 rows); h_c_m and h_q_m measured 0/22 and keep exact equality. Then measured what CI will measure: not-slow 0 failed, whole suite exactly 2 failed (both @pytest.mark.slow), all seven experiments-smoke invocations exit 0 with experiments/ byte-unchanged and both md5 anchors unmoved. Evidence: `29.2-smoke-runs.txt`. TWO is now the expected whole-suite count; the D4 todo names two members and records why the third left. No prior artifact was rewritten.
+stopped_at: Completed 29.2-04-PLAN.md
+last_updated: "2026-08-27T04:55:00.000Z"
+last_activity: 2026-08-27
+last_activity_desc: 29.2-04 ran CI's whole-tree `pre-commit run --all-files` for the first time anywhere in this project and asserted FOUR invariants at three successive shas -- exit 0 with all seven hooks Passed, `git status` byte-identical before and after, both md5 anchors matched by string equality, and the driver-state TSV still the single field count 5 with its 20 tab-terminated lines. **PR #3 into `main` is OPEN and UNMERGED** (`mergedAt` null, asserted). **CI's `pre-commit` job went SUCCESS in 33s -- ROADMAP criterion 1 is CONFIRMED on the real runner**, alongside `experiments-smoke`. The board returned SEVEN rows against a predicted six: the surplus `build-docs` had failed on four docutils faults inherited from phases 24/25, which the author ruled be repaired in-plan (docstring prose only; AST-identical with docstrings stripped) and CI then confirmed green. **BOARD RULED NOT GREEN: all four `test` matrix cells fail identically at 5 failed / 2319 passed / 23 skipped**, every failure in `tests/unit/test_run_manifest.py`, caused by CI's environment -- `fetch-depth: 1, fetch-tags: false` leaves `git describe` nothing to anchor to, and `psutil` sits in the `bench` extra while CI installs only `.[dev]`. NOT repaired: no author ruling exists for it, and nothing was skipped, xfailed, deselected, re-run or cancelled. Evidence: `29.2-precommit-allfiles-proof.txt` §§1-11.
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 71
-  completed_plans: 66
+  completed_plans: 67
   percent: 80
 ---
 
@@ -35,7 +35,7 @@ into eight phases with 100% coverage validated. Next: `/gsd:plan-phase 23`.
 
 ## Current Position
 
-Phase: 29.2 (merge-release-and-publish) — EXECUTING (3/8 plans complete)
+Phase: 29.2 (merge-release-and-publish) — EXECUTING (4/8 plans complete)
 Plan 29.2-01 COMPLETE 2026-08-26 — the phase tracer. Release toolchain pinned; the whole release
 rehearsed in /tmp and the 2.1.0 bump asserted by string equality. Evidence:
 `29.2-release-rehearsal.txt`, `29.2-sdist-listing.txt`. The scratch root
@@ -57,6 +57,18 @@ byte-unchanged and both md5 anchors unmoved. Evidence: `29.2-smoke-runs.txt`. **
 expected whole-suite count; zero and three are both anomalies** — the superseding statement is
 routed to `29.2-PHASE-RECORD.md` (plan 29.2-08), and the tag message and 29.1-PREPUSH-AUDIT.md were
 NOT rewritten.
+Plan 29.2-04 COMPLETE 2026-08-27 — the whole-tree hook sweep is proved and **PR #3 is open into
+`main`, unmerged**. CI's `pre-commit` job SUCCESS in 33s: **ROADMAP criterion 1 confirmed on the real
+runner**, not merely predicted. **The board is NOT GREEN.** Seven rows arrived against a predicted
+six; the surplus `build-docs` failed on four inherited docutils faults, was repaired on the author's
+explicit ruling (docstring prose only, AST-identical with docstrings stripped) and is now green. All
+four `test` cells fail identically — 5 failed / 2319 passed / 23 skipped, every one in
+`tests/unit/test_run_manifest.py`, from CI environment facts (`fetch-depth: 1`, `fetch-tags: false`;
+`psutil` in the `bench` extra, CI installs `.[dev]`). **Left unrepaired deliberately** — no author
+ruling exists for it and every candidate fix is a decision, not a correction. **Plan 29.2-05 must
+reconcile a known divergence: the evidence commits are deliberately NOT pushed, so local HEAD is
+ahead of PR #3's head `f300c55`; pushing them re-fires the board and it must be re-read.** Evidence:
+`29.2-precommit-allfiles-proof.txt` §§1-11.
 criteria 1-5. **Criterion 6 is OPEN and owned by Phase 29.2.**
 Phase 28 (full-suite-production-run) — **COMPLETE (5/5), 2026-08-25.**
 Previous phase: 27 — COMPLETE (13/13), closed at rerun-freeze-01 / 3ab9c13
@@ -421,10 +433,10 @@ experiment may carry an accuracy claim only where a measured seed band supports 
 
 **Resume file:** None
 
-Last session: 2026-08-27T00:33:23.085Z
+Last session: 2026-08-27T04:55:00.000Z
 (`870151c`), then `/gsd-discuss-phase 23` captured 14 decisions across four gray areas
 (`6a0b772`). One new POST-SUBMISSION todo filed: the hardcoded `water_z` optimization bound.
-Stopped at: Completed 29.2-03-PLAN.md
+Stopped at: Completed 29.2-04-PLAN.md — PR #3 open and unmerged, board ruled NOT GREEN
 Next: `/gsd:plan-phase 23` (Experiment Correctness Fixes).
 
 Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
@@ -456,3 +468,4 @@ Prior position (Phase 21 close) is preserved in `.planning/HANDOFF.json` and in
 | Phase 29.2 P01 | 20min | 3 tasks | 3 files |
 | Phase 29.2 P02 | 25m | 3 tasks | 1 files |
 | Phase 29.2 P03 | 1h15m | 3 tasks | 3 files |
+| Phase 29.2 P04 | 4h20m | 3 tasks | 6 files |

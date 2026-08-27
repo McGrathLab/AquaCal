@@ -724,6 +724,10 @@ default conventional parser yields a **minor** bump to **2.1.0**.
      so this is a blocked merge, not data corruption. Resolve it by scoping the job to changed
      files or excluding `experiments/results/`. `.pre-commit-config.yaml` is editable again here;
      D-29-17's fence was Phase 29-scoped.
+     **MET, 2026-08-27 (plan 29.2-04):** resolved by excluding the byte-sensitive artifacts rather
+     than by scoping to changed files. Proved locally by a whole-tree sweep against four
+     independent invariants, then **confirmed on the real runner** — CI's `pre-commit` job reported
+     SUCCESS in 33 seconds on PR #3.
 
   2. **`main` carries the 406 commits, merged with a MERGE COMMIT — never a squash.** A squash
      collapses them into one message, and semantic-release would parse only that message; if it
@@ -740,7 +744,7 @@ default conventional parser yields a **minor** bump to **2.1.0**.
 
   5. **RUN-05 closes**: the results package is published before the paper is submitted.
 
-**Plans**: 3/8 plans executed in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
+**Plans**: 4/8 plans executed in 6 waves. Plan 29.2-08 re-derives and corrects the stale 406/43/29 figures
 above against the parser itself (measured 2026-08-26: **429** commits ahead, **47 `feat`**,
 **30 `fix`**, zero breaking-change markers — the minor bump to 2.1.0 is unaffected).
 
@@ -756,8 +760,16 @@ Plans:
 - [x] 29.2-03-PLAN.md — convert the two drifting D4 assertions to documented ULP bounds; measure
       both suites and all seven `--smoke` invocations; amend the D4 todo
 
-- [ ] 29.2-04-PLAN.md — the whole-tree `pre-commit run --all-files` proof against four independent
-      invariants, then open the PR and report the check board per job
+- [x] 29.2-04-PLAN.md — the whole-tree `pre-commit run --all-files` proof against four independent
+      invariants, then open the PR and report the check board per job — **DONE 2026-08-27. PR #3 is
+      OPEN and unmerged. Criterion 1 is CONFIRMED on the real runner (`pre-commit` SUCCESS in 33s).
+      BOARD RULED NOT GREEN:** seven rows arrived against a predicted six; the surplus `build-docs`
+      failed on four inherited docutils faults, was repaired on the author's ruling and is now
+      green, but all four `test` matrix cells fail identically (5 failed / 2319 passed, every one
+      in `tests/unit/test_run_manifest.py`, from CI environment facts — `fetch-depth: 1`,
+      `fetch-tags: false`, and `psutil` in the `bench` extra while CI installs `.[dev]`). Left
+      unrepaired deliberately; no author ruling exists for it. Evidence:
+      `29.2-precommit-allfiles-proof.txt` §§1-11
 
 - [ ] 29.2-05-PLAN.md — pre-merge re-verification against the pins, end the stuck deployment, and
       the merge door (author-gated); verify the merge commit, tag and both version files
@@ -834,5 +846,5 @@ already mapped above). Full detail in STATE.md § Deferred Items and in the arch
 | 28. Suite Execution on Linux Machine | v2.1 | 2/5 | In Progress|  |
 | 29. Gate Verification & Results Commit | v2.1 | 8/8 | Complete (criteria 1-5; criterion 6 deferred to 29.2) | 2026-08-26 |
 | 29.1. Post-Run Fixes & Re-Freeze | v2.1 | 9/9 | Complete    | 2026-08-24 |
-| 29.2. Merge, Release, and Publish | v2.1 | 3/8 | In Progress|  |
+| 29.2. Merge, Release, and Publish | v2.1 | 4/8 | In Progress |  |
 | 30. Post-Submission Reconciliation | v2.1 | 0/TBD | Not started | - |
